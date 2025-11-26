@@ -1,0 +1,186 @@
+import pygame
+import os
+
+# ==============================================================================
+#   屏幕与系统设置
+# ==============================================================================
+WIDTH = 1280
+HEIGHT = 720
+FPS = 60
+
+# 文件路径配置
+LEADERBOARD_FILE = "leaderboard.json"
+ARSENAL_FILE = "arsenal.json"
+
+# ==============================================================================
+#   颜色定义 - 赛博朋克霓虹视觉规范
+# ==============================================================================
+# 核心背景色
+CYBER_DEEP_BLACK = (5, 10, 20)      # 深空黑 #050A14
+CYBER_MIDNIGHT = (0, 5, 16)          # 午夜蓝 #000510
+CYBER_GRID_LINE = (20, 60, 80)       # 淡蓝色网格线
+
+# 主色调 - 极光青/电光蓝
+CYBER_CYAN = (0, 255, 255)           # 极光青 #00FFFF
+CYBER_CYAN_BRIGHT = (0, 229, 255)   # 电光蓝 #00E5FF
+
+# 警告/敌对色 - 警报红
+CYBER_RED_ALERT = (255, 51, 51)     # 警报红 #FF3333
+CYBER_RED_DANGER = (255, 0, 0)       # 纯红 #FF0000
+
+# 辅助色
+CYBER_LIME = (0, 255, 0)             # 荧光绿 #00FF00
+CYBER_AMBER = (255, 215, 0)          # 琥珀黄 #FFD700
+
+# 传统颜色定义（向后兼容）
+BLACK = (10, 10, 18)
+WHITE = (255, 255, 255)
+GRAY = (120, 120, 120)
+DARK_BG = (5, 10, 20, 230)           # 更新为赛博深空黑
+STATS_BG = (5, 10, 20, 240)          # 更新为赛博深空黑
+
+CYAN = (0, 255, 255)
+MAGENTA = (255, 0, 255)
+LIME = (50, 255, 50)
+GREEN = (0, 255, 0)
+YELLOW = (255, 230, 0)
+ORANGE = (255, 165, 0)
+RED = (255, 60, 60)
+BLUE = (60, 100, 255)
+SHIELD_BLUE = (100, 200, 255)
+HOMING_COLOR = (100, 255, 100)
+NEON_GREEN = (0, 255, 128)
+GOLD = (255, 215, 0)
+ALERT_RED = (255, 0, 50)
+TEAL = (0, 128, 128)
+DEEP_PURPLE = (80, 0, 120)
+CRIMSON = (220, 20, 60)
+INDIGO = (75, 0, 130)
+FOREST = (34, 139, 34)
+WEB_GRAY = (176, 196, 222)
+BRIGHT_ORANGE = (255, 69, 0)
+NEON_PURPLE = (148, 0, 211)
+EYE_RED = (200, 0, 0)
+GHOST_CYAN = (180, 255, 255)
+WIND_BLUE = (135, 206, 250)
+DARK_RED = (100, 0, 0)
+DARK_PURPLE = (30, 0, 40)
+PURPLE = (150, 50, 255)
+
+RARITY_COMMON = (200, 200, 200)
+RARITY_RARE = (60, 150, 255)
+RARITY_EPIC = (200, 50, 255)
+RARITY_LEGEND = (255, 215, 0)
+RARITY_NAMES = ["全部", "普通", "稀有", "史诗", "传说"]
+RARITY_COLORS = [WHITE, RARITY_COMMON, RARITY_RARE, RARITY_EPIC, RARITY_LEGEND]
+
+# ==============================================================================
+#   精灵组 (全局单例，防止循环引用)
+# ==============================================================================
+# 这些组将在其他模块中被引用
+all_sprites = pygame.sprite.Group()
+mobs = pygame.sprite.Group()
+bullets = pygame.sprite.Group()
+enemy_bullets = pygame.sprite.Group()
+powerups = pygame.sprite.Group()
+supplies = pygame.sprite.Group()
+
+# ==============================================================================
+#   游戏数据 (机体、物品、BOSS)
+# ==============================================================================
+
+UPGRADE_ITEMS = [
+    # --- 基础属性 ---
+    {"id": "dmg", "name": "火力强化", "desc": "伤害 +30%", "rarity": 0},
+    {"id": "spd", "name": "极速装填", "desc": "射速 +15%", "rarity": 0},
+    {"id": "hp", "name": "纳米修复", "desc": "回复 50 生命", "rarity": 0},
+    {"id": "magnet", "name": "强力磁场", "desc": "拾取范围 +50%", "rarity": 0},
+    {"id": "execute", "name": "斩杀协议", "desc": "斩杀血线 +10%", "rarity": 0},
+    {"id": "titanium", "name": "钛金装甲", "desc": "生命上限 +100", "rarity": 0},
+    # --- 进阶机制 ---
+    {"id": "multi", "name": "散射模块", "desc": "子弹数量 +1", "rarity": 1},
+    {"id": "pierce", "name": "钨芯弹头", "desc": "子弹穿透 +1", "rarity": 1},
+    {"id": "shield", "name": "偏导护盾", "desc": "获得/修复 20点护盾", "rarity": 1},
+    {"id": "armor", "name": "活性装甲", "desc": "受到伤害 -15%", "rarity": 1},
+    {"id": "regen", "name": "纳米再生", "desc": "每5秒回复 5HP", "rarity": 1},
+    {"id": "overload", "name": "反应堆过载", "desc": "射速+25% 生命-10%", "rarity": 1},
+    # --- 高级特效 ---
+    {"id": "frost", "name": "冰霜新星", "desc": "攻击有概率冻结敌人", "rarity": 2},
+    {"id": "lightning", "name": "雷神之锤", "desc": "攻击触发连锁闪电", "rarity": 2},
+    {"id": "dodge", "name": "幻影引擎", "desc": "闪避率 +15%", "rarity": 2},
+    {"id": "crit_dmg", "name": "弱点分析", "desc": "暴击伤害 +50%", "rarity": 2},
+    {"id": "bounce", "name": "量子反射", "desc": "子弹反弹 +1次", "rarity": 2},
+    # --- 传说级 ---
+    {"id": "blackhole", "name": "奇点发生器", "desc": "攻击概率生成黑洞", "rarity": 3},
+    {"id": "corpse", "name": "裂变反应", "desc": "敌人死亡爆炸", "rarity": 3},
+    {"id": "vampire", "name": "鲜血渴望", "desc": "击杀概率回血", "rarity": 3},
+    {"id": "area_dmg", "name": "聚能爆破", "desc": "所有攻击附带爆炸", "rarity": 3},
+    {"id": "homing", "name": "智能弹道", "desc": "所有子弹自动追踪", "rarity": 3},
+    {"id": "drone", "name": "浮游炮组", "desc": "获得2个僚机", "rarity": 3},
+    # --- 全新扩充 ---
+    {"id": "giant_slayer", "name": "巨人杀手", "desc": "对BOSS/精英伤害+50%", "rarity": 2},
+    {"id": "glass_cannon", "name": "玻璃大炮", "desc": "伤害+100% 生命-50%", "rarity": 3},
+    {"id": "bullet_storm", "name": "弹幕风暴", "desc": "子弹数量+2 精度降低", "rarity": 3},
+    {"id": "energy_siphon", "name": "能量虹吸", "desc": "击杀敌人回复大招能量", "rarity": 2},
+    {"id": "freeze_burn", "name": "寒冰灼烧", "desc": "冻结敌人受到持续伤害", "rarity": 2},
+    {"id": "cluster_bomb", "name": "集束炸弹", "desc": "爆炸范围扩大50%", "rarity": 1},
+    {"id": "sniper_scope", "name": "鹰眼瞄准", "desc": "射程与飞行速度+30%", "rarity": 1},
+    {"id": "blood_pact", "name": "鲜血契约", "desc": "每秒扣1血 伤害+2%", "rarity": 3},
+    {"id": "time_warp", "name": "时间扭曲", "desc": "所有冷却缩减 20%", "rarity": 3},
+    {"id": "lucky_star", "name": "幸运星", "desc": "暴击率 +20%", "rarity": 1}
+]
+
+PLANES = {
+    "striker": { "name": "霓虹突击者", "desc": "均衡型战机，擅长持续输出", "hp": 100, "speed": 6.5, "damage": 30, "delay": 160, "color": CYAN, "ult_name": "毁灭光束", "ult_color": CYAN, "bullet_type": "beam" },
+    "phantom": { "name": "虚空幻影", "desc": "高机动高射速，终极控制", "hp": 70, "speed": 7.5, "damage": 20, "delay": 120, "color": MAGENTA, "ult_name": "时空冻结", "ult_color": MAGENTA, "bullet_type": "shard" },
+    "titan": { "name": "钢铁泰坦", "desc": "重装甲高火力，全屏核爆", "hp": 150, "speed": 4.5, "damage": 50, "delay": 250, "color": ORANGE, "ult_name": "战术核弹", "ult_color": ORANGE, "bullet_type": "rocket" },
+    "thunderbird": { "name": "雷霆战鹰", "desc": "发射连锁闪电，召唤雷暴", "hp": 90, "speed": 7.0, "damage": 25, "delay": 180, "color": YELLOW, "ult_name": "雷神降世", "ult_color": YELLOW, "bullet_type": "lightning" },
+    "viper": { "name": "剧毒蝰蛇", "desc": "发射腐蚀酸液，持续伤害", "hp": 110, "speed": 6.0, "damage": 40, "delay": 200, "color": LIME, "ult_name": "腐蚀毒雾", "ult_color": LIME, "bullet_type": "acid" },
+    "specter": { "name": "幽灵收割者", "desc": "隐形狙击，单发高伤", "hp": 80, "speed": 7.0, "damage": 80, "delay": 400, "color": (150, 100, 255), "ult_name": "死神降临", "ult_color": (150, 100, 255), "bullet_type": "spectral" },
+    "aurora": { "name": "极光女神", "desc": "范围打击，控场专家", "hp": 120, "speed": 6.0, "damage": 20, "delay": 140, "color": TEAL, "ult_name": "极光天幕", "ult_color": TEAL, "bullet_type": "prism" },
+    "crimson": { "name": "绯红之刃", "desc": "近战爆发型，高射速短程光刃", "hp": 90, "speed": 7.2, "damage": 45, "delay": 130, "color": CRIMSON, "ult_name": "鲜血新月", "ult_color": CRIMSON, "bullet_type": "blade" },
+    "stalker": { "name": "星界潜行者", "desc": "异星科技，自动追踪星镖", "hp": 85, "speed": 6.8, "damage": 28, "delay": 170, "color": INDIGO, "ult_name": "群星坠落", "ult_color": INDIGO, "bullet_type": "star" },
+    "gaia": { "name": "大地守护者", "desc": "坚韧防御型，发射散射荆棘", "hp": 140, "speed": 5.0, "damage": 35, "delay": 190, "color": FOREST, "ult_name": "自然之怒", "ult_color": FOREST, "bullet_type": "thorn" },
+    "weaver": { "name": "虚空编织者", "desc": "控制型，相位蛛网穿透减速", "hp": 95, "speed": 6.2, "damage": 32, "delay": 180, "color": WEB_GRAY, "ult_name": "维度陷阱", "ult_color": WEB_GRAY, "bullet_type": "web" },
+    "solar": { "name": "日冕耀斑", "desc": "近战喷火，高频灼烧", "hp": 100, "speed": 7.0, "damage": 12, "delay": 40, "color": BRIGHT_ORANGE, "ult_name": "超新星爆发", "ult_color": BRIGHT_ORANGE, "bullet_type": "flame" },
+    "arbiter": { "name": "量子裁决者", "desc": "几何科技，分裂碎片", "hp": 80, "speed": 6.5, "damage": 40, "delay": 220, "color": NEON_PURPLE, "ult_name": "矩阵重置", "ult_color": NEON_PURPLE, "bullet_type": "quant" }
+}
+
+BOSS_DB = {
+    "carrier": { "name": "毁灭者级·虚空母舰", "desc": "虚空舰队的核心旗舰。", "color": RED, "stats": [("装甲", 80), ("毁灭", 60), ("机动", 20)] },
+    "fortress": { "name": "不朽级·钢铁堡垒", "desc": "轨道防御系统的终极形态。", "color": ORANGE, "stats": [("装甲", 100), ("毁灭", 75), ("机动", 5)] },
+    "assassin": { "name": "幻影级·虚空刺客", "desc": "高机动型精英单位。", "color": MAGENTA, "stats": [("装甲", 40), ("毁灭", 85), ("机动", 100)] },
+    "seraphim": { "name": "审判级·炽天使", "desc": "高阶审判机甲。", "color": GOLD, "stats": [("装甲", 70), ("毁灭", 90), ("机动", 50)] },
+    "leviathan": { "name": "深渊巨兽·利维坦", "desc": "生物与机械的扭曲结合体。", "color": DEEP_PURPLE, "stats": [("装甲", 90), ("毁灭", 80), ("机动", 30)] },
+    "overlord": { "name": "蜂群主宰·奥伯龙", "desc": "蜂群意识的集合体。", "color": CYAN, "stats": [("装甲", 60), ("毁灭", 50), ("机动", 40)] },
+    "ragnarok": { "name": "终焉机神·诸神黄昏", "desc": "毁灭文明的终极兵器。", "color": CRIMSON, "stats": [("装甲", 95), ("毁灭", 100), ("机动", 10)] },
+    "hydra": { "name": "九头蛇·剧毒领主", "desc": "基因突变的生化噩梦。", "color": NEON_GREEN, "stats": [("装甲", 85), ("毁灭", 70), ("机动", 45)] },
+    "chronos": { "name": "时之主·克洛诺斯", "desc": "神秘的古代遗物守护者。", "color": (100, 150, 255), "stats": [("装甲", 75), ("毁灭", 85), ("机动", 80)] },
+    "gazer": { "name": "深渊凝视者", "desc": "来自维度的观察者。", "color": EYE_RED, "stats": [("装甲", 60), ("毁灭", 95), ("机动", 5)] },
+    "lich": { "name": "赛博巫妖", "desc": "被病毒侵蚀的AI核心。", "color": GHOST_CYAN, "stats": [("装甲", 50), ("毁灭", 80), ("机动", 70)] },
+    "tempest": { "name": "风暴引擎", "desc": "失控的气象控制器。", "color": WIND_BLUE, "stats": [("装甲", 85), ("毁灭", 65), ("机动", 60)] }
+}
+BOSS_KEYS = list(BOSS_DB.keys())
+
+WEAPON_TYPES = {
+    "cannon": {"name": "赤热机炮", "type": "热能", "desc": "高射速，持续射击会导致过热。", "color": RED},
+    "beam": {"name": "聚焦光束", "type": "能量", "desc": "持续照射，消耗能量槽。", "color": CYAN},
+    "explosive": {"name": "等离子雷", "type": "爆破", "desc": "范围伤害，弹药有限需装填。", "color": ORANGE},
+    "missile": {"name": "毒蛇导弹", "type": "追踪", "desc": "自动追踪，发射后有冷却。", "color": LIME},
+    "exotic": {"name": "奇点透镜", "type": "特种", "desc": "特殊效果，极长冷却。", "color": MAGENTA},
+    "scatter": {"name": "碎星霰弹", "type": "动能", "desc": "扇形发射多枚弹片，近战爆发极高。", "color": (200, 200, 200)},
+    "arc": {"name": "弧光电涌", "type": "电磁", "desc": "发射连锁闪电，自动跳跃攻击。", "color": YELLOW},
+    "sniper": {"name": "量子狙击", "type": "穿透", "desc": "极慢射速，无限穿透，单发毁灭。", "color": (0, 100, 255)},
+    "blade": {"name": "回旋利刃", "type": "切割", "desc": "发射回旋飞刃，二段伤害。", "color": CRIMSON},
+    "railgun": {"name": "磁轨炮", "type": "贯穿", "desc": "电磁加速，瞬间贯穿直线所有敌人。", "color": (0, 255, 255)},
+    "void": {"name": "虚空裂隙", "type": "力场", "desc": "发射缓慢移动的黑洞球，持续伤害。", "color": (100, 0, 200)},
+    "frost": {"name": "极寒冰刺", "type": "控制", "desc": "高射速冰弹，命中后冻结敌人。", "color": (200, 255, 255)},
+    "swarm": {"name": "蜂群导弹", "type": "全弹", "desc": "一次性发射大量微型导弹。", "color": (255, 100, 150)}
+}
+
+SYNERGIES = {
+    frozenset(["cannon", "missile"]): {"name": "穿甲爆破", "desc": "穿透+1，爆炸范围+20%"},
+    frozenset(["beam", "exotic"]): {"name": "能量过载", "desc": "伤害+15%，射速+10%"},
+    frozenset(["scatter", "blade"]): {"name": "近身格斗", "desc": "近战伤害+30%，弹射速度+20%"},
+    frozenset(["arc", "sniper"]): {"name": "电磁轨道", "desc": "暴击率+10%，子弹飞行速度+30%"},
+}
