@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 def test_imports():
     """Test 1: Module imports"""
-    print("[TEST 1] Module imports...")
+    log_info("[TEST 1] Module imports...")
     try:
         import pygame
         pygame.init()
@@ -22,17 +22,17 @@ def test_imports():
         from sprites import Player, Enemy, Bullet
         from roguelite import UpgradeManager, ExperienceSystem, BuffProcessor, BUFF_LIBRARY
         
-        print("[PASS] All modules imported successfully")
+        log_info("[PASS] All modules imported successfully")
         return True
     except Exception as e:
-        print(f"[FAIL] Import error: {e}")
+        log_error(f"Import error: {e}")
         import traceback
         traceback.print_exc()
         return False
 
 def test_buff_library():
     """Test 2: Buff library integrity"""
-    print("\n[TEST 2] Buff library integrity...")
+    log_info("\n[TEST 2] Buff library integrity...")
     try:
         from roguelite import BUFF_LIBRARY
         
@@ -55,25 +55,25 @@ def test_buff_library():
             
             buff_count += 1
         
-        print(f"[PASS] BUFF_LIBRARY validated: {buff_count} buffs")
+        log_info(f"BUFF_LIBRARY validated: {buff_count} buffs")
         rarity_counts = {0: 0, 1: 0, 2: 0, 3: 0}
         for b in BUFF_LIBRARY.values():
             rarity_counts[b['rarity']] += 1
         
-        print(f"       Common: {rarity_counts[0]}")
-        print(f"       Rare: {rarity_counts[1]}")
-        print(f"       Epic: {rarity_counts[2]}")
-        print(f"       Legendary: {rarity_counts[3]}")
+        log_info(f"Common: {rarity_counts[0]}")
+        log_info(f"Rare: {rarity_counts[1]}")
+        log_info(f"Epic: {rarity_counts[2]}")
+        log_info(f"Legendary: {rarity_counts[3]}")
         return True
     except Exception as e:
-        print(f"[FAIL] Buff library error: {e}")
+        log_error(f"Buff library error: {e}")
         import traceback
         traceback.print_exc()
         return False
 
 def test_player_initialization():
     """Test 3: Player class initialization"""
-    print("\n[TEST 3] Player initialization...")
+    log_info("\n[TEST 3] Player initialization...")
     try:
         import pygame
         pygame.init()
@@ -95,20 +95,20 @@ def test_player_initialization():
         assert hasattr(player, 'has_regen'), "Missing has_regen flag"
         assert hasattr(player, 'has_frost'), "Missing has_frost flag"
         
-        print(f"[PASS] Player initialized correctly")
-        print(f"       HP: {player.hp}/{player.max_hp}")
-        print(f"       DMG: {player.damage}")
-        print(f"       Level: {player.level}")
+        log_info("Player initialized correctly")
+        log_info(f"HP: {player.hp}/{player.max_hp}")
+        log_info(f"DMG: {player.damage}")
+        log_info(f"Level: {player.level}")
         return True
     except Exception as e:
-        print(f"[FAIL] Player initialization error: {e}")
+        log_error(f"Player initialization error: {e}")
         import traceback
         traceback.print_exc()
         return False
 
 def test_roguelite_systems():
     """Test 4: Roguelite systems initialization"""
-    print("\n[TEST 4] Roguelite systems initialization...")
+    log_info("\n[TEST 4] Roguelite systems initialization...")
     try:
         import pygame
         pygame.init()
@@ -123,20 +123,20 @@ def test_roguelite_systems():
         assert player.exp_system is not None, "exp_system not initialized"
         assert player.buff_processor is not None, "buff_processor not initialized"
         
-        print(f"[PASS] All roguelite systems initialized")
-        print(f"       upgrade_manager: OK")
-        print(f"       exp_system: OK")
-        print(f"       buff_processor: OK")
+        log_info("All roguelite systems initialized")
+        log_info("upgrade_manager: OK")
+        log_info("exp_system: OK")
+        log_info("buff_processor: OK")
         return True
     except Exception as e:
-        print(f"[FAIL] Roguelite systems error: {e}")
+        log_error(f"Roguelite systems error: {e}")
         import traceback
         traceback.print_exc()
         return False
 
 def test_xp_system():
     """Test 5: XP and leveling"""
-    print("\n[TEST 5] XP and leveling system...")
+    log_info("\n[TEST 5] XP and leveling system...")
     try:
         import pygame
         pygame.init()
@@ -162,20 +162,20 @@ def test_xp_system():
         assert player.upgrade_manager.upgrade_choice is not None, "No upgrade options"
         assert len(player.upgrade_manager.upgrade_choice) == 3, "Should have 3 upgrade options"
         
-        print(f"[PASS] XP system working correctly")
-        print(f"       Initial: Level {initial_level}, XP 0")
-        print(f"       After 150 XP: Level {player.level}, XP {player.xp}")
-        print(f"       Upgrade options: {player.upgrade_manager.upgrade_choice}")
+        log_info("XP system working correctly")
+        log_info(f"Initial: Level {initial_level}, XP 0")
+        log_info(f"After 150 XP: Level {player.level}, XP {player.xp}")
+        log_info(f"Upgrade options: {player.upgrade_manager.upgrade_choice}")
         return True
     except Exception as e:
-        print(f"[FAIL] XP system error: {e}")
+        log_error(f"XP system error: {e}")
         import traceback
         traceback.print_exc()
         return False
 
 def test_buff_application():
     """Test 6: Buff application"""
-    print("\n[TEST 6] Buff application...")
+    log_info("\n[TEST 6] Buff application...")
     try:
         import pygame
         pygame.init()
@@ -201,20 +201,20 @@ def test_buff_application():
         player.apply_buff("regen")
         assert player.has_regen == True, "Regen flag not set"
         
-        print(f"[PASS] Buff application working correctly")
-        print(f"       dmg: {initial_dmg} -> {player.damage}")
-        print(f"       hp_max: {initial_max_hp} -> {player.max_hp}")
-        print(f"       Passive flags working")
+        log_info("Buff application working correctly")
+        log_info(f"dmg: {initial_dmg} -> {player.damage}")
+        log_info(f"hp_max: {initial_max_hp} -> {player.max_hp}")
+        log_info("Passive flags working")
         return True
     except Exception as e:
-        print(f"[FAIL] Buff application error: {e}")
+        log_error(f"Buff application error: {e}")
         import traceback
         traceback.print_exc()
         return False
 
 def test_game_loop_simulation():
     """Test 7: Game loop simulation"""
-    print("\n[TEST 7] Game loop simulation...")
+    log_info("\n[TEST 7] Game loop simulation...")
     try:
         import pygame
         pygame.init()
@@ -236,21 +236,21 @@ def test_game_loop_simulation():
         # Update passive effects
         player.update_buffs()
         
-        print(f"[PASS] Game loop simulation successful")
-        print(f"       Final level: {player.level}")
-        print(f"       Final XP: {player.xp}/{player.next_level_xp}")
+        log_info("Game loop simulation successful")
+        log_info(f"Final level: {player.level}")
+        log_info(f"Final XP: {player.xp}/{player.next_level_xp}")
         return True
     except Exception as e:
-        print(f"[FAIL] Game loop simulation error: {e}")
+        log_error(f"Game loop simulation error: {e}")
         import traceback
         traceback.print_exc()
         return False
 
 def main():
     """Run all tests"""
-    print("=" * 60)
-    print("Roguelite System Comprehensive Test Suite")
-    print("=" * 60)
+    log_info("=" * 60)
+    log_info("Roguelite System Comprehensive Test Suite")
+    log_info("=" * 60)
     
     tests = [
         test_imports,
@@ -267,24 +267,24 @@ def main():
         try:
             results.append(test_func())
         except Exception as e:
-            print(f"[ERROR] {test_func.__name__}: {e}")
+            log_error(f"{test_func.__name__}: {e}")
             results.append(False)
     
     # Summary
-    print("\n" + "=" * 60)
-    print("Test Summary")
-    print("=" * 60)
+    log_info("\n" + "=" * 60)
+    log_info("Test Summary")
+    log_info("=" * 60)
     
     passed = sum(results)
     total = len(results)
     
-    print(f"Total: {passed}/{total} tests passed")
+    log_info(f"Total: {passed}/{total} tests passed")
     
     if passed == total:
-        print("[SUCCESS] All tests passed! System is ready for production.")
+        log_info("[SUCCESS] All tests passed! System is ready for production.")
         return 0
     else:
-        print(f"[WARNING] {total - passed} test(s) failed. Please review.")
+        log_info(f"[WARNING] {total - passed} test(s) failed. Please review.")
         return 1
 
 if __name__ == "__main__":

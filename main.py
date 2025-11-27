@@ -25,7 +25,7 @@ try:
     load_arsenal()
     leaderboard_data = load_leaderboard()
 except Exception as e:
-    print(f"数据加载警告: {e}")
+    log_error(f"数据加载警告: {e}")
     leaderboard_data = []
 
 bg_manager = BackgroundManager()
@@ -62,6 +62,7 @@ CODEX_UI = {
 game_state = "menu"
 is_paused = False
 frozen_screen = None
+tab_paused = False  # 标记是否是TAB暂停
 
 # 实体
 player = None
@@ -116,6 +117,19 @@ frozen_screen = None  # 升级时冻结的游戏画面
 # ==============================================================================
 #   辅助函数
 # ==============================================================================
+
+def safe_call_draw(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except Exception:
+        log_error(f"{fn.__name__} draw error:")
+        log_error(traceback.format_exc())
+        return None
+
+def draw_game_hud():
+    """Backward-compatible alias for draw_top_hud, protected by error handling."""
+    safe_call_draw(draw_top_hud)
+
 def create_explosion(pos, color, count=10):
     """生成爆炸粒子效果"""
     for _ in range(count):
@@ -130,11 +144,13 @@ def reset_game():
     global player, boss, score, combo_count, combo_timer
     global boss_warning_timer, next_boss_score, global_time_freeze, is_paused
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave
+    global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave, tab_paused
     
-    print("[DEBUG] reset_game() 开始")
+    # reset_game() called
     
     is_paused = False 
     frozen_screen = None
+    tab_paused = False
     upgrade_options = []
     upgrade_selected = 0
     levelup_ready = False
@@ -155,20 +171,15 @@ def reset_game():
     wave = 0
     boss = None
     
-    print(f"[DEBUG] 准备创建 Player，selected_plane={selected_plane}")
     player = Player(selected_plane)
-    print(f"[DEBUG] Player 创建完成")
     
     # 初始化肉鸽系统
-    print("[DEBUG] 初始化肉鸽系统...")
     player.init_roguelite_systems()
-    print("[DEBUG] 肉鸽系统初始化完成")
     
     all_sprites.add(player)
-    print("[DEBUG] Player 已添加到 all_sprites")
     
     sound_mgr.play_music("normal")
-    print("[DEBUG] reset_game() 完成")
+    # reset_game() done
 
 def get_menu_buttons():
     cx = WIDTH // 2
@@ -199,8 +210,8 @@ def draw_menu_ui():
     glow = title_font.render("霓虹深空", True, (0, 100, 100))
     main = title_font.render("霓虹深空", True, CYAN)
     rect = main.get_rect(center=(WIDTH//2, 110))
-    screen.blit(glow, (rect.x+3, rect.y+3))
-    screen.blit(main, rect)
+    safe_blit(screen, glow, (rect.x+3, rect.y+3))
+    safe_blit(screen, main, rect)
     draw_text(screen, "无限进化 中文版", 24, WIDTH//2, 170, WHITE, glow=True)
 
     mx, my = pygame.mouse.get_pos()
@@ -394,7 +405,7 @@ def draw_codex_ui():
         if codex_tab == 0: preview = get_plane_surf(key)
         else: preview = get_boss_surf(key, data["color"])
         preview = pygame.transform.scale(preview, (150, 150))
-        screen.blit(preview, (cx - 75, cy))
+        safe_blit(screen, preview, (cx - 75, cy))
         
         draw_text(screen, data["name"], 30, cx, cy + 170, data["color"], glow=True)
         draw_text(screen, data["desc"], 18, cx, cy + 210, WHITE)
@@ -489,26 +500,26 @@ def draw_gallery_ui():
 def draw_select_plane_ui():
     draw_text(screen, "选择出击机体", 40, WIDTH//2, 50, CYAN, glow=True)
     mx, my = pygame.mouse.get_pos()
-    
+
     left_arrow = pygame.Rect(100, HEIGHT//2 - 40, 60, 80)
     right_arrow = pygame.Rect(WIDTH-160, HEIGHT//2 - 40, 60, 80)
     draw_text(screen, "<", 60, left_arrow.centerx, left_arrow.y, WHITE if left_arrow.collidepoint(mx,my) else GRAY)
     draw_text(screen, ">", 60, right_arrow.centerx, right_arrow.y, WHITE if right_arrow.collidepoint(mx,my) else GRAY)
-    
+
     pid = plane_keys[current_plane_idx]
     data = PLANES[pid]
     cx, cy = WIDTH//2, HEIGHT//2
     card_rect = pygame.Rect(cx - 200, cy - 200, 400, 400)
     draw_cyber_rect(screen, card_rect, (20,20,30), alpha=200, fill=True)
     draw_cyber_rect(screen, card_rect, data["color"], border_width=2, fill=False)
-    
+
     preview = get_plane_surf(pid)
     preview = pygame.transform.scale(preview, (180, 180))
-    screen.blit(preview, (cx - 90, cy - 200))
-    
+    safe_blit(screen, preview, (cx - 90, cy - 200))
+
     draw_text(screen, data["name"], 36, cx, cy + 20, data["color"], glow=True)
     draw_text(screen, data["desc"], 18, cx, cy + 70, GRAY)
-    
+
     def draw_bar(label, val, max_v, y_off):
         draw_text(screen, label, 16, card_rect.x + 50, card_rect.y + y_off, WHITE, align="left")
         pygame.draw.rect(screen, (40,40,40), (card_rect.x + 120, card_rect.y + y_off + 5, 200, 8))
@@ -517,17 +528,16 @@ def draw_select_plane_ui():
     draw_bar("速度", data["speed"], 10, 280)
     draw_bar("火力", data["damage"], 80, 310)
     draw_bar("装甲", data["hp"], 200, 340)
-    
+
     start_btn = pygame.Rect(cx - 100, HEIGHT - 120, 200, 60)
     h = start_btn.collidepoint(mx, my)
     draw_cyber_rect(screen, start_btn, data["color"] if h else (50,50,50), fill=True)
     draw_text(screen, "确认出击", 24, start_btn.centerx, start_btn.centery-12, WHITE)
-    
+
     # 调试信息：显示按钮矩形（仅用于测试）
     if h:
         draw_text(screen, "[按钮可点击]", 14, start_btn.centerx, start_btn.bottom + 10, CYAN)
-        print(f"[DRAW] 鼠标在'确认出击'按钮上: {start_btn}, 鼠标位置: ({mx}, {my})")
-    
+
     back_btn = pygame.Rect(50, HEIGHT - 80, 100, 40)
     h2 = back_btn.collidepoint(mx, my)
     draw_cyber_rect(screen, back_btn, GRAY, fill=True)
@@ -596,12 +606,7 @@ def draw_tactical_grid(surf):
     for y in range(0, HEIGHT + grid_spacing, grid_spacing):
         pygame.draw.line(surf, line_color, (0, y), (WIDTH, y), 1)
 
-def draw_cyber_rect(surf, rect, color, border_width=1, fill=True):
-    """绘制赛博朋克风格矩形（无圆角，锐利的几何）"""
-    if fill:
-        pygame.draw.rect(surf, color, rect)
-    else:
-        pygame.draw.rect(surf, color, rect, border_width)
+# Use `draw_cyber_rect` from `utils.py` to avoid duplicate implementations and signature drift
 
 def draw_neon_line(surf, start_pos, end_pos, color, width=2):
     """绘制霓虹线条"""
@@ -639,7 +644,7 @@ def draw_combo_indicator(kill_count):
         temp_surf.blit(glow_img, (offset, offset))
     
     temp_surf.blit(text_img, (0, 0))
-    screen.blit(temp_surf, (40, 200))
+    safe_blit(screen, temp_surf, (40, 200))
 
 def draw_warning_indicator():
     """绘制BOSS警告指示器（屏幕边框闪烁）"""
@@ -671,7 +676,7 @@ def draw_top_hud():
         alpha = int(220 * (1 - i/hud_h))
         color = (5, 15, 35, alpha)
         pygame.draw.line(top_bg, color, (0, i), (WIDTH, i))
-    screen.blit(top_bg, (0, 0))
+    safe_blit(screen, top_bg, (0, 0))
     
     # 顶部霓虹线条
     pygame.draw.line(screen, CYBER_CYAN, (0, hud_h), (WIDTH, hud_h), 2)
@@ -767,15 +772,66 @@ def draw_top_hud():
         # BOSS血量数值
         draw_text(screen, f"{int(boss.hp)}/{int(boss.max_hp)}", 11, boss_x + boss_bar_w//2 - 20, boss_y + 1, WHITE)
 
+def draw_player_stats_panel():
+    """绘制按 TAB 时显示的玩家属性面板（覆盖全屏，但保留背景冻结图像）。"""
+    if player is None:
+        log_debug("draw_player_stats_panel: player is None, skip")
+        return
+    # 背景半透明覆盖
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 220))
+    safe_blit(screen, overlay, (0, 0))
+
+    # 面板主体
+    panel_w, panel_h = 720, 520
+    panel_x = (WIDTH - panel_w) // 2
+    panel_y = (HEIGHT - panel_h) // 2
+    panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
+    draw_cyber_rect(screen, panel_rect, (18, 18, 28), fill=True)
+    draw_cyber_rect(screen, panel_rect, CYAN, border_width=2, fill=False)
+
+    # 标题
+    draw_text(screen, "玩家属性面板 (按住 TAB 查看)", 30, panel_rect.centerx, panel_rect.y + 20, CYBER_AMBER, glow=True)
+
+    # 基本属性区（左侧）
+    left_x = panel_x + 40
+    top_y = panel_y + 80
+    draw_text(screen, f"等级: {int(player.level)}", 22, left_x, top_y, WHITE, align="left")
+    draw_text(screen, f"经验: {int(player.xp)}/{int(player.next_level_xp)}", 18, left_x, top_y + 30, CYBER_LIME, align="left")
+    draw_stat_bar(left_x, top_y + 70, "生命", player.hp, player.max_hp, CYBER_RED_ALERT)
+    draw_stat_bar(left_x, top_y + 110, "护盾", player.shield, player.max_hp, CYBER_AMBER)
+    draw_stat_bar(left_x, top_y + 150, "火力", player.damage, player.base_damage if hasattr(player, 'base_damage') else max(1, player.damage), CYBER_LIME)
+    draw_stat_bar(left_x, top_y + 190, "暴击", player.crit_chance * 100, 100, CYBER_AMBER)
+
+    # 右侧：被动与增益
+    right_x = panel_x + panel_w - 340
+    ry = top_y
+    draw_text(screen, "被动 / 增益", 20, right_x, ry, WHITE, align="left")
+    ry += 30
+    # 简单列表显示 player.buffs 或 player.active_buffs
+    buffs = getattr(player, 'buffs', []) or getattr(player, 'active_buffs', []) or []
+    if not buffs:
+        draw_text(screen, "无被动增益", 16, right_x, ry, GRAY, align="left")
+    else:
+        for i, b in enumerate(buffs[:8]):
+            name = b if isinstance(b, str) else b.get('name', str(b))
+            draw_text(screen, f"- {name}", 16, right_x, ry + i*26, WHITE, align="left")
+
+    # 底部提示
+    draw_text(screen, "释放 TAB 恢复游戏", 16, panel_rect.centerx, panel_rect.bottom - 30, GRAY)
+
 def draw_levelup_ui():
     """绘制升级选择 UI"""
     if not upgrade_options or len(upgrade_options) < 3:
+        return
+    if player is None:
+        log_debug("draw_levelup_ui: player is None, skip")
         return
     
     # 半透明遮罩
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 200))
-    screen.blit(overlay, (0, 0))
+    safe_blit(screen, overlay, (0, 0))
     
     # 标题
     draw_text(screen, "选择升级增益", 48, WIDTH//2, 100, CYBER_AMBER, glow=True)
@@ -890,13 +946,13 @@ while True:
                 # 快速测试：在选择飞机界面按 ENTER 确认
                 if game_state == "select_plane" and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     selected_plane = plane_keys[current_plane_idx]
-                    print(f"[DEBUG] 键盘确认: 选择的飞机: {selected_plane}")
+                    # player selected via keyboard
                     try:
                         reset_game()
                         game_state = "game"
-                        print(f"[DEBUG] 游戏状态已切换到: {game_state}")
+                        # game state changed to game
                     except Exception as e:
-                        print(f"[ERROR] reset_game() 失败: {e}")
+                        log_error(f"reset_game failed: {e}")
                         traceback.print_exc()
                         log_error(f"reset_game failed: {e}")
                         game_state = "menu"
@@ -920,6 +976,17 @@ while True:
                             upgrade_options = []
                             upgrade_selected = 0
                             levelup_ready = False
+                    continue
+
+                # TAB 键按下：显示属性面板并暂停游戏（仅在游戏中，且不在升级UI时）
+                if event.key == pygame.K_TAB and game_state == "game" and not levelup_ready:
+                    is_paused = True
+                    tab_paused = True
+                    if frozen_screen is None:
+                        frozen_screen = screen.copy()
+                    else:
+                        frozen_screen = screen.copy()
+                    sound_mgr.play("select")
                     continue
 
                 # 游戏内键盘：P 暂停 (在 game 中), ESC 在 game 中不做任何事
@@ -1000,29 +1067,29 @@ while True:
                     start_btn = pygame.Rect(WIDTH//2-100, HEIGHT-120, 200, 60)
                     back_btn = pygame.Rect(50, HEIGHT-80, 100, 40)
                     
-                    print(f"[DEBUG] 点击检测: mx={mx}, my={my}, left={left_rect.collidepoint(mx,my)}, right={right_rect.collidepoint(mx,my)}, start={start_btn.collidepoint(mx,my)}, back={back_btn.collidepoint(mx,my)}")
+                    # click detection
                     
                     if left_rect.collidepoint(mx, my):
                         current_plane_idx = (current_plane_idx-1)%len(plane_keys)
-                        print(f"[DEBUG] 点击左箭头，当前飞机索引: {current_plane_idx}")
+                        # left arrow clicked
                     elif right_rect.collidepoint(mx, my):
                         current_plane_idx = (current_plane_idx+1)%len(plane_keys)
-                        print(f"[DEBUG] 点击右箭头，当前飞机索引: {current_plane_idx}")
+                        # right arrow clicked
                     elif start_btn.collidepoint(mx, my):
                         selected_plane = plane_keys[current_plane_idx]
-                        print(f"[DEBUG] 出击！选择的飞机: {selected_plane}")
+                        # starting game with selected plane
                         try:
                             reset_game()
                             game_state = "game"
-                            print(f"[DEBUG] 游戏状态已切换到: {game_state}")
+                            # game state changed to game
                         except Exception as e:
-                            print(f"[ERROR] reset_game() 失败: {e}")
+                            log_error(f"reset_game failed: {e}")
                             traceback.print_exc()
                             log_error(f"reset_game failed: {e}")
                             game_state = "menu"  # 出错时返回菜单
                     elif back_btn.collidepoint(mx, my):
                         game_state = "menu"
-                        print(f"[DEBUG] 返回菜单")
+                        # returned to menu
                     
                 elif game_state == "arsenal":
                     sound_mgr.play("select")
@@ -1129,7 +1196,7 @@ while True:
             draw_menu_ui()
         elif game_state == "select_plane": 
             draw_select_plane_ui()
-            print(f"[DRAW] 正在绘制选择飞机界面")
+            # drawing select plane page
         elif game_state == "arsenal": 
             draw_arsenal_ui()
         elif game_state == "gallery": 
@@ -1139,32 +1206,52 @@ while True:
         elif game_state == "leaderboard": 
             draw_leaderboard_ui()
         elif game_state == "game":
-            print(f"[DRAW] 正在绘制游戏界面")
+            # drawing game view
             if is_paused:
-                all_sprites.draw(screen)
-                s = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-                s.fill((0, 0, 0, 150))
-                screen.blit(s, (0, 0))
-                draw_text(screen, "PAUSED", 60, WIDTH // 2, HEIGHT // 2 - 100, WHITE, glow=True)
+                # TAB 发起的暂停使用专门的处理：按住 TAB 显示属性面板，释放恢复
+                if tab_paused:
+                    keys = pygame.key.get_pressed()
+                    if keys[pygame.K_TAB]:
+                        # 如果存在冻结屏幕，用它作为背景
+                        if frozen_screen:
+                            try:
+                                safe_blit(screen, frozen_screen, (0, 0))
+                            except Exception:
+                                s = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                                s.fill((0, 0, 0, 150))
+                                safe_blit(screen, s, (0, 0))
+                        draw_player_stats_panel()
+                    else:
+                        # TAB 已释放：清理并恢复
+                        tab_paused = False
+                        frozen_screen = None
+                        is_paused = False
+                else:
+                    # 常规由 P / 菜单触发的暂停界面（原有行为）
+                    all_sprites.draw(screen)
+                    s = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                    s.fill((0, 0, 0, 150))
+                    safe_blit(screen, s, (0, 0))
+                    draw_text(screen, "PAUSED", 60, WIDTH // 2, HEIGHT // 2 - 100, WHITE, glow=True)
 
-                # 绘制暂停菜单按钮（支持键盘导航）
-                cx, cy = WIDTH // 2, HEIGHT // 2
-                btn_resume = pygame.Rect(cx - 100, cy - 60, 200, 50)
-                btn_reset = pygame.Rect(cx - 100, cy + 10, 200, 50)
-                btn_menu = pygame.Rect(cx - 100, cy + 80, 200, 50)
+                    # 绘制暂停菜单按钮（支持键盘导航）
+                    cx, cy = WIDTH // 2, HEIGHT // 2
+                    btn_resume = pygame.Rect(cx - 100, cy - 60, 200, 50)
+                    btn_reset = pygame.Rect(cx - 100, cy + 10, 200, 50)
+                    btn_menu = pygame.Rect(cx - 100, cy + 80, 200, 50)
 
-                mx, my = pygame.mouse.get_pos()
+                    mx, my = pygame.mouse.get_pos()
 
-                menu_items = [(btn_resume, "继续行动"), (btn_reset, "重新开始"), (btn_menu, "退出战斗")]
-                for i, (btn, txt) in enumerate(menu_items):
-                    h = btn.collidepoint(mx, my) or (i == pause_menu_selected)
-                    draw_cyber_rect(screen, btn, (60, 60, 80) if h else (40, 40, 50), fill=True)
-                    border_color = CYAN if i == pause_menu_selected else (WHITE if h else GRAY)
-                    border_width = 3 if i == pause_menu_selected else 2
-                    draw_cyber_rect(screen, btn, border_color, border_width=border_width, fill=False)
-                    draw_text(screen, txt, 24, btn.centerx, btn.centery - 12, WHITE if h else GRAY)
+                    menu_items = [(btn_resume, "继续行动"), (btn_reset, "重新开始"), (btn_menu, "退出战斗")]
+                    for i, (btn, txt) in enumerate(menu_items):
+                        h = btn.collidepoint(mx, my) or (i == pause_menu_selected)
+                        draw_cyber_rect(screen, btn, (60, 60, 80) if h else (40, 40, 50), fill=True)
+                        border_color = CYAN if i == pause_menu_selected else (WHITE if h else GRAY)
+                        border_width = 3 if i == pause_menu_selected else 2
+                        draw_cyber_rect(screen, btn, border_color, border_width=border_width, fill=False)
+                        draw_text(screen, txt, 24, btn.centerx, btn.centery - 12, WHITE if h else GRAY)
 
-                draw_text(screen, "按 P/R 操作或使用方向键+Enter", 18, WIDTH // 2, HEIGHT - 50, GRAY)
+                    draw_text(screen, "按 P/R 操作或使用方向键+Enter", 18, WIDTH // 2, HEIGHT - 50, GRAY)
 
             else:
                 # Auto Fire
@@ -1248,12 +1335,13 @@ while True:
                         
                         if dist_to_player < 40 or pygame.sprite.spritecollide(player, pygame.sprite.Group(orb), False):
                             # 玩家获得经验
-                            player.add_xp(orb.amount)
+                            prev_level = player.level
+                            new_level = player.add_xp(orb.amount)
                             FloatingText(orb.rect.centerx, orb.rect.centery, f"EXP {orb.amount}", YELLOW)
                             sound_mgr.play("select")
                             
-                            # 检查是否升级
-                            if player.upgrade_manager and player.upgrade_manager.level_up_ready:
+                            # 检查是否升级（仅在实际升一级时弹卡）
+                            if new_level > prev_level and player.upgrade_manager and player.upgrade_manager.level_up_ready:
                                 levelup_ready = True
                                 upgrade_options = player.upgrade_manager.upgrade_choice
                                 upgrade_selected = 0
@@ -1275,26 +1363,26 @@ while True:
                                 sound_mgr.play("nuke"); sound_mgr.play_music("normal")
                                 FloatingText(WIDTH//2, HEIGHT//2, "BOSS DEFEATED", GOLD)
                 
-                all_sprites.draw(screen)
-                player.draw_trail(screen)
-                player.draw_auras(screen)
-                draw_top_hud()
+                safe_call_draw(all_sprites.draw, screen)
+                safe_call_draw(player.draw_trail, screen)
+                safe_call_draw(player.draw_auras, screen)
+                safe_call_draw(draw_top_hud)
                 
                 # ========== 赛博朋克视觉反馈 ==========
-                draw_warning_indicator()  # BOSS警告闪烁边框
+                safe_call_draw(draw_warning_indicator)  # BOSS警告闪烁边框
                 if len(mobs) == 0 and wave > 1:
-                    draw_combo_indicator(int(score // 100))  # 连击指示器
+                    safe_call_draw(draw_combo_indicator, int(score // 100))  # 连击指示器
                 
                 # ========== 肉鸽系统：绘制升级 UI 和被动增益更新 ==========
                 if levelup_ready:
-                    draw_levelup_ui()
+                    safe_call_draw(draw_levelup_ui)
                 
                 # 每帧更新被动增益
-                player.update_buffs()
+                safe_call_draw(player.update_buffs)
 
         pygame.display.flip()
 
     except Exception as e:
-        print("Main Loop Error:")
-        traceback.print_exc()
-        log_error(f"Exception in main loop: {e}")
+        # Log main loop exceptions to file
+        log_error("Main Loop Error:")
+        log_error(traceback.format_exc())

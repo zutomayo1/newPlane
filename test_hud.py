@@ -26,7 +26,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
 def test_hud_system():
     """测试HUD系统"""
-    print("[INFO] Testing HUD UI System...")
+    log_info("[INFO] Testing HUD UI System...")
     
     # 创建玩家
     player = Player("striker")
@@ -49,35 +49,35 @@ def test_hud_system():
     player.ult_charge = 250  # 2.5次存储
     player.max_ult_charge = 300
     
-    print("\n[PLAYER STATE]")
-    print(f"  Level: {player.level}")
-    print(f"  XP: {player.xp}/{player.next_level_xp}")
-    print(f"  HP: {player.hp}/{player.max_hp}")
-    print(f"  Shield: {player.shield}/{player.max_shield}")
-    print(f"  Dash: {player.dash_energy}/{player.max_dash_energy}")
-    print(f"  Ultimate: {player.ult_charge}/300 ({int(player.ult_charge//100)}/3)")
+    log_info("\n[PLAYER STATE]")
+    log_info(f"  Level: {player.level}")
+    log_info(f"  XP: {player.xp}/{player.next_level_xp}")
+    log_info(f"  HP: {player.hp}/{player.max_hp}")
+    log_info(f"  Shield: {player.shield}/{player.max_shield}")
+    log_info(f"  Dash: {player.dash_energy}/{player.max_dash_energy}")
+    log_info(f"  Ultimate: {player.ult_charge}/300 ({int(player.ult_charge//100)}/3)")
     
-    print("\n[ATTRIBUTES]")
-    print(f"  Damage: {player.damage}")
-    print(f"  Speed: {int(1000/player.shoot_delay)}")
-    print(f"  Armor: {int(player.damage_reduction*100)}%")
-    print(f"  Crit: {int(player.crit_chance*100)}%")
+    log_info("\n[ATTRIBUTES]")
+    log_info(f"  Damage: {player.damage}")
+    log_info(f"  Speed: {int(1000/player.shoot_delay)}")
+    log_info(f"  Armor: {int(player.damage_reduction*100)}%")
+    log_info(f"  Crit: {int(player.crit_chance*100)}%")
     
     # 测试HUD函数可调用性
-    print("\n[HUD FUNCTIONS]")
+    log_info("\n[HUD FUNCTIONS]")
     
     # 导入HUD函数
     try:
         # 手动导入主模块的绘制函数需要通过执行代码
-        print("  ✓ draw_top_hud: Ready")
-        print("  ✓ draw_game_hud: Ready")
-        print("  ✓ draw_bar: Ready")
-        print("  ✓ draw_stat_bar: Ready")
+        log_info("  ✓ draw_top_hud: Ready")
+        log_info("  ✓ draw_game_hud: Ready")
+        log_info("  ✓ draw_bar: Ready")
+        log_info("  ✓ draw_stat_bar: Ready")
     except Exception as e:
-        print(f"  ✗ Error: {e}")
+        log_error(f"  ✗ Error: {e}")
         return False
     
-    print("\n[HUD COMPONENTS]")
+    log_info("\n[HUD COMPONENTS]")
     components = [
         "✓ Top Global HUD (Level, XP, Wave, Time, Score)",
         "✓ Top-Left Player Info Panel (HP, Shield, Dash, Stats)",
@@ -89,9 +89,9 @@ def test_hud_system():
     ]
     
     for comp in components:
-        print(f"  {comp}")
+        log_info(f"  {comp}")
     
-    print("\n[DESIGN ELEMENTS]")
+    log_info("\n[DESIGN ELEMENTS]")
     elements = [
         "✓ Cyberpunk Color Scheme (CYAN, MAGENTA, RED, LIME)",
         "✓ Semi-transparent Panels (RGBA)",
@@ -102,20 +102,20 @@ def test_hud_system():
     ]
     
     for elem in elements:
-        print(f"  {elem}")
+        log_info(f"  {elem}")
     
-    print("\n[WEAPONS TEST]")
-    print(f"  Slot 0: {player.weapon_slots[0]}")
-    print(f"  Slot 1: {player.weapon_slots[1]}")
-    print(f"  Slot 2: {player.weapon_slots[2]}")
-    print(f"  Current Slot: {player.current_slot}")
+    log_info("\n[WEAPONS TEST]")
+    log_info(f"  Slot 0: {player.weapon_slots[0]}")
+    log_info(f"  Slot 1: {player.weapon_slots[1]}")
+    log_info(f"  Slot 2: {player.weapon_slots[2]}")
+    log_info(f"  Current Slot: {player.current_slot}")
     
-    print("\n[PERFORMANCE]")
-    print("  ✓ Rendering: <3ms per frame")
-    print("  ✓ Memory: <1MB for HUD system")
-    print("  ✓ FPS: 60 (uncapped)")
+    log_info("\n[PERFORMANCE]")
+    log_info("  ✓ Rendering: <3ms per frame")
+    log_info("  ✓ Memory: <1MB for HUD system")
+    log_info("  ✓ FPS: 60 (uncapped)")
     
-    print("\n[UI COMPONENTS TEST]")
+    log_info("\n[UI COMPONENTS TEST]")
     
     # 测试各个UI参数的有效性
     ui_elements = {
@@ -133,28 +133,28 @@ def test_hud_system():
     all_pass = True
     for elem, status in ui_elements.items():
         status_str = "✓" if status else "✗"
-        print(f"  [{status_str}] {elem}")
+        log_info(f"  [{status_str}] {elem}")
         if not status:
             all_pass = False
     
-    print("\n[SUMMARY]")
+    log_info("\n[SUMMARY]")
     if all_pass:
-        print("  [SUCCESS] All HUD systems operational!")
-        print("  Ready for in-game deployment")
+        log_info("  [SUCCESS] All HUD systems operational!")
+        log_info("  Ready for in-game deployment")
     else:
-        print("  [WARNING] Some elements need attention")
+        log_info("  [WARNING] Some elements need attention")
     
     return all_pass
 
 if __name__ == "__main__":
     try:
         result = test_hud_system()
-        print("\n" + "="*50)
-        print(f"Test Result: {'PASS' if result else 'FAIL'}")
-        print("="*50)
+        log_info("\n" + "="*50)
+        log_info(f"Test Result: {'PASS' if result else 'FAIL'}")
+        log_info("="*50)
         exit(0 if result else 1)
     except Exception as e:
-        print(f"\n[ERROR] {e}")
+        log_error(f"{e}")
         import traceback
         traceback.print_exc()
         exit(1)

@@ -7,17 +7,67 @@ import wave
 import struct
 import tempfile
 import traceback
+import logging
 from config import *
 
 # ==============================================================================
 #   日志工具
 # ==============================================================================
+logger = logging.getLogger("neon_space")
+logger.setLevel(logging.DEBUG)
+try:
+    file_handler = logging.FileHandler("debug.log", encoding="utf-8")
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+except Exception:
+    pass
+
 def log_error(msg):
     try:
-        with open("debug.log", "a", encoding="utf-8") as f:
-            f.write(str(msg) + "\n")
-    except:
-        pass
+        logger.error(str(msg))
+    except Exception:
+        # Fallback: best effort write
+        try:
+            with open("debug.log", "a", encoding="utf-8") as f:
+                f.write("ERROR: " + str(msg) + "\n")
+        except:
+            pass
+
+def log_info(msg):
+    try:
+        logger.info(str(msg))
+    except Exception:
+        try:
+            with open("debug.log", "a", encoding="utf-8") as f:
+                f.write("INFO: " + str(msg) + "\n")
+        except:
+            pass
+
+def log_debug(msg):
+    try:
+        logger.debug(str(msg))
+    except Exception:
+        try:
+            with open("debug.log", "a", encoding="utf-8") as f:
+                f.write("DEBUG: " + str(msg) + "\n")
+        except:
+            pass
+
+def safe_blit(target_surf, src_surf, dest):
+    """Safely blit a surface if both source and target are non-None.
+    If either is None, log a warning and skip to avoid TypeError crashes.
+    """
+    if target_surf is None:
+        log_debug("safe_blit: target_surf is None, skipping blit")
+        return
+    if src_surf is None:
+        log_debug("safe_blit: src_surf is None, skipping blit")
+        return
+    try:
+        target_surf.blit(src_surf, dest)
+    except Exception as e:
+        log_error(f"safe_blit failed: {e}")
 
 # ==============================================================================
 #   音频合成系统
@@ -253,6 +303,9 @@ def draw_text(surf, text, size, x, y, color=WHITE, align="center", shadow=True, 
     elif align == "left": text_rect.topleft = (x, y)
     elif align == "right": text_rect.topright = (x, y)
     
+    if surf is None:
+        log_debug("draw_text: surf is None, skipping draw")
+        return pygame.Rect(x, y, 0, 0)
     if glow:
         glow_surf = font.render(str(text), True, (color[0]//2, color[1]//2, color[2]//2))
         surf.blit(glow_surf, (text_rect.x-1, text_rect.y))
@@ -276,6 +329,9 @@ def draw_cyber_rect(surf, rect, color, alpha=255, cut_size=10, border_width=0, f
         x, y, w, h = rect.x, rect.y, rect.width, rect.height
         
     points = [(x + cut_size, y), (x + w, y), (x + w, y + h - cut_size), (x + w - cut_size, y + h), (x, y + h), (x, y + cut_size)]
+    if surf is None:
+        log_debug("draw_cyber_rect: surf is None, skipping draw")
+        return
     if fill:
         s = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         if len(color) == 4: draw_color = color

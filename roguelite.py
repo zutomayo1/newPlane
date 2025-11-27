@@ -5,7 +5,7 @@ import random
 import pygame
 import math
 from config import *
-from utils import sound_mgr, log_error
+from utils import sound_mgr, log_error, log_info, log_debug
 
 # ==============================================================================
 #   增益系统数据定义
@@ -285,6 +285,9 @@ class UpgradeManager:
         
     def trigger_levelup(self):
         """触发升级，随机选择 3 个不重复的增益"""
+        # 如果已经处于等待升级状态，则不重复触发
+        if self.level_up_ready:
+            return
         available_buffs = list(BUFF_LIBRARY.keys())
         self.upgrade_choice = random.sample(available_buffs, min(3, len(available_buffs)))
         self.upgrade_choice_index = 0
@@ -407,7 +410,7 @@ def create_xp_drop(pos, amount=1):
         "type": "xp_orb",
         "pos": pos,
         "amount": amount,
-        "color": YELLOW
+        "color": BLUE
     }
 
 def create_buff_drop(pos, buff_id):
@@ -590,8 +593,8 @@ def print_buff_stats():
             stats[rarity] = 0
         stats[rarity] += 1
     
-    print("=== 肉鸽系统增益统计 ===")
+    log_info("=== 肉鸽系统增益统计 ===")
     for rarity in range(4):
         count = stats.get(rarity, 0)
-        print(f"稀有度 {rarity} ({RARITY_NAMES[rarity+1]}): {count} 个增益")
-    print(f"总计: {len(BUFF_LIBRARY)} 个增益")
+        log_info(f"稀有度 {rarity} ({RARITY_NAMES[rarity+1]}): {count} 个增益")
+    log_info(f"总计: {len(BUFF_LIBRARY)} 个增益")
