@@ -1,0 +1,23 @@
+{
+  "stats": {
+    "total_kills": 3730,
+    "total_damage": 0,
+    "runs_completed": 0,
+    "bosses_killed": 5,
+    "max_wave": 0,
+    "max_combo": 0,
+    "upgrades_collected": 0,
+    "perfect_runs": 0
+  },
+  "unlocked": [
+    "first_blood",
+    "killer_100",
+    "killer_500",
+    "killer_1000",
+    "boss_slayer",
+    "boss_master",
+    "drone_master",
+    "drone_squad",
+    "first_boss"
+  ]
+}

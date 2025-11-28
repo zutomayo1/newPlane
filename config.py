@@ -36,6 +36,7 @@ CYBER_AMBER = (255, 215, 0)          # 琥珀黄 #FFD700
 BLACK = (10, 10, 18)
 WHITE = (255, 255, 255)
 GRAY = (120, 120, 120)
+LABEL_GRAY = (144, 164, 174)  # #90A4AE
 DARK_BG = (5, 10, 20, 230)           # 更新为赛博深空黑
 STATS_BG = (5, 10, 20, 240)          # 更新为赛博深空黑
 
@@ -60,6 +61,11 @@ FOREST = (34, 139, 34)
 WEB_GRAY = (176, 196, 222)
 BRIGHT_ORANGE = (255, 69, 0)
 NEON_PURPLE = (148, 0, 211)
+SCORE_CYAN = (0, 188, 212)  # #00BCD4
+SCORE_ORANGE = (255, 107, 0)  # #FF6B00
+BADGE_RED = (211, 47, 47)  # #D32F2F
+CORE_GRAD_START = (123, 31, 162)  # #7B1FA2
+CORE_GRAD_END = (224, 64, 251)  # #E040FB
 EYE_RED = (200, 0, 0)
 GHOST_CYAN = (180, 255, 255)
 WIND_BLUE = (135, 206, 250)
@@ -131,34 +137,63 @@ UPGRADE_ITEMS = [
 ]
 
 PLANES = {
-    "striker": { "name": "霓虹突击者", "desc": "均衡型战机，擅长持续输出", "hp": 100, "speed": 6.5, "damage": 30, "delay": 160, "color": CYAN, "ult_name": "毁灭光束", "ult_color": CYAN, "bullet_type": "beam" },
-    "phantom": { "name": "虚空幻影", "desc": "高机动高射速，终极控制", "hp": 70, "speed": 7.5, "damage": 20, "delay": 120, "color": MAGENTA, "ult_name": "时空冻结", "ult_color": MAGENTA, "bullet_type": "shard" },
-    "titan": { "name": "钢铁泰坦", "desc": "重装甲高火力，全屏核爆", "hp": 150, "speed": 4.5, "damage": 50, "delay": 250, "color": ORANGE, "ult_name": "战术核弹", "ult_color": ORANGE, "bullet_type": "rocket" },
+    "striker": { "name": "霓虹突击者", "desc": "均衡型战机，擅长持续输出", "hp": 100, "speed": 6.5, "damage": 30, "delay": 160, "color": CYAN, "ult_name": "毁灭光束", "ult_color": CYAN, "bullet_type": "beam", "visual": {"neon_color": CYBER_CYAN_BRIGHT, "accent_color": CYBER_AMBER, "trail_color": CYAN, "ability": "overdrive"} },
+    "striker": { "name": "霓虹突击者", "desc": "均衡型战机，擅长持续输出", "hp": 100, "speed": 6.5, "damage": 30, "delay": 160, "color": CYAN, "ult_name": "毁灭光束", "ult_color": CYAN, "bullet_type": "beam", "visual": {"neon_color": CYBER_CYAN_BRIGHT, "accent_color": CYBER_AMBER, "trail_color": CYAN, "ability": "overdrive"} },
+    "phantom": { "name": "虚空幻影", "desc": "高机动高射速，终极控制", "hp": 85, "speed": 7.5, "damage": 20, "delay": 120, "color": MAGENTA, "ult_name": "时空冻结", "ult_color": MAGENTA, "bullet_type": "shard", "visual": {"neon_color": MAGENTA, "accent_color": WHITE, "trail_color": MAGENTA, "ability": "phase_shift"} },
+    "titan": { "name": "钢铁泰坦", "desc": "重装甲高火力，全屏核爆", "hp": 150, "speed": 4.5, "damage": 50, "delay": 250, "color": ORANGE, "ult_name": "战术核弹", "ult_color": ORANGE, "bullet_type": "rocket", "visual": {"neon_color": CYBER_AMBER, "accent_color": ORANGE, "trail_color": ORANGE, "ability": "armor_plating"} },
     "thunderbird": { "name": "雷霆战鹰", "desc": "发射连锁闪电，召唤雷暴", "hp": 90, "speed": 7.0, "damage": 25, "delay": 180, "color": YELLOW, "ult_name": "雷神降世", "ult_color": YELLOW, "bullet_type": "lightning" },
     "viper": { "name": "剧毒蝰蛇", "desc": "发射腐蚀酸液，持续伤害", "hp": 110, "speed": 6.0, "damage": 40, "delay": 200, "color": LIME, "ult_name": "腐蚀毒雾", "ult_color": LIME, "bullet_type": "acid" },
     "specter": { "name": "幽灵收割者", "desc": "隐形狙击，单发高伤", "hp": 80, "speed": 7.0, "damage": 80, "delay": 400, "color": (150, 100, 255), "ult_name": "死神降临", "ult_color": (150, 100, 255), "bullet_type": "spectral" },
-    "aurora": { "name": "极光女神", "desc": "范围打击，控场专家", "hp": 120, "speed": 6.0, "damage": 20, "delay": 140, "color": TEAL, "ult_name": "极光天幕", "ult_color": TEAL, "bullet_type": "prism" },
+    "aurora": { "name": "极光女神", "desc": "范围打击，控场专家", "hp": 115, "speed": 6.0, "damage": 26, "delay": 140, "color": TEAL, "ult_name": "极光天幕", "ult_color": TEAL, "bullet_type": "prism", "visual": {"neon_color": TEAL, "accent_color": CYBER_LIME, "trail_color": TEAL, "ability": "area_field"} },
     "crimson": { "name": "绯红之刃", "desc": "近战爆发型，高射速短程光刃", "hp": 90, "speed": 7.2, "damage": 45, "delay": 130, "color": CRIMSON, "ult_name": "鲜血新月", "ult_color": CRIMSON, "bullet_type": "blade" },
     "stalker": { "name": "星界潜行者", "desc": "异星科技，自动追踪星镖", "hp": 85, "speed": 6.8, "damage": 28, "delay": 170, "color": INDIGO, "ult_name": "群星坠落", "ult_color": INDIGO, "bullet_type": "star" },
     "gaia": { "name": "大地守护者", "desc": "坚韧防御型，发射散射荆棘", "hp": 140, "speed": 5.0, "damage": 35, "delay": 190, "color": FOREST, "ult_name": "自然之怒", "ult_color": FOREST, "bullet_type": "thorn" },
     "weaver": { "name": "虚空编织者", "desc": "控制型，相位蛛网穿透减速", "hp": 95, "speed": 6.2, "damage": 32, "delay": 180, "color": WEB_GRAY, "ult_name": "维度陷阱", "ult_color": WEB_GRAY, "bullet_type": "web" },
-    "solar": { "name": "日冕耀斑", "desc": "近战喷火，高频灼烧", "hp": 100, "speed": 7.0, "damage": 12, "delay": 40, "color": BRIGHT_ORANGE, "ult_name": "超新星爆发", "ult_color": BRIGHT_ORANGE, "bullet_type": "flame" },
-    "arbiter": { "name": "量子裁决者", "desc": "几何科技，分裂碎片", "hp": 80, "speed": 6.5, "damage": 40, "delay": 220, "color": NEON_PURPLE, "ult_name": "矩阵重置", "ult_color": NEON_PURPLE, "bullet_type": "quant" }
+    "solar": { "name": "日冕耀斑", "desc": "近战喷火，高频灼烧", "hp": 100, "speed": 7.0, "damage": 28, "delay": 45, "color": BRIGHT_ORANGE, "ult_name": "超新星爆发", "ult_color": BRIGHT_ORANGE, "bullet_type": "flame" },
+    "arbiter": { "name": "量子裁决者", "desc": "几何科技，分裂碎片", "hp": 80, "speed": 6.5, "damage": 40, "delay": 220, "color": NEON_PURPLE, "ult_name": "矩阵重置", "ult_color": NEON_PURPLE, "bullet_type": "quant" },
+    "eclipse": { "name": "日食幽灵", "desc": "双核心战机，双线射击吸收伤害", "hp": 105, "speed": 6.8, "damage": 24, "delay": 110, "color": (50, 30, 80), "ult_name": "黑日降临", "ult_color": (100, 50, 180), "bullet_type": "shadow", "visual": {"neon_color": (100, 50, 180), "accent_color": (200, 100, 255), "trail_color": (100, 50, 180), "ability": "dual_core"} },
+    "prism": { "name": "棱镜分光", "desc": "分裂射击型，一发三道散射", "hp": 88, "speed": 6.9, "damage": 18, "delay": 140, "color": (100, 180, 255), "ult_name": "光谱爆裂", "ult_color": (0, 255, 200), "bullet_type": "prism", "visual": {"neon_color": (0, 255, 200), "accent_color": (100, 200, 255), "trail_color": (100, 180, 255), "ability": "split_fire"} },
+    "necro": { "name": "死灵骑士", "desc": "吸血型战机，伤害转化为治疗", "hp": 130, "speed": 5.5, "damage": 32, "delay": 160, "color": (150, 50, 100), "ult_name": "亡灵收割", "ult_color": (200, 50, 150), "bullet_type": "spectral", "visual": {"neon_color": (200, 50, 150), "accent_color": (100, 0, 100), "trail_color": (150, 50, 100), "ability": "lifesteal"} }
 }
 
 BOSS_DB = {
-    "carrier": { "name": "毁灭者级·虚空母舰", "desc": "虚空舰队的核心旗舰。", "color": RED, "stats": [("装甲", 80), ("毁灭", 60), ("机动", 20)] },
-    "fortress": { "name": "不朽级·钢铁堡垒", "desc": "轨道防御系统的终极形态。", "color": ORANGE, "stats": [("装甲", 100), ("毁灭", 75), ("机动", 5)] },
-    "assassin": { "name": "幻影级·虚空刺客", "desc": "高机动型精英单位。", "color": MAGENTA, "stats": [("装甲", 40), ("毁灭", 85), ("机动", 100)] },
-    "seraphim": { "name": "审判级·炽天使", "desc": "高阶审判机甲。", "color": GOLD, "stats": [("装甲", 70), ("毁灭", 90), ("机动", 50)] },
-    "leviathan": { "name": "深渊巨兽·利维坦", "desc": "生物与机械的扭曲结合体。", "color": DEEP_PURPLE, "stats": [("装甲", 90), ("毁灭", 80), ("机动", 30)] },
-    "overlord": { "name": "蜂群主宰·奥伯龙", "desc": "蜂群意识的集合体。", "color": CYAN, "stats": [("装甲", 60), ("毁灭", 50), ("机动", 40)] },
-    "ragnarok": { "name": "终焉机神·诸神黄昏", "desc": "毁灭文明的终极兵器。", "color": CRIMSON, "stats": [("装甲", 95), ("毁灭", 100), ("机动", 10)] },
-    "hydra": { "name": "九头蛇·剧毒领主", "desc": "基因突变的生化噩梦。", "color": NEON_GREEN, "stats": [("装甲", 85), ("毁灭", 70), ("机动", 45)] },
-    "chronos": { "name": "时之主·克洛诺斯", "desc": "神秘的古代遗物守护者。", "color": (100, 150, 255), "stats": [("装甲", 75), ("毁灭", 85), ("机动", 80)] },
-    "gazer": { "name": "深渊凝视者", "desc": "来自维度的观察者。", "color": EYE_RED, "stats": [("装甲", 60), ("毁灭", 95), ("机动", 5)] },
-    "lich": { "name": "赛博巫妖", "desc": "被病毒侵蚀的AI核心。", "color": GHOST_CYAN, "stats": [("装甲", 50), ("毁灭", 80), ("机动", 70)] },
-    "tempest": { "name": "风暴引擎", "desc": "失控的气象控制器。", "color": WIND_BLUE, "stats": [("装甲", 85), ("毁灭", 65), ("机动", 60)] }
+    "carrier": { "name": "毁灭者级·虚空母舰", "desc": "虚空舰队的核心旗舰。", "color": RED, "stats": [("装甲", 80), ("毁灭", 60), ("机动", 20)], "visual": {"core_color": RED, "aura": (180, 20, 20), "phase_effect": "drone_spawns"}, "phases":[{"threshold":0.75, "spawn":{"type":"drone","count":2}, "fire_rate_mult":0.9}, {"threshold":0.5, "spawn":{"type":"drone","count":4}, "fire_rate_mult":0.75}, {"threshold":0.25, "spawn":{"type":"chaser","count":4}, "fire_rate_mult":0.6}]},
+    "fortress": { "name": "不朽级·钢铁堡垒", "desc": "轨道防御系统的终极形态。", "color": ORANGE, "stats": [("装甲", 100), ("毁灭", 75), ("机动", 5)], "visual": {"core_color": ORANGE, "aura": (120, 70, 40), "phase_effect": "turret_barrage"}, "phases": [{"threshold":0.75, "spawn":{"type":"sniper","count":2}, "fire_rate_mult":0.9, "effect":{"type":"pulse","count":2}}, {"threshold":0.5, "spawn":{"type":"tank","count":1}, "fire_rate_mult":0.7, "effect":{"type":"bloom","count":2}}, {"threshold":0.25, "spawn":{"type":"sniper","count":3}, "fire_rate_mult":0.6}]},
+    "assassin": { "name": "幻影级·虚空刺客", "desc": "高机动型精英单位。", "color": MAGENTA, "stats": [("装甲", 40), ("毁灭", 85), ("机动", 100)], "visual": {"core_color": MAGENTA, "aura": (120, 0, 120), "phase_effect": "teleport_dash"}, "phases": [{"threshold":0.6, "effect":{"type":"teleport_dash","intensity":2}, "fire_rate_mult":0.85}, {"threshold":0.3, "effect":{"type":"teleport_dash","intensity":4}, "fire_rate_mult":0.7}]},
+    "seraphim": { "name": "审判级·炽天使", "desc": "高阶审判机甲。", "color": GOLD, "stats": [("装甲", 70), ("毁灭", 90), ("机动", 50)], "visual": {"core_color": GOLD, "aura": (220, 180, 100)}, "phases":[{"threshold":0.7, "spawn":{"type":"sniper","count":2}, "effect":{"type":"bloom","count":2}, "fire_rate_mult":0.85}, {"threshold":0.35, "spawn":{"type":"tank","count":1}, "fire_rate_mult":0.6}, {"threshold":0.15, "spawn":{"type":"spike","count":3}, "fire_rate_mult":0.5}]},
+    "leviathan": { "name": "深渊巨兽·利维坦", "desc": "生物与机械的扭曲结合体。", "color": DEEP_PURPLE, "stats": [("装甲", 90), ("毁灭", 80), ("机动", 30)], "visual": {"core_color": DEEP_PURPLE, "aura": (120, 30, 200)}, "phases":[{"threshold":0.75, "spawn":{"type":"glitch","count":3}, "effect":{"type":"pulse","count":3}, "fire_rate_mult":0.9}, {"threshold":0.45, "spawn":{"type":"wasp","count":3}, "fire_rate_mult":0.7}]},
+    "overlord": { "name": "蜂群主宰·奥伯龙", "desc": "蜂群意识的集合体。", "color": CYAN, "stats": [("装甲", 60), ("毁灭", 50), ("机动", 40)], "visual":{"core_color": CYAN, "aura": (0,180,200)}, "phases":[{"threshold":0.8, "spawn":{"type":"wasp","count":4}, "fire_rate_mult":0.9}, {"threshold":0.5, "spawn":{"type":"wasp","count":7}, "fire_rate_mult":0.75}]},
+    "ragnarok": { "name": "终焉机神·诸神黄昏", "desc": "毁灭文明的终极兵器。", "color": CRIMSON, "stats": [("装甲", 95), ("毁灭", 100), ("机动", 10)], "visual": {"core_color": CRIMSON, "aura": (140, 0, 10)}, "phases":[{"threshold":0.7, "spawn":{"type":"tank","count":2}, "fire_rate_mult":0.85}, {"threshold":0.4, "spawn":{"type":"sniper","count":3}, "fire_rate_mult":0.6}, {"threshold":0.2, "spawn":{"type":"ragnarok_core","count":1}, "fire_rate_mult":0.5}]},
+    "hydra": { "name": "九头蛇·剧毒领主", "desc": "基因突变的生化噩梦。", "color": NEON_GREEN, "stats": [("装甲", 85), ("毁灭", 70), ("机动", 45)], "visual": {"core_color": NEON_GREEN, "aura": (0,200,0)}, "phases":[{"threshold":0.75, "spawn":{"type":"glitch","count":4}, "effect":{"type":"bloom","count":2}, "fire_rate_mult":0.9}, {"threshold":0.45, "spawn":{"type":"drone","count":6}, "fire_rate_mult":0.7}]},
+    "chronos": { "name": "时之主·克洛诺斯", "desc": "神秘的古代遗物守护者。", "color": (100, 150, 255), "stats": [("装甲", 75), ("毁灭", 85), ("机动", 80)], "visual": {"core_color": (100, 150, 255), "aura": (120, 160, 255)}, "phases":[{"threshold":0.7, "effect":{"type":"time_pulse","count":3}, "fire_rate_mult":0.9}, {"threshold":0.4, "effect":{"type":"chronos_burst","count":4}, "fire_rate_mult":0.6}]},
+    "gazer": { "name": "深渊凝视者", "desc": "来自维度的观察者。", "color": EYE_RED, "stats": [("装甲", 60), ("毁灭", 95), ("机动", 5)], "visual": {"core_color": EYE_RED, "aura": (200, 0, 0)}, "phases":[{"threshold":0.8, "effect":{"type":"gaze_beams","count":3}, "fire_rate_mult":0.9}, {"threshold":0.45, "effect":{"type":"gaze_pulse","count":6}, "fire_rate_mult":0.6}]},
+    "lich": { "name": "赛博巫妖", "desc": "被病毒侵蚀的AI核心。", "color": GHOST_CYAN, "stats": [("装甲", 50), ("毁灭", 80), ("机动", 70)], "visual": {"core_color": GHOST_CYAN, "aura": (180,240,240)}, "phases":[{"threshold":0.75, "spawn":{"type":"glitch","count":6}, "effect":{"type":"curse_pulse","count":3}, "fire_rate_mult":0.9}, {"threshold":0.45, "spawn":{"type":"glitch","count":8}, "fire_rate_mult":0.6}]},
+    "tempest": { "name": "风暴引擎", "desc": "失控的气象控制器。", "color": WIND_BLUE, "stats": [("装甲", 85), ("毁灭", 65), ("机动", 60)], "visual": {"core_color": WIND_BLUE, "aura": (140, 200, 255), "phase_effect": "wind_gusts"}, "phases": [{"threshold":0.75, "effect":{"type":"wind_gusts","count":5}}, {"threshold":0.5, "effect":{"type":"storm_burst","count":8, "fire_rate_mult":0.6}}]}
+    ,
+    "void_golem": {
+        "name": "虚空魔像",
+        "desc": "机械与虚空能量的融合体，拥有多阶段变形与强力弹幕。",
+        "color": (80, 0, 120),
+        "stats": [("装甲", 120), ("毁灭", 90), ("机动", 35)],
+        "visual": {"core_color": (80, 0, 120), "aura": (120, 0, 180), "phase_effect": "gear_energy"},
+        "phases": [
+            {"threshold": 0.8, "spawn": {"type": "drone", "count": 3}, "effect": {"type": "gear_spin", "count": 4}, "fire_rate_mult": 0.85},
+            {"threshold": 0.55, "effect": {"type": "energy_wave", "count": 2}, "fire_rate_mult": 0.7},
+            {"threshold": 0.3, "spawn": {"type": "chaser", "count": 5}, "effect": {"type": "core_burst", "count": 3}, "fire_rate_mult": 0.55}
+        ]
+    },
+    "abyss_queen": {
+        "name": "星渊女王",
+        "desc": "星空与深渊的主宰，能召唤星体与释放星爆弹幕。",
+        "color": (120, 60, 200),
+        "stats": [("装甲", 100), ("毁灭", 110), ("机动", 60)],
+        "visual": {"core_color": (120, 60, 200), "aura": (180, 80, 255), "phase_effect": "star_dust"},
+        "phases": [
+            {"threshold": 0.85, "spawn": {"type": "starling", "count": 4}, "effect": {"type": "star_dust", "count": 6}, "fire_rate_mult": 0.9},
+            {"threshold": 0.6, "spawn": {"type": "star_guard", "count": 2}, "effect": {"type": "queen_invis", "count": 1}, "fire_rate_mult": 0.7},
+            {"threshold": 0.35, "effect": {"type": "star_burst", "count": 3}, "fire_rate_mult": 0.5}
+        ]
+    }
 }
 BOSS_KEYS = list(BOSS_DB.keys())
 
@@ -175,8 +210,15 @@ WEAPON_TYPES = {
     "railgun": {"name": "磁轨炮", "type": "贯穿", "desc": "电磁加速，瞬间贯穿直线所有敌人。", "color": (0, 255, 255)},
     "void": {"name": "虚空裂隙", "type": "力场", "desc": "发射缓慢移动的黑洞球，持续伤害。", "color": (100, 0, 200)},
     "frost": {"name": "极寒冰刺", "type": "控制", "desc": "高射速冰弹，命中后冻结敌人。", "color": (200, 255, 255)},
-    "swarm": {"name": "蜂群导弹", "type": "全弹", "desc": "一次性发射大量微型导弹。", "color": (255, 100, 150)}
+    "swarm": {"name": "蜂群导弹", "type": "全弹", "desc": "一次性发射大量微型导弹。", "color": (255, 100, 150)},
+    "pulse": {"name": "脉冲波", "type": "冲击", "desc": "发射扩散冲击波，近距离伤害倍增。", "color": (0, 200, 200)},
+    "vortex": {"name": "次元漩涡", "type": "扭曲", "desc": "发射减速漩涡，敌人陷入后移动缓慢。", "color": (200, 0, 255)},
+    "gravity": {"name": "重力眼", "type": "引力", "desc": "吸引周围敌人，缓慢但持续伤害。", "color": (150, 50, 200)},
+    "wave": {"name": "能量海啸", "type": "推进", "desc": "发射推进波，击退敌人并造成伤害。", "color": (100, 255, 200)},
+    "inferno": {"name": "地狱烈焰", "type": "灼烧", "desc": "持续燃烧效果，敌人陷入火焰中持续掉血。", "color": (255, 100, 0)},
+    "split": {"name": "分裂弹头", "type": "爆裂", "desc": "击中后分裂成多发子弹，链式传播。", "color": (255, 200, 0)},
 }
+
 
 SYNERGIES = {
     frozenset(["cannon", "missile"]): {"name": "穿甲爆破", "desc": "穿透+1，爆炸范围+20%"},
