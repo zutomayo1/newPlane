@@ -177,7 +177,7 @@ class WindEffect:
         self.wind_direction = 0  # 风向 (0-360度)
         self.time = 0
         self.particles = []
-        self.particle_count = 50
+        self.particle_count = 25
         self._init_particles()
     
     def _init_particles(self):
@@ -236,7 +236,7 @@ class Sandstorm:
         self.height = height
         self.time = 0
         self.particles = []
-        self.particle_count = 80
+        self.particle_count = 40
         self._init_particles()
     
     def _init_particles(self):
@@ -324,14 +324,14 @@ class WeatherSystem:
         self.raindrops = [Raindrop(random.uniform(0, self.width), 
                                    random.uniform(0, self.height),
                                    self.width, self.height) 
-                         for _ in range(80)]
+                         for _ in range(40)]
     
     def _init_snow(self):
         """初始化雪花"""
         self.snowflakes = [Snowflake(random.uniform(0, self.width), 
                                      random.uniform(0, self.height),
                                      self.width, self.height) 
-                          for _ in range(60)]
+                          for _ in range(30)]
     
     def _generate_weather_schedule(self):
         """生成天气变化计划"""
@@ -365,11 +365,13 @@ class WeatherSystem:
             self.bullet_damage_modifier = 0.9
         
         elif self.current_weather == WeatherType.METEOR:
-            # 流星定期生成
-            if random.random() < 0.02:  # 2%概率每帧生成流星
+            # 流星定期生成，限制最大数量
+            if random.random() < 0.015 and len(self.meteors) < 20:  # 降低生成概率，限制最多20个流星
                 self.meteors.append(Meteor(random.uniform(self.width, self.width + 100), 
                                           random.uniform(-50, 0),
                                           self.width, self.height))
+            # 更新流星并清理超出屏幕的
+            self.meteors = [m for m in self.meteors if m.life > 0]
             for meteor in self.meteors:
                 meteor.update()
             self.visibility = 0.8
@@ -397,6 +399,8 @@ class WeatherSystem:
         """切换天气"""
         if self.weather_queue:
             self.current_weather = self.weather_queue.pop(0)
+            # 清理流星列表（节省内存）
+            self.meteors = []
             if not self.weather_queue:
                 self._generate_weather_schedule()
     

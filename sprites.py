@@ -1988,13 +1988,21 @@ class Player(pygame.sprite.Sprite):
         for w in self.weapon_slots:
             if w: w.update()
 
-        # 移动逻辑 (WASD + Arrows)
+        # 移动逻辑 (WASD + Arrows) - 改进版支持流畅对角线移动
         keys = pygame.key.get_pressed()
-        dx, dy = 0, 0
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]: dx = -self.speed
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]: dx = self.speed
-        if keys[pygame.K_UP] or keys[pygame.K_w]: dy = -self.speed
-        if keys[pygame.K_DOWN] or keys[pygame.K_s]: dy = self.speed
+        dx, dy = 0.0, 0.0
+        
+        # 累加所有按下的移动键（支持对角线）
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]: dx -= self.speed
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]: dx += self.speed
+        if keys[pygame.K_UP] or keys[pygame.K_w]: dy -= self.speed
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]: dy += self.speed
+        
+        # 对角线移动标准化（避免对角线速度过快）
+        if dx != 0 and dy != 0:
+            move_length = math.sqrt(dx*dx + dy*dy)
+            dx = dx / move_length * self.speed
+            dy = dy / move_length * self.speed
         
         # 冲刺
         # Overdrive temporary buff handling

@@ -81,9 +81,6 @@ boss_manager = BossManager()
 
 # 数值
 score = 0
-combo_count = 0
-combo_timer = 0
-max_combo_time = 120
 # boss_timer and scheduling managed by BossManager
 global_time_freeze = 0
 wave = 0  # 波数
@@ -185,7 +182,7 @@ def create_shockwave(pos, color, count=10):
         Particle(pos, color, mode="shockwave")
 
 def reset_game():
-    global player, boss, score, combo_count, combo_timer
+    global player, boss, score
     global global_time_freeze, is_paused
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave, tab_paused
@@ -208,13 +205,10 @@ def reset_game():
     supplies.empty()
     
     score = 0
-    combo_count = 0
-    combo_timer = 0
     boss = None
     boss_manager.reset()
     global_time_freeze = 0
     wave = 0
-    boss = None
     
     # 重置天气系统
     weather_system = WeatherSystem(WIDTH, HEIGHT)
@@ -1378,36 +1372,6 @@ def draw_boss_themed_background(surf, boss, game_tick):
         # 默认绘制网格
         draw_tactical_grid(surf)
 
-def draw_combo_indicator(kill_count):
-    """绘制连击指示器（左侧大字体）"""
-    if kill_count < 2:
-        return
-    
-    combo_text = f"{kill_count} 连击!"
-    combo_color = CYBER_AMBER if kill_count < 5 else CYBER_RED_ALERT
-    
-    # 闪烁效果
-    alpha_val = int(200 + 55 * math.sin(pygame.time.get_ticks() * 0.015))
-    
-    # 创建临时surface
-    temp_surf = pygame.Surface((400, 100), pygame.SRCALPHA)
-    temp_surf.set_alpha(alpha_val)
-    
-    # 绘制连击文字
-    font = pygame.font.SysFont(['arial'], 60, bold=True)
-    text_img = font.render(combo_text, True, combo_color)
-    text_glow = font.render(combo_text, True, combo_color)
-    
-    # 发光效果（多层渲染）
-    for offset in range(4, 0, -1):
-        glow_alpha = int(100 - offset * 20)
-        glow_img = font.render(combo_text, True, combo_color)
-        glow_img.set_alpha(glow_alpha)
-        temp_surf.blit(glow_img, (offset, offset))
-    
-    temp_surf.blit(text_img, (0, 0))
-    safe_blit(screen, temp_surf, (40, 200))
-
 def draw_warning_indicator():
     """绘制BOSS警告指示器（屏幕边框闪烁）"""
     # Use boss_manager warning state
@@ -1416,7 +1380,6 @@ def draw_warning_indicator():
             return
     except Exception:
         # fallback: no boss warning manager, simply return
-        return
         return
     
     # 闪烁效果
@@ -3381,8 +3344,6 @@ while True:
                             except Exception:
                                 log_error("保存成就时发生错误")
                     
-                    safe_call_draw(draw_combo_indicator, int(score // 100))  # 连击指示器
-                
                 # ========== 肉鸽系统：绘制升级 UI 和被动增益更新 ==========
                 if levelup_ready:
                     safe_call_draw(draw_levelup_ui)
