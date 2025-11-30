@@ -9,6 +9,7 @@ from utils import *
 from systems import *
 from sprites import *
 from weather import WeatherSystem
+from customization import customization_manager, PAINT_THEMES, EnhancedTrailEffect
 
 # ==============================================================================
 #   全局初始化
@@ -97,6 +98,14 @@ arsenal_selected_weapon_idx = -1
 arsenal_msg = ""
 arsenal_msg_timer = 0
 
+# 涂装系统
+customization_selected_plane = None
+customization_scroll_y = 0
+customization_plane_scroll_y = 0
+customization_msg = ""
+customization_msg_timer = 0
+customization_tab = 0  # 0:全部, 1:经典, 2:霓虹, 3:史诗, 4:特效, 5:传说
+
 # 成就菜单
 achievement_page = 0
 
@@ -111,6 +120,13 @@ gallery_tab = 0 # 0:All, 1-4:Rarity
 codex_tab = 0 # 0:Plane, 1:Boss
 codex_idx = 0
 codex_scroll_y = 0 
+
+# 涂装系统 - 重写版本
+customization_scroll_y = 0
+customization_plane_scroll_y = 0  # 飞机列表滚动
+customization_selected_plane = None  # 当前选中的飞机ID
+customization_msg = ""
+customization_msg_timer = 0
 
 # 暂停菜单状态
 pause_menu_selected = 0  # 0: 继续, 1: 重新开始, 2: 退出战斗
@@ -213,7 +229,17 @@ def reset_game():
     # 重置天气系统
     weather_system = WeatherSystem(WIDTH, HEIGHT)
     
-    player = Player(selected_plane)
+    try:
+        # 获取玩家选择的涂装
+        custom_visual = customization_manager.get_theme_visual(
+            selected_plane, 
+            PLANES[selected_plane].get('visual', None)
+        )
+    except Exception as e:
+        print(f"涂装加载错误: {e}")
+        custom_visual = None
+    
+    player = Player(selected_plane, custom_visual=custom_visual)
     
     # 初始化肉鸽系统
     player.init_roguelite_systems()
@@ -224,7 +250,10 @@ def reset_game():
     
     all_sprites.add(player)
     
-    sound_mgr.play_music("normal")
+    try:
+        sound_mgr.play_music("normal")
+    except Exception as e:
+        print(f"音乐播放错误: {e}")
     # reset_game() done
 
 def get_menu_buttons():
@@ -237,6 +266,7 @@ def get_menu_buttons():
         ("开始游戏", YELLOW, "select_plane"),
         ("Boss挑战模式", CYAN, "boss_challenge"),
         ("武器库", ORANGE, "arsenal"),
+        ("机体涂装", MAGENTA, "customization"),
         ("战术图鉴", MAGENTA, "gallery"),
         ("机密档案", BLUE, "codex"),
         ("成就", LIME, "achievements"),
@@ -560,7 +590,9 @@ def draw_select_plane_ui():
     draw_cyber_rect(screen, card_rect, (20,20,30), alpha=200, fill=True)
     draw_cyber_rect(screen, card_rect, data["color"], border_width=2, fill=False)
 
-    preview = get_plane_surf(pid, PLANES.get(pid, {}).get('visual', None))
+    # 获取当前装备的涂装预览
+    visual = customization_manager.get_theme_visual(pid, PLANES.get(pid, {}).get('visual', None))
+    preview = get_plane_surf(pid, visual)
     preview = pygame.transform.scale(preview, (180, 180))
     safe_blit(screen, preview, (cx - 90, cy - 200))
 
@@ -1026,6 +1058,246 @@ def draw_leaderboard_ui():
     draw_cyber_rect(screen, back_btn, GRAY, fill=True)
     if h: draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
     draw_text(screen, "返回", 24, back_btn.centerx, back_btn.centery-12, WHITE)
+
+def draw_customization_ui():
+    """绘制涂装自定义界面 - 重写版本"""
+    global customization_selected_plane, customization_msg_timer, customization_tab, customization_scroll_y, customization_plane_scroll_y
+    
+    draw_text(screen, "机体涂装系统", 40, WIDTH//2, 30, MAGENTA, glow=True)
+    currency_text = f"核心: {arsenal_save_data['currencies']['cores']}"
+    draw_text(screen, currency_text, 20, WIDTH - 200, 30, GOLD, align="left")
+    unlocked_count = customization_manager.get_unlocked_count()
+    total_count = customization_manager.get_total_count()
+    progress_text = f"已解锁: {unlocked_count}/{total_count}"
+    draw_text(screen, progress_text, 18, WIDTH - 200, 60, CYAN, align="left")
+    
+    mx, my = pygame.mouse.get_pos()
+    
+    # 左侧：飞机列表
+    plane_list_area = pygame.Rect(30, 100, 280, HEIGHT - 180)
+    draw_cyber_rect(screen, plane_list_area, (20, 20, 30), alpha=220, fill=True)
+    draw_text(screen, "选择机体", 22, plane_list_area.centerx, 110, CYAN)
+    
+    # 列表内容区域（排除标题）
+    list_content_rect = pygame.Rect(plane_list_area.x, plane_list_area.y + 40, plane_list_area.width, plane_list_area.height - 40)
+    screen.set_clip(list_content_rect)
+    
+    plane_start_y = list_content_rect.y + 5 - customization_plane_scroll_y
+    for i, plane_id in enumerate(plane_keys):
+        plane_data = PLANES[plane_id]
+        rect = pygame.Rect(40, plane_start_y + i * 45, 260, 40)
+        
+        # 简单的可见性剔除
+        if rect.bottom < list_content_rect.top or rect.top > list_content_rect.bottom:
+            continue
+            
+        equipped_theme = customization_manager.get_equipped_theme(plane_id)
+        is_selected = (customization_selected_plane == plane_id)
+        h = rect.collidepoint(mx, my) or is_selected
+        bg_color = (plane_data["color"][0]//3, plane_data["color"][1]//3, plane_data["color"][2]//3) if h else (30, 30, 40)
+        draw_cyber_rect(screen, rect, bg_color, fill=True)
+        if is_selected: draw_cyber_rect(screen, rect, CYAN, border_width=2, fill=False)
+        
+        # 简单绘制飞机图标（使用当前装备的涂装）
+        plane_visual = customization_manager.get_theme_visual(plane_id, PLANES[plane_id].get('visual', None))
+        # 使用静态缓存模式
+        icon = get_plane_surf(plane_id, plane_visual, static=True)
+        icon = pygame.transform.scale(icon, (30, 30))
+        safe_blit(screen, icon, (rect.x + 5, rect.y + 5))
+        
+        draw_text(screen, plane_data["name"], 16, rect.x + 130, rect.y + 8, WHITE, align="center")
+        if equipped_theme != "default":
+            # 容错处理：如果主题不存在，使用默认主题
+            if equipped_theme in PAINT_THEMES:
+                theme_name = PAINT_THEMES[equipped_theme]["name"]
+                draw_text(screen, f"[{theme_name}]", 12, rect.x + 130, rect.y + 24, plane_data["color"], align="center")
+            else:
+                log_info(f"Theme {equipped_theme} not found for {plane_id}, resetting to default")
+                customization_manager.equip_theme(plane_id, "default")
+            
+    screen.set_clip(None)
+
+    # 右侧：涂装列表
+    theme_list_area = pygame.Rect(330, 100, 600, HEIGHT - 180)
+    draw_cyber_rect(screen, theme_list_area, (20, 20, 30), alpha=220, fill=True)
+    
+    if customization_selected_plane:
+        plane_data = PLANES[customization_selected_plane]
+        draw_text(screen, f"{plane_data['name']} - 涂装方案", 22, theme_list_area.centerx, 110, CYAN)
+        
+        # --- 分类标签页 ---
+        tabs = ["全部", "普通", "稀有", "史诗", "传说", "专属"]
+        categories = [None, "common", "rare", "epic", "legendary", "exclusive"]
+        tab_w = 70
+        tab_h = 30
+        start_x = theme_list_area.x + 10
+        tab_y = 140
+        
+        for i, tab_name in enumerate(tabs):
+            tab_rect = pygame.Rect(start_x + i * (tab_w + 5), tab_y, tab_w, tab_h)
+            is_active = (customization_tab == i)
+            
+            # 处理点击
+            if tab_rect.collidepoint(mx, my) and pygame.mouse.get_pressed()[0]:
+                if customization_tab != i:
+                    customization_tab = i
+                    customization_scroll_y = 0 # 切换标签重置滚动
+            
+            color = CYAN if is_active else GRAY
+            draw_cyber_rect(screen, tab_rect, (40, 40, 50), fill=True)
+            if is_active:
+                draw_cyber_rect(screen, tab_rect, CYAN, border_width=2, fill=False)
+            draw_text(screen, tab_name, 16, tab_rect.centerx, tab_rect.centery - 8, color)
+
+        # --- 筛选涂装 ---
+        filtered_themes = []
+        for tid, theme in PAINT_THEMES.items():
+            # 过滤掉其他飞机的专属涂装
+            exclusive_plane = theme.get("exclusive_plane")
+            if exclusive_plane and exclusive_plane != customization_selected_plane:
+                continue
+
+            if customization_tab == 0:
+                filtered_themes.append((tid, theme))
+            else:
+                target_cat = categories[customization_tab]
+                if theme.get("category") == target_cat:
+                    filtered_themes.append((tid, theme))
+        
+        theme_y_start = 180
+        
+        # 列表裁剪区域
+        list_view_rect = pygame.Rect(theme_list_area.x, theme_y_start, theme_list_area.width, theme_list_area.height - (theme_y_start - theme_list_area.y))
+        screen.set_clip(list_view_rect)
+        
+        for i, (theme_id, theme) in enumerate(filtered_themes):
+            card_rect = pygame.Rect(350, theme_y_start + i * 100 - customization_scroll_y, 560, 90)
+            
+            # 跳过不可见的卡片
+            if card_rect.bottom < list_view_rect.top or card_rect.top > list_view_rect.bottom:
+                continue
+            
+            is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
+            is_equipped = customization_manager.get_equipped_theme(customization_selected_plane) == theme_id
+            h = card_rect.collidepoint(mx, my)
+            
+            # 背景颜色
+            if is_equipped:
+                bg_color = (0, 100, 100)
+            elif is_unlocked:
+                bg_color = (40, 50, 40) if h else (30, 35, 30)
+            else:
+                bg_color = (50, 30, 30) if h else (30, 20, 20)
+            
+            draw_cyber_rect(screen, card_rect, bg_color, fill=True)
+            
+            # 品质颜色定义 (高对比度)
+            cat = theme.get("category", "default")
+            quality_colors = {
+                "default": (150, 150, 150),
+                "common": (220, 220, 220),
+                "rare": (100, 150, 255),
+                "epic": (200, 100, 255),
+                "legendary": (255, 215, 0),
+                "exclusive": (255, 50, 150)
+            }
+            q_color = quality_colors.get(cat, GRAY)
+            
+            # 边框
+            if is_equipped:
+                draw_cyber_rect(screen, card_rect, CYAN, border_width=3, fill=False)
+                # 装备状态下额外显示品质色内框
+                pygame.draw.rect(screen, q_color, card_rect.inflate(-8, -8), 1)
+            elif h:
+                draw_cyber_rect(screen, card_rect, WHITE, border_width=2, fill=False)
+            else:
+                draw_cyber_rect(screen, card_rect, q_color, border_width=1, fill=False)
+            
+            # 预览图（简化版本，不使用缓存）
+            if theme_id == "default":
+                visual = plane_data.get('visual', None)
+            else:
+                visual = customization_manager.get_theme_visual(customization_selected_plane, plane_data.get('visual', None), preview_theme_id=theme_id)
+            
+            # 使用静态缓存模式
+            preview = get_plane_surf(customization_selected_plane, visual, static=True)
+            preview = pygame.transform.scale(preview, (60, 60))
+            safe_blit(screen, preview, (card_rect.x + 10, card_rect.y + 15))
+            
+            # 信息文字 - 名称使用品质颜色
+            info_x = card_rect.x + 85
+            draw_text(screen, theme["name"], 18, info_x, card_rect.y + 10, q_color, align="left")
+            draw_text(screen, theme["desc"], 14, info_x, card_rect.y + 32, GRAY, align="left")
+            
+            # 显示专属信息或尾迹信息
+            exclusive_plane = theme.get("exclusive_plane")
+            if exclusive_plane:
+                p_name = PLANES.get(exclusive_plane, {}).get("name", exclusive_plane)
+                draw_text(screen, f"专属机体: {p_name}", 12, info_x, card_rect.y + 52, MAGENTA, align="left")
+            else:
+                trail_style = theme.get("trail_style", "normal")
+                draw_text(screen, f"尾迹: {trail_style}", 12, info_x, card_rect.y + 52, CYAN, align="left")
+            
+            # 按钮
+            btn_x = card_rect.right - 120
+            btn_y = card_rect.y + 25
+            btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
+            
+            is_compatible = True
+            if exclusive_plane and exclusive_plane != customization_selected_plane:
+                is_compatible = False
+            
+            if not is_compatible:
+                draw_text(screen, "机型不符", 16, btn_rect.centerx, btn_rect.centery - 8, RED)
+            elif is_equipped:
+                draw_text(screen, "已装备", 16, btn_rect.centerx, btn_rect.centery - 8, GREEN)
+            elif is_unlocked:
+                btn_h = btn_rect.collidepoint(mx, my)
+                draw_cyber_rect(screen, btn_rect, CYAN if btn_h else (0, 100, 100), fill=True)
+                draw_text(screen, "装备", 16, btn_rect.centerx, btn_rect.centery - 8, WHITE)
+            else:
+                cost = theme.get("cost", 0)
+                can_afford = arsenal_save_data['currencies']['cores'] >= cost
+                btn_h = btn_rect.collidepoint(mx, my) and can_afford
+                btn_color = GOLD if (btn_h and can_afford) else (GRAY if not can_afford else ORANGE)
+                draw_cyber_rect(screen, btn_rect, btn_color, fill=True)
+                draw_text(screen, f"解锁 {cost}", 14, btn_rect.centerx, btn_rect.centery - 8, WHITE if can_afford else GRAY)
+                
+                if "requirement" in theme:
+                    req_text = theme["requirement"]
+                    draw_text(screen, req_text, 10, info_x, card_rect.y + 70, YELLOW, align="left")
+        
+        screen.set_clip(None)
+        
+    else:
+        draw_text(screen, "← 请先选择一架飞机", 24, theme_list_area.centerx, theme_list_area.centery, GRAY)
+    # 消息提示
+    if customization_msg_timer > 0:
+        msg_y = HEIGHT - 150
+        msg_rect = pygame.Rect(WIDTH//2 - 200, msg_y, 400, 40)
+        draw_cyber_rect(screen, msg_rect, (50, 50, 50), alpha=200, fill=True)
+        draw_text(screen, customization_msg, 18, msg_rect.centerx, msg_rect.centery - 8, CYAN)
+        customization_msg_timer -= 1
+    
+    # 大预览区
+    if customization_selected_plane:
+        preview_area = pygame.Rect(WIDTH - 350, HEIGHT - 250, 320, 180)
+        draw_cyber_rect(screen, preview_area, (20, 20, 30), alpha=240, fill=True)
+        draw_text(screen, "涂装预览", 18, preview_area.centerx, preview_area.y + 10, MAGENTA)
+        
+        # 获取当前装备的涂装预览
+        equipped_theme = customization_manager.get_equipped_theme(customization_selected_plane)
+        visual = customization_manager.get_theme_visual(customization_selected_plane, PLANES[customization_selected_plane].get('visual', None))
+        big_preview = get_plane_surf(customization_selected_plane, visual)
+        big_preview = pygame.transform.scale(big_preview, (120, 120))
+        safe_blit(screen, big_preview, (preview_area.centerx - 60, preview_area.y + 40))
+    
+    # 返回按钮 (移动到左上角，避免遮挡列表)
+    back_btn = pygame.Rect(30, 30, 100, 40)
+    h = back_btn.collidepoint(mx, my)
+    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
+    if h: draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
+    draw_text(screen, "返回", 20, back_btn.centerx, back_btn.centery - 10, WHITE)
 
 def draw_bar(x, y, w, h, current, max_val, color, bg_color=(30,30,40), border_color=None):
     """绘制进度条 (赛博朋克风格)"""
@@ -2069,7 +2341,15 @@ while True:
             
             # --- 滚轮事件 (通用) ---
             if event.type == pygame.MOUSEWHEEL:
-                if game_state == "codex":
+                if game_state == "customization":
+                    mx, my = pygame.mouse.get_pos()
+                    if mx < 330:
+                        # 飞机列表滚动
+                        customization_plane_scroll_y = max(0, customization_plane_scroll_y - event.y * 30)
+                    else:
+                        # 涂装列表滚动
+                        customization_scroll_y = max(0, customization_scroll_y - event.y * 30)
+                elif game_state == "codex":
                     total_items = len(plane_keys) if codex_tab == 0 else len(BOSS_DB)
                     content_h = total_items * 45
                     view_h = CODEX_UI['list_view'].height
@@ -2104,15 +2384,18 @@ while True:
                         sound_mgr.play("select")
                     elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                         selected_plane = plane_keys[current_plane_idx]
+                        print(f"选择飞机: {selected_plane}")
                         # player selected via keyboard
                         try:
+                            print("开始reset_game...")
                             reset_game()
+                            print("reset_game完成，切换到游戏状态")
                             game_state = "game"
                             # game state changed to game
                         except Exception as e:
+                            print(f"❌ reset_game失败: {e}")
                             log_error(f"reset_game failed: {e}")
                             traceback.print_exc()
-                            log_error(f"reset_game failed: {e}")
                             game_state = "menu"
                     continue
 
@@ -2231,12 +2514,13 @@ while True:
                                 pygame.quit(); sys.exit()
                             elif act == "select_plane": game_state = "select_plane"; current_plane_idx = 0
                             elif act == "boss_challenge": game_state = "boss_challenge"; boss_challenge_selected = 0; boss_challenge_order = list(BOSS_DB.keys())
-                            elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements"]:
+                            elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization"]:
                                 game_state = act
                                 if act == "gallery": gallery_page = 0; gallery_tab = 0
                                 if act == "codex": codex_tab = 0; codex_idx = 0; codex_scroll_y = 0
                                 if act == "arsenal": arsenal_scroll_y = 0; arsenal_selected_weapon_idx = -1
                                 if act == "achievements": achievement_page = 0
+                                if act == "customization": customization_scroll_y = 0; customization_plane_scroll_y = 0; customization_selected_plane = None; customization_tab = 0
                 
                 # Boss挑战模式导航（仅处理Enter和Esc，上下左右由持续按键处理）
                 elif game_state == "boss_challenge":
@@ -2284,22 +2568,35 @@ while True:
 
             # --- 鼠标点击事件 (严格区分状态，防止冲突) ---
             if event.type == pygame.MOUSEBUTTONDOWN:
+                print(f"鼠标点击事件，当前状态: {game_state}, 位置: ({mx}, {my})")
                 
                 if game_state == "menu":
-                    sound_mgr.play("select")
                     for r, txt, col, act in get_menu_buttons():
                         if r.collidepoint(mx, my):
+                            log_info(f"Menu button clicked: {txt} (action={act})")
+                            sound_mgr.play("select")
                             if act == "quit":
                                 if player and hasattr(player, 'achievement_manager'):
                                     player.achievement_manager.save_to_file()
                                 pygame.quit(); sys.exit()
-                            elif act == "select_plane": game_state = "select_plane"; current_plane_idx = 0
-                            elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements"]: 
+                            elif act == "select_plane":
+                                game_state = "select_plane"
+                                current_plane_idx = 0
+                                log_info(f"Game state changed to: {game_state}")
+                            elif act == "boss_challenge":
+                                game_state = "boss_challenge"
+                                boss_challenge_selected = 0
+                                boss_challenge_order = list(BOSS_DB.keys())
+                                log_info(f"Game state changed to: {game_state}")
+                            elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization"]: 
                                 game_state = act
                                 if act == "gallery": gallery_page = 0; gallery_tab = 0
                                 if act == "codex": codex_tab = 0; codex_idx = 0; codex_scroll_y = 0
                                 if act == "arsenal": arsenal_scroll_y = 0; arsenal_selected_weapon_idx = -1
                                 if act == "achievements": achievement_page = 0
+                                if act == "customization": customization_scroll_y = 0; customization_plane_scroll_y = 0; customization_selected_plane = None; customization_tab = 0
+                                log_info(f"Game state changed to: {game_state}")
+                            break
                 
                 # 成就菜单点击
                 elif game_state == "achievements":
@@ -2326,35 +2623,29 @@ while True:
                         game_state = "menu"; main_menu_selected = 0; sound_mgr.play("select")
 
                 elif game_state == "select_plane":
-                    sound_mgr.play("select")
                     left_rect = pygame.Rect(100, HEIGHT//2-40, 60, 80)
                     right_rect = pygame.Rect(WIDTH-160, HEIGHT//2-40, 60, 80)
                     start_btn = pygame.Rect(WIDTH//2-100, HEIGHT-120, 200, 60)
                     back_btn = pygame.Rect(50, HEIGHT-80, 100, 40)
                     
-                    # click detection
-                    
                     if left_rect.collidepoint(mx, my):
                         current_plane_idx = (current_plane_idx-1)%len(plane_keys)
-                        # left arrow clicked
+                        sound_mgr.play("select")
                     elif right_rect.collidepoint(mx, my):
                         current_plane_idx = (current_plane_idx+1)%len(plane_keys)
-                        # right arrow clicked
+                        sound_mgr.play("select")
                     elif start_btn.collidepoint(mx, my):
                         selected_plane = plane_keys[current_plane_idx]
-                        # starting game with selected plane
+                        sound_mgr.play("select")
                         try:
                             reset_game()
                             game_state = "game"
-                            # game state changed to game
                         except Exception as e:
                             log_error(f"reset_game failed: {e}")
-                            traceback.print_exc()
-                            log_error(f"reset_game failed: {e}")
-                            game_state = "menu"  # 出错时返回菜单
+                            game_state = "menu"
                     elif back_btn.collidepoint(mx, my):
+                        sound_mgr.play("select")
                         game_state = "menu"
-                        # returned to menu
                     
                 elif game_state == "arsenal":
                     sound_mgr.play("select")
@@ -2446,6 +2737,111 @@ while True:
                         if player and hasattr(player, 'achievement_manager'):
                             player.achievement_manager.save_to_file()
                         game_state = "menu"
+                
+                elif game_state == "customization":
+                    # 返回按钮 (移动到左上角)
+                    back_btn = pygame.Rect(30, 30, 100, 40)
+                    if back_btn.collidepoint(mx, my):
+                        sound_mgr.play("select")
+                        customization_manager.save_data()
+                        game_state = "menu"
+                    
+                    # 选择飞机
+                    elif not customization_selected_plane or True:  # 总是允许选择飞机
+                        # 考虑滚动偏移（与绘制逻辑保持一致）
+                        plane_list_area = pygame.Rect(30, 100, 280, HEIGHT - 180)
+                        list_content_rect = pygame.Rect(plane_list_area.x, plane_list_area.y + 40, plane_list_area.width, plane_list_area.height - 40)
+                        plane_start_y = list_content_rect.y + 5 - customization_plane_scroll_y
+                        plane_found = False
+                        
+                        # 仅在列表区域内检测点击（使用计算出的边界）
+                        if list_content_rect.collidepoint(mx, my):
+                            for i, plane_id in enumerate(plane_keys):
+                                rect = pygame.Rect(40, plane_start_y + i * 45, 260, 40)
+                                if rect.collidepoint(mx, my):
+                                    sound_mgr.play("select")
+                                    customization_selected_plane = plane_id
+                                    plane_found = True
+                                    break
+                        
+                        # 如果没有点击飞机，检查涂装按钮
+                        if not plane_found and customization_selected_plane:
+                            # --- 筛选涂装 (必须与绘制逻辑一致) ---
+                            categories = [None, "common", "rare", "epic", "legendary", "exclusive"]
+                            filtered_themes = []
+                            for tid, theme in PAINT_THEMES.items():
+                                # 过滤掉其他飞机的专属涂装
+                                exclusive_plane = theme.get("exclusive_plane")
+                                if exclusive_plane and exclusive_plane != customization_selected_plane:
+                                    continue
+
+                                if customization_tab == 0:
+                                    filtered_themes.append((tid, theme))
+                                else:
+                                    target_cat = categories[customization_tab]
+                                    if theme.get("category") == target_cat:
+                                        filtered_themes.append((tid, theme))
+                            
+                            theme_y_start = 180
+                            
+                            # 遍历筛选后的列表
+                            for i, (theme_id, theme) in enumerate(filtered_themes):
+                                card_rect = pygame.Rect(350, theme_y_start + i * 100 - customization_scroll_y, 560, 90)
+                                
+                                # 跳过不可见的卡片 (虽然点击检测不一定需要剔除，但为了性能和逻辑一致性)
+                                if card_rect.bottom < 100 or card_rect.top > HEIGHT - 80:
+                                    continue
+                                
+                                is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
+                                btn_x = card_rect.right - 120
+                                btn_y = card_rect.y + 25
+                                btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
+                                
+                                if btn_rect.collidepoint(mx, my):
+                                    # 检查专属限制
+                                    exclusive_plane = theme.get("exclusive_plane")
+                                    if exclusive_plane and exclusive_plane != customization_selected_plane:
+                                        customization_msg = f"该涂装仅限 {PLANES[exclusive_plane]['name']} 使用"
+                                        customization_msg_timer = 120
+                                        sound_mgr.play("warning")
+                                        continue
+
+                                    if is_unlocked:
+                                        success, msg = customization_manager.equip_theme(customization_selected_plane, theme_id)
+                                        customization_msg = msg
+                                        customization_msg_timer = 120
+                                        sound_mgr.play("powerup" if success else "warning")
+                                        
+                                        # 立即更新玩家实例的视觉效果 (如果玩家已存在)
+                                        if player and player.plane_id == customization_selected_plane:
+                                            try:
+                                                new_visual = customization_manager.get_theme_visual(
+                                                    customization_selected_plane, 
+                                                    PLANES[customization_selected_plane].get('visual', None)
+                                                )
+                                                player.visual = new_visual
+                                                # 重新生成玩家图像
+                                                player.image = get_plane_surf(player.plane_id, player.visual)
+                                                player.original_image = player.image.copy()
+                                            except Exception as e:
+                                                print(f"Error updating player visual: {e}")
+
+                                    else:
+                                        cost = theme.get("cost", 0)
+                                        if arsenal_save_data['currencies']['cores'] >= cost:
+                                            success, msg = customization_manager.unlock_theme(theme_id, arsenal_save_data)
+                                            customization_msg = msg
+                                            customization_msg_timer = 120
+                                            if success:
+                                                sound_mgr.play("powerup")
+                                                save_arsenal()
+                                            else:
+                                                sound_mgr.play("warning")
+                                        else:
+                                            customization_msg = f"核心不足，需要 {cost}"
+                                            customization_msg_timer = 120
+                                            sound_mgr.play("warning")
+                                    break
                 
                 # --- 游戏中的点击逻辑 (彻底修复输入冲突) ---
                 elif game_state == "game" or game_state == "boss_challenge_play":
@@ -2562,6 +2958,8 @@ while True:
             draw_achievements_ui()
         elif game_state == "leaderboard": 
             draw_leaderboard_ui()
+        elif game_state == "customization":
+            draw_customization_ui()
         elif game_state == "game" or game_state == "boss_challenge_play":
             # drawing game view
             if is_paused:
@@ -2659,7 +3057,7 @@ while True:
                         # Trigger visual/sound warning once
                         sound_mgr.stop_music(); sound_mgr.play("warning")
                         # destroy current mobs for dramatic effect
-                        for m in list(mobs): create_explosion(m.rect.center, ORANGE, 10); m.kill()
+                        for m in list(mobs): create_explosion(m.rect.center, ORANGE, 6); m.kill()
                     if spawn_now and not boss:
                         # Boss挑战模式：依次生成指定的Boss
                         if boss_challenge_active and boss_challenge_current < len(boss_challenge_order):
@@ -2673,10 +3071,10 @@ while True:
                             all_sprites.add(boss)
                             sound_mgr.play_music("boss")
                     
-                    if len(mobs) < (12 if not boss else 4):
+                    if len(mobs) < (10 if not boss else 3):
                         # ========== 改进的敌人刷新系统 ==========
-                        # 基础生成率随等级指数增长：从3%逐步增至8%
-                        base_spawn_rate = 0.03 + 0.05 * (1 - math.exp(-player.level / 20))
+                        # 基础生成率随等级指数增长：从2.5%逐步增至7%（降低早期压力）
+                        base_spawn_rate = 0.025 + 0.045 * (1 - math.exp(-player.level / 20))
                         
                         if random.random() < base_spawn_rate:
                             # 根据分数段获取当前游戏阶段（0-4）
@@ -2758,16 +3156,17 @@ while True:
                             
                             # ===== 增强打击感（优化版） =====
                             # 1. 屏幕震动（基于伤害）
-                            shake_intensity = max(2, min(4, int(dmg / 30)))  # 进一步减少
+                            shake_intensity = max(1, min(3, int(dmg / 40)))  # 优化震动强度
                             screen_shake_offset = apply_screen_shake(shake_intensity)
                             
                             # 2. 基础特效
                             DamageNumber(m.rect.centerx, m.rect.top, dmg, dmg > player.damage)
-                            Particle(b.rect.center, b.color)
+                            if random.random() < 0.7:  # 70%概率显示粒子
+                                Particle(b.rect.center, b.color)
                             
                             # 3. 暴击特效（减少频率）
-                            if dmg > player.damage and random.random() < 0.6:  # 60%概率显示暴击特效
-                                for _ in range(2):  # 仅2个粒子
+                            if dmg > player.damage and random.random() < 0.4:  # 40%概率显示暰击特效
+                                for _ in range(1):  # 仅1个粒子
                                     angle = random.uniform(0, math.pi * 2)
                                     speed = random.uniform(3, 5)
                                     Particle(m.rect.center, GOLD, lifetime=20)
@@ -2783,15 +3182,15 @@ while True:
                             if m.hp <= 0:
                                 score += 100 if m.is_elite else 20
                                 # 击杀特效（简化版）
-                                create_explosion(m.rect.center, CYAN, 10)  # 进一步减少
+                                create_explosion(m.rect.center, CYAN, 5)  # 优化粒子数
                                 # 仅在精英敌人死亡时显示额外粒子
-                                if m.is_elite and random.random() < 0.7:
-                                    for _ in range(3):
+                                if m.is_elite and random.random() < 0.5:
+                                    for _ in range(2):
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(4, 6)
-                                        Particle(m.rect.center, LIME, lifetime=20)
+                                        Particle(m.rect.center, LIME, lifetime=15)
                                 # 屏幕轻微震动
-                                screen_shake_offset = apply_screen_shake(4)
+                                screen_shake_offset = apply_screen_shake(3)
                                 sound_mgr.play("explosion")
                                 
                                 # ========== 成就系统：记录击杀 ==========
@@ -2842,11 +3241,11 @@ while True:
                                     "vortex": 1.5
                                 }.get(m.type, 1.0)
                                 
-                                # 精英敌人加成 (改为2.5倍)
-                                elite_multiplier = 2.5 if m.is_elite else 1.0
+                                # 精英敌人加成 (提高到30%)
+                                elite_multiplier = 3.0 if m.is_elite else 1.0
                                 
-                                # 难度加成 (玩家等级越高，敌人越强) - 改为0.08以提供更平缓的增长
-                                level_multiplier = 1.0 + (player.level - 1) * 0.08
+                                # 难度加成 (玩家等级越高，敌人越强) - 提高到10%使升级更顺畅
+                                level_multiplier = 1.0 + (player.level - 1) * 0.10
                                 
                                 # 最终经验计算
                                 xp_amount = int(base_xp * type_multiplier * elite_multiplier * level_multiplier)
@@ -2858,9 +3257,9 @@ while True:
                                 # 触发击杀效果 (吸血、能量虹吸、裂变反应等)
                                 corpse_effect = player.on_kill_enemy(m)
                                 if corpse_effect:
-                                    create_explosion(corpse_effect["pos"], ORANGE, 20)
+                                    create_explosion(corpse_effect["pos"], ORANGE, 8)
                                 
-                                if random.random() < 0.2:
+                                if random.random() < 0.25:
                                     arsenal_save_data["currencies"]["cores"] += 1
                                     FloatingText(m.rect.centerx, m.rect.top-20, "核心+1", CYAN)
                                 m.kill()
@@ -2878,20 +3277,20 @@ while True:
                                 player.shield -= dmg
                                 if player.shield < 0: player.shield = 0
                                 # 盾牌吸收时的蓝色特效（简化）
-                                if random.random() < 0.5:  # 50%概率显示
-                                    for _ in range(3):
+                                if random.random() < 0.3:  # 30%概率显示
+                                    for _ in range(2):
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(2, 3)
-                                        Particle(player.rect.center, CYAN, lifetime=15)
+                                        Particle(player.rect.center, CYAN, lifetime=12)
                             else:
                                 player.hp -= dmg
                                 FloatingText(player.rect.centerx, player.rect.top, f"-{dmg}", RED)
                                 # 受伤时的特效（简化）
-                                if random.random() < 0.7:  # 70%概率显示
-                                    for _ in range(3):
+                                if random.random() < 0.5:  # 50%概率显示
+                                    for _ in range(2):
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(2, 4)
-                                        Particle(player.rect.center, RED, lifetime=15)
+                                        Particle(player.rect.center, RED, lifetime=12)
                                 sound_mgr.play("hit")
                                 if player.hp <= 0:
                                     game_state = "gameover"
@@ -2922,21 +3321,21 @@ while True:
                                     player.shield -= meteor_dmg
                                     if player.shield < 0: player.shield = 0
                                     # 盾牌吸收流星时的特效（简化）
-                                    if random.random() < 0.8:
-                                        for _ in range(6):
+                                    if random.random() < 0.6:
+                                        for _ in range(4):
                                             angle = random.uniform(0, math.pi * 2)
                                             speed = random.uniform(3, 5)
-                                            Particle(player.rect.center, CYAN, lifetime=20)
+                                            Particle(player.rect.center, CYAN, lifetime=15)
                                 else:
                                     player.hp -= meteor_dmg
                                     FloatingText(player.rect.centerx, player.rect.top - 50, f"流星!-{meteor_dmg}", ORANGE)
                                     # 流星伤害特效（简化）
-                                    for _ in range(8):
+                                    for _ in range(5):
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(3, 6)
                                         Particle(player.rect.center, ORANGE, lifetime=25)
                                     # 单次爆炸
-                                    create_explosion(player.rect.center, ORANGE, 12)
+                                    create_explosion(player.rect.center, ORANGE, 8)
                                     # 音效
                                     sound_mgr.play("hit")
                                     sound_mgr.play("explosion")
@@ -3007,14 +3406,14 @@ while True:
                             
                             # ===== 增强Boss打击感（优化版） =====
                             # 屏幕轻微震动
-                            screen_shake_offset = apply_screen_shake(6)
+                            screen_shake_offset = apply_screen_shake(4)
                             
                             # 击中特效（减少和概率）
-                            if random.random() < 0.5:
-                                for _ in range(4):
+                            if random.random() < 0.3:
+                                for _ in range(2):
                                     angle = random.uniform(0, math.pi * 2)
                                     speed = random.uniform(3, 5)
-                                    Particle(boss.rect.center, (255, 150, 0), lifetime=20)
+                                    Particle(boss.rect.center, (255, 150, 0), lifetime=15)
                             
                             # 音效反馈
                             sound_mgr.play("hit")
@@ -3028,11 +3427,11 @@ while True:
                                 screen_shake_offset = apply_screen_shake(10)
                                 
                                 # 单次爆炸
-                                create_explosion(boss.rect.center, (255, 120, 0), 15)
+                                create_explosion(boss.rect.center, (255, 120, 0), 10)
                                 
                                 # 少量粒子
                                 if random.random() < 0.8:
-                                    for _ in range(6):
+                                    for _ in range(4):
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(4, 7)
                                         Particle(boss.rect.center, GOLD, lifetime=25)

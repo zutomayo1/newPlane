@@ -689,7 +689,7 @@ BUFF_LIBRARY = {
     },
     "vampire": {
         "name": "鲜血渴望",
-        "desc": "击杀敌人回复 10HP",
+        "desc": "击杀敌人回复 8HP",
         "rarity": 2,
         "type": "effect",
         "apply": lambda player: setattr(player, "has_vampire", True)
@@ -721,21 +721,21 @@ BUFF_LIBRARY = {
     # ============ 进阶风险收益 ============
     "overload": {
         "name": "反应堆过载",
-        "desc": "射速 +20%，生命 -8%",
+        "desc": "射速 +15%，生命 -8%",
         "rarity": 2,
         "type": "risk",
         "apply": lambda player: (
-            setattr(player, "shoot_delay", max(40, player.shoot_delay * 0.80)),
+            setattr(player, "shoot_delay", max(40, player.shoot_delay * 0.85)),
             player.take_damage(int(player.max_hp * 0.08))
         )
     },
     "glass_cannon": {
         "name": "玻璃大炮",
-        "desc": "伤害 ×1.75，生命上限 -30%",
+        "desc": "伤害 ×1.6，生命上限 -30%",
         "rarity": 3,
         "type": "risk",
         "apply": lambda player: (
-            setattr(player, "damage", player.damage * 1.75),
+            setattr(player, "damage", player.damage * 1.6),
             setattr(player, "max_hp", max(50, int(player.max_hp * 0.7))),
             player.take_damage(int(player.max_hp * 0.2))
         )
@@ -1081,9 +1081,9 @@ class BuffProcessor:
     
     def on_kill_enemy(self, enemy):
         """击杀敌人时触发效果"""
-        # 吸血鬼：击杀回血
+        # 吸血鬼：击杀回血（平衡调整：10→8）
         if getattr(self.player, "has_vampire", False):
-            self.player.heal(10)
+            self.player.heal(8)
         
         # 能量虹吸：击杀回复大招能量
         if getattr(self.player, "has_energy_siphon", False):

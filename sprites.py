@@ -899,98 +899,182 @@ class Bullet(pygame.sprite.Sprite):
         else:
             bullets.add(self)
             all_sprites.add(self)
-            self.speed = -12
-            # --- 玩家子弹样式（赛博朋克风格） ---
-            if b_type == "beam": 
-                # 极光青光束
-                self.image = pygame.Surface((10, 30), pygame.SRCALPHA)
-                pygame.draw.rect(self.image, CYBER_CYAN, (3, 0, 4, 30))
-                pygame.draw.rect(self.image, CYBER_CYAN_BRIGHT, (3, 0, 4, 30), 1)
-                pygame.draw.rect(self.image, WHITE, (4, 5, 2, 20))
-            elif b_type == "shard": 
-                # 菱形碎片，紫色
-                self.image = pygame.Surface((16, 24), pygame.SRCALPHA)
-                pygame.draw.polygon(self.image, MAGENTA, [(8,0), (16,12), (8,24), (0,12)])
-                pygame.draw.polygon(self.image, CYBER_CYAN_BRIGHT, [(8,0), (16,12), (8,24), (0,12)], 1)
-            elif b_type == "rocket": 
-                # 火箭，琥珀黄头部
-                self.image = pygame.Surface((14, 28), pygame.SRCALPHA)
-                pygame.draw.rect(self.image, (255, 140, 0), (2, 8, 10, 16))
-                pygame.draw.rect(self.image, CYBER_AMBER, (2, 8, 10, 16), 1)
-                pygame.draw.polygon(self.image, CYBER_AMBER, [(2,8), (7,2), (12,8)])
-                pygame.draw.rect(self.image, CYBER_RED_ALERT, (4, 24, 6, 4))
-            elif b_type == "lightning": 
-                # 连锁闪电，琥珀黄
-                self.image = pygame.Surface((12, 30), pygame.SRCALPHA)
-                pygame.draw.lines(self.image, CYBER_AMBER, False, [(6,0), (2,10), (10,20), (6,30)], 2)
-                pygame.draw.lines(self.image, WHITE, False, [(6,0), (2,10), (10,20), (6,30)], 1)
-            elif b_type == "acid": 
-                # 腐蚀液，荧光绿
-                self.image = pygame.Surface((16, 16), pygame.SRCALPHA)
-                pygame.draw.circle(self.image, CYBER_LIME, (8,8), 6)
-                pygame.draw.circle(self.image, CYBER_LIME, (8,8), 6, 1)
-                pygame.draw.circle(self.image, WHITE, (6,6), 2)
-            elif b_type == "spectral": 
-                # 谱能，紫色
-                self.image = pygame.Surface((14, 30), pygame.SRCALPHA)
-                pygame.draw.lines(self.image, (180, 150, 255), False, [(7,0), (2,10), (12,20), (7,30)], 3)
-                pygame.draw.circle(self.image, WHITE, (7, 5), 3)
-            elif b_type == "prism": 
-                # 棱镜，青色
-                self.image = pygame.Surface((16, 16), pygame.SRCALPHA)
-                pygame.draw.polygon(self.image, WHITE, [(8,0), (16,8), (8,16), (0,8)])
-                pygame.draw.polygon(self.image, CYBER_CYAN, [(8,4), (12,8), (8,12), (4,8)])
-                self.speed = -10
-            elif b_type == "blade": 
-                # 光刃，红色
-                self.image = pygame.Surface((30, 30), pygame.SRCALPHA)
-                pygame.draw.arc(self.image, CYBER_RED_ALERT, (0,0,30,30), 0, 3.14, 3)
-                pygame.draw.arc(self.image, CYBER_CYAN_BRIGHT, (0,0,30,30), 0, 3.14, 1)
+            
+            # =============================================================================
+            # 【全新子弹系统】16种飞机的独特子弹设计
+            # 设计原则：形状多样化、颜色匹配飞机主题、尺寸差异化
+            # =============================================================================
+            
+            if b_type == "beam":  # 1. Striker - 霓虹突击者（青色激光束）
+                self.image = pygame.Surface((14, 34), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, CYAN, (4, 0, 6, 34))
+                pygame.draw.rect(self.image, CYBER_CYAN_BRIGHT, (3, 0, 8, 34), 2)
+                pygame.draw.rect(self.image, WHITE, (5, 10, 4, 16))
+                pygame.draw.circle(self.image, WHITE, (7, 6), 3)
                 self.speed = -15
-            elif b_type == "star": 
-                # 星镖，靛蓝
-                self.image = pygame.Surface((20, 20), pygame.SRCALPHA)
-                pygame.draw.polygon(self.image, INDIGO, [(10,0), (13,7), (20,10), (13,13), (10,20), (7,13), (0,10), (7,7)])
-                pygame.draw.polygon(self.image, CYBER_CYAN_BRIGHT, [(10,0), (13,7), (20,10), (13,13), (10,20), (7,13), (0,10), (7,7)], 1)
-                pygame.draw.circle(self.image, WHITE, (10,10), 3)
-            elif b_type == "thorn": 
-                # 荆棘，绿色
-                self.image = pygame.Surface((10, 24), pygame.SRCALPHA)
-                pygame.draw.polygon(self.image, FOREST, [(5,0), (10,10), (5,24), (0,10)])
-                pygame.draw.polygon(self.image, CYBER_LIME, [(5,0), (10,10), (5,24), (0,10)], 1)
-            elif b_type == "web": 
-                # 蛛网，灰色
-                self.image = pygame.Surface((24, 24), pygame.SRCALPHA)
-                pygame.draw.line(self.image, (200, 200, 200), (0,12), (24,12), 2)
-                pygame.draw.line(self.image, (200, 200, 200), (12,0), (12,24), 2)
-                pygame.draw.circle(self.image, CYBER_CYAN_BRIGHT, (12, 12), 3, 1)
-                self.speed = -8
-            elif b_type == "flame": 
-                # 烈焰，橙色
-                self.image = pygame.Surface((16, 16), pygame.SRCALPHA)
-                pygame.draw.circle(self.image, (255, 140, 0), (8,8), 6)
-                pygame.draw.circle(self.image, CYBER_AMBER, (8,8), 6, 1)
-                pygame.draw.circle(self.image, CYBER_RED_ALERT, (8,8), 3)
-                self.speed = -14
-            elif b_type == "quant": 
-                # 量子，紫色方块
-                self.image = pygame.Surface((14, 14), pygame.SRCALPHA)
-                pygame.draw.rect(self.image, NEON_PURPLE, (2,2,10,10))
-                pygame.draw.rect(self.image, CYBER_CYAN_BRIGHT, (2,2,10,10), 1)
-                pygame.draw.rect(self.image, WHITE, (4,4,6,6))
+                
+            elif b_type == "shard":  # 2. Phantom - 虚空幻影（洋红菱形碎片）
+                self.image = pygame.Surface((16, 30), pygame.SRCALPHA)
+                pygame.draw.polygon(self.image, MAGENTA, [(8,0), (16,15), (8,30), (0,15)])
+                pygame.draw.polygon(self.image, WHITE, [(8,0), (16,15), (8,30), (0,15)], 2)
+                pygame.draw.polygon(self.image, CYBER_CYAN_BRIGHT, [(8,6), (12,15), (8,24), (4,15)])
+                self.speed = -18
+                self.piercing = max(1, self.piercing)
+                
+            elif b_type == "rocket":  # 3. Titan - 钢铁泰坦（橙色重型火箭）
+                self.image = pygame.Surface((20, 38), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, ORANGE, (4, 12, 12, 22))
+                pygame.draw.rect(self.image, CYBER_AMBER, (3, 12, 14, 22), 3)
+                pygame.draw.polygon(self.image, CYBER_AMBER, [(4,12), (10,0), (16,12)])
+                pygame.draw.rect(self.image, (255, 80, 0), (6, 34, 8, 4))
+                pygame.draw.circle(self.image, WHITE, (10, 22), 4)
                 self.speed = -10
-            elif b_type == "shadow":
-                # 暗影，深紫色
-                self.image = pygame.Surface((12, 28), pygame.SRCALPHA)
-                pygame.draw.polygon(self.image, (100, 50, 180), [(6,0), (12,8), (10,28), (2,28), (0,8)])
-                pygame.draw.polygon(self.image, (150, 100, 255), [(6,0), (12,8), (10,28), (2,28), (0,8)], 1)
-                pygame.draw.circle(self.image, (200, 150, 255), (6, 8), 2)
+                
+            elif b_type == "lightning":  # 4. Thunderbird - 雷霆战鹰（黄色闪电链）
+                self.image = pygame.Surface((18, 40), pygame.SRCALPHA)
+                points = [(9,0), (4,14), (14,26), (9,40)]
+                pygame.draw.lines(self.image, YELLOW, False, points, 4)
+                pygame.draw.lines(self.image, WHITE, False, points, 2)
+                pygame.draw.line(self.image, YELLOW, (4,14), (0,18), 2)
+                pygame.draw.line(self.image, YELLOW, (14,26), (18,30), 2)
+                self.speed = -16
+                
+            elif b_type == "acid":  # 5. Viper - 剧毒蝰蛇（绿色毒液滴）
+                self.image = pygame.Surface((26, 34), pygame.SRCALPHA)
+                # 毒液主体（水滴形）
+                pygame.draw.ellipse(self.image, (50, 255, 50), (3, 0, 20, 28))
+                pygame.draw.ellipse(self.image, (100, 255, 100), (3, 0, 20, 28), 3)
+                # 滴落尖端
+                pygame.draw.polygon(self.image, (50, 255, 50), [(13, 28), (18, 32), (13, 34), (8, 32)])
+                # 内部光泽
+                pygame.draw.ellipse(self.image, (200, 255, 200), (8, 6, 10, 14))
+                pygame.draw.ellipse(self.image, WHITE, (10, 8, 6, 8))
+                # 气泡效果
+                pygame.draw.circle(self.image, (150, 255, 150), (10, 18), 3)
+                pygame.draw.circle(self.image, (150, 255, 150), (16, 15), 2)
+                pygame.draw.circle(self.image, (150, 255, 150), (13, 22), 2)
+                self.speed = -12
+                
+            elif b_type == "spectral":  # 6. Specter - 幽灵收割者（紫色幽能箭）
+                self.image = pygame.Surface((18, 42), pygame.SRCALPHA)
+                points = [(9,0), (5,14), (13,28), (9,42)]
+                pygame.draw.lines(self.image, (150, 100, 255), False, points, 5)
+                pygame.draw.lines(self.image, (200, 150, 255), False, points, 3)
+                pygame.draw.circle(self.image, WHITE, (9, 8), 5)
+                pygame.draw.circle(self.image, (180, 130, 255), (9, 24), 4)
+                self.speed = -20
+                
+            elif b_type == "aurora_beam":  # 7. Aurora - 极光女神（青绿波纹光环）
+                self.image = pygame.Surface((34, 34), pygame.SRCALPHA)
+                # 极光同心圆波纹
+                pygame.draw.circle(self.image, (0, 255, 200), (17, 17), 15)
+                pygame.draw.circle(self.image, (50, 255, 220), (17, 17), 15, 3)
+                pygame.draw.circle(self.image, (100, 255, 230), (17, 17), 11, 2)
+                pygame.draw.circle(self.image, (150, 255, 240), (17, 17), 7, 2)
+                # 波纹效果（多层同心圆）
+                for r in [13, 9, 5]:
+                    pygame.draw.circle(self.image, WHITE, (17, 17), r, 1)
+                # 中心亮点
+                pygame.draw.circle(self.image, WHITE, (17, 17), 4)
+                pygame.draw.circle(self.image, (200, 255, 250), (17, 17), 2)
+                self.speed = -13
+                
+            elif b_type == "blade":  # 8. Crimson - 绯红之刃（红色月牙刀光）
+                self.image = pygame.Surface((40, 40), pygame.SRCALPHA)
+                pygame.draw.arc(self.image, CRIMSON, (0,0,40,40), 0, 3.14, 5)
+                pygame.draw.arc(self.image, (255, 50, 80), (2,2,36,36), 0, 3.14, 4)
+                pygame.draw.arc(self.image, WHITE, (6,6,28,28), 0, 3.14, 3)
+                pygame.draw.line(self.image, CRIMSON, (0, 20), (40, 20), 3)
+                pygame.draw.circle(self.image, WHITE, (20, 20), 5)
+                self.speed = -18
+                
+            elif b_type == "star":  # 9. Stalker - 星界潜行者（靛蓝八芒星）
+                self.image = pygame.Surface((24, 24), pygame.SRCALPHA)
+                points = [(12,0), (14,8), (24,12), (14,16), (12,24), (10,16), (0,12), (10,8)]
+                pygame.draw.polygon(self.image, INDIGO, points)
+                pygame.draw.polygon(self.image, (150, 100, 255), points, 2)
+                pygame.draw.circle(self.image, WHITE, (12,12), 4)
+                pygame.draw.circle(self.image, INDIGO, (12,12), 2)
+                self.speed = -14
+                
+            elif b_type == "thorn":  # 10. Gaia - 大地守护者（绿色荆棘箭）
+                self.image = pygame.Surface((16, 32), pygame.SRCALPHA)
+                pygame.draw.polygon(self.image, FOREST, [(8,0), (16,14), (8,32), (0,14)])
+                pygame.draw.polygon(self.image, CYBER_LIME, [(8,0), (16,14), (8,32), (0,14)], 3)
+                pygame.draw.polygon(self.image, (120, 220, 100), [(8,5), (12,14), (8,28), (4,14)])
+                for i in [10, 18, 26]:
+                    pygame.draw.line(self.image, CYBER_LIME, (8, i), (2, i-4), 2)
+                    pygame.draw.line(self.image, CYBER_LIME, (8, i), (14, i-4), 2)
                 self.speed = -11
-            else: 
-                # 默认标准光束
-                self.image = pygame.Surface((10, 24), pygame.SRCALPHA)
-                pygame.draw.rect(self.image, CYBER_CYAN, (3,0,4,24))
-                pygame.draw.rect(self.image, WHITE, (3,0,4,24), 1)
+                
+            elif b_type == "web":  # 11. Weaver - 虚空编织者（灰色蛛网十字）
+                self.image = pygame.Surface((26, 26), pygame.SRCALPHA)
+                pygame.draw.line(self.image, (180, 180, 180), (0,13), (26,13), 3)
+                pygame.draw.line(self.image, (180, 180, 180), (13,0), (13,26), 3)
+                pygame.draw.line(self.image, (220, 220, 220), (4,4), (22,22), 2)
+                pygame.draw.line(self.image, (220, 220, 220), (22,4), (4,22), 2)
+                pygame.draw.circle(self.image, WHITE, (13, 13), 5)
+                pygame.draw.circle(self.image, CYBER_CYAN_BRIGHT, (13, 13), 4, 2)
+                self.speed = -9
+                
+            elif b_type == "flame":  # 12. Solar - 日冕耀斑（橙黄火焰）
+                self.image = pygame.Surface((30, 36), pygame.SRCALPHA)
+                # 火焰外层（橙红色）
+                pygame.draw.ellipse(self.image, (255, 100, 0), (2, 0, 26, 32))
+                pygame.draw.ellipse(self.image, (255, 150, 0), (2, 0, 26, 32), 3)
+                # 火焰中层（橙色）
+                pygame.draw.ellipse(self.image, (255, 180, 50), (6, 4, 18, 24))
+                pygame.draw.ellipse(self.image, (255, 200, 100), (6, 4, 18, 24), 2)
+                # 火焰内核（黄白色）
+                pygame.draw.ellipse(self.image, (255, 230, 150), (10, 8, 10, 16))
+                pygame.draw.circle(self.image, WHITE, (15, 14), 4)
+                # 火花效果（小火球）
+                pygame.draw.circle(self.image, (255, 200, 100), (8, 26), 3)
+                pygame.draw.circle(self.image, (255, 200, 100), (22, 24), 3)
+                pygame.draw.circle(self.image, (255, 180, 80), (15, 30), 4)
+                pygame.draw.circle(self.image, (255, 220, 120), (15, 30), 2)
+                self.speed = -17
+                
+            elif b_type == "quant":  # 13. Arbiter - 量子裁决者（紫色量子方块）
+                self.image = pygame.Surface((20, 20), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, NEON_PURPLE, (2,2,16,16))
+                pygame.draw.rect(self.image, (180, 100, 255), (2,2,16,16), 3)
+                pygame.draw.rect(self.image, WHITE, (6,6,8,8))
+                pygame.draw.rect(self.image, MAGENTA, (8,8,4,4))
+                pygame.draw.line(self.image, CYBER_CYAN_BRIGHT, (0, 10), (20, 10), 2)
+                pygame.draw.line(self.image, CYBER_CYAN_BRIGHT, (10, 0), (10, 20), 2)
+                self.speed = -13
+                
+            elif b_type == "shadow":  # 14. Eclipse - 日食幽灵（紫黑暗影箭）
+                self.image = pygame.Surface((18, 36), pygame.SRCALPHA)
+                pygame.draw.polygon(self.image, (100, 50, 180), [(9,0), (18,12), (15,36), (3,36), (0,12)])
+                pygame.draw.polygon(self.image, (150, 100, 220), [(9,0), (18,12), (15,36), (3,36), (0,12)], 3)
+                pygame.draw.circle(self.image, (200, 150, 255), (9, 12), 5)
+                pygame.draw.circle(self.image, WHITE, (9, 12), 3)
+                pygame.draw.circle(self.image, (80, 30, 120), (9, 26), 6)
+                self.speed = -14
+                
+            elif b_type == "prism":  # 15. Prism - 棱镜分光（彩虹三棱镜）
+                self.image = pygame.Surface((22, 30), pygame.SRCALPHA)
+                pygame.draw.polygon(self.image, (100, 200, 255), [(11,0), (22,30), (0,30)])
+                pygame.draw.polygon(self.image, (150, 230, 255), [(11,0), (22,30), (0,30)], 3)
+                pygame.draw.polygon(self.image, (180, 150, 255), [(11,8), (17,26), (5,26)])
+                pygame.draw.polygon(self.image, WHITE, [(11,12), (14,22), (8,22)])
+                for a in [0, 120, 240]:
+                    rad = math.radians(a)
+                    x = 11 + int(6 * math.cos(rad))
+                    y = 20 + int(6 * math.sin(rad))
+                    pygame.draw.line(self.image, (200, 255, 255), (11, 20), (x, y), 2)
+                self.speed = -15
+                
+            else:  # 16. Necro + 默认（紫红幽能，与Specter共用）
+                self.image = pygame.Surface((18, 42), pygame.SRCALPHA)
+                points = [(9,0), (5,14), (13,28), (9,42)]
+                pygame.draw.lines(self.image, (200, 50, 150), False, points, 5)
+                pygame.draw.lines(self.image, (255, 100, 200), False, points, 3)
+                pygame.draw.circle(self.image, WHITE, (9, 8), 5)
+                pygame.draw.circle(self.image, (220, 80, 180), (9, 24), 4)
+                self.speed = -16
         
         if angle != 0: 
             self.image = pygame.transform.rotate(self.image, -angle)
@@ -1873,21 +1957,24 @@ class Boss(pygame.sprite.Sprite):
                 self.shoot_timer = max(0, self.shoot_timer - 20)
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, plane_id="striker"):
+    def __init__(self, plane_id="striker", custom_visual=None):
         super().__init__()
         self.plane_id = plane_id
         self.plane_data = PLANES[plane_id]
         
-        # 绘制机体
-        self.visual = self.plane_data.get('visual', None)
-        if not self.visual:
-            # Provide sensible defaults
-            self.visual = {
-                'neon_color': self.plane_data.get('color', CYAN),
-                'accent_color': WHITE,
-                'trail_color': self.plane_data.get('color', CYAN),
-                'ability': None
-            }
+        # 绘制机体 - 使用涂装系统
+        if custom_visual:
+            self.visual = custom_visual
+        else:
+            self.visual = self.plane_data.get('visual', None)
+            if not self.visual:
+                # Provide sensible defaults
+                self.visual = {
+                    'neon_color': self.plane_data.get('color', CYAN),
+                    'accent_color': WHITE,
+                    'trail_color': self.plane_data.get('color', CYAN),
+                    'ability': None
+                }
         self.image = get_plane_surf(plane_id, self.visual)
         # 缩小一点适配游戏
         self.image = pygame.transform.scale(self.image, (60, 60))
@@ -2088,7 +2175,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt + 2):
                 angle = -30 + i * (60 / (cnt + 1))
                 Bullet(self.rect.centerx, self.rect.top, angle=angle,
-                       color=color, b_type="wave", piercing=self.piercing)
+                       color=color, b_type=b_type, piercing=self.piercing)
         
         # ========== 5. 幽灵收割者 - 单发极高伤害 ==========
         elif pid == "specter":
@@ -2392,8 +2479,14 @@ class Player(pygame.sprite.Sprite):
 
     def draw_trail(self, surf):
         if len(self.trail_pos) > 2:
-            trail_color = self.visual.get('trail_color') if getattr(self, 'visual', None) else self.plane_data["color"]
-            pygame.draw.lines(surf, trail_color, False, self.trail_pos, 2)
+            # 使用增强尾迹效果（如果有涂装系统）
+            try:
+                from customization import EnhancedTrailEffect
+                EnhancedTrailEffect.draw_trail(surf, self.trail_pos, self.visual)
+            except:
+                # 降级为普通尾迹
+                trail_color = self.visual.get('trail_color') if getattr(self, 'visual', None) else self.plane_data["color"]
+                pygame.draw.lines(surf, trail_color, False, self.trail_pos, 2)
             
     def draw_auras(self, surf):
         # 护盾光环 - 透明效果，更大
