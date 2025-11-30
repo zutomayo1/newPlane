@@ -8,6 +8,7 @@ import struct
 import tempfile
 import traceback
 import logging
+import json
 from config import *
 
 # ==============================================================================
@@ -53,6 +54,38 @@ def log_debug(msg):
                 f.write("DEBUG: " + str(msg) + "\n")
         except:
             pass
+
+# ==============================================================================
+#   游戏设置保存/加载
+# ==============================================================================
+SETTINGS_FILE = "game_settings.json"
+
+def save_settings(background_style="classic"):
+    """保存游戏设置"""
+    settings = {
+        "background_style": background_style
+    }
+    try:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+        log_info(f"设置已保存: {settings}")
+    except Exception as e:
+        log_error(f"保存设置失败: {e}")
+
+def load_settings():
+    """加载游戏设置"""
+    default_settings = {
+        "background_style": "classic"
+    }
+    try:
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+                log_info(f"设置已加载: {settings}")
+                return settings
+    except Exception as e:
+        log_error(f"加载设置失败: {e}")
+    return default_settings
 
 def safe_blit(target_surf, src_surf, dest):
     """Safely blit a surface if both source and target are non-None.

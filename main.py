@@ -8,7 +8,6 @@ from config import *
 from utils import *
 from systems import *
 from sprites import *
-from weather import WeatherSystem
 from customization import customization_manager, PAINT_THEMES, EnhancedTrailEffect
 
 # ==============================================================================
@@ -30,11 +29,10 @@ except Exception as e:
     log_error(f"数据加载警告: {e}")
     leaderboard_data = []
 
-bg_manager = BackgroundManager()
+# 加载设置并初始化背景管理器
+game_settings = load_settings()
+bg_manager = BackgroundManager(style=game_settings.get("background_style", "classic"))
 # sound_mgr 来自 utils.py
-
-# 初始化天气系统
-weather_system = WeatherSystem(WIDTH, HEIGHT)
 
 # ==============================================================================
 #   UI 布局常量
@@ -126,6 +124,10 @@ customization_scroll_y = 0
 customization_plane_scroll_y = 0  # 飞机列表滚动
 customization_selected_plane = None  # 当前选中的飞机ID
 customization_msg = ""
+
+# 背景设置
+background_settings_scroll_y = 0
+background_settings_selected = 0  # 当前选中的背景索引
 customization_msg_timer = 0
 
 # 暂停菜单状态
@@ -202,7 +204,6 @@ def reset_game():
     global global_time_freeze, is_paused
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave, tab_paused
-    global weather_system
     
     # reset_game() called
     
@@ -225,9 +226,6 @@ def reset_game():
     boss_manager.reset()
     global_time_freeze = 0
     wave = 0
-    
-    # 重置天气系统
-    weather_system = WeatherSystem(WIDTH, HEIGHT)
     
     try:
         # 获取玩家选择的涂装
@@ -258,15 +256,16 @@ def reset_game():
 
 def get_menu_buttons():
     cx = WIDTH // 2
-    start_y = 250
-    btn_h = 40
-    gap = 12
+    start_y = 200
+    btn_h = 36
+    gap = 8
     buttons = []
     data = [
         ("开始游戏", YELLOW, "select_plane"),
         ("Boss挑战模式", CYAN, "boss_challenge"),
         ("武器库", ORANGE, "arsenal"),
         ("机体涂装", MAGENTA, "customization"),
+        ("背景设置", (100, 200, 255), "background_settings"),
         ("战术图鉴", MAGENTA, "gallery"),
         ("机密档案", BLUE, "codex"),
         ("成就", LIME, "achievements"),
@@ -293,17 +292,28 @@ def draw_menu_ui():
 
     mx, my = pygame.mouse.get_pos()
     buttons = get_menu_buttons()
-    btn_gap = 12
     for i, (r, txt, col, act) in enumerate(buttons):
-        # 按钮紧凑排列
-        r.y = 250 + i * (r.height + btn_gap)
-        h = r.collidepoint(mx, my) or (i == main_menu_selected)
-        bg = (col[0]//2, col[1]//2, col[2]//2) if h else (30, 30, 40)
+        is_hover = r.collidepoint(mx, my)
+        is_selected = (i == main_menu_selected)
+        is_active = is_hover or is_selected
+        
+        # 背景颜色
+        bg = (col[0]//2, col[1]//2, col[2]//2) if is_active else (30, 30, 40)
         draw_cyber_rect(screen, r, bg, alpha=200, fill=True)
-        border_col = (CYAN if i == main_menu_selected else col) if h else GRAY
-        border_w = 3 if i == main_menu_selected else 2
+        
+        # 边框颜色和宽度
+        if is_selected:
+            border_col = CYAN
+            border_w = 3
+        elif is_hover:
+            border_col = col
+            border_w = 2
+        else:
+            border_col = GRAY
+            border_w = 1
+        
         draw_cyber_rect(screen, r, border_col, border_width=border_w, fill=False)
-        draw_text(screen, f"[ {txt} ]" if h else txt, 18, r.centerx, r.centery-8, WHITE if h else GRAY, glow=h)
+        draw_text(screen, f"[ {txt} ]" if is_active else txt, 18, r.centerx, r.centery-8, WHITE if is_active else GRAY, glow=is_active)
 
 def draw_arsenal_ui():
     draw_text(screen, "轨道武器库", 40, WIDTH//2, 30, ORANGE, glow=True)
@@ -429,6 +439,132 @@ def draw_arsenal_ui():
     draw_cyber_rect(screen, r['btn_back'], GRAY, fill=True)
     if hb: draw_cyber_rect(screen, r['btn_back'], WHITE, border_width=2, fill=False)
     draw_text(screen, "返回", 20, r['btn_back'].centerx, r['btn_back'].centery-10, WHITE)
+
+def draw_background_settings_ui():
+    """背景设置界面"""
+    draw_text(screen, "背景设置", 40, WIDTH//2, 30, (100, 200, 255), glow=True)
+    
+    mx, my = pygame.mouse.get_pos()
+    
+    # 获取所有可用背景
+    from systems import BackgroundManager
+    bg_styles = BackgroundManager.BG_STYLES
+    
+    # 绘制背景选项卡
+    card_w = 280
+    card_h = 200
+    cards_per_row = 4
+    gap = 30
+    start_x = (WIDTH - (cards_per_row * card_w + (cards_per_row - 1) * gap)) // 2
+    start_y = 120
+    
+    # 创建可滚动区域
+    scroll_area = pygame.Rect(0, start_y, WIDTH, HEIGHT - start_y - 100)
+    screen.set_clip(scroll_area)
+    
+    i = 0
+    for style_key, style_data in bg_styles.items():
+        row = i // cards_per_row
+        col = i % cards_per_row
+        
+        x = start_x + col * (card_w + gap)
+        y = start_y + row * (card_h + gap) - background_settings_scroll_y
+        
+        card_rect = pygame.Rect(x, y, card_w, card_h)
+        
+        # 如果卡片不在可见区域内,跳过绘制
+        if y + card_h < scroll_area.top or y > scroll_area.bottom:
+            i += 1
+            continue
+        
+        # 检查是否是当前选中的背景
+        is_selected = (bg_manager.current_style == style_key)
+        is_hover = card_rect.collidepoint(mx, my) and not is_selected
+        is_keyboard_selected = (i == background_settings_selected)  # 键盘选中
+        
+        # 绘制卡片背景
+        if is_selected:
+            # 当前使用的背景 - 蓝色高亮
+            draw_cyber_rect(screen, card_rect, (50, 100, 150), fill=True)
+            draw_cyber_rect(screen, card_rect, (100, 200, 255), border_width=3, fill=False)
+        elif is_keyboard_selected:
+            # 键盘选中但未应用
+            draw_cyber_rect(screen, card_rect, (60, 60, 80), fill=True)
+            draw_cyber_rect(screen, card_rect, YELLOW, border_width=3, fill=False)
+        elif is_hover:
+            # 鼠标悬停预览 - 轻微高亮,不改变背景
+            draw_cyber_rect(screen, card_rect, (35, 35, 45), fill=True)
+            draw_cyber_rect(screen, card_rect, (150, 150, 150), border_width=1, fill=False)
+        else:
+            # 默认状态
+            draw_cyber_rect(screen, card_rect, (30, 30, 40), fill=True)
+            draw_cyber_rect(screen, card_rect, GRAY, border_width=1, fill=False)
+        
+        # 绘制背景预览（小型版本）
+        preview_surf = pygame.Surface((card_w - 20, 120))
+        preview_surf.fill(style_data["base_color"])
+        
+        # 获取元素配置
+        elements = style_data.get("elements", {})
+        
+        # 绘制一些星星作为预览
+        star_count = elements.get("stars", 0)
+        if star_count > 0:
+            for _ in range(min(30, star_count // 5)):
+                sx = random.randint(0, card_w - 20)
+                sy = random.randint(0, 120)
+                pygame.draw.circle(preview_surf, (200, 200, 200), (sx, sy), 1)
+        
+        # 如果有网格，绘制简化网格
+        if elements.get("grid", False) and style_data.get("grid_color"):
+            grid_color = style_data["grid_color"]
+            for gx in range(0, card_w - 20, 40):
+                pygame.draw.line(preview_surf, (*grid_color, 80), (gx, 0), (gx, 120), 1)
+            for gy in range(0, 120, 40):
+                pygame.draw.line(preview_surf, (*grid_color, 80), (0, gy), (card_w - 20, gy), 1)
+        
+        screen.blit(preview_surf, (x + 10, y + 10))
+        
+        # 绘制背景名称
+        name_color = (100, 200, 255) if is_selected else WHITE
+        draw_text(screen, style_data["name"], 24, card_rect.centerx, y + 150, name_color)
+        
+        # 绘制选中标记
+        if is_selected:
+            check_text = "✓ 当前使用"
+            draw_text(screen, check_text, 18, card_rect.centerx, y + 175, LIME)
+        
+        i += 1
+    
+    # 取消裁剪
+    screen.set_clip(None)
+    
+    # 绘制滚动条
+    total_rows = (len(bg_styles) + cards_per_row - 1) // cards_per_row
+    content_height = total_rows * (card_h + gap)
+    visible_height = scroll_area.height
+    
+    if content_height > visible_height:
+        scrollbar_height = max(30, int(visible_height * visible_height / content_height))
+        scrollbar_y = int(scroll_area.top + (background_settings_scroll_y / content_height) * visible_height)
+        scrollbar_rect = pygame.Rect(WIDTH - 15, scrollbar_y, 10, scrollbar_height)
+        pygame.draw.rect(screen, (100, 100, 100), scrollbar_rect, border_radius=5)
+        
+        # 滚动提示
+        if background_settings_scroll_y > 0:
+            draw_text(screen, "▲", 20, WIDTH - 10, scroll_area.top + 10, GRAY)
+        if background_settings_scroll_y < content_height - visible_height:
+            draw_text(screen, "▼", 20, WIDTH - 10, scroll_area.bottom - 20, GRAY)
+    
+    # 操作提示
+    draw_text(screen, "点击卡片切换背景 | 方向键导航 | Enter确认", 16, WIDTH//2, HEIGHT - 110, (150, 150, 150))
+    
+    # 返回按钮
+    back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 80, 120, 50)
+    hb = back_btn.collidepoint(mx, my)
+    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
+    if hb: draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
+    draw_text(screen, "返回", 22, back_btn.centerx, back_btn.centery-10, WHITE)
 
 def draw_codex_ui():
     draw_text(screen, "机密档案", 40, WIDTH//2, 30, BLUE, glow=True)
@@ -2021,152 +2157,438 @@ def draw_player_stats_panel():
     if player is None:
         log_debug("draw_player_stats_panel: player is None, skip")
         return
-    # 背景半透明覆盖
+    
+    # 为Emoji定义专用字体
+    def draw_emoji_text(surf, text, size, x, y, color, align="center", glow=False):
+        emoji_font = pygame.font.SysFont(["segoe ui emoji", "apple color emoji", "noto color emoji"], int(size), bold=True)
+        text_surf = emoji_font.render(text, True, color)
+        text_rect = text_surf.get_rect()
+        if align == "center": text_rect.midtop = (x, y)
+        elif align == "left": text_rect.topleft = (x, y)
+        elif align == "right": text_rect.topright = (x, y)
+        
+        if glow:
+            glow_surf = emoji_font.render(text, True, (color[0]//2, color[1]//2, color[2]//2))
+            for dx, dy in [(-1,0), (1,0), (0,-1), (0,1)]:
+                surf.blit(glow_surf, (text_rect.x + dx, text_rect.y + dy))
+        surf.blit(text_surf, text_rect)
+        return text_rect
+    
+    # 背景模糊遮罩 + 渐变效果
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 220))
+    overlay.fill((0, 0, 0, 200))
     safe_blit(screen, overlay, (0, 0))
+    
+    # 动态粒子背景
+    t = pygame.time.get_ticks()
+    for i in range(15):
+        particle_x = (t / 20 + i * 80) % WIDTH
+        particle_y = (t / 30 + i * 60) % HEIGHT
+        particle_alpha = int(30 + 20 * math.sin(t / 500 + i))
+        pygame.draw.circle(screen, (0, 200, 255, particle_alpha), (int(particle_x), int(particle_y)), 3)
 
-    # 面板主体 - 更宽，避免遮挡
-    panel_w, panel_h = 1000, 560
+    # 面板主体 - 更大更宽
+    panel_w, panel_h = 1100, 600
     panel_x = (WIDTH - panel_w) // 2
     panel_y = (HEIGHT - panel_h) // 2
     panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
     
-    # 背景 + 边框
-    draw_cyber_rect(screen, panel_rect, (15, 15, 25), fill=True)
-    draw_cyber_rect(screen, panel_rect, CYAN, border_width=3, fill=False)
+    # 多层阴影效果
+    for offset in range(8, 0, -2):
+        shadow_rect = panel_rect.inflate(offset, offset)
+        shadow_alpha = 20 - offset * 2
+        shadow_surf = pygame.Surface((shadow_rect.width, shadow_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(shadow_surf, (0, 0, 0, shadow_alpha), shadow_surf.get_rect(), border_radius=15)
+        safe_blit(screen, shadow_surf, (shadow_rect.x, shadow_rect.y))
     
-    # 顶部装饰条 - 闪烁效果
-    deco_brightness = int(100 + 155 * abs(math.sin(pygame.time.get_ticks() / 400)))
-    pygame.draw.line(screen, (0, deco_brightness, deco_brightness), 
-                    (panel_x + 15, panel_y + 15), (panel_x + panel_w - 15, panel_y + 15), 3)
+    # 渐变背景
+    for i in range(panel_h):
+        gradient_factor = i / panel_h
+        color = (
+            int(15 + 10 * gradient_factor),
+            int(20 + 15 * gradient_factor),
+            int(30 + 20 * gradient_factor)
+        )
+        pygame.draw.line(screen, color, (panel_x, panel_y + i), (panel_x + panel_w, panel_y + i))
     
-    # 标题背景条
-    title_bg = pygame.Rect(panel_x + 10, panel_y + 30, panel_w - 20, 50)
-    pygame.draw.rect(screen, (20, 30, 40), title_bg)
-    pygame.draw.line(screen, CYAN, (panel_x + 15, panel_y + 85), (panel_x + panel_w - 15, panel_y + 85), 2)
+    # 动态边框 - 流光效果
+    border_glow = int(150 + 105 * abs(math.sin(t / 300)))
+    draw_cyber_rect(screen, panel_rect, (0, border_glow, border_glow + 50), border_width=4, fill=False)
+    
+    # 内层边框
+    inner_rect = panel_rect.inflate(-10, -10)
+    draw_cyber_rect(screen, inner_rect, (0, 150, 200, 80), border_width=1, fill=False)
+    
+    # 四角装饰
+    corner_size = 30
+    corner_color = (0, 255, 255)
+    corners = [
+        (panel_x, panel_y),  # 左上
+        (panel_x + panel_w, panel_y),  # 右上
+        (panel_x, panel_y + panel_h),  # 左下
+        (panel_x + panel_w, panel_y + panel_h)  # 右下
+    ]
+    for i, (cx, cy) in enumerate(corners):
+        angle_offset = t / 400 + i * 1.57
+        pulse = 1 + 0.2 * math.sin(angle_offset)
+        if i == 0:  # 左上
+            pygame.draw.line(screen, corner_color, (cx, cy), (cx + corner_size * pulse, cy), 3)
+            pygame.draw.line(screen, corner_color, (cx, cy), (cx, cy + corner_size * pulse), 3)
+        elif i == 1:  # 右上
+            pygame.draw.line(screen, corner_color, (cx, cy), (cx - corner_size * pulse, cy), 3)
+            pygame.draw.line(screen, corner_color, (cx, cy), (cx, cy + corner_size * pulse), 3)
+        elif i == 2:  # 左下
+            pygame.draw.line(screen, corner_color, (cx, cy), (cx + corner_size * pulse, cy), 3)
+            pygame.draw.line(screen, corner_color, (cx, cy), (cx, cy - corner_size * pulse), 3)
+        else:  # 右下
+            pygame.draw.line(screen, corner_color, (cx, cy), (cx - corner_size * pulse, cy), 3)
+            pygame.draw.line(screen, corner_color, (cx, cy), (cx, cy - corner_size * pulse), 3)
+    
+    # 顶部装饰条 - 扫描线效果
+    scan_y = (t / 15) % 80
+    for dy in range(0, 80, 5):
+        alpha = max(0, 100 - abs(scan_y - dy) * 3)
+        pygame.draw.line(screen, (0, 200, 255, alpha), 
+                        (panel_x + 20, panel_y + 25 + dy), 
+                        (panel_x + panel_w - 20, panel_y + 25 + dy), 1)
+    
+    # 标题背景 - 玻璃质感
+    title_bg = pygame.Rect(panel_x + 20, panel_y + 25, panel_w - 40, 60)
+    title_surf = pygame.Surface((title_bg.width, title_bg.height), pygame.SRCALPHA)
+    pygame.draw.rect(title_surf, (20, 40, 60, 180), title_surf.get_rect(), border_radius=10)
+    safe_blit(screen, title_surf, (title_bg.x, title_bg.y))
+    pygame.draw.rect(screen, (0, 200, 255), title_bg, 2, border_radius=10)
+    
+    # 分隔线 - 发光
+    pygame.draw.line(screen, (0, 150, 200), (panel_x + 25, panel_y + 95), (panel_x + panel_w - 25, panel_y + 95), 3)
+    pygame.draw.line(screen, (0, 255, 255, 100), (panel_x + 25, panel_y + 96), (panel_x + panel_w - 25, panel_y + 96), 1)
 
-    # 标题 - 发光
-    draw_text(screen, "⚡ 玩家属性面板", 36, panel_rect.centerx, panel_y + 45, CYAN, glow=True)
+    # 标题 - 多重发光
+    title_pulse = 1.0 + 0.1 * math.sin(t / 300)
+    draw_text(screen, "战斗单元属性数据库", int(38 * title_pulse), panel_rect.centerx, panel_y + 48, CYAN, glow=True)
 
-    # 【左侧】玩家属性 - 独立卡片
-    left_x = panel_x + 30
-    top_y = panel_y + 110
+    # 【左侧】玩家属性卡片 - 玻璃态射质感
+    left_x = panel_x + 40
+    top_y = panel_y + 120
     
-    draw_text(screen, "【玩家属性】", 20, left_x, top_y, CYBER_LIME, glow=True, align="left")
+    # 左侧卡片背景
+    left_card = pygame.Rect(left_x - 15, top_y - 15, 450, 420)
+    card_surf = pygame.Surface((left_card.width, left_card.height), pygame.SRCALPHA)
+    pygame.draw.rect(card_surf, (25, 35, 50, 200), card_surf.get_rect(), border_radius=12)
+    safe_blit(screen, card_surf, (left_card.x, left_card.y))
     
-    # 等级
-    draw_text(screen, "等 级", 18, left_x, top_y + 50, WHITE, align="left")
-    level_pulse = 1.0 + 0.08 * math.sin(pygame.time.get_ticks() / 500)
-    level_size = int(32 * level_pulse)
-    draw_text(screen, f"{int(player.level)}", level_size, left_x + 350, top_y + 45, CYBER_LIME, glow=True, align="right")
+    # 卡片边框 - 渐变色
+    border_color = (0, int(150 + 50 * math.sin(t / 400)), 255)
+    pygame.draw.rect(screen, border_color, left_card, 2, border_radius=12)
     
-    # 经验 + 进度条
-    draw_text(screen, "经 验", 18, left_x, top_y + 95, WHITE, align="left")
+    # 顶部高光
+    pygame.draw.line(screen, (255, 255, 255, 50), 
+                    (left_card.x + 20, left_card.y + 5), 
+                    (left_card.x + left_card.width - 20, left_card.y + 5), 2)
+    
+    draw_text(screen, "核心属性", 22, left_x, top_y, CYBER_LIME, glow=True, align="left")
+    
+    # 等级 - 大号显示
+    level_box = pygame.Rect(left_x - 5, top_y + 40, 420, 60)
+    level_surf = pygame.Surface((level_box.width, level_box.height), pygame.SRCALPHA)
+    pygame.draw.rect(level_surf, (0, 50, 80, 150), level_surf.get_rect(), border_radius=10)
+    safe_blit(screen, level_surf, (level_box.x, level_box.y))
+    pygame.draw.rect(screen, (0, 200, 255), level_box, 2, border_radius=10)
+    
+    draw_text(screen, "等级", 20, left_x + 10, top_y + 52, CYAN, align="left", glow=True)
+    level_pulse = 1.0 + 0.12 * math.sin(t / 400)
+    level_size = int(42 * level_pulse)
+    
+    # 等级数字 - 带光晕，垂直居中对齐
+    level_y_center = top_y + 50
+    level_glow_size = int(level_size * 1.5)
+    for offset in range(level_glow_size, level_size, -2):
+        glow_alpha = int(30 * (1 - (offset - level_size) / (level_glow_size - level_size)))
+        draw_text(screen, f"{int(player.level)}", offset, left_x + 360, level_y_center - offset // 2, (*CYBER_LIME[:3], glow_alpha), align="right")
+    draw_text(screen, f"{int(player.level)}", level_size, left_x + 360, level_y_center - level_size // 2, CYBER_LIME, glow=True, align="right")
+    
+    # 经验条 - 增强版
+    y_offset = top_y + 115
     xp_ratio = min(1.0, player.xp / max(1, player.next_level_xp))
-    pygame.draw.rect(screen, (40, 40, 50), (left_x + 100, top_y + 98, 250, 14), 2)
-    pygame.draw.rect(screen, CYAN, (left_x + 102, top_y + 100, int(246 * xp_ratio), 10))
-    y_offset = top_y + 140
+    
+    draw_text(screen, "经验值", 16, left_x + 5, y_offset - 2, (200, 200, 200), align="left")
+    draw_text(screen, f"{int(player.xp)}/{int(player.next_level_xp)}", 11, left_x + 360, y_offset - 2, GRAY, align="right")
+    
+    # 经验条背景
+    xp_bar_bg = pygame.Rect(left_x + 5, y_offset + 18, 405, 20)
+    pygame.draw.rect(screen, (20, 30, 40), xp_bar_bg, border_radius=10)
+    pygame.draw.rect(screen, (50, 80, 100), xp_bar_bg, 2, border_radius=10)
+    
+    # 经验条填充 - 渐变色
+    if xp_ratio > 0:
+        xp_fill_width = int(401 * xp_ratio)
+        xp_fill = pygame.Rect(left_x + 7, y_offset + 20, xp_fill_width, 16)
+        for i in range(xp_fill.height):
+            color_factor = i / xp_fill.height
+            color = (
+                int(0 + 100 * color_factor),
+                int(200 - 50 * color_factor),
+                255
+            )
+            pygame.draw.line(screen, color, (xp_fill.x, xp_fill.y + i), (xp_fill.x + xp_fill.width, xp_fill.y + i))
+        # 闪光效果
+        shine_x = int(xp_fill.x + (t / 10) % xp_fill.width)
+        pygame.draw.line(screen, (255, 255, 255, 150), (shine_x, xp_fill.y), (shine_x, xp_fill.y + xp_fill.height), 2)
+    
+    # 百分比显示
+    draw_text(screen, f"{xp_ratio*100:.1f}%", 13, left_x + 210, y_offset + 24, WHITE, glow=True)
+    
+    # 生命值 - 增强版
+    y_offset += 60
     hp_ratio = player.hp / max(1, player.max_hp)
-    pygame.draw.rect(screen, (50, 30, 30), (left_x + 100, y_offset + 2, 250, 14), 2)
-    pygame.draw.rect(screen, CYBER_RED_ALERT, (left_x + 102, y_offset + 4, int(246 * hp_ratio), 10))
-    draw_text(screen, f"{int(player.hp)}/{int(player.max_hp)}", 12, left_x + 360, y_offset + 2, WHITE, align="right")
     
-    # 护盾
-    y_offset += 40
-    draw_text(screen, "🛡 护盾", 17, left_x, y_offset, CYBER_AMBER, align="left")
+    draw_emoji_text(screen, "❤ 生命值", 16, left_x + 5, y_offset - 2, (255, 100, 100), align="left", glow=True)
+    draw_text(screen, f"{int(player.hp)}/{int(player.max_hp)}", 11, left_x + 360, y_offset - 2, GRAY, align="right")
+    
+    hp_bar_bg = pygame.Rect(left_x + 5, y_offset + 18, 405, 20)
+    pygame.draw.rect(screen, (30, 20, 20), hp_bar_bg, border_radius=10)
+    pygame.draw.rect(screen, (100, 30, 30), hp_bar_bg, 2, border_radius=10)
+    
+    if hp_ratio > 0:
+        hp_fill_width = int(401 * hp_ratio)
+        hp_fill = pygame.Rect(left_x + 7, y_offset + 20, hp_fill_width, 16)
+        # 根据血量变色
+        if hp_ratio > 0.6:
+            hp_color = (50, 255, 100)  # 绿色
+        elif hp_ratio > 0.3:
+            hp_color = (255, 200, 0)   # 黄色
+        else:
+            hp_color = (255, 50, 50)   # 红色
+            # 低血量闪烁
+            if int(t / 200) % 2 == 0:
+                hp_color = (255, 100, 100)
+        
+        for i in range(hp_fill.height):
+            color_factor = i / hp_fill.height
+            color = tuple(int(c * (0.7 + 0.3 * color_factor)) for c in hp_color)
+            pygame.draw.line(screen, color, (hp_fill.x, hp_fill.y + i), (hp_fill.x + hp_fill.width, hp_fill.y + i))
+        
+        # 脉冲效果
+        pulse_size = int(5 * abs(math.sin(t / 500)))
+        pygame.draw.line(screen, (255, 255, 255, 100), 
+                        (hp_fill.x + hp_fill.width - pulse_size, hp_fill.y), 
+                        (hp_fill.x + hp_fill.width - pulse_size, hp_fill.y + hp_fill.height), 3)
+    
+    draw_text(screen, f"{hp_ratio*100:.0f}%", 13, left_x + 210, y_offset + 24, WHITE, glow=True)
+    
+    # 护盾 - 增强版
+    y_offset += 60
     shield_ratio = player.shield / max(1, player.max_hp)
-    pygame.draw.rect(screen, (50, 40, 20), (left_x + 100, y_offset + 2, 250, 14), 2)
-    pygame.draw.rect(screen, CYBER_AMBER, (left_x + 102, y_offset + 4, int(246 * shield_ratio), 10))
-    draw_text(screen, f"{int(player.shield)}/{int(player.max_hp)}", 12, left_x + 360, y_offset + 2, WHITE, align="right")
     
-    # 火力
-    y_offset += 40
-    draw_text(screen, "⚔ 火力", 17, left_x, y_offset, MAGENTA, align="left")
-    dmg_max = player.base_damage if hasattr(player, 'base_damage') else max(1, player.damage)
-    dmg_ratio = player.damage / max(1, dmg_max)
-    pygame.draw.rect(screen, (50, 20, 50), (left_x + 100, y_offset + 2, 250, 14), 2)
-    pygame.draw.rect(screen, MAGENTA, (left_x + 102, y_offset + 4, int(246 * dmg_ratio), 10))
-    draw_text(screen, f"{player.damage:.1f}", 12, left_x + 360, y_offset + 2, WHITE, align="right")
+    draw_emoji_text(screen, "🛡 护盾值", 16, left_x + 5, y_offset - 2, CYBER_AMBER, align="left", glow=True)
+    draw_text(screen, f"{int(player.shield)}/{int(player.max_hp)}", 11, left_x + 360, y_offset - 2, GRAY, align="right")
     
-    # 暴击率
-    y_offset += 40
-    draw_text(screen, "暴击率", 17, left_x, y_offset, CYBER_AMBER, align="left")
-    crit_ratio = min(1.0, player.crit_chance)
-    pygame.draw.rect(screen, (50, 40, 20), (left_x + 100, y_offset + 2, 250, 14), 2)
-    pygame.draw.rect(screen, CYBER_AMBER, (left_x + 102, y_offset + 4, int(246 * crit_ratio), 10))
-    draw_text(screen, f"{player.crit_chance * 100:.1f}%", 12, left_x + 360, y_offset + 2, WHITE, align="right")
+    shield_bar_bg = pygame.Rect(left_x + 5, y_offset + 18, 405, 20)
+    pygame.draw.rect(screen, (30, 25, 15), shield_bar_bg, border_radius=10)
+    pygame.draw.rect(screen, (100, 80, 30), shield_bar_bg, 2, border_radius=10)
+    
+    if shield_ratio > 0:
+        shield_fill_width = int(401 * shield_ratio)
+        shield_fill = pygame.Rect(left_x + 7, y_offset + 20, shield_fill_width, 16)
+        for i in range(shield_fill.height):
+            color_factor = i / shield_fill.height
+            color = (
+                int(255 - 100 * color_factor),
+                int(200 - 50 * color_factor),
+                int(50 + 50 * color_factor)
+            )
+            pygame.draw.line(screen, color, (shield_fill.x, shield_fill.y + i), (shield_fill.x + shield_fill.width, shield_fill.y + i))
+        
+        # 能量波纹
+        wave_x = int((t / 8) % 20)
+        for wx in range(shield_fill.x, shield_fill.x + shield_fill.width, 20):
+            if wx + wave_x < shield_fill.x + shield_fill.width:
+                pygame.draw.line(screen, (255, 255, 150, 100), 
+                               (wx + wave_x, shield_fill.y), 
+                               (wx + wave_x, shield_fill.y + shield_fill.height), 1)
+    
+    draw_text(screen, f"{shield_ratio*100:.0f}%", 13, left_x + 210, y_offset + 24, WHITE, glow=True)
+    
+    # 底部属性组 - 紧凑卡片式
+    stats_y = y_offset + 70
+    
+    # 火力 & 暴击率 - 并排显示
+    stat_cards = [
+        ("火力", f"{player.damage:.1f}", MAGENTA),
+        ("暴击", f"{player.crit_chance * 100:.0f}%", (255, 100, 50)),
+        ("穿透", f"{player.piercing if hasattr(player, 'piercing') else 0}", CYAN),
+        ("弹数", f"{player.bullet_count if hasattr(player, 'bullet_count') else 1}", CYBER_LIME)
+    ]
+    
+    for i, (name, value, color) in enumerate(stat_cards):
+        col = i % 2
+        row = i // 2
+        
+        card_x = left_x + col * 210
+        card_y = stats_y + row * 52
+        
+        # 小卡片背景
+        mini_card = pygame.Rect(card_x - 5, card_y - 5, 200, 44)
+        mini_surf = pygame.Surface((mini_card.width, mini_card.height), pygame.SRCALPHA)
+        pygame.draw.rect(mini_surf, (30, 30, 40, 180), mini_surf.get_rect(), border_radius=8)
+        safe_blit(screen, mini_surf, (mini_card.x, mini_card.y))
+        
+        # 边框
+        glow_val = int(150 + 50 * math.sin(t / 600 + i * 0.8))
+        pygame.draw.rect(screen, (*color[:3], glow_val), mini_card, 2, border_radius=8)
+        
+        # 名称
+        draw_text(screen, name, 16, card_x + 10, card_y + 4, (200, 200, 200), align="left")
+        
+        # 数值
+        draw_text(screen, value, 20, card_x + 10, card_y + 22, color, glow=True, align="left")
 
-    # 【右侧】肉鸽增益 - 独立卡片
-    right_x = panel_x + 480
+    # 【右侧】增益卡片 - 玻璃态射质感
+    right_x = panel_x + 540
     right_y = top_y
     
-    draw_text(screen, "【当前增益】", 20, right_x, right_y, MAGENTA, glow=True, align="left")
+    # 右侧卡片背景
+    right_card = pygame.Rect(right_x - 15, right_y - 15, 540, 420)
+    right_surf = pygame.Surface((right_card.width, right_card.height), pygame.SRCALPHA)
+    pygame.draw.rect(right_surf, (50, 25, 50, 200), right_surf.get_rect(), border_radius=12)
+    safe_blit(screen, right_surf, (right_card.x, right_card.y))
+    
+    # 卡片边框 - 紫色系
+    border_color2 = (int(200 + 50 * math.sin(t / 500)), 0, 255)
+    pygame.draw.rect(screen, border_color2, right_card, 2, border_radius=12)
+    
+    # 顶部高光
+    pygame.draw.line(screen, (255, 255, 255, 50), 
+                    (right_card.x + 20, right_card.y + 5), 
+                    (right_card.x + right_card.width - 20, right_card.y + 5), 2)
+    
+    draw_text(screen, "战术增益列表", 22, right_x, right_y, MAGENTA, glow=True, align="left")
     
     buffs = getattr(player, 'buffs', []) or getattr(player, 'active_buffs', []) or []
     buff_start_y = right_y + 50
     
     if not buffs:
-        draw_text(screen, "无增益", 16, right_x + 230, buff_start_y + 150, GRAY, align="center")
+        # 无增益提示 - 更有设计感
+        no_buff_y = buff_start_y + 150
+        draw_text(screen, "╳", 48, right_x + 240, no_buff_y - 20, (80, 80, 80), align="center")
+        draw_text(screen, "暂无战术增益", 18, right_x + 240, no_buff_y + 30, GRAY, align="center")
+        draw_text(screen, "击败敌人升级获取", 14, right_x + 240, no_buff_y + 55, (100, 100, 100), align="center")
     else:
-        # 增益列表 - 长条形式显示实际效果
-        
+        # 增益列表 - 卡片式显示
         effect_data = []
         
         # 根据卡牌ID生成实际效果文本
         for buff_id in buffs[:8]:
             if buff_id == "homing":
-                effect_data.append(("追踪等级", f"★{player.homing_level}", CYBER_LIME))
+                effect_data.append(("🎯 追踪等级", f"★{player.homing_level}", CYBER_LIME, "智能锁定系统"))
             elif buff_id == "pierce":
-                effect_data.append(("穿透次数", f"+{player.piercing}", CYBER_AMBER))
+                effect_data.append(("⚡ 穿透次数", f"+{player.piercing}", CYBER_AMBER, "贯穿装甲弹药"))
             elif buff_id == "multi":
-                effect_data.append(("子弹数量", f"×{player.bullet_count}", MAGENTA))
+                effect_data.append(("✦ 子弹数量", f"×{player.bullet_count}", MAGENTA, "多管齐射模式"))
             elif buff_id == "dmg":
                 dmg_boost = (player.damage / PLANES.get(player.plane_id, {}).get('damage', 1)) - 1
-                effect_data.append(("伤害提升", f"+{dmg_boost*100:.0f}%", RED))
+                effect_data.append(("⚔ 伤害提升", f"+{dmg_boost*100:.0f}%", RED, "火力强化协议"))
             elif buff_id == "crit":
-                effect_data.append(("暴击率", f"{player.crit_chance*100:.1f}%", CYBER_RED_ALERT))
+                effect_data.append(("💥 暴击率", f"{player.crit_chance*100:.1f}%", CYBER_RED_ALERT, "致命打击系统"))
             elif buff_id == "spd":
-                effect_data.append(("射速提升", "✓", CYAN))
+                effect_data.append(("⏱ 射速提升", "✓", CYAN, "急速冷却装置"))
             elif buff_id == "hp_max":
-                effect_data.append(("生命上限", f"+{int(player.max_hp - PLANES.get(player.plane_id, {}).get('hp', 100))}", CYBER_LIME))
+                effect_data.append(("❤ 生命上限", f"+{int(player.max_hp - PLANES.get(player.plane_id, {}).get('hp', 100))}", CYBER_LIME, "结构强化改造"))
             elif buff_id == "bounce":
-                effect_data.append(("弹跳次数", f"+{player.bounce_level}", MAGENTA))
+                effect_data.append(("↗ 弹跳次数", f"+{player.bounce_level}", MAGENTA, "反弹弹道系统"))
             elif buff_id == "drone":
                 wingman_count = len(player.wingman_squadron.wingmen) if hasattr(player, 'wingman_squadron') and player.wingman_squadron else 0
-                effect_data.append(("僚机数量", f"×{wingman_count}", CYAN))
+                effect_data.append(("🛸 僚机数量", f"×{wingman_count}", CYAN, "无人机编队"))
             else:
-                effect_data.append(("已获得", buff_id, GRAY))
+                effect_data.append(("✓ 已获得", buff_id, GRAY, "未知增益"))
         
-        # 显示效果长条
-        for i, (effect_name, effect_value, color) in enumerate(effect_data):
+        # 显示增益卡片 - 2列布局
+        for i, (effect_name, effect_value, color, desc) in enumerate(effect_data):
             col = i % 2
             row = i // 2
             
-            buff_x = right_x + col * 240
-            buff_y = buff_start_y + row * 42
+            buff_x = right_x + col * 250
+            buff_y = buff_start_y + row * 52
             
             # 超出面板就停止
             if buff_y > right_y + 360:
                 remaining = len(buffs) - i
                 if remaining > 0:
-                    draw_text(screen, f"+ {remaining} 个", 14, right_x + 230, buff_y, GRAY, align="center")
+                    more_rect = pygame.Rect(right_x + 160, buff_y - 5, 140, 30)
+                    pygame.draw.rect(screen, (40, 40, 50, 200), more_rect, border_radius=8)
+                    pygame.draw.rect(screen, GRAY, more_rect, 1, border_radius=8)
+                    draw_text(screen, f"▼ 还有 {remaining} 项增益", 13, right_x + 230, buff_y + 5, GRAY, align="center")
                 break
             
-            # 长条背景
-            bar_rect = pygame.Rect(buff_x - 8, buff_y - 14, 220, 36)
-            pygame.draw.rect(screen, (30, 25, 40), bar_rect, border_radius=6)
-            pygame.draw.rect(screen, color, bar_rect, 2, border_radius=6)
+            # 卡片背景 - 玻璃质感
+            bar_rect = pygame.Rect(buff_x - 8, buff_y - 18, 230, 44)
+            card_surf = pygame.Surface((bar_rect.width, bar_rect.height), pygame.SRCALPHA)
             
-            # 效果名称 + 数值
-            draw_text(screen, effect_name, 13, buff_x, buff_y - 6, WHITE, align="left")
-            draw_text(screen, effect_value, 14, buff_x + 140, buff_y - 4, color, glow=True, align="right")
+            # 渐变背景
+            for dy in range(bar_rect.height):
+                grad_alpha = int(120 + 80 * (1 - dy / bar_rect.height))
+                base_color = color[:3] if len(color) == 3 else color[:3]
+                pygame.draw.line(card_surf, (base_color[0], base_color[1], base_color[2], grad_alpha // 3), 
+                               (0, dy), (bar_rect.width, dy))
+            safe_blit(screen, card_surf, (bar_rect.x, bar_rect.y))
+            
+            # 边框 - 发光
+            glow_intensity = int(200 + 55 * math.sin(t / 500 + i * 0.5))
+            glow_color = tuple(min(255, c) for c in color[:3]) if len(color) == 3 else color[:3]
+            pygame.draw.rect(screen, (*glow_color, glow_intensity), bar_rect, 2, border_radius=8)
+            
+            # 高光
+            pygame.draw.line(screen, (255, 255, 255, 80), 
+                           (bar_rect.x + 10, bar_rect.y + 3), 
+                           (bar_rect.x + bar_rect.width - 10, bar_rect.y + 3), 1)
+            
+            # 图标光晕
+            icon_x = buff_x - 2
+            icon_y = buff_y - 8
+            pygame.draw.circle(screen, (*color[:3], 50), (icon_x, icon_y), 18)
+            
+            # 效果名称
+            draw_text(screen, effect_name, 14, buff_x, buff_y - 10, WHITE, align="left", glow=True)
+            
+            # 描述文字
+            draw_text(screen, desc, 10, buff_x, buff_y + 8, (180, 180, 180), align="left")
+            
+            # 数值 - 发光强调
+            draw_text(screen, effect_value, 16, buff_x + 160, buff_y - 2, color, glow=True, align="right")
 
-    # 底部提示 - 脉冲效果
-    hint_y = panel_y + panel_h - 30
-    pulse_alpha = int(100 + 155 * abs(math.sin(pygame.time.get_ticks() / 500)))
-    hint_color = tuple(min(255, c + (pulse_alpha - 100) // 2) for c in CYAN)
-    draw_text(screen, "↑ 按住 TAB 查看  释放 TAB 恢复游戏 ↑", 14, panel_rect.centerx, hint_y, hint_color)
+    # 底部提示条 - 动态背景
+    hint_y = panel_y + panel_h - 45
+    hint_bg = pygame.Rect(panel_x + 30, hint_y - 10, panel_w - 60, 35)
+    hint_surf = pygame.Surface((hint_bg.width, hint_bg.height), pygame.SRCALPHA)
+    
+    # 渐变背景
+    for i in range(hint_bg.height):
+        alpha = int(100 - i * 2)
+        pygame.draw.line(hint_surf, (0, 100, 150, alpha), (0, i), (hint_bg.width, i))
+    safe_blit(screen, hint_surf, (hint_bg.x, hint_bg.y))
+    
+    # 边框
+    pygame.draw.rect(screen, (0, 200, 255, 150), hint_bg, 2, border_radius=8)
+    
+    # 左右箭头动画
+    arrow_offset = int(15 * math.sin(t / 300))
+    arrow_alpha = int(200 + 55 * math.sin(t / 400))
+    pygame.draw.polygon(screen, (0, 255, 255, arrow_alpha), [
+        (panel_x + 60 - arrow_offset, hint_y + 6),
+        (panel_x + 50 - arrow_offset, hint_y + 12),
+        (panel_x + 60 - arrow_offset, hint_y + 18)
+    ])
+    pygame.draw.polygon(screen, (0, 255, 255, arrow_alpha), [
+        (panel_x + panel_w - 60 + arrow_offset, hint_y + 6),
+        (panel_x + panel_w - 50 + arrow_offset, hint_y + 12),
+        (panel_x + panel_w - 60 + arrow_offset, hint_y + 18)
+    ])
+    
+    # 提示文字 - 脉冲效果
+    pulse_alpha = int(150 + 105 * abs(math.sin(t / 500)))
+    hint_color = (0, pulse_alpha, 255)
+    draw_text(screen, "按住 [TAB] 查看面板", 16, panel_rect.centerx - 100, hint_y + 2, hint_color, glow=True)
+    draw_text(screen, "释放 [TAB] 恢复战斗", 16, panel_rect.centerx + 100, hint_y + 2, hint_color, glow=True)
 
 def draw_levelup_ui():
     """绘制升级选择 UI"""
@@ -2364,14 +2786,72 @@ while True:
                     view_h = ARSENAL_UI['list_area'].height
                     max_scroll = max(0, content_h - view_h)
                     arsenal_scroll_y = max(0, min(arsenal_scroll_y - event.y * 30, max_scroll))
+                    
+                elif game_state == "background_settings":
+                    # 背景设置滚动
+                    from systems import BackgroundManager
+                    bg_count = len(BackgroundManager.BG_STYLES)
+                    cards_per_row = 4
+                    card_h = 200
+                    gap = 30
+                    total_rows = (bg_count + cards_per_row - 1) // cards_per_row
+                    content_h = total_rows * (card_h + gap)
+                    view_h = HEIGHT - 120 - 100
+                    max_scroll = max(0, content_h - view_h)
+                    background_settings_scroll_y = max(0, min(background_settings_scroll_y - event.y * 30, max_scroll))
 
             # --- 键盘事件 ---
             if event.type == pygame.KEYDOWN:
                 # 菜单子页：ESC 返回主菜单
-                if event.key == pygame.K_ESCAPE and game_state in ["arsenal", "gallery", "codex", "leaderboard", "select_plane"]:
+                if event.key == pygame.K_ESCAPE and game_state in ["arsenal", "gallery", "codex", "leaderboard", "select_plane", "background_settings"]:
                     game_state = "menu"
                     main_menu_selected = 0
                     sound_mgr.play("select")
+                    continue
+                
+                # 背景设置界面 键盘控制
+                if game_state == "background_settings":
+                    from systems import BackgroundManager
+                    bg_count = len(BackgroundManager.BG_STYLES)
+                    cards_per_row = 4
+                    card_h = 200
+                    gap = 30
+                    
+                    if event.key == pygame.K_LEFT:
+                        background_settings_selected = (background_settings_selected - 1) % bg_count
+                        sound_mgr.play("select")
+                    elif event.key == pygame.K_RIGHT:
+                        background_settings_selected = (background_settings_selected + 1) % bg_count
+                        sound_mgr.play("select")
+                    elif event.key == pygame.K_UP:
+                        background_settings_selected = (background_settings_selected - cards_per_row) % bg_count
+                        sound_mgr.play("select")
+                    elif event.key == pygame.K_DOWN:
+                        background_settings_selected = (background_settings_selected + cards_per_row) % bg_count
+                        sound_mgr.play("select")
+                    
+                    # 自动滚动到选中项(对于方向键)
+                    if event.key in (pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT):
+                        selected_row = background_settings_selected // cards_per_row
+                        card_y_top = selected_row * (card_h + gap)
+                        view_h = HEIGHT - 120 - 100
+                        
+                        # 如果选中项在视图上方
+                        if card_y_top < background_settings_scroll_y:
+                            background_settings_scroll_y = card_y_top
+                        # 如果选中项在视图下方
+                        elif card_y_top + card_h > background_settings_scroll_y + view_h:
+                            background_settings_scroll_y = card_y_top + card_h - view_h
+                    
+                    if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        # 切换到选中的背景
+                        style_keys = list(BackgroundManager.BG_STYLES.keys())
+                        if 0 <= background_settings_selected < len(style_keys):
+                            style_key = style_keys[background_settings_selected]
+                            bg_manager.set_style(style_key)
+                            save_settings(background_style=style_key)
+                            sound_mgr.play("select")
+                            log_info(f"背景已切换为: {style_key}")
                     continue
                 
                 # 飞机选择界面 键盘控制
@@ -2514,13 +2994,14 @@ while True:
                                 pygame.quit(); sys.exit()
                             elif act == "select_plane": game_state = "select_plane"; current_plane_idx = 0
                             elif act == "boss_challenge": game_state = "boss_challenge"; boss_challenge_selected = 0; boss_challenge_order = list(BOSS_DB.keys())
-                            elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization"]:
+                            elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization", "background_settings"]:
                                 game_state = act
                                 if act == "gallery": gallery_page = 0; gallery_tab = 0
                                 if act == "codex": codex_tab = 0; codex_idx = 0; codex_scroll_y = 0
                                 if act == "arsenal": arsenal_scroll_y = 0; arsenal_selected_weapon_idx = -1
                                 if act == "achievements": achievement_page = 0
                                 if act == "customization": customization_scroll_y = 0; customization_plane_scroll_y = 0; customization_selected_plane = None; customization_tab = 0
+                                if act == "background_settings": background_settings_selected = 0
                 
                 # Boss挑战模式导航（仅处理Enter和Esc，上下左右由持续按键处理）
                 elif game_state == "boss_challenge":
@@ -2571,8 +3052,10 @@ while True:
                 print(f"鼠标点击事件，当前状态: {game_state}, 位置: ({mx}, {my})")
                 
                 if game_state == "menu":
-                    for r, txt, col, act in get_menu_buttons():
+                    buttons = get_menu_buttons()
+                    for idx, (r, txt, col, act) in enumerate(buttons):
                         if r.collidepoint(mx, my):
+                            main_menu_selected = idx  # 更新键盘选中索引
                             log_info(f"Menu button clicked: {txt} (action={act})")
                             sound_mgr.play("select")
                             if act == "quit":
@@ -2588,13 +3071,14 @@ while True:
                                 boss_challenge_selected = 0
                                 boss_challenge_order = list(BOSS_DB.keys())
                                 log_info(f"Game state changed to: {game_state}")
-                            elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization"]: 
+                            elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization", "background_settings"]: 
                                 game_state = act
                                 if act == "gallery": gallery_page = 0; gallery_tab = 0
                                 if act == "codex": codex_tab = 0; codex_idx = 0; codex_scroll_y = 0
                                 if act == "arsenal": arsenal_scroll_y = 0; arsenal_selected_weapon_idx = -1
                                 if act == "achievements": achievement_page = 0
                                 if act == "customization": customization_scroll_y = 0; customization_plane_scroll_y = 0; customization_selected_plane = None; customization_tab = 0
+                                if act == "background_settings": background_settings_selected = 0
                                 log_info(f"Game state changed to: {game_state}")
                             break
                 
@@ -2621,6 +3105,51 @@ while True:
                         if player and hasattr(player, 'achievement_manager'):
                             player.achievement_manager.save_to_file()
                         game_state = "menu"; main_menu_selected = 0; sound_mgr.play("select")
+                
+                # 背景设置界面点击
+                elif game_state == "background_settings":
+                    from systems import BackgroundManager
+                    bg_styles = BackgroundManager.BG_STYLES
+                    
+                    # 计算卡片布局
+                    card_w = 280
+                    card_h = 200
+                    cards_per_row = 4
+                    gap = 30
+                    start_x = (WIDTH - (cards_per_row * card_w + (cards_per_row - 1) * gap)) // 2
+                    start_y = 120
+                    
+                    i = 0
+                    for style_key in bg_styles.keys():
+                        row = i // cards_per_row
+                        col = i % cards_per_row
+                        
+                        x = start_x + col * (card_w + gap)
+                        y = start_y + row * (card_h + gap) - background_settings_scroll_y
+                        
+                        card_rect = pygame.Rect(x, y, card_w, card_h)
+                        
+                        # 检查卡片是否在可见区域内且被点击
+                        scroll_area_top = start_y
+                        scroll_area_bottom = HEIGHT - 100
+                        if y + card_h >= scroll_area_top and y <= scroll_area_bottom:
+                            if card_rect.collidepoint(mx, my):
+                                # 更新选中索引并切换背景
+                                background_settings_selected = i
+                                bg_manager.set_style(style_key)
+                                save_settings(background_style=style_key)
+                                sound_mgr.play("select")
+                                log_info(f"背景已切换为: {style_key}")
+                                break
+                        
+                        i += 1
+                    
+                    # 返回按钮
+                    back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 80, 120, 50)
+                    if back_btn.collidepoint(mx, my):
+                        game_state = "menu"
+                        main_menu_selected = 0
+                        sound_mgr.play("select")
 
                 elif game_state == "select_plane":
                     left_rect = pygame.Rect(100, HEIGHT//2-40, 60, 80)
@@ -2904,6 +3433,8 @@ while True:
             draw_select_plane_ui()
         elif game_state == "arsenal": 
             draw_arsenal_ui()
+        elif game_state == "background_settings":
+            draw_background_settings_ui()
         elif game_state == "gallery": 
             draw_gallery_ui()
         elif game_state == "codex": 
@@ -3019,8 +3550,6 @@ while True:
                     for eb in enemy_bullets:
                         eb.frozen = True
                     player.update()
-                    # 天气系统持续更新
-                    weather_system.update()
                     for s in all_sprites:
                         if isinstance(s, (Particle, FloatingText, FinalBeam, TimeSlash, NukeExplosion, AuroraCurtain, DeathScythe, BlackHole)): s.update()
                 else:
@@ -3035,22 +3564,11 @@ while True:
                                     s.update()
                                 except Exception:
                                     pass
-                        # 天气系统持续更新
-                        weather_system.update()
                     else:
-                        # 天气系统更新
-                        weather_system.update()
-                        # 应用天气效果到玩家速度
-                        player.speed = 4 * weather_system.player_speed_modifier
-                        
                         all_sprites.update()
                         # 更新僚机编队
                         if player.wingman_squadron:
                             player.wingman_squadron.update(mobs)
-                        
-                        # 应用风对子弹的影响
-                        if weather_system.current_weather.name == "WIND":
-                            weather_system.apply_weather_effects_to_bullets(player.bullets)
                     # Boss spawn logic: handled by boss_manager
                     warning_active, spawn_now = boss_manager.update(score, player.level, boss_exists=bool(boss))
                     if warning_active and not boss:
@@ -3150,8 +3668,6 @@ while True:
                             if b.is_enemy: continue
                             dmg = player.damage
                             if random.random() < player.crit_chance: dmg *= player.crit_mult
-                            # 应用天气伤害修饰符
-                            dmg *= weather_system.bullet_damage_modifier
                             m.hp -= dmg
                             
                             # ===== 增强打击感（优化版） =====
@@ -3307,50 +3823,6 @@ while True:
                                         player.achievement_manager.save_to_file()
                                     # Boss挑战模式失败时重置标志
                                     boss_challenge_active = False
-                        
-                        # 检查流星伤害（仅在流星雨天气时）
-                        if weather_system.current_weather.name == "METEOR":
-                            meteor_impact = weather_system.check_meteor_impact(player.rect)
-                            if meteor_impact:
-                                meteor_dmg = 30  # 流星伤害比敌人更高
-                                # ===== 流星击中的超强打击感 =====
-                                # 1. 屏幕极限震动
-                                screen_shake_offset = apply_screen_shake(15)
-                                
-                                if player.shield > 0:
-                                    player.shield -= meteor_dmg
-                                    if player.shield < 0: player.shield = 0
-                                    # 盾牌吸收流星时的特效（简化）
-                                    if random.random() < 0.6:
-                                        for _ in range(4):
-                                            angle = random.uniform(0, math.pi * 2)
-                                            speed = random.uniform(3, 5)
-                                            Particle(player.rect.center, CYAN, lifetime=15)
-                                else:
-                                    player.hp -= meteor_dmg
-                                    FloatingText(player.rect.centerx, player.rect.top - 50, f"流星!-{meteor_dmg}", ORANGE)
-                                    # 流星伤害特效（简化）
-                                    for _ in range(5):
-                                        angle = random.uniform(0, math.pi * 2)
-                                        speed = random.uniform(3, 6)
-                                        Particle(player.rect.center, ORANGE, lifetime=25)
-                                    # 单次爆炸
-                                    create_explosion(player.rect.center, ORANGE, 8)
-                                    # 音效
-                                    sound_mgr.play("hit")
-                                    sound_mgr.play("explosion")
-                                    if player.hp <= 0:
-                                        game_state = "gameover"
-                                        final_score = score
-                                        game_over_timer = 0
-                                        player_name = ""
-                                        try:
-                                            frozen_screen = screen.copy()
-                                        except Exception:
-                                            frozen_screen = None
-                                        if player and hasattr(player, 'achievement_manager'):
-                                            player.achievement_manager.save_to_file()
-                                        boss_challenge_active = False
                                     sound_mgr.play("gameover")
                     
                     # ========== 经验球拾取 ==========
@@ -3399,8 +3871,7 @@ while True:
                         bhits = pygame.sprite.spritecollide(boss, bullets, False)
                         for b in bhits:
                             if b.is_enemy: continue
-                            # 应用天气伤害修饰符
-                            damage = player.damage * 0.5 * weather_system.bullet_damage_modifier
+                            damage = player.damage * 0.5
                             boss.hp -= damage
                             boss._hit_flash_timer = 10  # 设置闪白效果
                             
@@ -3481,10 +3952,6 @@ while True:
                     safe_call_draw(player.draw_trail, screen)
                 
                 safe_call_draw(all_sprites.draw, screen)
-                
-                # ========== 绘制天气效果 ==========
-                if game_state == "game" or game_state == "boss_challenge_play":
-                    safe_call_draw(weather_system.draw, screen)
                 
                 if player is not None:
                     safe_call_draw(player.draw_auras, screen)
