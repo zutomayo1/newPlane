@@ -1186,63 +1186,72 @@ class BackgroundManager:
             "base_color": [10, 10, 18],
             "elements": {"stars": 200, "nebulae": 6},
             "grid_color": None,
-            "element_type": "classic"
+            "element_type": "classic",
+            "bgm": "normal"
         },
         "dawn_clouds": {
             "name": "晨曦云海",
             "base_color": [255, 180, 150],
             "elements": {"clouds": 15, "light_rays": 4, "stars": 50},
             "grid_color": None,
-            "element_type": "dawn"
+            "element_type": "dawn",
+            "bgm": "ethereal"
         },
         "thunderstorm": {
             "name": "雷暴云团",
             "base_color": [30, 35, 45],
             "elements": {"rain": 200, "lightning": 3, "clouds": 8},
             "grid_color": None,
-            "element_type": "storm"
+            "element_type": "storm",
+            "bgm": "intense"
         },
         "city_sky": {
             "name": "城市上空",
             "base_color": [40, 20, 60],
             "elements": {"buildings": 12, "stars": 100},
             "grid_color": None,
-            "element_type": "urban"
+            "element_type": "urban",
+            "bgm": "cyber"
         },
         "aurora": {
             "name": "极光彩幕",
             "base_color": [5, 10, 15],
             "elements": {"aurora_waves": 4, "stars": 300},
             "grid_color": None,
-            "element_type": "aurora"
+            "element_type": "aurora",
+            "bgm": "ethereal"
         },
         "deep_ocean": {
             "name": "深海裂谷",
             "base_color": [0, 20, 40],
             "elements": {"bubbles": 40, "stars": 80},
             "grid_color": None,
-            "element_type": "ocean"
+            "element_type": "ocean",
+            "bgm": "mystery"
         },
         "space_battle": {
             "name": "太空战场",
             "base_color": [5, 5, 10],
             "elements": {"asteroids": 20, "stars": 400, "nebulae": 3},
             "grid_color": None,
-            "element_type": "space"
+            "element_type": "space",
+            "bgm": "epic"
         },
         "volcano": {
             "name": "火山烟霾",
             "base_color": [40, 20, 10],
             "elements": {"volcano_smoke": 25, "embers": 60},
             "grid_color": None,
-            "element_type": "volcano"
+            "element_type": "volcano",
+            "bgm": "intense"
         },
         "matrix": {
             "name": "数字矩阵",
             "base_color": [0, 8, 0],
             "elements": {"matrix_rain": 18, "hexagons": 12},
             "grid_color": (0, 255, 0),
-            "element_type": "cyber"
+            "element_type": "cyber",
+            "bgm": "cyber"
         },
         "autumn_forest": {
             "name": "秋日枫林",
@@ -1250,7 +1259,8 @@ class BackgroundManager:
             "elements": {"maple_leaves": 80, "trees": 8},
             "grid_color": None,
             "element_type": "autumn",
-            "gradient": [(60, 30, 15), (200, 100, 30), (255, 180, 50)]
+            "gradient": [(60, 30, 15), (200, 100, 30), (255, 180, 50)],
+            "bgm": "calm"
         },
         "salt_lake": {
             "name": "镜面盐湖",
@@ -1258,7 +1268,8 @@ class BackgroundManager:
             "elements": {"salt_crystals": 60, "salt_waves": 12, "stars": 30},
             "grid_color": None,
             "element_type": "salt",
-            "gradient": [(180, 200, 255), (255, 200, 220), (200, 255, 240)]
+            "gradient": [(180, 200, 255), (255, 200, 220), (200, 255, 240)],
+            "bgm": "calm"
         },
         "war_ruins": {
             "name": "战争废墟",
@@ -1266,7 +1277,8 @@ class BackgroundManager:
             "elements": {"debris": 30, "smoke": 20, "embers": 40},
             "grid_color": None,
             "element_type": "ruins",
-            "gradient": [(80, 80, 90), (120, 80, 60), (60, 50, 45)]
+            "gradient": [(80, 80, 90), (120, 80, 60), (60, 50, 45)],
+            "bgm": "intense"
         },
         "crystal_cave": {
             "name": "水晶洞穴",
@@ -1274,7 +1286,8 @@ class BackgroundManager:
             "elements": {"crystals_top": 12, "crystals_bottom": 12, "stars": 100},
             "grid_color": None,
             "element_type": "crystal",
-            "gradient": [(25, 10, 35), (40, 20, 50), (30, 15, 40)]
+            "gradient": [(25, 10, 35), (40, 20, 50), (30, 15, 40)],
+            "bgm": "calm"
         },
         "spacetime_rift": {
             "name": "时空裂隙",
@@ -1282,7 +1295,8 @@ class BackgroundManager:
             "elements": {"distortions": 8, "stars": 250, "nebulae": 4},
             "grid_color": None,
             "element_type": "rift",
-            "gradient": [(10, 0, 20), (100, 0, 150), (200, 50, 255)]
+            "gradient": [(10, 0, 20), (100, 0, 150), (200, 50, 255)],
+            "bgm": "epic"
         },
         "quantum_foam": {
             "name": "量子泡沫",
@@ -1290,7 +1304,8 @@ class BackgroundManager:
             "elements": {"quantum_particles": 200, "hexagons": 15},
             "grid_color": (0, 255, 150),
             "element_type": "quantum",
-            "gradient": [(0, 30, 20), (50, 200, 100), (150, 100, 200)]
+            "gradient": [(0, 30, 20), (50, 200, 100), (150, 100, 200)],
+            "bgm": "mystery"
         },
         "forgotten_city": {
             "name": "遗忘都市",
@@ -1298,7 +1313,8 @@ class BackgroundManager:
             "elements": {"ruin_pillars": 15, "bubbles": 60, "stars": 80},
             "grid_color": None,
             "element_type": "underwater_city",
-            "gradient": [(10, 20, 40), (255, 120, 60), (50, 150, 80)]
+            "gradient": [(10, 20, 40), (255, 120, 60), (50, 150, 80)],
+            "bgm": "mystery"
         },
         "shattered_sky": {
             "name": "破碎天空",
@@ -1306,7 +1322,8 @@ class BackgroundManager:
             "elements": {"sky_shards": 25, "stars": 150, "nebulae": 3},
             "grid_color": None,
             "element_type": "shattered",
-            "gradient": [(150, 30, 50), (80, 20, 50), (40, 10, 20)]
+            "gradient": [(150, 30, 50), (80, 20, 50), (40, 10, 20)],
+            "bgm": "epic"
         }
     }
     
@@ -1332,6 +1349,11 @@ class BackgroundManager:
         self.current_style = style
         config = self.BG_STYLES[style]
         elements = config["elements"]
+        
+        # 切换背景音乐
+        if "bgm" in config:
+            from utils import sound_mgr
+            sound_mgr.play_music(config["bgm"])
         
         # 清空所有元素
         self.stars = []

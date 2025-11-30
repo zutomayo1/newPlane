@@ -733,7 +733,7 @@ class DeathScythe(pygame.sprite.Sprite):
 #   核心实体：Bullet, Player, Enemy, Boss
 # ==============================================================================
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, x, y, angle=0, is_enemy=False, piercing=0, color=YELLOW, homing=0, bounce=0, b_type="beam"):
+    def __init__(self, x, y, angle=0, is_enemy=False, piercing=0, color=YELLOW, homing=0, bounce=0, b_type="beam", bullet_theme=None):
         super().__init__()
         self.is_enemy = is_enemy
         self.piercing = piercing
@@ -743,6 +743,7 @@ class Bullet(pygame.sprite.Sprite):
         self.b_type = b_type
         self.timer = 0
         self.frozen = False  # 【新】时间冻结标记
+        self.bullet_theme = bullet_theme  # 【新】子弹涂装主题
         
         if not is_enemy and homing > 0: 
             self.color = HOMING_COLOR
@@ -901,11 +902,13 @@ class Bullet(pygame.sprite.Sprite):
             all_sprites.add(self)
             
             # =============================================================================
-            # 【全新子弹系统】16种飞机的独特子弹设计
-            # 设计原则：形状多样化、颜色匹配飞机主题、尺寸差异化
+            # 【子弹涂装系统】根据装备的涂装主题绘制子弹
             # =============================================================================
             
-            if b_type == "beam":  # 1. Striker - 霓虹突击者（青色激光束）
+            # 如果有涂装主题，使用涂装绘制；否则使用默认绘制
+            if bullet_theme and bullet_theme.get("effects"):
+                self._create_themed_bullet(bullet_theme)
+            elif b_type == "beam":  # 1. Striker - 霓虹突击者（青色激光束）
                 self.image = pygame.Surface((14, 34), pygame.SRCALPHA)
                 pygame.draw.rect(self.image, CYAN, (4, 0, 6, 34))
                 pygame.draw.rect(self.image, CYBER_CYAN_BRIGHT, (3, 0, 8, 34), 2)
@@ -1089,6 +1092,2331 @@ class Bullet(pygame.sprite.Sprite):
         
         self.pos = pygame.math.Vector2(x, y)
         self.start_x = x
+    
+    def _create_themed_bullet(self, theme):
+        """根据涂装主题创建子弹视觉"""
+        effects = theme.get("effects", [])
+        color = theme.get("color", self.color)
+        size = 24  # 子弹基础尺寸
+        
+        if "gear_rotate" in effects:
+            # 机械齿轮：六边形
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            points = []
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                px = center + int(size//2 * math.cos(angle))
+                py = center + int(size//2 * math.sin(angle))
+                points.append((px, py))
+            pygame.draw.polygon(self.image, color, points)
+            pygame.draw.polygon(self.image, (255, 255, 255), points, 2)
+            self.speed = -15
+            
+        elif "phase_flicker" in effects:
+            # 幽灵：波浪形
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            points = []
+            for i in range(8):
+                angle = (i * 45) * 3.14159 / 180
+                radius = size//2
+                px = center + int(radius * math.cos(angle))
+                py = center + int(radius * math.sin(angle))
+                points.append((px, py))
+            pygame.draw.polygon(self.image, color, points)
+            self.speed = -18
+            
+        elif "lava_crack" in effects:
+            # 反应堆：方形碎片
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            pygame.draw.rect(self.image, color, (center-size//2, center-size//2, size, size))
+            pygame.draw.circle(self.image, (255, 255, 0), (center, center), size//4)
+            self.speed = -14
+            
+        elif "quantum_shift" in effects:
+            # 量子：菱形
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            diamond = [
+                (center, center - size//2),
+                (center + size//2, center),
+                (center, center + size//2),
+                (center - size//2, center)
+            ]
+            pygame.draw.polygon(self.image, color, diamond)
+            self.speed = -16
+            
+        elif "holy_ray" in effects:
+            # 圣光：八芒星
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            for rotation in [0, 45]:
+                points = []
+                for i in range(4):
+                    angle = (i * 90 + rotation) * 3.14159 / 180
+                    px = center + int(size//2 * math.cos(angle))
+                    py = center + int(size//2 * math.sin(angle))
+                    points.append((px, py))
+                pygame.draw.polygon(self.image, color, points)
+            self.speed = -14
+            
+        elif "dragon_breath" in effects:
+            # 龙息：尖刺球
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            pygame.draw.circle(self.image, color, (center, center), size//3)
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                x1 = center + int(size//3 * math.cos(angle))
+                y1 = center + int(size//3 * math.sin(angle))
+                x2 = center + int(size//1.8 * math.cos(angle))
+                y2 = center + int(size//1.8 * math.sin(angle))
+                pygame.draw.line(self.image, (255, 100, 0), (x1, y1), (x2, y2), 3)
+            self.speed = -13
+            
+        elif "blade_orbit" in effects:
+            # 光刃：三角形
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            tri_points = [
+                (center, center - size//2),
+                (center - size//3, center + size//3),
+                (center + size//3, center + size//3)
+            ]
+            pygame.draw.polygon(self.image, color, tri_points)
+            pygame.draw.polygon(self.image, (255, 255, 255), tri_points, 2)
+            self.speed = -17
+        
+        # ========== Phantom 子弹形状 ==========
+        elif "void_crack" in effects:
+            # 虚空裂缝：不规则裂缝形态
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 黑洞核心
+            for r in range(size//2, 0, -size//8):
+                alpha = int(200 * (1 - r / (size//2)))
+                temp_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp_surf, (*color, alpha), (center, center), r)
+                self.image.blit(temp_surf, (0, 0))
+            # 裂缝线条
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                x1 = center + int(size//4 * math.cos(angle))
+                y1 = center + int(size//4 * math.sin(angle))
+                x2 = center + int(size * math.cos(angle))
+                y2 = center + int(size * math.sin(angle))
+                pygame.draw.line(self.image, (150, 0, 200), (x1, y1), (x2, y2), 2)
+            self.speed = -16
+            
+        elif "ghost_face" in effects:
+            # 幽灵面孔：椭圆脸+眼睛
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 脸型
+            pygame.draw.ellipse(self.image, color, (size//2, size//3, size, size*4//3))
+            # 眼睛
+            pygame.draw.circle(self.image, (255, 255, 255), (center-size//4, center-size//6), size//8)
+            pygame.draw.circle(self.image, (255, 255, 255), (center+size//4, center-size//6), size//8)
+            pygame.draw.circle(self.image, (100, 100, 255), (center-size//4, center-size//6), size//12)
+            pygame.draw.circle(self.image, (100, 100, 255), (center+size//4, center-size//6), size//12)
+            self.speed = -15
+            
+        elif "crystal_prism" in effects:
+            # 水晶棱镜：多面体
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 八面体结构
+            top = (center, center - size//2)
+            bottom = (center, center + size//2)
+            mid_points = [
+                (center - size//3, center - size//6),
+                (center + size//3, center - size//6),
+                (center + size//3, center + size//6),
+                (center - size//3, center + size//6)
+            ]
+            # 绘制面
+            for i in range(4):
+                face = [top, mid_points[i], mid_points[(i+1)%4]]
+                pygame.draw.polygon(self.image, color, face)
+                pygame.draw.polygon(self.image, (255, 255, 255), face, 1)
+            self.speed = -17
+            
+        elif "tentacle_crawl" in effects:
+            # 触手蠕动：中心眼球+触手
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 眼球
+            pygame.draw.circle(self.image, (150, 0, 150), (center, center), size//3)
+            pygame.draw.circle(self.image, (255, 0, 255), (center, center), size//5)
+            pygame.draw.circle(self.image, (50, 0, 50), (center, center), size//8)
+            # 4条触手
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                segments = [(center, center)]
+                for j in range(3):
+                    r = (j + 1) * size // 6
+                    px = center + int(r * math.cos(angle))
+                    py = center + int(r * math.sin(angle))
+                    segments.append((px, py))
+                for k in range(len(segments)-1):
+                    width = max(1, 4 - k)
+                    pygame.draw.line(self.image, color, segments[k], segments[k+1], width)
+            self.speed = -14
+            
+        elif "aurora_tail" in effects:
+            # 极光彗星：头部+彩色尾迹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 彗星头
+            pygame.draw.circle(self.image, (255, 255, 255), (center+size//3, center), size//4)
+            pygame.draw.circle(self.image, color, (center+size//3, center), size//6)
+            # 彩色尾迹
+            colors = [(255, 100, 100), (255, 255, 100), (100, 255, 100), (100, 100, 255)]
+            for i, trail_color in enumerate(colors):
+                y_offset = (i - 1.5) * size // 8
+                pygame.draw.line(self.image, trail_color, 
+                               (center+size//3, center), 
+                               (center-size//2, int(center+y_offset)), 3)
+            self.speed = -18
+            
+        elif "hourglass_flow" in effects:
+            # 时空沙漏：沙漏形状
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 上三角
+            top_tri = [
+                (center, center),
+                (center - size//2, center - size//2),
+                (center + size//2, center - size//2)
+            ]
+            pygame.draw.polygon(self.image, color, top_tri)
+            # 下三角
+            bottom_tri = [
+                (center, center),
+                (center - size//2, center + size//2),
+                (center + size//2, center + size//2)
+            ]
+            pygame.draw.polygon(self.image, color, bottom_tri)
+            # 轮廓
+            pygame.draw.polygon(self.image, (255, 255, 255), top_tri, 2)
+            pygame.draw.polygon(self.image, (255, 255, 255), bottom_tri, 2)
+            self.speed = -15
+            
+        elif "matrix_rain" in effects:
+            # 矩阵代码雨：方块阵列
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 绘制小方块阵列
+            for row in range(4):
+                for col in range(4):
+                    if (row + col) % 2 == 0:  # 棋盘格模式
+                        x = size//3 + col * size//3
+                        y = size//3 + row * size//3
+                        block_size = size//5
+                        pygame.draw.rect(self.image, color, (x, y, block_size, block_size))
+                        pygame.draw.rect(self.image, (0, 200, 0), (x, y, block_size, block_size), 1)
+            self.speed = -16
+        
+        # ========== Titan 子弹形状（大型、慢速）==========
+        elif "shell_massive" in effects:
+            # 巨型炮弹：更大尺寸
+            big_size = int(size * 1.8)  # 放大1.8倍
+            self.image = pygame.Surface((big_size, big_size*2), pygame.SRCALPHA)
+            center = big_size // 2
+            # 弹体
+            body_width = big_size // 2
+            body_height = big_size
+            pygame.draw.rect(self.image, color, 
+                           (center - body_width//2, center, body_width, body_height),
+                           border_radius=3)
+            pygame.draw.rect(self.image, (180, 180, 180), 
+                           (center - body_width//2, center, body_width, body_height), 2,
+                           border_radius=3)
+            # 弹头
+            tip = [
+                (center, center - big_size//4),
+                (center - body_width//2, center),
+                (center + body_width//2, center)
+            ]
+            pygame.draw.polygon(self.image, (100, 100, 100), tip)
+            pygame.draw.polygon(self.image, (200, 200, 200), tip, 2)
+            self.speed = -12  # 较慢速度
+            
+        elif "nuclear_glow" in effects:
+            # 核辐射球：发光效果
+            big_size = int(size * 1.6)
+            self.image = pygame.Surface((big_size*2, big_size*2), pygame.SRCALPHA)
+            center = big_size
+            # 多层光环
+            for r in range(big_size, 0, -big_size//4):
+                alpha = int(180 * (1 - (big_size - r) / big_size))
+                temp_surf = pygame.Surface((big_size*2, big_size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp_surf, (*color, alpha), (center, center), r)
+                self.image.blit(temp_surf, (0, 0))
+            # 核心
+            pygame.draw.circle(self.image, (255, 255, 0), (center, center), big_size//3)
+            pygame.draw.circle(self.image, color, (center, center), big_size//4)
+            # 辐射标志
+            for i in range(3):
+                angle = (i * 120) * 3.14159 / 180
+                x1 = center + int(big_size//5 * math.cos(angle))
+                y1 = center + int(big_size//5 * math.sin(angle))
+                x2 = center + int(big_size//1.5 * math.cos(angle))
+                y2 = center + int(big_size//1.5 * math.sin(angle))
+                pygame.draw.line(self.image, (0, 0, 0), (x1, y1), (x2, y2), 4)
+            self.speed = -13
+            
+        elif "magma_boulder" in effects:
+            # 熔岩巨石：最大尺寸
+            big_size = int(size * 2.0)
+            self.image = pygame.Surface((big_size, big_size), pygame.SRCALPHA)
+            center = big_size // 2
+            # 不规则岩石
+            import random
+            random.seed(42)
+            points = []
+            for i in range(8):
+                angle = (i * 45) * 3.14159 / 180
+                radius = big_size//2.5 + random.randint(-big_size//10, big_size//10)
+                px = center + int(radius * math.cos(angle))
+                py = center + int(radius * math.sin(angle))
+                points.append((px, py))
+            pygame.draw.polygon(self.image, (80, 40, 0), points)
+            pygame.draw.polygon(self.image, color, points, 2)
+            # 岩浆裂缝
+            for i in range(3):
+                x1 = center + random.randint(-big_size//6, big_size//6)
+                y1 = center + random.randint(-big_size//6, big_size//6)
+                x2 = x1 + random.randint(-big_size//8, big_size//8)
+                y2 = y1 + random.randint(-big_size//8, big_size//8)
+                pygame.draw.line(self.image, (255, 255, 0), (x1, y1), (x2, y2), 2)
+            self.speed = -11
+            
+        elif "rocket_thruster" in effects:
+            # 机械火箭
+            big_size = int(size * 1.7)
+            self.image = pygame.Surface((big_size, big_size*2), pygame.SRCALPHA)
+            center_x = big_size // 2
+            center_y = big_size
+            # 火箭头
+            nose = [
+                (center_x, center_y - big_size),
+                (center_x - big_size//4, center_y - big_size*2//3),
+                (center_x + big_size//4, center_y - big_size*2//3)
+            ]
+            pygame.draw.polygon(self.image, (200, 200, 200), nose)
+            # 火箭身
+            pygame.draw.rect(self.image, color, 
+                           (center_x - big_size//4, center_y - big_size*2//3, big_size//2, big_size))
+            pygame.draw.rect(self.image, (255, 255, 255), 
+                           (center_x - big_size//4, center_y - big_size*2//3, big_size//2, big_size), 2)
+            # 窗口
+            pygame.draw.circle(self.image, (100, 200, 255), (center_x, center_y - big_size//4), big_size//8)
+            # 尾焰
+            flame = [
+                (center_x - big_size//4, center_y + big_size//3),
+                (center_x, center_y + big_size),
+                (center_x + big_size//4, center_y + big_size//3)
+            ]
+            pygame.draw.polygon(self.image, (255, 200, 0), flame)
+            self.speed = -14
+            
+        elif "ice_spike" in effects:
+            # 冰晶巨刺
+            big_size = int(size * 1.6)
+            self.image = pygame.Surface((big_size*2, big_size*2), pygame.SRCALPHA)
+            center = big_size
+            # 四棱锥
+            tip = (center, center - big_size)
+            base = [
+                (center - big_size//3, center + big_size//3),
+                (center + big_size//3, center + big_size//3),
+                (center + big_size//2, center),
+                (center - big_size//2, center)
+            ]
+            for i in range(4):
+                face = [tip, base[i], base[(i+1)%4]]
+                pygame.draw.polygon(self.image, (*color, 200), face)
+                pygame.draw.polygon(self.image, (255, 255, 255), face, 2)
+            self.speed = -13
+            
+        elif "demon_skull" in effects:
+            # 恶魔骷髅
+            big_size = int(size * 1.9)
+            self.image = pygame.Surface((big_size*2, big_size*2), pygame.SRCALPHA)
+            center = big_size
+            # 头骨
+            pygame.draw.ellipse(self.image, (120, 0, 0), 
+                              (center - big_size//2, center - big_size//2, big_size, big_size))
+            pygame.draw.ellipse(self.image, color, 
+                              (center - big_size//2, center - big_size//2, big_size, big_size), 3)
+            # 眼睛
+            pygame.draw.circle(self.image, (0, 0, 0), (center - big_size//4, center - big_size//8), big_size//8)
+            pygame.draw.circle(self.image, (255, 0, 0), (center - big_size//4, center - big_size//8), big_size//8, 2)
+            pygame.draw.circle(self.image, (0, 0, 0), (center + big_size//4, center - big_size//8), big_size//8)
+            pygame.draw.circle(self.image, (255, 0, 0), (center + big_size//4, center - big_size//8), big_size//8, 2)
+            # 恶魔角
+            for dx in [-big_size//2, big_size//2]:
+                horn = [
+                    (center + dx, center - big_size//3),
+                    (center + dx + (big_size//6 if dx < 0 else -big_size//6), center - big_size),
+                    (center + dx + (big_size//4 if dx < 0 else -big_size//4), center - big_size//3)
+                ]
+                pygame.draw.polygon(self.image, (80, 0, 0), horn)
+            self.speed = -12
+            
+        elif "plasma_beam" in effects:
+            # 轨道激光柱
+            big_size = int(size * 1.5)
+            self.image = pygame.Surface((big_size*2, big_size*2), pygame.SRCALPHA)
+            center = big_size
+            # 核心
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), big_size//3)
+            pygame.draw.circle(self.image, color, (center, center), big_size//4)
+            # 十字光束
+            beam_width = big_size // 6
+            pygame.draw.rect(self.image, (*color, 220), 
+                           (center - beam_width//2, 0, beam_width, big_size*2))
+            pygame.draw.rect(self.image, (*color, 220), 
+                           (0, center - beam_width//2, big_size*2, beam_width))
+            # 瞄准圈
+            for radius in [big_size//1.5, big_size]:
+                pygame.draw.circle(self.image, (255, 255, 255), (center, center), radius, 2)
+            self.speed = -15
+        
+        # ========== Thunderbird 子弹形状 ==========
+        elif "lightning_bolt" in effects:
+            # 闪电箭矢：之字形
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            segments = [
+                (center, center - size),
+                (center + size//4, center - size//2),
+                (center - size//6, center),
+                (center + size//5, center + size//2),
+                (center, center + size)
+            ]
+            pygame.draw.lines(self.image, (255, 255, 255), False, segments, 5)
+            pygame.draw.lines(self.image, color, False, segments, 2)
+            self.speed = -17
+            
+        elif "tesla_coil" in effects:
+            # 特斯拉线圈：螺旋+环
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 核心
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//4)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            # 电弧环
+            for i in range(3):
+                arc_radius = size//3 + i * size//6
+                pygame.draw.circle(self.image, color, (center, center), arc_radius, 2)
+            self.speed = -16
+            
+        elif "feather_shape" in effects:
+            # 等离子羽毛
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 羽轴
+            pygame.draw.line(self.image, (200, 200, 200), 
+                           (center, center - size), (center, center + size), 3)
+            # 羽丝
+            for i in range(8):
+                y = center - size + i * size//4
+                width = int(size//2 * (1 - abs(i - 4) / 4))
+                pygame.draw.line(self.image, color, 
+                               (center, y), (center - width, y + size//8), 2)
+                pygame.draw.line(self.image, color, 
+                               (center, y), (center + width, y + size//8), 2)
+            self.speed = -15
+            
+        elif "aurora_blade" in effects:
+            # 极光羽刃：菱形刀刃
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            blade = [
+                (center, center - size),
+                (center + size//4, center),
+                (center, center + size),
+                (center - size//4, center)
+            ]
+            # 彩虹效果
+            colors_gradient = [(255, 0, 0), (255, 255, 0), (0, 255, 0), (0, 255, 255), (0, 0, 255)]
+            for i, grad_color in enumerate(colors_gradient):
+                offset = i * 2
+                temp_blade = [(x + offset, y) for x, y in blade]
+                pygame.draw.polygon(self.image, (*grad_color, 120), temp_blade)
+            pygame.draw.polygon(self.image, (255, 255, 255), blade, 2)
+            self.speed = -16
+            
+        elif "holy_spear" in effects:
+            # 女武神之矛
+            self.image = pygame.Surface((size, size*3), pygame.SRCALPHA)
+            center_x = size // 2
+            center_y = size
+            # 矛杆
+            shaft_width = size // 8
+            pygame.draw.rect(self.image, (180, 160, 140), 
+                           (center_x - shaft_width//2, center_y, shaft_width, size))
+            # 矛尖
+            spear_tip = [
+                (center_x, center_y - size),
+                (center_x - size//3, center_y),
+                (center_x + size//3, center_y)
+            ]
+            pygame.draw.polygon(self.image, (220, 220, 240), spear_tip)
+            pygame.draw.polygon(self.image, color, spear_tip, 2)
+            self.speed = -14
+            
+        elif "phoenix_plume" in effects:
+            # 凤凰火羽
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 羽轴
+            pygame.draw.line(self.image, (255, 200, 0), 
+                           (center, center - size), (center, center + size), 4)
+            # 火焰羽丝
+            for i in range(6):
+                y = center - size + i * size//3
+                flame_width = int(size//1.5 * (1 - abs(i - 3) / 3))
+                # 左侧
+                pygame.draw.line(self.image, (255, 100, 0), 
+                               (center, y), (center - flame_width, y + size//6), 3)
+                pygame.draw.line(self.image, (255, 200, 0), 
+                               (center, y), (center - flame_width, y + size//6), 1)
+                # 右侧
+                pygame.draw.line(self.image, (255, 100, 0), 
+                               (center, y), (center + flame_width, y + size//6), 3)
+                pygame.draw.line(self.image, (255, 200, 0), 
+                               (center, y), (center + flame_width, y + size//6), 1)
+            self.speed = -15
+            
+        elif "nebula_feather" in effects:
+            # 星云羽毛
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 羽轴
+            pygame.draw.line(self.image, (200, 150, 255), 
+                           (center, center - size), (center, center + size), 3)
+            # 羽丝
+            for i in range(8):
+                y = center - size + i * size//4
+                width = int(size//2 * (1 - abs(i - 4) / 4))
+                pygame.draw.line(self.image, color, 
+                               (center, y), (center - width, y + size//8), 2)
+                pygame.draw.line(self.image, color, 
+                               (center, y), (center + width, y + size//8), 2)
+            # 星点
+            import random
+            random.seed(456)
+            for _ in range(8):
+                star_x = center + random.randint(-size//2, size//2)
+                star_y = center + random.randint(-size, size)
+                pygame.draw.circle(self.image, (255, 255, 255), (star_x, star_y), 2)
+            self.speed = -16
+        
+        # ========== Viper 子弹形状 ==========
+        elif "venom_fang" in effects:
+            # 毒牙：三角形+毒滴
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            fang = [
+                (center, center + size//2),
+                (center - size//3, center - size//2),
+                (center + size//3, center - size//2)
+            ]
+            pygame.draw.polygon(self.image, (200, 200, 200), fang)
+            pygame.draw.polygon(self.image, color, fang, 2)
+            # 毒液滴
+            for i in range(2):
+                drop_y = center + size//2 + (i + 1) * size//6
+                pygame.draw.circle(self.image, color, (center, int(drop_y)), size//10)
+            self.speed = -16
+            
+        elif "acid_drop" in effects:
+            # 强酸液滴
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            pygame.draw.circle(self.image, color, (center, center), size//2)
+            pygame.draw.circle(self.image, (255, 255, 100), (center, center), size//3)
+            # 泪滴尖
+            tip = [
+                (center, center + size//2),
+                (center - size//6, center + size//4),
+                (center + size//6, center + size//4)
+            ]
+            pygame.draw.polygon(self.image, color, tip)
+            self.speed = -15
+            
+        elif "biohazard_symbol" in effects:
+            # 生化符号
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 中心圆
+            pygame.draw.circle(self.image, (0, 0, 0), (center, center), size//6)
+            pygame.draw.circle(self.image, color, (center, center), size//6, 2)
+            # 三叶
+            for i in range(3):
+                angle = (i * 120) * 3.14159 / 180
+                leaf_x = center + int(size//2 * math.cos(angle))
+                leaf_y = center + int(size//2 * math.sin(angle))
+                pygame.draw.circle(self.image, color, (leaf_x, leaf_y), size//5)
+                pygame.draw.circle(self.image, (0, 0, 0), (leaf_x, leaf_y), size//8)
+                # 连接线
+                inner_x = center + int(size//6 * math.cos(angle))
+                inner_y = center + int(size//6 * math.sin(angle))
+                outer_x = center + int(size//3 * math.cos(angle))
+                outer_y = center + int(size//3 * math.sin(angle))
+                pygame.draw.line(self.image, color, (inner_x, inner_y), (outer_x, outer_y), 3)
+            self.speed = -14
+            
+        elif "plasma_orb" in effects:
+            # 等离子球
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 多层
+            for r in range(size, size//3, -size//6):
+                alpha = int(200 * (1 - (size - r) / (size*2//3)))
+                temp_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp_surf, (*color, alpha), (center, center), r)
+                self.image.blit(temp_surf, (0, 0))
+            pygame.draw.circle(self.image, (255, 100, 255), (center, center), size//4)
+            self.speed = -15
+            
+        elif "hydra_heads" in effects:
+            # 九头蛇
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 身体
+            pygame.draw.circle(self.image, (100, 150, 50), (center, center), size//3)
+            pygame.draw.circle(self.image, color, (center, center), size//3, 2)
+            # 蛇头
+            for i in range(5):
+                angle = (i * 72 - 90) * 3.14159 / 180
+                head_x = center + int(size*2//3 * math.cos(angle))
+                head_y = center + int(size*2//3 * math.sin(angle))
+                head_tip = [
+                    (head_x + int(size//6 * math.cos(angle)), head_y + int(size//6 * math.sin(angle))),
+                    (head_x + int(size//10 * math.cos(angle + 0.5)), head_y + int(size//10 * math.sin(angle + 0.5))),
+                    (head_x + int(size//10 * math.cos(angle - 0.5)), head_y + int(size//10 * math.sin(angle - 0.5)))
+                ]
+                pygame.draw.polygon(self.image, (150, 200, 50), head_tip)
+                pygame.draw.line(self.image, color, (center, center), (head_x, head_y), 2)
+            self.speed = -13
+            
+        elif "neon_glow" in effects:
+            # 霓虹发光
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 外发光
+            for r in range(size, size//4, -size//8):
+                alpha = int(180 * (1 - (size - r) / (size*3//4)))
+                temp_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp_surf, (*color, alpha), (center, center), r)
+                self.image.blit(temp_surf, (0, 0))
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//4)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            self.speed = -16
+            
+        elif "serpent_eye" in effects:
+            # 蛇神之眼
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 眼轮廓
+            pygame.draw.ellipse(self.image, (255, 200, 0), 
+                              (center - size//2, center - size//3, size, size*2//3))
+            pygame.draw.ellipse(self.image, color, 
+                              (center - size//2, center - size//3, size, size*2//3), 2)
+            # 竖瞳
+            pupil_width = size // 8
+            pupil_height = size // 2
+            pygame.draw.ellipse(self.image, (0, 0, 0), 
+                              (center - pupil_width//2, center - pupil_height//2, pupil_width, pupil_height))
+            # 眼神光
+            pygame.draw.circle(self.image, (255, 255, 200), (center - size//8, center - size//8), size//12)
+            self.speed = -14
+        
+        # ========== Specter 子弹形状 ==========
+        elif "scythe_blade" in effects:
+            # 死神镰刀
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 镰刀柄
+            pygame.draw.line(self.image, (80, 80, 80), (center, center + size//2), (center, center + size), 4)
+            # 弯月刀刃
+            blade_rect = pygame.Rect(center - size, center - size, size*2, size*2)
+            pygame.draw.arc(self.image, color, blade_rect, 0, 3.14159, 4)
+            # 刀尖
+            tip = [
+                (center - size, center),
+                (center - size - size//6, center - size//10),
+                (center - size, center - size//5)
+            ]
+            pygame.draw.polygon(self.image, color, tip)
+            self.speed = -14
+            
+        elif "shadow_dagger" in effects:
+            # 暗影匕首
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 刀刃
+            blade = [
+                (center, center - size),
+                (center + size//6, center),
+                (center, center + size//3),
+                (center - size//6, center)
+            ]
+            pygame.draw.polygon(self.image, (100, 100, 150), blade)
+            pygame.draw.polygon(self.image, color, blade, 2)
+            # 刀柄
+            pygame.draw.rect(self.image, (50, 50, 80), (center - size//10, center + size//3, size//5, size//3))
+            self.speed = -17
+            
+        elif "wraith_chain" in effects:
+            # 怨灵锁链
+            self.image = pygame.Surface((size, size*3), pygame.SRCALPHA)
+            center_x = size // 2
+            # 锁链链节
+            for i in range(6):
+                y_pos = i * size // 3
+                link_rect = (center_x - size//8, y_pos, size//4, size//6)
+                pygame.draw.ellipse(self.image, color, link_rect, 2)
+            self.speed = -15
+            
+        elif "sniper_round" in effects:
+            # 狙击弹
+            self.image = pygame.Surface((size, size*2), pygame.SRCALPHA)
+            center_x = size // 2
+            center_y = size
+            # 弹头
+            tip = [
+                (center_x, center_y - size),
+                (center_x - size//4, center_y - size//2),
+                (center_x + size//4, center_y - size//2)
+            ]
+            pygame.draw.polygon(self.image, (200, 200, 220), tip)
+            pygame.draw.polygon(self.image, color, tip, 2)
+            # 弹体
+            pygame.draw.rect(self.image, (180, 180, 200), (center_x - size//4, center_y - size//2, size//2, size))
+            pygame.draw.rect(self.image, color, (center_x - size//4, center_y - size//2, size//2, size), 2)
+            self.speed = -18
+            
+        elif "poltergeist_cube" in effects:
+            # 灵异魔方
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            cube_size = size // 2
+            # 正面
+            front = [
+                (center - cube_size, center - cube_size),
+                (center + cube_size, center - cube_size),
+                (center + cube_size, center + cube_size),
+                (center - cube_size, center + cube_size)
+            ]
+            pygame.draw.polygon(self.image, color, front)
+            pygame.draw.polygon(self.image, (255, 255, 255), front, 2)
+            # 上面
+            top = [
+                (center - cube_size, center - cube_size),
+                (center + cube_size, center - cube_size),
+                (center + cube_size + cube_size//2, center - cube_size - cube_size//2),
+                (center - cube_size + cube_size//2, center - cube_size - cube_size//2)
+            ]
+            pygame.draw.polygon(self.image, (*color, 180), top)
+            self.speed = -13
+            
+        elif "fallen_wing" in effects:
+            # 堕落天使
+            self.image = pygame.Surface((size*3, size*2), pygame.SRCALPHA)
+            center_x = size*3//2
+            center_y = size
+            # 左翼羽毛
+            for i in range(4):
+                fx = center_x - size//4 - i * size//6
+                fy = center_y - size//3 + i * size//8
+                feather = [
+                    (fx, fy),
+                    (fx - size//8, fy + size//5),
+                    (fx + size//12, fy + size//6)
+                ]
+                pygame.draw.polygon(self.image, (50, 50, 80), feather)
+            # 右翼羽毛
+            for i in range(4):
+                fx = center_x + size//4 + i * size//6
+                fy = center_y - size//3 + i * size//8
+                feather = [
+                    (fx, fy),
+                    (fx + size//8, fy + size//5),
+                    (fx - size//12, fy + size//6)
+                ]
+                pygame.draw.polygon(self.image, (50, 50, 80), feather)
+            # 中心光
+            pygame.draw.circle(self.image, (150, 150, 200), (center_x, center_y), size//6)
+            self.speed = -15
+            
+        # ========== Aurora 子弹 ==========
+        elif "goddess_aura" in effects or "holy_rings" in effects:
+            # 女神光辉/圣洁光环
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 神圣核心
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//4)
+            pygame.draw.circle(self.image, color, (center, center), size//5)
+            # 光环（3层）
+            for i in range(3):
+                ring_r = size//3 + i * size//5
+                alpha = 200 - i * 50
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp, (*color, alpha), (center, center), ring_r, 2)
+                self.image.blit(temp, (0, 0))
+            self.speed = -14
+            
+        elif "nebula_swirl" in effects or "star_sparkle" in effects:
+            # 星云之心/星辰闪烁
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 星云核心
+            pygame.draw.circle(self.image, (180, 130, 255), (center, center), size//3)
+            # 星云漩涡
+            for arm in range(3):
+                for i in range(8):
+                    angle = (i * 45 + arm * 120) * 3.14159 / 180
+                    r = size//4 + i * size//20
+                    x = center + int(r * math.cos(angle))
+                    y = center + int(r * math.sin(angle))
+                    pygame.draw.circle(self.image, color, (x, y), size//15)
+            self.speed = -14
+            
+        elif "ice_crown" in effects or "frost_spikes" in effects:
+            # 冰雪王冠/冰霜尖刺
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 冰晶核心
+            pygame.draw.circle(self.image, (230, 245, 255), (center, center), size//5)
+            # 冰刺（6根）
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                x1 = center + int(size//5 * math.cos(angle))
+                y1 = center + int(size//5 * math.sin(angle))
+                x2 = center + int(size//1.5 * math.cos(angle))
+                y2 = center + int(size//1.5 * math.sin(angle))
+                # 冰锥
+                perp = angle + 1.5708
+                p1 = (x1 + int(size//12 * math.cos(perp)), y1 + int(size//12 * math.sin(perp)))
+                p2 = (x1 - int(size//12 * math.cos(perp)), y1 - int(size//12 * math.sin(perp)))
+                spike = [(x2, y2), p1, p2]
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.polygon(temp, (*color, 200), spike)
+                self.image.blit(temp, (0, 0))
+                pygame.draw.polygon(self.image, (255, 255, 255), spike, 1)
+            self.speed = -14
+            
+        elif "rainbow_beam" in effects or "chromatic_shift" in effects:
+            # 彩虹光束/彩虹折射
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 彩虹射线
+            rainbow_colors = [(255, 0, 0), (255, 127, 0), (255, 255, 0), (0, 255, 0), (0, 0, 255), (75, 0, 130), (148, 0, 211)]
+            for i, rc in enumerate(rainbow_colors):
+                angle = (i * 360 / 7) * 3.14159 / 180
+                x2 = center + int(size//1.5 * math.cos(angle))
+                y2 = center + int(size//1.5 * math.sin(angle))
+                pygame.draw.line(self.image, rc, (center, center), (x2, y2), 2)
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//5)
+            self.speed = -15
+            
+        elif "prism_split" in effects or "light_refract" in effects:
+            # 棱镜折射/光线折射
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 棱镜（菱形）
+            prism = [(center, center - size), (center + size//2, center), (center, center + size), (center - size//2, center)]
+            temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            pygame.draw.polygon(temp, (*color, 180), prism)
+            self.image.blit(temp, (0, 0))
+            pygame.draw.polygon(self.image, (255, 255, 255), prism, 2)
+            # 折射光
+            for i, rc in enumerate([(255, 0, 0), (0, 255, 0), (0, 0, 255)]):
+                angle = (30 + i * 30) * 3.14159 / 180
+                x1 = center + int(size//2 * math.cos(angle))
+                y1 = center + int(size//2 * math.sin(angle))
+                x2 = center + int(size * math.cos(angle + 0.3))
+                y2 = center + int(size * math.sin(angle + 0.3))
+                pygame.draw.line(self.image, rc, (x1, y1), (x2, y2), 2)
+            self.speed = -15
+            
+        elif "sakura_petal" in effects or "petal_spin" in effects:
+            # 樱花飞舞/樱花旋转
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 花瓣（5瓣）
+            for i in range(5):
+                angle = (i * 72) * 3.14159 / 180
+                px = center + int(size//2 * math.cos(angle))
+                py = center + int(size//2 * math.sin(angle))
+                # 花瓣椭圆
+                petal_rect = pygame.Rect(px - size//6, py - size//4, size//3, size//2)
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.ellipse(temp, (*color, 200), petal_rect)
+                self.image.blit(temp, (0, 0))
+                pygame.draw.ellipse(self.image, (255, 180, 200), petal_rect, 1)
+            # 花心
+            pygame.draw.circle(self.image, (255, 200, 220), (center, center), size//8)
+            self.speed = -13
+            
+        elif "celestial_ring" in effects or "divine_blessing" in effects:
+            # 天界光环/神圣祝福
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 十字光芒
+            pygame.draw.line(self.image, (255, 255, 240), (center, 0), (center, size*2), 4)
+            pygame.draw.line(self.image, (255, 255, 240), (0, center), (size*2, center), 4)
+            pygame.draw.line(self.image, color, (center, 0), (center, size*2), 2)
+            pygame.draw.line(self.image, color, (0, center), (size*2, center), 2)
+            # 中心光核
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//4)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            self.speed = -15
+            
+        # ========== Crimson 子弹 ==========
+        elif "blood_blade" in effects or "crimson_mist" in effects:
+            # 血月之刃/血雾弥漫
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 弯刀形状
+            blade_points = []
+            for i in range(12):
+                angle = (i * 15 - 90) * 3.14159 / 180
+                r = size
+                x = center + int(r * math.cos(angle))
+                y = center + int(r * math.sin(angle))
+                blade_points.append((x, y))
+            if len(blade_points) > 1:
+                pygame.draw.lines(self.image, color, False, blade_points, 4)
+                pygame.draw.lines(self.image, (255, 0, 0), False, blade_points, 2)
+            # 血雾
+            for i in range(5):
+                r = size//4 + i * size//8
+                alpha = 150 - i * 25
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp, (*color, alpha), (center, center), r)
+                self.image.blit(temp, (0, 0))
+            self.speed = -15
+            
+        elif "katana_slash" in effects or "blade_flash" in effects:
+            # 武士刀气/刀光闪烁
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 斜斩刀光
+            x1, y1 = size//2, size*3//2
+            x2, y2 = size*3//2, size//2
+            for i in range(4):
+                offset = i * 2
+                alpha = 220 - i * 40
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.line(temp, (*color, alpha), (x1 + offset, y1 - offset), (x2 + offset, y2 - offset), 5 - i)
+                self.image.blit(temp, (0, 0))
+            pygame.draw.line(self.image, (255, 255, 255), (x1, y1), (x2, y2), 1)
+            self.speed = -16
+            
+        elif "demon_claw" in effects or "blood_scratch" in effects:
+            # 恶魔之爪/血色爪痕
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 爪痕（3条）
+            for i in range(3):
+                offset = (i - 1) * size//3
+                x1 = center + offset - size//6
+                y1 = size//4
+                x2 = center + offset + size//6
+                y2 = size*7//4
+                pygame.draw.line(self.image, (80, 0, 0), (x1, y1), (x2, y2), 5)
+                pygame.draw.line(self.image, color, (x1, y1), (x2, y2), 3)
+            self.speed = -15
+            
+        elif "hellfire_burst" in effects or "inferno_wave" in effects:
+            # 地狱烈焰/炼狱波动
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 火核
+            pygame.draw.circle(self.image, (255, 255, 0), (center, center), size//5)
+            pygame.draw.circle(self.image, color, (center, center), size//4)
+            # 火焰爆发（8个火舌）
+            for i in range(8):
+                angle = (i * 45) * 3.14159 / 180
+                x1 = center + int(size//5 * math.cos(angle))
+                y1 = center + int(size//5 * math.sin(angle))
+                x2 = center + int(size * math.cos(angle))
+                y2 = center + int(size * math.sin(angle))
+                # 火焰渐变
+                pygame.draw.line(self.image, (255, 200, 0), (x1, y1), (x2, y2), 4)
+                pygame.draw.line(self.image, (255, 100, 0), (x1, y1), (x2, y2), 2)
+            self.speed = -15
+            
+        elif "rose_petal" in effects or "thorn_spike" in effects:
+            # 血玫瑰刺/尖刺荆棘
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 玫瑰花瓣（5瓣）
+            for i in range(5):
+                angle = (i * 72) * 3.14159 / 180
+                px = center + int(size//2 * math.cos(angle))
+                py = center + int(size//2 * math.sin(angle))
+                petal_rect = pygame.Rect(px - size//6, py - size//5, size//3, size//2)
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.ellipse(temp, (*color, 200), petal_rect)
+                self.image.blit(temp, (0, 0))
+                pygame.draw.ellipse(self.image, (180, 30, 60), petal_rect, 1)
+            # 花心
+            pygame.draw.circle(self.image, (150, 0, 40), (center, center), size//8)
+            # 尖刺
+            for i in range(8):
+                angle = (i * 45) * 3.14159 / 180
+                x1 = center + int(size//8 * math.cos(angle))
+                y1 = center + int(size//8 * math.sin(angle))
+                x2 = center + int(size//1.5 * math.cos(angle))
+                y2 = center + int(size//1.5 * math.sin(angle))
+                pygame.draw.line(self.image, (200, 50, 80), (x1, y1), (x2, y2), 2)
+            self.speed = -14
+            
+        elif "dragon_breath" in effects or "blood_scale" in effects:
+            # 血龙吐息/血色龙鳞
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 龙头
+            head = [(center - size//3, center - size//3), (center, center - size), 
+                   (center + size//3, center - size//3), (center + size//4, center), (center - size//4, center)]
+            pygame.draw.polygon(self.image, (150, 0, 0), head)
+            pygame.draw.polygon(self.image, color, head, 2)
+            # 龙鳞纹理
+            for row in range(2):
+                for col in range(2):
+                    sx = center + (col - 0.5) * size//3
+                    sy = center + (row - 0.5) * size//3
+                    scale = [(sx, sy - size//10), (sx + size//12, sy), (sx, sy + size//10), (sx - size//12, sy)]
+                    temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                    pygame.draw.polygon(temp, (*color, 180), scale)
+                    self.image.blit(temp, (0, 0))
+            # 火焰吐息
+            breath = [(center, center), (center - size//6, center + size//2), (center + size//8, center + size//1.5)]
+            pygame.draw.lines(self.image, (255, 100, 0), False, breath, 6)
+            self.speed = -16
+            
+        elif "bat_swarm" in effects or "vampire_drain" in effects:
+            # 吸血蝠群/吸血吸取
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 蝙蝠（4只）
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                bx = center + int(size//2 * math.cos(angle))
+                by = center + int(size//2 * math.sin(angle))
+                # 翅膀
+                wing = size // 6
+                left = [(bx, by), (bx - wing, by - wing//2), (bx - wing//2, by + wing//4)]
+                right = [(bx, by), (bx + wing, by - wing//2), (bx + wing//2, by + wing//4)]
+                pygame.draw.polygon(self.image, color, left)
+                pygame.draw.polygon(self.image, color, right)
+                pygame.draw.circle(self.image, (80, 0, 40), (bx, by), size//20)
+            # 中心血核
+            pygame.draw.circle(self.image, (120, 0, 50), (center, center), size//5)
+            self.speed = -15
+        
+        # ========== Stalker 子弹 ==========
+        elif "plasma_disc" in effects or "heat_trail" in effects:
+            # 铁血飞盘
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 飞盘主体
+            pygame.draw.circle(self.image, (180, 0, 220), (center, center), size//2)
+            # 锯齿边（6个）
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                x1 = center + int(size//2 * math.cos(angle))
+                y1 = center + int(size//2 * math.sin(angle))
+                x2 = center + int(size//1.5 * math.cos(angle))
+                y2 = center + int(size//1.5 * math.sin(angle))
+                perp = angle + 1.5708
+                p1 = (x1 + int(size//12 * math.cos(perp)), y1 + int(size//12 * math.sin(perp)))
+                p2 = (x1 - int(size//12 * math.cos(perp)), y1 - int(size//12 * math.sin(perp)))
+                pygame.draw.polygon(self.image, color, [(x2, y2), p1, p2])
+            # 中心
+            pygame.draw.circle(self.image, (255, 0, 255), (center, center), size//5)
+            self.speed = -16
+            
+        elif "acid_drop" in effects or "corrosive" in effects:
+            # 异形酸液
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 液滴形状
+            drop = [(center, center - size), (center + size//2, center), (center, center + size), (center - size//2, center)]
+            temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            pygame.draw.polygon(temp, (*color, 220), drop)
+            self.image.blit(temp, (0, 0))
+            pygame.draw.polygon(self.image, (150, 200, 0), drop, 2)
+            # 腐蚀气泡
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                bubble_x = center + int(size//3 * math.cos(angle))
+                bubble_y = center + int(size//3 * math.sin(angle))
+                pygame.draw.circle(self.image, (200, 255, 0), (bubble_x, bubble_y), size//15)
+            self.speed = -14
+            
+        elif "color_shift" in effects or "stealth_flicker" in effects:
+            # 变色迷彩
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 多层渐变
+            shift_colors = [(120, 180, 120), (80, 140, 180), (140, 120, 160)]
+            for i, sc in enumerate(shift_colors):
+                radius = size//1.5 - i * size//8
+                alpha = 200 - i * 50
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp, (*sc, alpha), (center, center), radius)
+                self.image.blit(temp, (0, 0))
+            self.speed = -15
+            
+        elif "spore_burst" in effects or "swarm_split" in effects:
+            # 虫群孢子
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 主孢子囊
+            pygame.draw.circle(self.image, (100, 140, 60), (center, center), size//3)
+            pygame.draw.circle(self.image, color, (center, center), size//3, 2)
+            # 裂变纹理
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                x2 = center + int(size//3 * math.cos(angle))
+                y2 = center + int(size//3 * math.sin(angle))
+                pygame.draw.line(self.image, (60, 100, 30), (center, center), (x2, y2), 2)
+            # 小孢子
+            for i in range(8):
+                angle = (i * 45) * 3.14159 / 180
+                sx = center + int(size//1.5 * math.cos(angle))
+                sy = center + int(size//1.5 * math.sin(angle))
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp, (*color, 180), (sx, sy), size//12)
+                self.image.blit(temp, (0, 0))
+            self.speed = -14
+            
+        elif "drone_tracking" in effects or "scanner_lock" in effects:
+            # 追踪无人机
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 十字机身
+            pygame.draw.rect(self.image, (220, 170, 0), (size//2, center - size//10, size, size//5))
+            pygame.draw.rect(self.image, (220, 170, 0), (center - size//10, size//2, size//5, size))
+            # 中心核心
+            pygame.draw.circle(self.image, (255, 200, 0), (center, center), size//5)
+            # 四旋翼
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                rx = center + int(size//2 * math.cos(angle))
+                ry = center + int(size//2 * math.sin(angle))
+                pygame.draw.circle(self.image, (180, 140, 0), (rx, ry), size//8, 2)
+            self.speed = -16
+            
+        elif "void_phase" in effects or "dimension_shift" in effects:
+            # 虚空潜行
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 裂隙
+            rift = [(center, center - size), (center - size//6, center - size//3), (center + size//8, center + size//3), (center, center + size)]
+            pygame.draw.lines(self.image, (150, 0, 200), False, rift, 3)
+            pygame.draw.lines(self.image, (200, 100, 255), False, rift, 1)
+            # 虚空漩涡
+            for i in range(3):
+                radius = size//3 + i * size//6
+                alpha = 180 - i * 50
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp, (*color, alpha), (center, center), radius, 2)
+                self.image.blit(temp, (0, 0))
+            self.speed = -15
+            
+        elif "xenomorph_egg" in effects or "hive_spawn" in effects:
+            # 异形卵巢
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 卵体
+            egg_rect = pygame.Rect(center - size//2, center - size, size, size*2)
+            temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            pygame.draw.ellipse(temp, (*color, 220), egg_rect)
+            self.image.blit(temp, (0, 0))
+            pygame.draw.ellipse(self.image, (60, 140, 60), egg_rect, 2)
+            # 竖纹
+            for i in range(4):
+                line_x = center - size//3 + i * size//4
+                pygame.draw.line(self.image, (40, 100, 40), (line_x, center - size), (line_x, center + size), 1)
+            # 触手
+            for i in range(4):
+                angle = (i * 90 + 45) * 3.14159 / 180
+                for j in range(3):
+                    radius = size//2 + j * size//8
+                    tx = center + int(radius * math.cos(angle))
+                    ty = center + int(radius * math.sin(angle))
+                    pygame.draw.circle(self.image, (60, 120, 60), (tx, ty), size//15)
+            self.speed = -14
+            
+        # ========== Gaia 子弹 ==========
+        elif "seed_spiral" in effects or "leaf_swirl" in effects:
+            # 森林之种
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 种子核心
+            pygame.draw.circle(self.image, (100, 200, 100), (center, center), size//5)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            # 螺旋叶片（6片）
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                leaf_x = center + int(size//2 * math.cos(angle))
+                leaf_y = center + int(size//2 * math.sin(angle))
+                leaf_rect = pygame.Rect(leaf_x - size//10, leaf_y - size//8, size//5, size//4)
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.ellipse(temp, (*color, 200), leaf_rect)
+                self.image.blit(temp, (0, 0))
+                pygame.draw.ellipse(self.image, (100, 220, 100), leaf_rect, 1)
+            self.speed = -13
+            
+        elif "crystal_facet" in effects or "gem_sparkle" in effects:
+            # 水晶宝石
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 六边形晶体
+            crystal = []
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                px = center + int(size//1.5 * math.cos(angle))
+                py = center + int(size//1.5 * math.sin(angle))
+                crystal.append((px, py))
+            temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            pygame.draw.polygon(temp, (*color, 200), crystal)
+            self.image.blit(temp, (0, 0))
+            pygame.draw.polygon(self.image, (0, 255, 220), crystal, 2)
+            # 切面
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                x2 = center + int(size//1.5 * math.cos(angle))
+                y2 = center + int(size//1.5 * math.sin(angle))
+                pygame.draw.line(self.image, (0, 220, 200), (center, center), (x2, y2), 1)
+            self.speed = -14
+            
+        elif "vine_coil" in effects or "thorn_barb" in effects:
+            # 荆棘藤蔓
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 藤蔓螺旋
+            vine = []
+            for i in range(12):
+                angle = (i * 30) * 3.14159 / 180
+                radius = size//4 + (i / 12) * size//2
+                vx = center + int(radius * math.cos(angle))
+                vy = center + int(radius * math.sin(angle))
+                vine.append((vx, vy))
+            if len(vine) > 1:
+                pygame.draw.lines(self.image, (120, 160, 60), False, vine, 3)
+                pygame.draw.lines(self.image, color, False, vine, 1)
+            # 荆棘
+            for i in range(0, len(vine), 3):
+                if i < len(vine):
+                    vx, vy = vine[i]
+                    thorn = [(vx, vy - size//10), (vx + size//15, vy), (vx - size//15, vy)]
+                    pygame.draw.polygon(self.image, (140, 180, 70), thorn)
+            self.speed = -14
+            
+        elif "petal_storm" in effects or "bloom_burst" in effects:
+            # 花瓣风暴
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 花心
+            pygame.draw.circle(self.image, (255, 200, 0), (center, center), size//8)
+            # 花瓣（8片）
+            for i in range(8):
+                angle = (i * 45) * 3.14159 / 180
+                px = center + int(size//2 * math.cos(angle))
+                py = center + int(size//2 * math.sin(angle))
+                petal_rect = pygame.Rect(px - size//10, py - size//8, size//5, size//4)
+                temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.ellipse(temp, (*color, 220), petal_rect)
+                self.image.blit(temp, (0, 0))
+                pygame.draw.ellipse(self.image, (255, 180, 220), petal_rect, 1)
+            self.speed = -13
+            
+        elif "rock_boulder" in effects or "earth_crack" in effects:
+            # 大地之石
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 岩石（不规则）
+            rock = [
+                (center, center - size),
+                (center + size//2, center - size//3),
+                (center + size//1.5, center + size//4),
+                (center + size//3, center + size),
+                (center - size//3, center + size),
+                (center - size//1.5, center + size//4),
+                (center - size//2, center - size//3)
+            ]
+            pygame.draw.polygon(self.image, (140, 120, 80), rock)
+            pygame.draw.polygon(self.image, color, rock, 2)
+            # 裂纹
+            pygame.draw.line(self.image, (80, 60, 40), (center - size//4, center - size//3), (center + size//3, center + size//6), 2)
+            self.speed = -15
+            
+        elif "mushroom_cap" in effects or "spore_cloud" in effects:
+            # 魔法蘑菇
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 伞盖
+            cap_rect = pygame.Rect(center - size//1.5, center - size, size*4//3, size)
+            temp = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            pygame.draw.ellipse(temp, (*color, 220), cap_rect)
+            self.image.blit(temp, (0, 0))
+            pygame.draw.arc(self.image, (220, 120, 255), cap_rect, 0, 3.14159, 2)
+            # 柄
+            pygame.draw.rect(self.image, (180, 150, 200), (center - size//10, center, size//5, size))
+            # 斑点
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                spot_x = center + int(size//3 * math.cos(angle))
+                spot_y = center - size//2
+                pygame.draw.circle(self.image, (255, 200, 255), (spot_x, spot_y), size//15)
+            self.speed = -13
+            
+        elif "tree_rings" in effects or "ancient_runes" in effects:
+            # 古树之心
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 年轮
+            for i in range(4):
+                ring_r = size//4 + i * size//8
+                pygame.draw.circle(self.image, (130 - i * 15, 90 - i * 10, 40), (center, center), ring_r, 2)
+            # 中心
+            pygame.draw.circle(self.image, (180, 120, 60), (center, center), size//6)
+            # 符文（4个）
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                rune_x = center + int(size//2 * math.cos(angle))
+                rune_y = center + int(size//2 * math.sin(angle))
+                pygame.draw.line(self.image, (200, 150, 80), (rune_x, rune_y - size//12), (rune_x, rune_y + size//12), 2)
+                pygame.draw.line(self.image, (200, 150, 80), (rune_x - size//15, rune_y - size//15), (rune_x + size//15, rune_y - size//15), 2)
+            self.speed = -14
+        
+        # ========== Weaver 子弹 ==========
+        elif "web_net" in effects or "spider_silk" in effects:
+            # 蛛网陷阱
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 蛛网节点
+            pygame.draw.circle(self.image, (220, 220, 220), (center, center), size//6)
+            pygame.draw.circle(self.image, color, (center, center), size//8)
+            # 放射线（6条）
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                x1 = center + int(size//8 * math.cos(angle))
+                y1 = center + int(size//8 * math.sin(angle))
+                x2 = center + int(size//1.5 * math.cos(angle))
+                y2 = center + int(size//1.5 * math.sin(angle))
+                pygame.draw.line(self.image, (200, 200, 200), (x1, y1), (x2, y2), 2)
+            # 蛛网环（2层）
+            for i in range(2):
+                ring_r = size//3 + i * size//5
+                web_points = []
+                for j in range(6):
+                    angle = (j * 60) * 3.14159 / 180
+                    px = center + int(ring_r * math.cos(angle))
+                    py = center + int(ring_r * math.sin(angle))
+                    web_points.append((px, py))
+                if len(web_points) > 1:
+                    pygame.draw.lines(self.image, (180, 180, 180), True, web_points, 1)
+            self.speed = -13
+        
+        elif "phase_shift" in effects or "dimension_warp" in effects:
+            # 相位穿梭
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 多重相位（3层）
+            shift_offsets = [(0, 0), (2, -2), (4, -4)]
+            for i, (dx, dy) in enumerate(shift_offsets):
+                alpha = 220 - i * 60
+                diamond = [
+                    (center + dx, center//2 + dy),
+                    (center + size//2 + dx, center + dy),
+                    (center + dx, center + size//2 + dy),
+                    (center - size//2 + dx, center + dy)
+                ]
+                pygame.draw.polygon(self.image, (*color, alpha), diamond)
+                if i == 0:
+                    pygame.draw.polygon(self.image, (200, 200, 220), diamond, 2)
+            # 相位粒子
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                px = center + int(size//4 * math.cos(angle))
+                py = center + int(size//4 * math.sin(angle))
+                pygame.draw.circle(self.image, (180, 180, 220), (px, py), size//25)
+            self.speed = -16
+        
+        elif "void_cocoon" in effects or "space_lock" in effects:
+            # 虚空之茧
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 茧外壳（椭圆）
+            cocoon_rect = (center - size//3, center - size//2, size*2//3, size)
+            pygame.draw.ellipse(self.image, (*color, 200), cocoon_rect)
+            pygame.draw.ellipse(self.image, (120, 120, 180), cocoon_rect, 3)
+            # 束缚线（4条）
+            for i in range(4):
+                line_x = center - size//4 + i * size//6
+                pygame.draw.line(self.image, (80, 80, 130), (line_x, center - size//2), (line_x, center + size//2), 2)
+            # 虚空核心
+            pygame.draw.circle(self.image, (50, 50, 100), (center, center), size//8)
+            # 扭曲环
+            for i in range(2):
+                wave_r = size//6 + i * size//8
+                pygame.draw.circle(self.image, (*color, 150 - i * 50), (center, center), wave_r, 2)
+            self.speed = -11
+        
+        elif "time_thread" in effects or "slow_field" in effects:
+            # 时间丝线
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 时钟圆盘
+            pygame.draw.circle(self.image, (200, 200, 240), (center, center), size//3, 3)
+            # 时钟刻度（8个）
+            for i in range(8):
+                angle = (i * 45 - 90) * 3.14159 / 180
+                x1 = center + int(size//4 * math.cos(angle))
+                y1 = center + int(size//4 * math.sin(angle))
+                x2 = center + int(size//3 * math.cos(angle))
+                y2 = center + int(size//3 * math.sin(angle))
+                width = 2 if i % 2 == 0 else 1
+                pygame.draw.line(self.image, (160, 160, 200), (x1, y1), (x2, y2), width)
+            # 时针
+            time_angle = 0
+            needle_x = center + int(size//4 * math.cos(time_angle))
+            needle_y = center + int(size//4 * math.sin(time_angle))
+            pygame.draw.line(self.image, (100, 100, 150), (center, center), (needle_x, needle_y), 3)
+            # 时间波纹
+            for i in range(2):
+                wave_r = size//2 + i * size//6
+                pygame.draw.circle(self.image, (*color, 150 - i * 50), (center, center), wave_r, 2)
+            self.speed = -12
+        
+        elif "quantum_tangle" in effects or "entangle_web" in effects:
+            # 量子纠缠
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 中心核
+            pygame.draw.circle(self.image, (150, 220, 255), (center, center), size//6)
+            pygame.draw.circle(self.image, color, (center, center), size//8)
+            # 量子粒子（4个）
+            particles = []
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                px = center + int(size//2.5 * math.cos(angle))
+                py = center + int(size//2.5 * math.sin(angle))
+                particles.append((px, py))
+                pygame.draw.circle(self.image, (100, 180, 255), (px, py), size//12)
+            # 纠缠连线
+            for i in range(len(particles)):
+                for j in range(i + 1, len(particles)):
+                    pygame.draw.line(self.image, (*color, 150), particles[i], particles[j], 1)
+            self.speed = -14
+        
+        elif "shadow_weave" in effects or "dark_web" in effects:
+            # 暗影编织
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 暗影中心
+            pygame.draw.circle(self.image, (30, 30, 60), (center, center), size//5)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            # 暗影射线（8条）
+            for i in range(8):
+                angle = (i * 45) * 3.14159 / 180
+                length = size//2 + (i % 2) * size//6
+                x1 = center + int(size//6 * math.cos(angle))
+                y1 = center + int(size//6 * math.sin(angle))
+                x2 = center + int(length * math.cos(angle))
+                y2 = center + int(length * math.sin(angle))
+                pygame.draw.line(self.image, (*color, 180), (x1, y1), (x2, y2), 2)
+            # 暗影粒子
+            import random
+            random.seed(456)
+            for _ in range(6):
+                sx = center + random.randint(-size//2, size//2)
+                sy = center + random.randint(-size//2, size//2)
+                pygame.draw.circle(self.image, (30, 30, 60, 150), (sx, sy), size//20)
+            self.speed = -15
+        
+        elif "cosmic_web" in effects or "fate_thread" in effects:
+            # 宇宙丝线
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 宇宙中心
+            pygame.draw.circle(self.image, (120, 170, 220), (center, center), size//6)
+            pygame.draw.circle(self.image, color, (center, center), size//8)
+            # 星系节点（6个）
+            nodes = []
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                nx = center + int(size//2.5 * math.cos(angle))
+                ny = center + int(size//2.5 * math.sin(angle))
+                nodes.append((nx, ny))
+                pygame.draw.circle(self.image, (80, 130, 180), (nx, ny), size//15)
+                # 星光闪烁
+                for j in range(4):
+                    star_angle = (j * 90) * 3.14159 / 180
+                    sx = nx + int(size//10 * math.cos(star_angle))
+                    sy = ny + int(size//10 * math.sin(star_angle))
+                    pygame.draw.line(self.image, (150, 200, 255), (nx, ny), (sx, sy), 1)
+            # 命运之线连接
+            for i, (nx, ny) in enumerate(nodes):
+                pygame.draw.line(self.image, (100, 150, 200), (center, center), (nx, ny), 2)
+                next_node = nodes[(i + 1) % len(nodes)]
+                pygame.draw.line(self.image, (*color, 150), (nx, ny), next_node, 1)
+            self.speed = -13
+        
+        # ========== Solar 子弹 ==========
+        elif "solar_flare" in effects or "light_burst" in effects:
+            # 太阳耀斑
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 太阳核心
+            pygame.draw.circle(self.image, (255, 255, 100), (center, center), size//5)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            # 耀斑射线（12条）
+            for i in range(12):
+                angle = (i * 30) * 3.14159 / 180
+                length = size//2 if i % 2 == 0 else size//1.5
+                x1 = center + int(size//6 * math.cos(angle))
+                y1 = center + int(size//6 * math.sin(angle))
+                x2 = center + int(length * math.cos(angle))
+                y2 = center + int(length * math.sin(angle))
+                pygame.draw.line(self.image, (255, 220, 0), (x1, y1), (x2, y2), 3)
+            # 光晕
+            for i in range(2):
+                halo_r = size//4 + i * size//8
+                pygame.draw.circle(self.image, (*color, 180 - i * 80), (center, center), halo_r)
+            self.speed = -17
+        
+        elif "corona_ring" in effects or "plasma_loop" in effects:
+            # 日冕光环
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 中心
+            pygame.draw.circle(self.image, (255, 200, 0), (center, center), size//6)
+            # 日冕环（2层）
+            for i in range(2):
+                ring_r = size//3 + i * size//6
+                ring_color = (255, 180 - i * 30, 0)
+                pygame.draw.circle(self.image, (*ring_color, 200 - i * 60), (center, center), ring_r, 4)
+            # 等离子弧（3个）
+            for i in range(3):
+                angle = (i * 120) * 3.14159 / 180
+                arc_points = []
+                for a in range(8):
+                    arc_angle = angle + (a - 4) * 0.1
+                    px = center + int(size//2 * math.cos(arc_angle))
+                    py = center + int(size//2 * math.sin(arc_angle))
+                    arc_points.append((px, py))
+                if len(arc_points) > 1:
+                    pygame.draw.lines(self.image, (255, 150, 0), False, arc_points, 3)
+            self.speed = -15
+        
+        elif "prominence_jet" in effects or "flame_tongue" in effects:
+            # 日珥喷发
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 太阳主体
+            pygame.draw.circle(self.image, (255, 120, 0), (center, center), size//4)
+            # 火焰喷射（4条）
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                flame_points = []
+                for j in range(6):
+                    radius = size//4 + j * size//12
+                    wave_offset = int(size//15 * math.sin(j * 0.5))
+                    fx = center + int(radius * math.cos(angle)) + wave_offset
+                    fy = center + int(radius * math.sin(angle))
+                    flame_points.append((fx, fy))
+                if len(flame_points) > 1:
+                    pygame.draw.lines(self.image, (255, 200, 0), False, flame_points, 4)
+                    pygame.draw.lines(self.image, (255, 100, 0), False, flame_points, 2)
+            self.speed = -16
+        
+        elif "sunspot_vortex" in effects or "magnetic_storm" in effects:
+            # 太阳黑子
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 黑子核心
+            pygame.draw.circle(self.image, (100, 50, 0), (center, center), size//5)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            # 磁力线漩涡（2条）
+            for arm in range(2):
+                spiral_points = []
+                arm_offset = arm * 180
+                for i in range(10):
+                    angle = (i * 36 + arm_offset) * 3.14159 / 180
+                    radius = size//8 + i * size//25
+                    sx = center + int(radius * math.cos(angle))
+                    sy = center + int(radius * math.sin(angle))
+                    spiral_points.append((sx, sy))
+                if len(spiral_points) > 1:
+                    pygame.draw.lines(self.image, (255, 150, 0), False, spiral_points, 3)
+            # 磁暴环
+            for i in range(2):
+                storm_r = size//3 + i * size//5
+                pygame.draw.circle(self.image, (255, 100, 0, 160 - i * 80), (center, center), storm_r, 3)
+            self.speed = -14
+        
+        elif "fusion_core" in effects or "nuclear_pulse" in effects:
+            # 核聚变核
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 聚变核心
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//8)
+            pygame.draw.circle(self.image, (255, 255, 200), (center, center), size//6)
+            pygame.draw.circle(self.image, color, (center, center), size//5)
+            # 能量环（3层）
+            for i in range(3):
+                pulse_r = size//4 + i * size//6
+                pygame.draw.circle(self.image, (255, 255, 100, 200 - i * 50), (center, center), pulse_r, 3)
+            # 聚变粒子
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                particle_r = size//3
+                px = center + int(particle_r * math.cos(angle))
+                py = center + int(particle_r * math.sin(angle))
+                pygame.draw.circle(self.image, (255, 255, 150), (px, py), size//20)
+            self.speed = -18
+        
+        elif "photon_stream" in effects or "light_particle" in effects:
+            # 光子流束
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 光源核心
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//8)
+            pygame.draw.circle(self.image, color, (center, center), size//10)
+            # 光子粒子流（螺旋）
+            for stream in range(3):
+                stream_offset = stream * 120
+                for i in range(10):
+                    angle = (i * 36 + stream_offset) * 3.14159 / 180
+                    radius = size//6 + i * size//25
+                    px = center + int(radius * math.cos(angle))
+                    py = center + int(radius * math.sin(angle))
+                    particle_size = size//15 - i // 4
+                    if particle_size > 0:
+                        pygame.draw.circle(self.image, (255, 255, 220), (px, py), particle_size)
+            self.speed = -16
+        
+        elif "supernova_burst" in effects or "stellar_explosion" in effects:
+            # 超新星爆发
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 超新星核心
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//10)
+            pygame.draw.circle(self.image, (255, 100, 0), (center, center), size//8)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            # 爆炸波（2层）
+            for i in range(2):
+                blast_r = size//3 + i * size//4
+                blast_color = [(255, 0, 0), (255, 150, 0)][i]
+                pygame.draw.circle(self.image, (*blast_color, 220 - i * 80), (center, center), blast_r, 4)
+            # 爆炸碎片（8个）
+            for i in range(8):
+                angle = (i * 45) * 3.14159 / 180
+                debris_r = size//2
+                dx = center + int(debris_r * math.cos(angle))
+                dy = center + int(debris_r * math.sin(angle))
+                pygame.draw.circle(self.image, (255, 150, 0), (dx, dy), size//12)
+            self.speed = -19
+        
+        # ========== Arbiter 子弹 ==========
+        elif "quant_cube" in effects or "quantum_matrix" in effects:
+            # 量子立方
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            cube_size = size//2
+            # 主立方
+            pygame.draw.rect(self.image, color, (center - cube_size//2, center - cube_size//2, cube_size, cube_size), 3)
+            # 透视立方
+            offset = size//6
+            back_rect = (center - cube_size//2 + offset, center - cube_size//2 - offset, cube_size, cube_size)
+            pygame.draw.rect(self.image, (150, 80, 200), back_rect, 2)
+            # 连接线
+            corners = [
+                (center - cube_size//2, center - cube_size//2),
+                (center + cube_size//2, center - cube_size//2),
+                (center + cube_size//2, center + cube_size//2),
+                (center - cube_size//2, center + cube_size//2)
+            ]
+            back_corners = [
+                (center - cube_size//2 + offset, center - cube_size//2 - offset),
+                (center + cube_size//2 + offset, center - cube_size//2 - offset),
+                (center + cube_size//2 + offset, center + cube_size//2 - offset),
+                (center - cube_size//2 + offset, center + cube_size//2 - offset)
+            ]
+            for i in range(4):
+                pygame.draw.line(self.image, (120, 60, 180), corners[i], back_corners[i], 1)
+            # 量子粒子
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                px = center + int(size//4 * math.cos(angle))
+                py = center + int(size//4 * math.sin(angle))
+                pygame.draw.circle(self.image, (200, 150, 255), (px, py), size//25)
+            self.speed = -14
+        
+        elif "fractal_shard" in effects or "split_multiply" in effects:
+            # 分形碎片
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 主三角形
+            main_triangle = [
+                (center, center - size//2),
+                (center - size//2, center + size//2),
+                (center + size//2, center + size//2)
+            ]
+            pygame.draw.polygon(self.image, color, main_triangle, 3)
+            # 子三角形
+            for i in range(3):
+                angle = (i * 120) * 3.14159 / 180
+                fx = center + int(size//3 * math.cos(angle))
+                fy = center + int(size//3 * math.sin(angle))
+                sub_triangle = [
+                    (fx, fy - size//6),
+                    (fx - size//6, fy + size//6),
+                    (fx + size//6, fy + size//6)
+                ]
+                pygame.draw.polygon(self.image, (180, 100, 230), sub_triangle, 2)
+            # 分裂线
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                x1 = center + int(size//8 * math.cos(angle))
+                y1 = center + int(size//8 * math.sin(angle))
+                x2 = center + int(size//2 * math.cos(angle))
+                y2 = center + int(size//2 * math.sin(angle))
+                pygame.draw.line(self.image, (*color, 150), (x1, y1), (x2, y2), 1)
+            self.speed = -15
+        
+        elif "tesseract" in effects or "hypercube_projection" in effects:
+            # 四维超立方
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 内立方
+            inner_size = size//3
+            inner_rect = (center - inner_size//2, center - inner_size//2, inner_size, inner_size)
+            pygame.draw.rect(self.image, (150, 100, 220), inner_rect, 3)
+            # 外立方
+            outer_size = size//1.5
+            outer_rect = (center - outer_size//2, center - outer_size//2, outer_size, outer_size)
+            pygame.draw.rect(self.image, color, outer_rect, 3)
+            # 连接线
+            inner_corners = [
+                (center - inner_size//2, center - inner_size//2),
+                (center + inner_size//2, center - inner_size//2),
+                (center + inner_size//2, center + inner_size//2),
+                (center - inner_size//2, center + inner_size//2)
+            ]
+            outer_corners = [
+                (center - outer_size//2, center - outer_size//2),
+                (center + outer_size//2, center - outer_size//2),
+                (center + outer_size//2, center + outer_size//2),
+                (center - outer_size//2, center + outer_size//2)
+            ]
+            for i in range(4):
+                pygame.draw.line(self.image, (180, 120, 240), inner_corners[i], outer_corners[i], 2)
+            self.speed = -16
+        
+        elif "matrix_rain" in effects or "code_cascade" in effects:
+            # 矩阵代码雨
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 背景
+            pygame.draw.rect(self.image, (0, 50, 20, 180), (0, 0, size*2, size*2))
+            # 代码流
+            import random
+            random.seed(789)
+            for i in range(6):
+                line_x = center - size//2 + i * size//3
+                for j in range(5):
+                    code_y = center - size//2 + j * size//5
+                    brightness = 100 + (j * 30)
+                    char_size = size//20
+                    pygame.draw.rect(self.image, (0, brightness, 50), (line_x - char_size//2, code_y - char_size//2, char_size, char_size))
+            # 矩阵光芒
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                x1 = center + int(size//6 * math.cos(angle))
+                y1 = center + int(size//6 * math.sin(angle))
+                x2 = center + int(size//2 * math.cos(angle))
+                y2 = center + int(size//2 * math.sin(angle))
+                pygame.draw.line(self.image, (0, 255, 100), (x1, y1), (x2, y2), 2)
+            self.speed = -13
+        
+        elif "geometric_wave" in effects or "angular_ripple" in effects:
+            # 几何波纹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 六边形
+            hex_points = []
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                px = center + int(size//4 * math.cos(angle))
+                py = center + int(size//4 * math.sin(angle))
+                hex_points.append((px, py))
+            pygame.draw.polygon(self.image, color, hex_points, 3)
+            # 波纹环（2层）
+            for i in range(2):
+                wave_r = size//3 + i * size//8
+                wave_hex = []
+                for j in range(6):
+                    angle = (j * 60) * 3.14159 / 180
+                    px = center + int(wave_r * math.cos(angle))
+                    py = center + int(wave_r * math.sin(angle))
+                    wave_hex.append((px, py))
+                if len(wave_hex) > 1:
+                    pygame.draw.lines(self.image, (*color, 200 - i * 80), True, wave_hex, 2)
+            self.speed = -14
+        
+        elif "quantum_entangle" in effects or "spooky_action" in effects:
+            # 量子纠缠网
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 中心核
+            pygame.draw.circle(self.image, (255, 150, 255), (center, center), size//8)
+            pygame.draw.circle(self.image, color, (center, center), size//10)
+            # 纠缠粒子（6个）
+            particles = []
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                px = center + int(size//2.5 * math.cos(angle))
+                py = center + int(size//2.5 * math.sin(angle))
+                particles.append((px, py))
+                pygame.draw.circle(self.image, (200, 100, 220), (px, py), size//15)
+            # 纠缠连线
+            for i in range(len(particles)):
+                opposite = (i + 3) % len(particles)
+                pygame.draw.line(self.image, (*color, 150), particles[i], particles[opposite], 2)
+            self.speed = -15
+        
+        elif "collapse_star" in effects or "wavefunction_collapse" in effects:
+            # 波函数坍缩
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 多重态（4个重影）
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                spread = size//4
+                sx = center + int(spread * math.cos(angle))
+                sy = center + int(spread * math.sin(angle))
+                pygame.draw.circle(self.image, (*color, 120), (sx, sy), size//12)
+            # 确定态
+            pygame.draw.circle(self.image, (220, 180, 255), (center, center), size//7)
+            pygame.draw.circle(self.image, color, (center, center), size//8)
+            # 坍缩波
+            for i in range(2):
+                wave_r = size//4 + i * size//8
+                pygame.draw.circle(self.image, (*color, 180 - i * 80), (center, center), wave_r, 2)
+            self.speed = -16
+        
+        # ========== Eclipse 子弹 ==========
+        elif "dual_core" in effects or "sync_resonance" in effects:
+            # 双核心共振
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            core_offset = size//4
+            # 左核心
+            left_x = center - core_offset
+            pygame.draw.circle(self.image, (100, 50, 180), (left_x, center), size//6)
+            pygame.draw.circle(self.image, color, (left_x, center), size//8)
+            # 右核心
+            right_x = center + core_offset
+            pygame.draw.circle(self.image, (150, 80, 220), (right_x, center), size//6)
+            pygame.draw.circle(self.image, color, (right_x, center), size//8)
+            # 共振线
+            pygame.draw.line(self.image, (200, 100, 255), (left_x, center), (right_x, center), 3)
+            # 能量环
+            for i in range(2):
+                ring_r = size//3 + i * size//8
+                pygame.draw.circle(self.image, (*color, 180 - i * 80), (center, center), ring_r, 2)
+            self.speed = -15
+        
+        elif "shadow_eclipse" in effects or "lunar_devour" in effects:
+            # 影蚀之月
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 月盘
+            pygame.draw.circle(self.image, (180, 180, 200), (center, center), size//3)
+            # 影子侵蚀
+            shadow_x = center - size//6
+            pygame.draw.circle(self.image, (30, 20, 50), (shadow_x, center), size//3)
+            # 边缘光晕
+            pygame.draw.circle(self.image, color, (center, center), size//3, 3)
+            # 日冕效果
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                x1 = center + int(size//3 * math.cos(angle))
+                y1 = center + int(size//3 * math.sin(angle))
+                x2 = center + int(size//2 * math.cos(angle))
+                y2 = center + int(size//2 * math.sin(angle))
+                pygame.draw.line(self.image, (120, 80, 160), (x1, y1), (x2, y2), 2)
+            self.speed = -14
+        
+        elif "corona_burst" in effects or "eclipse_ring" in effects:
+            # 日冕爆发
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 日食主体
+            pygame.draw.circle(self.image, (50, 30, 80), (center, center), size//4)
+            # 日冕环（2层）
+            for i in range(2):
+                ring_r = size//3 + i * size//6
+                ring_color = (100 + i * 40, 50 + i * 30, 180 + i * 30)
+                pygame.draw.circle(self.image, (*ring_color, 200 - i * 80), (center, center), ring_r, 3)
+            # 爆发射线（8条）
+            for i in range(8):
+                angle = (i * 45) * 3.14159 / 180
+                length = size//3 if i % 2 == 0 else size//2
+                x1 = center + int(size//4 * math.cos(angle))
+                y1 = center + int(size//4 * math.sin(angle))
+                x2 = center + int(length * math.cos(angle))
+                y2 = center + int(length * math.sin(angle))
+                pygame.draw.line(self.image, (200, 100, 255), (x1, y1), (x2, y2), 2)
+            self.speed = -16
+        
+        elif "void_mirror" in effects or "shadow_clone" in effects:
+            # 虚空镜像
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 主体
+            pygame.draw.circle(self.image, color, (center, center), size//5)
+            pygame.draw.circle(self.image, (150, 100, 200), (center, center), size//6)
+            # 镜像（4个）
+            mirror_offsets = [(0, -size//3), (size//3, 0), (0, size//3), (-size//3, 0)]
+            for i, (dx, dy) in enumerate(mirror_offsets):
+                mirror_x = center + dx
+                mirror_y = center + dy
+                pygame.draw.circle(self.image, (*color, 150 - i * 20), (mirror_x, mirror_y), size//10)
+            # 连接线
+            for dx, dy in mirror_offsets:
+                mirror_x = center + dx
+                mirror_y = center + dy
+                pygame.draw.line(self.image, (*color, 100), (center, center), (mirror_x, mirror_y), 1)
+            self.speed = -13
+        
+        elif "twilight_zone" in effects or "dusk_dawn_edge" in effects:
+            # 黄昏地带
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 渐变背景
+            for i in range(15):
+                gradient_y = center - size//2 + i * size//8
+                brightness = 200 - i * 13
+                gradient_color = (brightness, brightness//2, brightness + 55)
+                pygame.draw.line(self.image, gradient_color, 
+                               (center - size//2, gradient_y),
+                               (center + size//2, gradient_y), size//8)
+            # 边界线
+            pygame.draw.line(self.image, color, (center - size//2, center), (center + size//2, center), 4)
+            # 光暗粒子
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                px = center + int(size//3 * math.cos(angle))
+                py = center + int(size//3 * math.sin(angle))
+                particle_color = (200, 150, 250) if py < center else (50, 30, 100)
+                pygame.draw.circle(self.image, particle_color, (px, py), size//18)
+            self.speed = -14
+        
+        elif "dark_matter" in effects or "invisible_mass" in effects:
+            # 暗物质弹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 扭曲波纹
+            for i in range(3):
+                wave_r = size//6 + i * size//10
+                pygame.draw.circle(self.image, (*color, 150 - i * 40), (center, center), wave_r, 2)
+            # 暗物质核心
+            pygame.draw.circle(self.image, (50, 20, 100), (center, center), size//8)
+            pygame.draw.circle(self.image, (*color, 100), (center, center), size//6)
+            # 引力扭曲线
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                x1 = center + int(size//4 * math.cos(angle))
+                y1 = center + int(size//4 * math.sin(angle))
+                x2 = center + int(size//2 * math.cos(angle + 0.3))
+                y2 = center + int(size//2 * math.sin(angle + 0.3))
+                pygame.draw.line(self.image, (*color, 120), (x1, y1), (x2, y2), 1)
+            self.speed = -12
+        
+        elif "black_sun" in effects or "anti_radiance" in effects:
+            # 黑日降临
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 黑色核心
+            pygame.draw.circle(self.image, (20, 10, 30), (center, center), size//4)
+            pygame.draw.circle(self.image, color, (center, center), size//5)
+            # 反光环
+            for i in range(2):
+                halo_r = size//3 + i * size//8
+                pygame.draw.circle(self.image, (50, 20, 80, 180 - i * 70), (center, center), halo_r, 4)
+            # 反向射线（12条）
+            for i in range(12):
+                angle = (i * 30) * 3.14159 / 180
+                x1 = center + int(size//2 * math.cos(angle))
+                y1 = center + int(size//2 * math.sin(angle))
+                x2 = center + int(size//4 * math.cos(angle))
+                y2 = center + int(size//4 * math.sin(angle))
+                pygame.draw.line(self.image, (80, 30, 120), (x1, y1), (x2, y2), 2)
+            # 暗能量粒子
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                px = center + int(size//2.5 * math.cos(angle))
+                py = center + int(size//2.5 * math.sin(angle))
+                pygame.draw.circle(self.image, (100, 30, 150), (px, py), size//20)
+            self.speed = -17
+        
+        # ========== Prism 子弹 ==========
+        elif "rainbow_ray" in effects or "spectrum_split" in effects:
+            # 彩虹射线
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            rainbow_colors = [(255, 0, 0), (255, 127, 0), (255, 255, 0), (0, 255, 0), (0, 0, 255), (75, 0, 130), (148, 0, 211)]
+            # 彩虹射线
+            for i, ray_color in enumerate(rainbow_colors):
+                angle = (i * 51.4) * 3.14159 / 180
+                x1 = center + int(size//8 * math.cos(angle))
+                y1 = center + int(size//8 * math.sin(angle))
+                x2 = center + int(size//2 * math.cos(angle))
+                y2 = center + int(size//2 * math.sin(angle))
+                pygame.draw.line(self.image, ray_color, (x1, y1), (x2, y2), 3)
+            # 中心白光
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//8)
+            pygame.draw.circle(self.image, color, (center, center), size//10)
+            self.speed = -16
+        
+        elif "crystal_shard" in effects or "prism_fragment" in effects:
+            # 水晶碎片
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 中心水晶
+            crystal_points = [(center, center - size//2), (center + size//3, center), (center, center + size//2), (center - size//3, center)]
+            pygame.draw.polygon(self.image, (200, 240, 255), crystal_points)
+            pygame.draw.polygon(self.image, color, crystal_points, 3)
+            # 碎片（4个）
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                sx = center + int(size//2.5 * math.cos(angle))
+                sy = center + int(size//2.5 * math.sin(angle))
+                shard_points = [(sx, sy - size//8), (sx + size//12, sy + size//12), (sx - size//12, sy + size//12)]
+                pygame.draw.polygon(self.image, (150, 220, 255), shard_points)
+            self.speed = -15
+        
+        elif "refraction_beam" in effects or "light_bend" in effects:
+            # 折射光束
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 光源
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//8)
+            pygame.draw.circle(self.image, color, (center, center), size//10)
+            # 折射光束（3条）
+            for i in range(3):
+                beam_angle = (i * 120) * 3.14159 / 180
+                beam_points = []
+                for j in range(6):
+                    radius = size//8 + j * size//15
+                    curve_offset = int(size//12 * math.sin(j * 0.5))
+                    bx = center + int(radius * math.cos(beam_angle)) + curve_offset
+                    by = center + int(radius * math.sin(beam_angle))
+                    beam_points.append((bx, by))
+                if len(beam_points) > 1:
+                    pygame.draw.lines(self.image, (200, 230, 255), False, beam_points, 3)
+            self.speed = -14
+        
+        elif "laser_prism" in effects or "triangular_prism" in effects:
+            # 激光棱镜
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 棱镜（三角形）
+            prism_triangle = [(center, center - size//3), (center + size//3, center + size//3), (center - size//3, center + size//3)]
+            pygame.draw.polygon(self.image, (180, 230, 255), prism_triangle)
+            pygame.draw.polygon(self.image, color, prism_triangle, 3)
+            # 入射光
+            pygame.draw.line(self.image, (255, 255, 255), (center - size//2, center - size//4), (center - size//6, center), 3)
+            # 分光
+            spectrum_colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
+            for i, spec_color in enumerate(spectrum_colors):
+                angle = -15 + i * 15
+                rad = angle * 3.14159 / 180
+                x2 = center + int(size//2 * math.cos(rad))
+                y2 = center + int(size//2 * math.sin(rad))
+                pygame.draw.line(self.image, spec_color, (center + size//6, center), (x2, y2), 2)
+            self.speed = -15
+        
+        elif "aurora_split" in effects or "northern_light" in effects:
+            # 极光分裂
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 极光波纹（3层）
+            aurora_colors = [(0, 255, 200), (100, 255, 150), (150, 255, 200)]
+            for i in range(3):
+                wave_y = center - size//3 + i * size//3
+                wave_points = []
+                for j in range(8):
+                    wx = center - size//2 + j * size//7
+                    wy = wave_y + int(size//10 * math.sin(j * 0.8))
+                    wave_points.append((wx, wy))
+                if len(wave_points) > 1:
+                    pygame.draw.lines(self.image, (*aurora_colors[i], 200 - i * 50), False, wave_points, 2)
+            # 中心光球
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//8)
+            pygame.draw.circle(self.image, color, (center, center), size//10)
+            self.speed = -16
+        
+        elif "hologram" in effects or "3d_projection" in effects:
+            # 全息投影
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 全息网格
+            for i in range(6):
+                y_pos = center - size//2 + i * size//5
+                pygame.draw.line(self.image, (*color, 120), (center - size//2, y_pos), (center + size//2, y_pos), 1)
+                x_pos = center - size//2 + i * size//5
+                pygame.draw.line(self.image, (*color, 120), (x_pos, center - size//2), (x_pos, center + size//2), 1)
+            # 3D立方体
+            cube_size = size//4
+            pygame.draw.rect(self.image, color, (center - cube_size//2, center - cube_size//2, cube_size, cube_size), 2)
+            offset = size//8
+            pygame.draw.rect(self.image, (150, 200, 255), (center - cube_size//2 + offset, center - cube_size//2 - offset, cube_size, cube_size), 2)
+            # 连接线
+            corners = [(center - cube_size//2, center - cube_size//2), (center + cube_size//2, center - cube_size//2)]
+            back_corners = [(center - cube_size//2 + offset, center - cube_size//2 - offset), (center + cube_size//2 + offset, center - cube_size//2 - offset)]
+            for i in range(2):
+                pygame.draw.line(self.image, (120, 180, 240), corners[i], back_corners[i], 1)
+            self.speed = -14
+        
+        elif "lens_flare" in effects or "optical_burst" in effects:
+            # 镜头光晕
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 主光源
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//6)
+            pygame.draw.circle(self.image, color, (center, center), size//8)
+            # 光晕环（3层）
+            for i in range(3):
+                flare_r = size//5 + i * size//10
+                pygame.draw.circle(self.image, (255, 255, 255, 200 - i * 50), (center, center), flare_r)
+            # 光斑（4个）
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                spot_x = center + int(size//2.5 * math.cos(angle))
+                spot_y = center + int(size//2.5 * math.sin(angle))
+                pygame.draw.circle(self.image, (*color, 180), (spot_x, spot_y), size//15)
+            # 十字光芒
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                x1 = center + int(size//8 * math.cos(angle))
+                y1 = center + int(size//8 * math.sin(angle))
+                x2 = center + int(size//1.5 * math.cos(angle))
+                y2 = center + int(size//1.5 * math.sin(angle))
+                pygame.draw.line(self.image, (255, 255, 200), (x1, y1), (x2, y2), 3)
+            self.speed = -17
+        
+        # ========== Necro 子弹 ==========
+        elif "soul_reaper" in effects or "death_scythe" in effects:
+            # 灵魂收割
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 镰刀刃
+            scythe_blade = [(center - size//6, center - size//3), (center + size//3, center - size//6), (center + size//4, center + size//8), (center - size//4, center)]
+            pygame.draw.polygon(self.image, (200, 200, 220), scythe_blade)
+            pygame.draw.polygon(self.image, color, scythe_blade, 3)
+            # 镰刀柄
+            pygame.draw.line(self.image, (100, 50, 80), (center, center), (center - size//4, center + size//2), 4)
+            # 灵魂漩涡（4个）
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                sx = center + int(size//3 * math.cos(angle))
+                sy = center + int(size//3 * math.sin(angle))
+                pygame.draw.circle(self.image, (*color, 200 - i * 40), (sx, sy), size//20)
+            self.speed = -15
+        
+        elif "blood_curse" in effects or "vampire_drain" in effects:
+            # 鲜血诅咒
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 血滴核心
+            pygame.draw.circle(self.image, (180, 0, 80), (center, center), size//4)
+            pygame.draw.circle(self.image, color, (center, center), size//5)
+            # 血滴形状
+            drop_points = []
+            for i in range(12):
+                angle = (i * 30 - 90) * 3.14159 / 180
+                radius = size//3 if i < 6 else size//4
+                px = center + int(radius * math.cos(angle))
+                py = center + int(radius * math.sin(angle))
+                drop_points.append((px, py))
+            if len(drop_points) > 2:
+                pygame.draw.polygon(self.image, (200, 0, 100, 180), drop_points)
+                pygame.draw.lines(self.image, color, True, drop_points, 2)
+            # 吸血触手（4条）
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                tendril_points = []
+                for j in range(4):
+                    radius = size//5 + j * size//12
+                    tx = center + int(radius * math.cos(angle))
+                    ty = center + int(radius * math.sin(angle))
+                    tendril_points.append((tx, ty))
+                if len(tendril_points) > 1:
+                    pygame.draw.lines(self.image, (150, 0, 70), False, tendril_points, 2)
+            self.speed = -14
+        
+        elif "bone_spike" in effects or "skeletal_weapon" in effects:
+            # 白骨尖刺
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 骨刺主体
+            spike_points = [(center, center - size//2), (center + size//8, center + size//2), (center - size//8, center + size//2)]
+            pygame.draw.polygon(self.image, (220, 220, 220), spike_points)
+            pygame.draw.polygon(self.image, color, spike_points, 3)
+            # 骨节（3条横纹）
+            for i in range(3):
+                node_y = center - size//3 + i * size//4
+                node_width = size//6 - i * size//30
+                pygame.draw.line(self.image, (180, 180, 180), (center - node_width, node_y), (center + node_width, node_y), 2)
+            # 骨刺尖端
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center - size//2), size//12)
+            self.speed = -16
+        
+        elif "plague_cloud" in effects or "pestilence_mist" in effects:
+            # 瘟疫之云
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 毒雾核心
+            pygame.draw.circle(self.image, (100, 150, 50), (center, center), size//5)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            # 毒雾扩散（8个云团）
+            import random
+            random.seed(567)
+            for i in range(8):
+                angle = (i * 45 + random.randint(-10, 10)) * 3.14159 / 180
+                cloud_r = size//4 + random.randint(0, size//10)
+                cx = center + int(cloud_r * math.cos(angle))
+                cy = center + int(cloud_r * math.sin(angle))
+                cloud_size = size//12
+                pygame.draw.circle(self.image, (120, 180, 60, 150), (cx, cy), cloud_size)
+            # 病毒粒子（6个）
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                px = center + int(size//3 * math.cos(angle))
+                py = center + int(size//3 * math.sin(angle))
+                pygame.draw.line(self.image, (80, 120, 40), (px - size//25, py), (px + size//25, py), 2)
+                pygame.draw.line(self.image, (80, 120, 40), (px, py - size//25), (px, py + size//25), 2)
+            self.speed = -13
+        
+        elif "death_mark" in effects or "doom_sigil" in effects:
+            # 死亡印记
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 符文圆环
+            pygame.draw.circle(self.image, color, (center, center), size//3, 3)
+            pygame.draw.circle(self.image, (150, 0, 100), (center, center), size//4, 2)
+            # 五角星
+            star_points = []
+            for i in range(5):
+                angle = (i * 72 - 90) * 3.14159 / 180
+                px = center + int(size//4 * math.cos(angle))
+                py = center + int(size//4 * math.sin(angle))
+                star_points.append((px, py))
+            if len(star_points) == 5:
+                pygame.draw.line(self.image, color, star_points[0], star_points[2], 3)
+                pygame.draw.line(self.image, color, star_points[2], star_points[4], 3)
+                pygame.draw.line(self.image, color, star_points[4], star_points[1], 3)
+                pygame.draw.line(self.image, color, star_points[1], star_points[3], 3)
+                pygame.draw.line(self.image, color, star_points[3], star_points[0], 3)
+            self.speed = -15
+        
+        elif "ghost_chain" in effects or "spectral_shackle" in effects:
+            # 幽灵锁链
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 锁链中心
+            pygame.draw.circle(self.image, (120, 80, 150), (center, center), size//6)
+            pygame.draw.circle(self.image, color, (center, center), size//8)
+            # 锁链（4条）
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                chain_points = []
+                for j in range(4):
+                    radius = size//8 + j * size//12
+                    cx = center + int(radius * math.cos(angle))
+                    cy = center + int(radius * math.sin(angle))
+                    chain_points.append((cx, cy))
+                if len(chain_points) > 1:
+                    pygame.draw.lines(self.image, (100, 70, 130), False, chain_points, 3)
+                    # 锁链节点
+                    for cx, cy in chain_points[::2]:
+                        pygame.draw.circle(self.image, (150, 100, 180), (cx, cy), size//25)
+            # 枷锁环（4个）
+            for i in range(4):
+                angle = (i * 90 + 45) * 3.14159 / 180
+                ring_x = center + int(size//2.5 * math.cos(angle))
+                ring_y = center + int(size//2.5 * math.sin(angle))
+                pygame.draw.circle(self.image, (140, 90, 160), (ring_x, ring_y), size//15, 2)
+            self.speed = -14
+        
+        elif "necrotic_burst" in effects or "undead_explosion" in effects:
+            # 死灵爆发
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 死灵核心
+            pygame.draw.circle(self.image, (180, 50, 120), (center, center), size//5)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            # 爆发波（2层）
+            for i in range(2):
+                burst_r = size//4 + i * size//6
+                burst_colors = [(150, 0, 100), (200, 80, 140)]
+                pygame.draw.circle(self.image, (*burst_colors[i], 200 - i * 80), (center, center), burst_r, 3)
+            # 死灵能量（6个骷髅简化）
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                skull_r = size//3
+                sx = center + int(skull_r * math.cos(angle))
+                sy = center + int(skull_r * math.sin(angle))
+                skull_size = size//15
+                # 简化骷髅
+                pygame.draw.circle(self.image, (200, 200, 200), (sx, sy), skull_size)
+                pygame.draw.circle(self.image, (0, 0, 0), (sx - skull_size//3, sy - skull_size//4), skull_size//5)
+                pygame.draw.circle(self.image, (0, 0, 0), (sx + skull_size//3, sy - skull_size//4), skull_size//5)
+            self.speed = -17
+        
+        elif "void_rift" in effects:
+            # 虚空裂缝
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 裂缝
+            rift = [
+                (center, center - size),
+                (center - size//6, center - size//4),
+                (center + size//8, center + size//6),
+                (center, center + size)
+            ]
+            pygame.draw.lines(self.image, (150, 0, 200), False, rift, 3)
+            # 虚空核心
+            for r in range(size//2, 0, -size//8):
+                alpha = int(180 * (1 - r / (size//2)))
+                temp_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp_surf, (*color, alpha), (center, center), r)
+                self.image.blit(temp_surf, (0, 0))
+            self.speed = -16
+            
+        else:
+            # 默认子弹
+            self.image = pygame.Surface((size, size*2), pygame.SRCALPHA)
+            pygame.draw.rect(self.image, color, (size//4, 0, size//2, size*2))
+            pygame.draw.circle(self.image, (255, 255, 255), (size//2, size//2), size//4)
+            self.speed = -15
 
     def update(self):
         self.timer += 1
@@ -1096,6 +3424,10 @@ class Bullet(pygame.sprite.Sprite):
         # 【改进】时间冻结时跳过移动
         if self.frozen:
             return
+        
+        # 动态子弹效果 - 每5帧重新渲染以优化性能
+        if hasattr(self, 'effects') and self.timer % 5 == 0:
+            self._update_bullet_animation()
         
         # 特殊移动逻辑
         if not self.is_enemy and self.b_type == "flame":
@@ -1120,6 +3452,152 @@ class Bullet(pygame.sprite.Sprite):
                     self.vel = self.vel.lerp(target_vec, 0.15) # 平滑转向
                     
         self.rect.center = self.pos
+    
+    def _update_bullet_animation(self):
+        """更新子弹动画效果"""
+        if not hasattr(self, 'effects'):
+            return
+            
+        effects = self.effects
+        color = self.bullet_color
+        size = 8
+        
+        # 时间参数
+        t = self.timer * 0.1  # 减慢动画速度
+        
+        # 旋转粒子效果 (用于等离子、电弧、星爆等)
+        if any(e in effects for e in ["plasma_ring", "arc_storm", "starburst", "solar_flare", 
+                                       "cosmic_spiral", "void_rift", "quantum_flux"]):
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            
+            # 核心
+            pygame.draw.circle(self.image, color, (center, center), size//4)
+            
+            # 旋转粒子
+            for i in range(6):
+                angle = (i * 60 + t * 50) * 3.14159 / 180  # 旋转动画
+                px = center + int(size * 0.7 * math.cos(angle))
+                py = center + int(size * 0.7 * math.sin(angle))
+                particle_color = tuple(min(255, c + 50) for c in color)
+                pygame.draw.circle(self.image, particle_color, (px, py), size//6)
+        
+        # 脉冲效果 (用于能量波、震荡波等)
+        elif any(e in effects for e in ["energy_pulse", "shockwave", "resonance", "temporal_wave"]):
+            pulse = abs(math.sin(t)) * 0.3 + 0.7  # 0.7 到 1.0 的脉冲
+            pulse_size = int(size * pulse)
+            
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            
+            # 脉冲圆环
+            for r in range(3):
+                radius = pulse_size + r * size//4
+                alpha = int(255 * (1 - r / 3))
+                temp_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp_surf, (*color, alpha), (center, center), radius, 2)
+                self.image.blit(temp_surf, (0, 0))
+            
+            # 核心
+            pygame.draw.circle(self.image, color, (center, center), pulse_size//2)
+        
+        # 火焰效果 (用于烈焰、地狱火等)
+        elif any(e in effects for e in ["flame_burst", "inferno", "phoenix_fire"]):
+            flicker = math.sin(t * 2) * 0.2 + 0.8  # 闪烁
+            
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            
+            # 火焰粒子
+            for i in range(8):
+                angle = (i * 45 + t * 30) * 3.14159 / 180
+                dist = size * 0.6 * (1 + math.sin(t + i) * 0.2)  # 摇曳
+                px = center + int(dist * math.cos(angle))
+                py = center + int(dist * math.sin(angle))
+                
+                # 渐变火焰色
+                flame_color = (
+                    int(255 * flicker),
+                    int(color[1] * flicker),
+                    int(color[2] * 0.5 * flicker)
+                )
+                pygame.draw.circle(self.image, flame_color, (px, py), size//5)
+            
+            # 火焰核心
+            core_color = tuple(min(255, c + 50) for c in color)
+            pygame.draw.circle(self.image, core_color, (center, center), size//3)
+        
+        # 闪电效果 (用于雷暴、电弧等)
+        elif any(e in effects for e in ["lightning", "thunder_strike", "storm_bolt"]):
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            
+            # 电弧核心
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//4)
+            pygame.draw.circle(self.image, color, (center, center), size//3, 2)
+            
+            # 动态电弧
+            for i in range(4):
+                angle = (i * 90 + t * 40) * 3.14159 / 180
+                arc_len = size * 0.8 * (1 + math.sin(t * 2 + i) * 0.3)
+                ex = center + int(arc_len * math.cos(angle))
+                ey = center + int(arc_len * math.sin(angle))
+                
+                # 锯齿状电弧
+                points = [(center, center)]
+                steps = 3
+                for j in range(steps):
+                    progress = (j + 1) / steps
+                    px = center + int((ex - center) * progress)
+                    py = center + int((ey - center) * progress)
+                    offset = int(math.sin(t * 3 + j) * size//5)
+                    points.append((px + offset, py))
+                
+                if len(points) > 1:
+                    pygame.draw.lines(self.image, color, False, points, 2)
+        
+        # 寒冰效果 (用于冰霜、极寒等)
+        elif any(e in effects for e in ["frost", "blizzard", "frozen_heart"]):
+            crystal_phase = t % (2 * 3.14159)
+            
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            
+            # 冰晶核心
+            pygame.draw.circle(self.image, (200, 230, 255), (center, center), size//3)
+            pygame.draw.circle(self.image, color, (center, center), size//4)
+            
+            # 旋转的冰晶尖刺
+            for i in range(6):
+                angle = (i * 60 + math.sin(crystal_phase) * 30) * 3.14159 / 180
+                spike_len = size * 0.6
+                sx = center + int(spike_len * math.cos(angle))
+                sy = center + int(spike_len * math.sin(angle))
+                pygame.draw.line(self.image, color, (center, center), (sx, sy), 2)
+                pygame.draw.circle(self.image, (150, 200, 255), (sx, sy), size//8)
+        
+        # 暗影效果 (用于暗影箭、死亡印记等)
+        elif any(e in effects for e in ["shadow_bolt", "death_mark", "doom_sigil"]):
+            shadow_pulse = abs(math.sin(t * 1.5)) * 0.4 + 0.6
+            
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            
+            # 暗影光晕
+            for r in range(3):
+                radius = int(size * shadow_pulse) + r * size//5
+                alpha = int(100 * (1 - r / 3))
+                temp_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp_surf, (*color, alpha), (center, center), radius)
+                self.image.blit(temp_surf, (0, 0))
+            
+            # 旋转符文
+            for i in range(5):
+                angle = (i * 72 + t * 20) * 3.14159 / 180
+                px = center + int(size//3 * math.cos(angle))
+                py = center + int(size//3 * math.sin(angle))
+                rune_color = tuple(min(255, c + 30) for c in color)
+                pygame.draw.circle(self.image, rune_color, (px, py), size//10)
         
         # 反弹逻辑
         if not self.is_enemy and self.bounce > 0:
@@ -1962,6 +4440,16 @@ class Player(pygame.sprite.Sprite):
         self.plane_id = plane_id
         self.plane_data = PLANES[plane_id]
         
+        # 获取装备的子弹涂装
+        self.bullet_theme = None
+        try:
+            from customization import customization_manager, BULLET_THEMES
+            equipped_bullet_id = customization_manager.get_equipped_theme(plane_id, bullet=True)
+            if equipped_bullet_id and equipped_bullet_id in BULLET_THEMES:
+                self.bullet_theme = BULLET_THEMES[equipped_bullet_id]
+        except:
+            pass  # 如果导入失败或没有涂装，使用默认子弹
+        
         # 绘制机体 - 使用涂装系统
         if custom_visual:
             self.visual = custom_visual
@@ -2154,7 +4642,7 @@ class Player(pygame.sprite.Sprite):
                 offset_x = (i - (cnt-1)/2) * 15
                 angle = -5 + i * 5 if cnt > 1 else 0
                 Bullet(self.rect.centerx + offset_x, self.rect.top, angle=angle, 
-                       color=color, b_type=b_type, piercing=self.piercing, homing=self.homing_level)
+                       color=color, b_type=b_type, piercing=self.piercing, homing=self.homing_level, bullet_theme=self.bullet_theme)
         
         # ========== 2. 虚空幻影 - 快速多枚散射 ==========
         elif pid == "phantom":
@@ -2163,7 +4651,7 @@ class Player(pygame.sprite.Sprite):
                 spread = (i - cnt + 0.5) * 8
                 angle = random.uniform(-15, 15)
                 Bullet(self.rect.centerx + spread, self.rect.top, angle=angle,
-                       color=color, b_type=b_type, piercing=self.piercing//2 if self.piercing else 0)
+                       color=color, b_type=b_type, piercing=self.piercing//2 if self.piercing else 0, bullet_theme=self.bullet_theme)
         
         # ========== 3. 钢铁泰坦 - 慢速但强力的集中炮火 ==========
         elif pid == "titan":
@@ -2171,7 +4659,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * 25
                 Bullet(self.rect.centerx + offset_x, self.rect.top, 
-                       color=color, b_type=b_type, piercing=self.piercing + 2, homing=self.homing_level)
+                       color=color, b_type=b_type, piercing=self.piercing + 2, homing=self.homing_level, bullet_theme=self.bullet_theme)
         
         # ========== 4. 极光女神 - 范围电浆波 ==========
         elif pid == "aurora":
@@ -2179,14 +4667,14 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt + 2):
                 angle = -30 + i * (60 / (cnt + 1))
                 Bullet(self.rect.centerx, self.rect.top, angle=angle,
-                       color=color, b_type=b_type, piercing=self.piercing)
+                       color=color, b_type=b_type, piercing=self.piercing, bullet_theme=self.bullet_theme)
         
         # ========== 5. 幽灵收割者 - 单发极高伤害 ==========
         elif pid == "specter":
             # 射速极慢但单发超高伤害
             if cnt > 0:  # 应该是1
                 Bullet(self.rect.centerx, self.rect.top,
-                       color=color, b_type=b_type, piercing=self.piercing + 5, homing=self.homing_level)
+                       color=color, b_type=b_type, piercing=self.piercing + 5, homing=self.homing_level, bullet_theme=self.bullet_theme)
         
         # ========== 6. 雷霆战鹰 - 多段连锁闪电 ==========
         elif pid == "thunderbird":
@@ -2195,7 +4683,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * spacing
                 Bullet(self.rect.centerx + offset_x, self.rect.top,
-                       color=color, b_type="lightning", piercing=self.piercing)
+                       color=color, b_type="lightning", piercing=self.piercing, bullet_theme=self.bullet_theme)
         
         # ========== 7. 剧毒蝰蛇 - 持续毒液喷射 ==========
         elif pid == "viper":
@@ -2204,7 +4692,7 @@ class Player(pygame.sprite.Sprite):
                 spread = (i - cnt/2) * 12
                 angle = random.uniform(-20, 20)
                 Bullet(self.rect.centerx + spread, self.rect.top, angle=angle,
-                       color=color, b_type="acid", piercing=self.piercing)
+                       color=color, b_type="acid", piercing=self.piercing, bullet_theme=self.bullet_theme)
         
         # ========== 8. 绯红之刃 - 高频旋转飞刃 ==========
         elif pid == "crimson":
@@ -2213,7 +4701,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt * 2):
                 angle = (time_factor + i * (360 / (cnt * 2))) % 360
                 Bullet(self.rect.centerx, self.rect.top, angle=angle,
-                       color=color, b_type="blade", piercing=self.piercing)
+                       color=color, b_type="blade", piercing=self.piercing, bullet_theme=self.bullet_theme)
         
         # ========== 9. 星界潜行者 - 追踪星镖 ==========
         elif pid == "stalker":
@@ -2222,7 +4710,7 @@ class Player(pygame.sprite.Sprite):
                 offset_x = (i - (cnt-1)/2) * 20
                 Bullet(self.rect.centerx + offset_x, self.rect.top,
                        color=color, b_type="star", piercing=self.piercing, 
-                       homing=self.homing_level + 1)  # 加强追踪
+                       homing=self.homing_level + 1, bullet_theme=self.bullet_theme)  # 加强追踪
         
         # ========== 10. 大地守护者 - 散射荆棘 ==========
         elif pid == "gaia":
@@ -2230,7 +4718,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt + 3):
                 angle = -40 + i * (80 / (cnt + 2))
                 Bullet(self.rect.centerx, self.rect.top, angle=angle,
-                       color=color, b_type="thorn", piercing=self.piercing)
+                       color=color, b_type="thorn", piercing=self.piercing, bullet_theme=self.bullet_theme)
         
         # ========== 11. 虚空编织者 - 蛛网束缚 ==========
         elif pid == "weaver":
@@ -2239,7 +4727,7 @@ class Player(pygame.sprite.Sprite):
                 offset_x = (i - (cnt-1)/2) * 20
                 # 蛛网子弹速度较慢
                 bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
-                       color=color, b_type="web", piercing=self.piercing)
+                       color=color, b_type="web", piercing=self.piercing, bullet_theme=self.bullet_theme)
                 bullet.speed = -8  # 减速
         
         # ========== 12. 日冕耀斑 - 高频火焰喷流 ==========
@@ -2249,7 +4737,7 @@ class Player(pygame.sprite.Sprite):
                 spread = (i - cnt + 0.5) * 6
                 angle = random.uniform(-12, 12)
                 Bullet(self.rect.centerx + spread, self.rect.top, angle=angle,
-                       color=color, b_type="flame", piercing=self.piercing//2 if self.piercing else 0)
+                       color=color, b_type="flame", piercing=self.piercing//2 if self.piercing else 0, bullet_theme=self.bullet_theme)
         
         # ========== 13. 量子裁决者 - 分裂量子块 ==========
         elif pid == "arbiter":
@@ -2257,7 +4745,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * 18
                 Bullet(self.rect.centerx + offset_x, self.rect.top,
-                       color=color, b_type="quant", piercing=self.piercing)
+                       color=color, b_type="quant", piercing=self.piercing, bullet_theme=self.bullet_theme)
         
         # ========== 14. 日食幽灵 - 双核心双线射击 ==========
         elif pid == "eclipse":
@@ -2268,10 +4756,10 @@ class Player(pygame.sprite.Sprite):
                 offset = (i - (cnt-1)/2) * 10
                 # 左核心
                 Bullet(left_x + offset, self.rect.top, 
-                       color=color, b_type="shadow", piercing=self.piercing, angle=-5)
+                       color=color, b_type="shadow", piercing=self.piercing, angle=-5, bullet_theme=self.bullet_theme)
                 # 右核心
                 Bullet(right_x + offset, self.rect.top,
-                       color=color, b_type="shadow", piercing=self.piercing, angle=5)
+                       color=color, b_type="shadow", piercing=self.piercing, angle=5, bullet_theme=self.bullet_theme)
         
         # ========== 15. 棱镜分光 - 一发三道分裂 ==========
         elif pid == "prism":
@@ -2280,13 +4768,13 @@ class Player(pygame.sprite.Sprite):
                 offset_x = (i - (cnt-1)/2) * 16
                 # 中间直射
                 Bullet(self.rect.centerx + offset_x, self.rect.top, angle=0,
-                       color=(100, 180, 255), b_type="refract", piercing=self.piercing)
+                       color=(100, 180, 255), b_type="refract", piercing=self.piercing, bullet_theme=self.bullet_theme)
                 # 左侧散射
                 Bullet(self.rect.centerx + offset_x, self.rect.top, angle=-25,
-                       color=(255, 100, 100), b_type="refract", piercing=self.piercing//2)
+                       color=(255, 100, 100), b_type="refract", piercing=self.piercing//2, bullet_theme=self.bullet_theme)
                 # 右侧散射
                 Bullet(self.rect.centerx + offset_x, self.rect.top, angle=25,
-                       color=(100, 255, 100), b_type="refract", piercing=self.piercing//2)
+                       color=(100, 255, 100), b_type="refract", piercing=self.piercing//2, bullet_theme=self.bullet_theme)
         
         # ========== 16. 死灵骑士 - 吸血射击 ==========
         elif pid == "necro":
@@ -2294,7 +4782,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * 18
                 Bullet(self.rect.centerx + offset_x, self.rect.top,
-                       color=color, b_type="spectral", piercing=self.piercing)
+                       color=color, b_type="spectral", piercing=self.piercing, bullet_theme=self.bullet_theme)
         
         # 默认情况
         else:

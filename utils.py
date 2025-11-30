@@ -60,11 +60,36 @@ def log_debug(msg):
 # ==============================================================================
 SETTINGS_FILE = "game_settings.json"
 
-def save_settings(background_style="classic"):
+def save_settings(background_style=None, master_volume=None, music_volume=None, sfx_volume=None, show_fps=None, screen_shake=None, particle_quality=None, show_damage_numbers=None):
     """保存游戏设置"""
-    settings = {
-        "background_style": background_style
-    }
+    # 加载现有设置
+    try:
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+        else:
+            settings = {}
+    except:
+        settings = {}
+    
+    # 更新提供的设置
+    if background_style is not None:
+        settings["background_style"] = background_style
+    if master_volume is not None:
+        settings["master_volume"] = master_volume
+    if music_volume is not None:
+        settings["music_volume"] = music_volume
+    if sfx_volume is not None:
+        settings["sfx_volume"] = sfx_volume
+    if show_fps is not None:
+        settings["show_fps"] = show_fps
+    if screen_shake is not None:
+        settings["screen_shake"] = screen_shake
+    if particle_quality is not None:
+        settings["particle_quality"] = particle_quality
+    if show_damage_numbers is not None:
+        settings["show_damage_numbers"] = show_damage_numbers
+    
     try:
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(settings, f, ensure_ascii=False, indent=2)
@@ -75,13 +100,24 @@ def save_settings(background_style="classic"):
 def load_settings():
     """加载游戏设置"""
     default_settings = {
-        "background_style": "classic"
+        "background_style": "classic",
+        "master_volume": 1.0,
+        "music_volume": 0.5,
+        "sfx_volume": 0.8,
+        "show_fps": True,
+        "screen_shake": True,
+        "particle_quality": "high",
+        "show_damage_numbers": True
     }
     try:
         if os.path.exists(SETTINGS_FILE):
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                 settings = json.load(f)
                 log_info(f"设置已加载: {settings}")
+                # 合并默认设置，确保所有键都存在
+                for key, value in default_settings.items():
+                    if key not in settings:
+                        settings[key] = value
                 return settings
     except Exception as e:
         log_error(f"加载设置失败: {e}")
@@ -257,8 +293,126 @@ class AudioSynthesizer:
                     mix = (val_bass + val_drum + val_lead) * 0.7; mix = max(-0.9, min(0.9, mix))
                     boss_bgm_data.append(mix)
             paths["bgm_boss"] = self.save_wave("bgm_boss.wav", boss_bgm_data)
+
+            # 18. BGM Calm (宁静氛围 - 适合秋日枫林、水晶洞穴、镜面盐湖)
+            calm_bgm = []
+            bpm = 90; beat_dur = 60 / bpm; total_beats = 16
+            melody = [329.63, 349.23, 392.00, 440.00, 392.00, 349.23, 329.63, 293.66]  # E F G A G F E D
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                melody_freq = melody[beat % len(melody)]
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 柔和的旋律
+                    val_melody = math.sin(2 * math.pi * melody_freq * t_local) * 0.25 * math.exp(-t_local * 2)
+                    # 轻柔的和声
+                    val_harmony = math.sin(2 * math.pi * (melody_freq * 0.75) * t_local) * 0.15 * math.exp(-t_local * 3)
+                    # 轻微的节奏
+                    val_perc = 0
+                    if beat % 4 == 0 and i < 1000:
+                        val_perc = random.uniform(-0.2, 0.2) * math.exp(-t_local * 10)
+                    calm_bgm.append((val_melody + val_harmony + val_perc) * 0.6)
+            paths["bgm_calm"] = self.save_wave("bgm_calm.wav", calm_bgm)
+
+            # 19. BGM Mystery (神秘氛围 - 适合深海、遗忘都市、量子泡沫)
+            mystery_bgm = []
+            bpm = 100; beat_dur = 60 / bpm; total_beats = 20
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 缓慢变化的低音
+                    bass_freq = 65 + 10 * math.sin(beat * 0.5)
+                    val_bass = math.sin(2 * math.pi * bass_freq * t_local) * 0.3 * math.exp(-t_local * 3)
+                    # 神秘的高频音效
+                    val_high = math.sin(2 * math.pi * (1200 + 200 * math.sin(t_local * 3)) * t_local) * 0.1 * (1 - t_local)
+                    # 回响效果
+                    val_echo = 0
+                    if beat % 5 == 0:
+                        val_echo = math.sin(2 * math.pi * 880 * t_local) * 0.15 * math.exp(-t_local * 5)
+                    mystery_bgm.append((val_bass + val_high + val_echo) * 0.5)
+            paths["bgm_mystery"] = self.save_wave("bgm_mystery.wav", mystery_bgm)
+
+            # 20. BGM Epic (史诗战斗 - 适合太空战场、时空裂隙、破碎天空)
+            epic_bgm = []
+            bpm = 150; beat_dur = 60 / bpm; total_beats = 32
+            power_chords = [82.41, 87.31, 98.00, 110.00]  # E F G A
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                chord_freq = power_chords[(beat // 4) % len(power_chords)]
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 强劲的低音
+                    val_bass = (2 * (t_local * chord_freq - math.floor(t_local * chord_freq + 0.5))) * 0.5 * math.exp(-t_local * 3)
+                    # 重鼓点
+                    val_drum = 0
+                    if beat % 2 == 0:
+                        val_drum = math.sin(2 * math.pi * 80 * math.exp(-t_local*30) * t_local) * 0.8 * math.exp(-t_local*12)
+                    # 高频旋律
+                    val_lead = math.sin(2 * math.pi * (chord_freq * 6 + 100 * math.sin(beat * 0.7)) * t_local) * 0.2 * math.exp(-t_local * 4)
+                    epic_bgm.append((val_bass + val_drum + val_lead) * 0.75)
+            paths["bgm_epic"] = self.save_wave("bgm_epic.wav", epic_bgm)
+
+            # 21. BGM Intense (紧张激烈 - 适合雷暴、火山、战争废墟)
+            intense_bgm = []
+            bpm = 140; beat_dur = 60 / bpm; total_beats = 24
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 快速变化的锯齿波
+                    freq = 110 + 20 * (beat % 4)
+                    val_saw = (2 * (t_local * freq - math.floor(t_local * freq + 0.5))) * 0.4
+                    # 密集的打击乐
+                    val_perc = 0
+                    if beat % 1 == 0:
+                        val_perc = random.uniform(-0.7, 0.7) * math.exp(-t_local * 15)
+                    # 急促的高音
+                    val_stab = 0
+                    if beat % 2 == 0:
+                        val_stab = math.sin(2 * math.pi * 1760 * t_local) * 0.3 * math.exp(-t_local * 8)
+                    intense_bgm.append((val_saw + val_perc + val_stab) * 0.7)
+            paths["bgm_intense"] = self.save_wave("bgm_intense.wav", intense_bgm)
+
+            # 22. BGM Cyber (电子科技 - 适合数字矩阵、城市上空)
+            cyber_bgm = []
+            bpm = 128; beat_dur = 60 / bpm; total_beats = 16
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 电子贝斯
+                    bass_freq = 65 if beat % 8 < 4 else 73
+                    val_bass = (1.0 if math.sin(2 * math.pi * bass_freq * t_local) > 0 else -1.0) * 0.35 * math.exp(-t_local * 4)
+                    # 4/4拍的鼓点
+                    val_kick = 0
+                    if beat % 4 == 0:
+                        val_kick = math.sin(2 * math.pi * 50 * math.exp(-t_local*25) * t_local) * 0.7 * math.exp(-t_local*10)
+                    # 电子琶音
+                    arp_notes = [523, 659, 784, 1047]  # C E G C'
+                    arp_freq = arp_notes[(beat * 4 + int(t_local * 8)) % len(arp_notes)]
+                    val_arp = math.sin(2 * math.pi * arp_freq * t_local) * 0.15 * math.exp(-t_local * 6)
+                    cyber_bgm.append((val_bass + val_kick + val_arp) * 0.6)
+            paths["bgm_cyber"] = self.save_wave("bgm_cyber.wav", cyber_bgm)
+
+            # 23. BGM Ethereal (空灵飘渺 - 适合晨曦云海、极光彩幕)
+            ethereal_bgm = []
+            bpm = 80; beat_dur = 60 / bpm; total_beats = 12
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 缓慢的音垫
+                    pad_freq = 220 + 55 * math.sin(beat * 0.3)
+                    val_pad = math.sin(2 * math.pi * pad_freq * t_local) * 0.2
+                    val_pad += math.sin(2 * math.pi * pad_freq * 1.5 * t_local) * 0.15
+                    # 飘渺的高音
+                    shimmer_freq = 1760 + 440 * math.sin(t_local * 2 + beat * 0.5)
+                    val_shimmer = math.sin(2 * math.pi * shimmer_freq * t_local) * 0.1 * math.exp(-t_local * 1)
+                    ethereal_bgm.append((val_pad + val_shimmer) * 0.5)
+            paths["bgm_ethereal"] = self.save_wave("bgm_ethereal.wav", ethereal_bgm)
             
-            # 18. Achievement (成就解锁)
+            # 24. Achievement (成就解锁)
             data = []; notes = [523, 659, 784, 1047]
             for freq in notes: data.extend(self.generate_tone(freq, 0.15, 0.5, "square"))
             paths["achievement"] = self.save_wave("achievement.wav", data)
