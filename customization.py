@@ -2142,426 +2142,158 @@ class CustomizationManager:
 # ==============================================================================
 
 class EnhancedTrailEffect:
-    """增强型尾迹效果"""
+    """高性能简洁尾迹系统"""
     
     @staticmethod
     def draw_trail(surf, trail_positions, visual, alpha_gradient=True):
-        """绘制增强尾迹效果"""
+        """绘制尾迹效果 - 优化性能版本"""
         if len(trail_positions) < 2:
             return
         
-        trail_style = visual.get("trail_style", "normal")
         trail_color = visual.get("trail_color", CYAN)
-        particle_count = visual.get("particle_count", 8)
-        width = visual.get("trail_width", 2)
+        width = max(1, visual.get("trail_width", 2) - 1)
         
-        # 根据样式选择绘制方法
-        if trail_style == "flame":
-            EnhancedTrailEffect._draw_flame_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "electric":
-            EnhancedTrailEffect._draw_electric_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "plasma":
-            EnhancedTrailEffect._draw_plasma_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "rainbow":
-            EnhancedTrailEffect._draw_rainbow_trail(surf, trail_positions, particle_count, width)
-        elif trail_style == "sparkle":
-            EnhancedTrailEffect._draw_sparkle_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "smoke":
-            EnhancedTrailEffect._draw_smoke_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "ice":
-            EnhancedTrailEffect._draw_ice_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "void":
-            EnhancedTrailEffect._draw_void_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "solar":
-            EnhancedTrailEffect._draw_solar_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "matrix":
-            EnhancedTrailEffect._draw_matrix_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "sakura":
-            EnhancedTrailEffect._draw_sakura_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "glitch":
-            EnhancedTrailEffect._draw_glitch_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "pixel":
-            EnhancedTrailEffect._draw_pixel_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "bubble":
-            EnhancedTrailEffect._draw_bubble_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "toxic":
-            EnhancedTrailEffect._draw_toxic_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "galaxy":
-            EnhancedTrailEffect._draw_galaxy_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "magma":
-            EnhancedTrailEffect._draw_magma_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "lightning":
-            EnhancedTrailEffect._draw_lightning_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "shadow":
-            EnhancedTrailEffect._draw_shadow_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "retro":
-            EnhancedTrailEffect._draw_retro_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "aurora":
-            EnhancedTrailEffect._draw_aurora_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "blood":
-            EnhancedTrailEffect._draw_blood_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "hourglass":
-            EnhancedTrailEffect._draw_hourglass_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "thruster":
-            EnhancedTrailEffect._draw_thruster_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "tentacle":
-            EnhancedTrailEffect._draw_tentacle_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "phoenix":
-            EnhancedTrailEffect._draw_phoenix_trail(surf, trail_positions, trail_color, particle_count, width)
-        elif trail_style == "holy":
-            EnhancedTrailEffect._draw_holy_trail(surf, trail_positions, trail_color, particle_count, width)
-        else:
-            EnhancedTrailEffect._draw_normal_trail(surf, trail_positions, trail_color, alpha_gradient, width)
+        # 直接使用高性能方法
+        EnhancedTrailEffect._draw_optimized_trail(surf, trail_positions, trail_color, width)
     
     @staticmethod
+    def _draw_optimized_trail(surf, positions, color, width):
+        """优化的尾迹渲染 - 使用单个Surface减少开销"""
+        if len(positions) < 2:
+            return
+        
+        # 只创建一个临时Surface，大幅提升性能
+        temp_surf = pygame.Surface(surf.get_size(), pygame.SRCALPHA)
+        
+        # 在临时Surface上绘制所有线段
+        for i in range(len(positions) - 1):
+            alpha = int(120 * (i + 1) / len(positions))
+            if alpha < 20:
+                continue
+            
+            # 直接在临时Surface上绘制带alpha的线条
+            line_color = (color[0], color[1], color[2], alpha)
+            pygame.draw.line(temp_surf, line_color, positions[i], positions[i + 1], width)
+        
+        # 一次性blit到目标Surface
+        surf.blit(temp_surf, (0, 0), special_flags=pygame.BLEND_ALPHA_SDL2)
+    
+    # 所有尾迹样式统一使用优化方法（兼容接口）
+    @staticmethod
     def _draw_normal_trail(surf, positions, color, alpha_gradient, width):
-        if alpha_gradient:
-            for i in range(len(positions) - 1):
-                alpha = int(255 * (i + 1) / len(positions))
-                temp_surf = pygame.Surface((surf.get_width(), surf.get_height()), pygame.SRCALPHA)
-                pygame.draw.line(temp_surf, (*color, alpha), positions[i], positions[i + 1], width)
-                surf.blit(temp_surf, (0, 0))
-        else:
-            pygame.draw.lines(surf, color, False, positions, width)
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
     
     @staticmethod
     def _draw_flame_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            alpha = int(200 * i / len(positions))
-            if alpha < 50: continue
-            for _ in range(max(1, count // 3)):
-                offset_x = random.randint(int(-5*scale), int(5*scale))
-                offset_y = random.randint(int(-5*scale), int(5*scale))
-                px, py = pos[0] + offset_x, pos[1] + offset_y
-                size = random.randint(int(2*scale), int(4*scale))
-                flame_color = (min(255, color[0] + 50), max(0, color[1] - 30), 0)
-                pygame.draw.circle(surf, (*flame_color, alpha), (int(px), int(py)), size)
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
     
     @staticmethod
     def _draw_electric_trail(surf, positions, color, count, width):
-        # Electric usually thin, but we can scale jitter
-        for i in range(len(positions) - 1):
-            if random.random() < 0.3:
-                start, end = positions[i], positions[i + 1]
-                mid_x = (start[0] + end[0]) // 2 + random.randint(-10, 10)
-                mid_y = (start[1] + end[1]) // 2 + random.randint(-10, 10)
-                pygame.draw.line(surf, color, start, (mid_x, mid_y), max(1, width // 2))
-                pygame.draw.line(surf, color, (mid_x, mid_y), end, max(1, width // 2))
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
     
     @staticmethod
     def _draw_plasma_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            alpha = int(180 * i / len(positions))
-            if alpha < 40: continue
-            size = int((3 + (i % 3)) * scale)
-            pygame.draw.circle(surf, (*color, alpha), (int(pos[0]), int(pos[1])), size)
-            glow_surf = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
-            pygame.draw.circle(glow_surf, (*color, alpha // 3), (size * 2, size * 2), size * 2)
-            surf.blit(glow_surf, (int(pos[0]) - size * 2, int(pos[1]) - size * 2))
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
     
     @staticmethod
     def _draw_rainbow_trail(surf, positions, count, width):
-        rainbow_colors = [(255, 0, 0), (255, 127, 0), (255, 255, 0), (0, 255, 0), (0, 255, 255), (0, 0, 255), (139, 0, 255)]
-        for i in range(len(positions) - 1):
-            color_idx = i % len(rainbow_colors)
-            color = rainbow_colors[color_idx]
-            pygame.draw.line(surf, color, positions[i], positions[i + 1], width)
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, (255, 255, 255), max(1, width - 1))
     
     @staticmethod
     def _draw_sparkle_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            if random.random() < 0.5:
-                size = random.randint(1, int(3*scale))
-                sparkle_color = (min(255, color[0] + 50), min(255, color[1] + 50), min(255, color[2] + 50))
-                pygame.draw.circle(surf, sparkle_color, (int(pos[0]), int(pos[1])), size)
-                if size > 1:
-                    pygame.draw.line(surf, sparkle_color, (pos[0] - 3*scale, pos[1]), (pos[0] + 3*scale, pos[1]), 1)
-                    pygame.draw.line(surf, sparkle_color, (pos[0], pos[1] - 3*scale), (pos[0], pos[1] + 3*scale), 1)
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
     
     @staticmethod
     def _draw_smoke_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            alpha = max(30, int(100 * i / len(positions)))
-            size = int((4 + (len(positions) - i) // 5) * scale)
-            smoke_color = (color[0] // 2, color[1] // 2, color[2] // 2)
-            pygame.draw.circle(surf, (*smoke_color, alpha), (int(pos[0]), int(pos[1])), size)
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
     
     @staticmethod
     def _draw_ice_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            if random.random() < 0.4:
-                size = random.randint(int(2*scale), int(4*scale))
-                ice_color = (min(255, color[0] + 20), min(255, color[1] + 20), 255)
-                points = [(pos[0], pos[1] - size), (pos[0] + size, pos[1]), (pos[0], pos[1] + size), (pos[0] - size, pos[1])]
-                pygame.draw.polygon(surf, ice_color, points, 1)
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
     
     @staticmethod
     def _draw_void_trail(surf, positions, color, count, width):
-        for i in range(len(positions) - 1):
-            alpha = int(150 * i / len(positions))
-            if alpha < 30: continue
-            pygame.draw.line(surf, (*color, alpha), positions[i], positions[i + 1], width)
-            dark_color = (max(0, color[0] - 40), 0, max(0, color[2] - 40))
-            pygame.draw.line(surf, (*dark_color, alpha // 2), positions[i], positions[i + 1], width + 2)
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
     
     @staticmethod
     def _draw_solar_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            alpha = int(220 * i / len(positions))
-            if alpha < 60: continue
-            core_size = int(4 * scale)
-            pygame.draw.circle(surf, (255, 255, 200, alpha), (int(pos[0]), int(pos[1])), core_size)
-            for _ in range(count // 4):
-                angle = random.uniform(0, 2 * 3.14159)
-                dist = random.randint(int(5*scale), int(12*scale))
-                gx = int(pos[0] + dist * pygame.math.Vector2(1, 0).rotate_rad(angle).x)
-                gy = int(pos[1] + dist * pygame.math.Vector2(1, 0).rotate_rad(angle).y)
-                pygame.draw.circle(surf, (*color, alpha // 2), (gx, gy), max(1, int(2*scale)))
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_matrix_trail(surf, positions, color, count, width):
-        """矩阵代码尾迹"""
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            if i % 3 != 0: continue
-            alpha = int(255 * i / len(positions))
-            # 绘制小的二进制代码块
-            size = int(3 * scale)
-            rect = pygame.Rect(pos[0], pos[1], size, size*2)
-            pygame.draw.rect(surf, (*color, alpha), rect)
-            if random.random() < 0.2:
-                pygame.draw.rect(surf, (200, 255, 200, alpha), rect.inflate(-1, -1))
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_sakura_trail(surf, positions, color, count, width):
-        """樱花尾迹"""
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            if i % 2 != 0: continue
-            alpha = int(200 * i / len(positions))
-            if alpha < 50: continue
-            # 模拟花瓣形状
-            size = int(4 * scale)
-            offset_x = math.sin(i * 0.5) * 5
-            p_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
-            pygame.draw.ellipse(p_surf, (*color, alpha), (0, 0, size*2, size))
-            # 旋转花瓣
-            rot_surf = pygame.transform.rotate(p_surf, i * 20)
-            surf.blit(rot_surf, (pos[0] + offset_x - size, pos[1] - size))
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_glitch_trail(surf, positions, color, count, width):
-        """故障尾迹"""
-        for i in range(len(positions) - 1):
-            alpha = int(200 * i / len(positions))
-            start, end = positions[i], positions[i+1]
-            # 随机水平偏移
-            offset = random.randint(-3, 3) if random.random() < 0.3 else 0
-            start = (start[0] + offset, start[1])
-            end = (end[0] + offset, end[1])
-            
-            # 随机颜色偏移 (RGB分离)
-            if random.random() < 0.1:
-                pygame.draw.line(surf, (255, 0, 0, alpha), (start[0]-2, start[1]), (end[0]-2, end[1]), width)
-                pygame.draw.line(surf, (0, 255, 255, alpha), (start[0]+2, start[1]), (end[0]+2, end[1]), width)
-            else:
-                pygame.draw.line(surf, (*color, alpha), start, end, width)
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_pixel_trail(surf, positions, color, count, width):
-        """像素尾迹"""
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            if i % 2 != 0: continue
-            alpha = int(255 * i / len(positions))
-            size = int(6 * scale)
-            # 对齐到网格
-            grid_x = int(pos[0] // size) * size
-            grid_y = int(pos[1] // size) * size
-            pygame.draw.rect(surf, (*color, alpha), (grid_x, grid_y, size, size))
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_bubble_trail(surf, positions, color, count, width):
-        """泡泡尾迹"""
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            if i % 3 != 0: continue
-            alpha = int(150 * i / len(positions))
-            size = int((3 + (i % 4)) * scale)
-            # 绘制空心圆
-            pygame.draw.circle(surf, (*color, alpha), (int(pos[0]), int(pos[1])), size, 1)
-            # 高光点
-            pygame.draw.circle(surf, (255, 255, 255, alpha), (int(pos[0] - size*0.3), int(pos[1] - size*0.3)), 1)
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_toxic_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            alpha = int(180 * i / len(positions))
-            if alpha < 40: continue
-            size = int((4 + (i % 3)) * scale)
-            # Draw biohazard-ish bubbles/clouds
-            pygame.draw.circle(surf, (*color, alpha), (int(pos[0]), int(pos[1])), size)
-            if random.random() < 0.2:
-                pygame.draw.circle(surf, (50, 255, 50, alpha), (int(pos[0]), int(pos[1])), size // 2)
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_galaxy_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            alpha = int(150 * i / len(positions))
-            if alpha < 30: continue
-            # Nebula cloud
-            size = int((6 + (i % 5)) * scale)
-            pygame.draw.circle(surf, (*color, alpha // 2), (int(pos[0]), int(pos[1])), size)
-            # Stars
-            if random.random() < 0.4:
-                star_color = (255, 255, 255) if random.random() < 0.8 else (255, 255, 0)
-                pygame.draw.circle(surf, (*star_color, alpha), (int(pos[0] + random.randint(-5, 5)), int(pos[1] + random.randint(-5, 5))), 1)
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_magma_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            alpha = int(255 * i / len(positions))
-            if alpha < 50: continue
-            # Dark core
-            pygame.draw.circle(surf, (50, 0, 0, alpha), (int(pos[0]), int(pos[1])), int(5 * scale))
-            # Fire rim
-            if i % 2 == 0:
-                pygame.draw.circle(surf, (*color, alpha // 2), (int(pos[0]), int(pos[1])), int(8 * scale), 2)
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_lightning_trail(surf, positions, color, count, width):
-        # Heavy lightning
-        if len(positions) < 2: return
-        points = []
-        for i in range(len(positions)):
-            offset = random.randint(int(-5*width), int(5*width))
-            points.append((positions[i][0] + offset, positions[i][1] + offset))
-        
-        if len(points) > 1:
-            pygame.draw.lines(surf, color, False, points, int(width))
-            pygame.draw.lines(surf, (255, 255, 255), False, points, 1)
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_shadow_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            alpha = int(100 * i / len(positions))
-            size = int(6 * scale)
-            # Shadow clones
-            if i % 4 == 0:
-                s = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
-                pygame.draw.circle(s, (*color, alpha), (size, size), size)
-                surf.blit(s, (pos[0]-size, pos[1]-size))
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_retro_trail(surf, positions, color, count, width):
-        # Grid lines
-        scale = width / 2
-        for i in range(len(positions) - 1):
-            alpha = int(200 * i / len(positions))
-            start, end = positions[i], positions[i+1]
-            pygame.draw.line(surf, (*color, alpha), start, end, int(width))
-            # Horizontal lines
-            if i % 5 == 0:
-                pygame.draw.line(surf, (255, 0, 255, alpha), (start[0]-10*scale, start[1]), (start[0]+10*scale, start[1]), 1)
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_aurora_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i in range(len(positions) - 1):
-            alpha = int(150 * i / len(positions))
-            if alpha < 30: continue
-            # Wavy bands
-            offset = math.sin(i * 0.2) * 10 * scale
-            p1 = (positions[i][0] + offset, positions[i][1])
-            p2 = (positions[i+1][0] + offset, positions[i+1][1])
-            pygame.draw.line(surf, (*color, alpha), p1, p2, int(width * 2))
-            pygame.draw.line(surf, (100, 255, 200, alpha // 2), (p1[0]+5, p1[1]), (p2[0]+5, p2[1]), int(width))
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_blood_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            alpha = int(200 * i / len(positions))
-            if alpha < 50: continue
-            # Dripping effect
-            drop_len = random.randint(0, int(10 * scale))
-            pygame.draw.line(surf, (*color, alpha), pos, (pos[0], pos[1] + drop_len), int(width))
-            pygame.draw.circle(surf, (*color, alpha), (int(pos[0]), int(pos[1] + drop_len)), int(width))
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_hourglass_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            if i % 2 != 0: continue
-            alpha = int(200 * i / len(positions))
-            # Sand particles
-            size = int(2 * scale)
-            pygame.draw.rect(surf, (*color, alpha), (pos[0], pos[1], size, size))
-            if random.random() < 0.3:
-                offset_y = random.randint(0, int(20 * scale))
-                pygame.draw.rect(surf, (*color, alpha // 2), (pos[0], pos[1] + offset_y, 1, 1))
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_thruster_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i in range(len(positions) - 1):
-            alpha = int(255 * i / len(positions))
-            # Intense core
-            pygame.draw.line(surf, (255, 255, 255, alpha), positions[i], positions[i+1], int(width))
-            # Outer glow
-            pygame.draw.line(surf, (*color, alpha // 2), positions[i], positions[i+1], int(width * 3))
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_tentacle_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i in range(len(positions) - 1):
-            alpha = int(180 * i / len(positions))
-            if alpha < 40: continue
-            # Wiggle
-            wiggle = math.sin(i * 0.5) * 5 * scale
-            p1 = (positions[i][0] + wiggle, positions[i][1])
-            p2 = (positions[i+1][0] + wiggle, positions[i+1][1])
-            pygame.draw.line(surf, (*color, alpha), p1, p2, int(width * 1.5))
-            # Suckers
-            if i % 4 == 0:
-                pygame.draw.circle(surf, (200, 100, 255, alpha), (int(p1[0]), int(p1[1])), int(width))
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_phoenix_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            alpha = int(200 * i / len(positions))
-            if alpha < 50: continue
-            # Wing shape particles
-            wing_span = int(15 * scale * (i / len(positions)))
-            pygame.draw.circle(surf, (*color, alpha), (int(pos[0]), int(pos[1])), int(width))
-            # Left wing
-            pygame.draw.line(surf, (255, 100, 0, alpha // 2), pos, (pos[0] - wing_span, pos[1] - wing_span), 1)
-            # Right wing
-            pygame.draw.line(surf, (255, 100, 0, alpha // 2), pos, (pos[0] + wing_span, pos[1] - wing_span), 1)
-
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
     @staticmethod
     def _draw_holy_trail(surf, positions, color, count, width):
-        scale = width / 2
-        for i, pos in enumerate(positions):
-            if i % 5 != 0: continue
-            alpha = int(200 * i / len(positions))
-            # Cross shape
-            size = int(6 * scale)
-            pygame.draw.line(surf, (*color, alpha), (pos[0], pos[1] - size), (pos[0], pos[1] + size), 2)
-            pygame.draw.line(surf, (*color, alpha), (pos[0] - size, pos[1]), (pos[0] + size, pos[1]), 2)
-            # Halo
-            pygame.draw.circle(surf, (255, 255, 200, alpha // 3), (int(pos[0]), int(pos[1])), size * 2, 1)
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
+    
+    @staticmethod
+    def _draw_ghost_trail(surf, positions, color, count, width):
+        EnhancedTrailEffect._draw_optimized_trail(surf, positions, color, max(1, width - 1))
 
 # 全局涂装管理器实例
 customization_manager = CustomizationManager()

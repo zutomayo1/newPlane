@@ -1977,7 +1977,7 @@ class Player(pygame.sprite.Sprite):
                 }
         self.image = get_plane_surf(plane_id, self.visual)
         # 缩小一点适配游戏
-        self.image = pygame.transform.scale(self.image, (60, 60))
+        self.image = pygame.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center=(WIDTH/2, HEIGHT-100))
         
         self.speed = self.plane_data["speed"]
@@ -2057,6 +2057,10 @@ class Player(pygame.sprite.Sprite):
         self.has_blood_pact = False  # 鲜血契约
 
     def update(self):
+        # 更新动态飞机模型
+        plane_surf = get_plane_surf(self.plane_id, self.visual, static=False)
+        self.image = pygame.transform.scale(plane_surf, (100, 100))
+        
         # 拖尾记录
         if len(self.trail_pos) > 10: self.trail_pos.pop(0)
         self.trail_pos.append(self.rect.center)

@@ -3476,6 +3476,10 @@ while True:
                                         boss_challenge_active = False
                                         # 继续无限模式或返回菜单
                 
+                # ========== 先绘制尾迹（在飞机下层）==========
+                if player is not None:
+                    safe_call_draw(player.draw_trail, screen)
+                
                 safe_call_draw(all_sprites.draw, screen)
                 
                 # ========== 绘制天气效果 ==========
@@ -3483,7 +3487,6 @@ while True:
                     safe_call_draw(weather_system.draw, screen)
                 
                 if player is not None:
-                    safe_call_draw(player.draw_trail, screen)
                     safe_call_draw(player.draw_auras, screen)
                     # 绘制僚机编队和轨道
                     if player.wingman_squadron:
@@ -3770,6 +3773,13 @@ while True:
                     screen.blit(progress_text, (20, HEIGHT - 80))
                 safe_call_draw(draw_warning_indicator)  # BOSS警告闪烁边框
                 safe_call_draw(draw_achievement_notifications)  # 成就通知
+                
+                # 显示FPS（中间上方）
+                current_fps = clock.get_fps()
+                fps_color = GREEN if current_fps >= 100 else YELLOW if current_fps >= 60 else RED
+                fps_text = pygame.font.SysFont("Arial", 32, bold=True).render(f"FPS: {int(current_fps)}", True, fps_color)
+                fps_rect = fps_text.get_rect(center=(WIDTH // 2, 30))
+                screen.blit(fps_text, fps_rect)
 
         pygame.display.flip()
 

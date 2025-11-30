@@ -6,7 +6,7 @@ import os
 # ==============================================================================
 WIDTH = 1280
 HEIGHT = 720
-FPS = 60
+FPS = 120
 
 # 文件路径配置
 LEADERBOARD_FILE = "leaderboard.json"
