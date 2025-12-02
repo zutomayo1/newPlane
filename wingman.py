@@ -16,16 +16,18 @@ from utils import draw_text
 class Wingman:
     """僚机类"""
     
-    def __init__(self, player, slot_index=0, weapon_system=None):
+    def __init__(self, player, slot_index=0, weapon_system=None, paint_theme_id="default"):
         """
         初始化僚机
         :param player: 归属的玩家对象
         :param slot_index: 在编队中的位置索引 (0=上, 1=右, 2=下, 3=左)
         :param weapon_system: 副武器系统
+        :param paint_theme_id: 涂装主题ID
         """
         self.player = player
         self.slot_index = slot_index
         self.weapon = weapon_system
+        self.paint_theme_id = paint_theme_id
         self.last_player_slot = player.current_slot if player else 0  # 追踪玩家的武器槽位变化
         
         # 位置
@@ -216,6 +218,17 @@ class Wingman:
         """绘制僚机"""
         if not self.active:
             return
+        
+        # 【新功能】支持僚机涂装系统
+        if hasattr(self, 'paint_theme_id') and self.paint_theme_id != "default":
+            try:
+                from wingman_themes import WINGMAN_DRAW_FUNCTIONS
+                if self.paint_theme_id in WINGMAN_DRAW_FUNCTIONS:
+                    draw_func = WINGMAN_DRAW_FUNCTIONS[self.paint_theme_id]
+                    draw_func(screen, int(self.x), int(self.y))
+                    return
+            except (ImportError, KeyError):
+                pass
         
         self._draw_wingman_plane(screen)
     
