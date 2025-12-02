@@ -550,29 +550,95 @@ def get_font(size, bold=False):
     font_names = ["roboto", "noto sans", "microsoftyahei", "simhei", "arial"]
     return pygame.font.SysFont(font_names, int(size), bold=bold)
 
-def draw_text(surf, text, size, x, y, color=WHITE, align="center", shadow=True, glow=False):
-    font = get_font(size, bold=True)
-    text_surface = font.render(str(text), True, color)
-    text_rect = text_surface.get_rect()
-    if align == "center": text_rect.midtop = (x, y)
-    elif align == "left": text_rect.topleft = (x, y)
-    elif align == "right": text_rect.topright = (x, y)
+# ==============================================================================
+#   文本渲染缓存系统
+# ==============================================================================
+_text_cache = {}  # 缓存渲染好的文本surface
+_cache_frame_counter = 0  # 帧计数器
+_MAX_CACHE_SIZE = 500  # 最大缓存项数
+_CACHE_CLEAN_INTERVAL = 60  # 每60帧清理一次
+
+def _get_cache_key(text, size, color, effect):
+    """生成缓存键"""
+    return (str(text), int(size), tuple(color), effect)
+
+def _clean_text_cache():
+    """智能清理缓存"""
+    global _text_cache, _cache_frame_counter
+    _cache_frame_counter += 1
     
+    # 每60帧或缓存超过500项时清理
+    if _cache_frame_counter >= _CACHE_CLEAN_INTERVAL or len(_text_cache) > _MAX_CACHE_SIZE:
+        # 只保留最近使用的一半
+        if len(_text_cache) > _MAX_CACHE_SIZE // 2:
+            # 简单策略：清空全部缓存
+            _text_cache.clear()
+        _cache_frame_counter = 0
+
+def draw_text(surf, text, size, x, y, color=WHITE, align="center", shadow=True, glow=False):
+    """优化的文本渲染函数 - 带缓存"""
     if surf is None:
         log_debug("draw_text: surf is None, skipping draw")
         return pygame.Rect(x, y, 0, 0)
+    
+    # 清理缓存（轻量级，每帧只检查一次）
+    _clean_text_cache()
+    
+    # 确定效果类型
     if glow:
-        glow_surf = font.render(str(text), True, (color[0]//2, color[1]//2, color[2]//2))
+        effect = "glow"
+    elif shadow:
+        effect = "shadow"
+    else:
+        effect = "plain"
+    
+    # 生成缓存键
+    cache_key = _get_cache_key(text, size, color, effect)
+    
+    # 尝试从缓存获取
+    if cache_key in _text_cache:
+        text_surface, shadow_surf, glow_surfaces = _text_cache[cache_key]
+    else:
+        # 渲染新的文本surface
+        font = get_font(size, bold=True)
+        text_surface = font.render(str(text), True, color)
+        
+        # 预渲染阴影和光晕
+        shadow_surf = None
+        glow_surfaces = None
+        
+        if glow:
+            glow_color = (color[0]//2, color[1]//2, color[2]//2)
+            glow_surf = font.render(str(text), True, glow_color)
+            glow_surfaces = [glow_surf]  # 只需要一个glow surface，通过偏移多次绘制
+        elif shadow:
+            shadow_surf = font.render(str(text), True, (0,0,0))
+        
+        # 存入缓存
+        _text_cache[cache_key] = (text_surface, shadow_surf, glow_surfaces)
+    
+    # 计算位置
+    text_rect = text_surface.get_rect()
+    if align == "center":
+        text_rect.midtop = (x, y)
+    elif align == "left":
+        text_rect.topleft = (x, y)
+    elif align == "right":
+        text_rect.topright = (x, y)
+    
+    # 绘制效果和文本
+    if glow and glow_surfaces:
+        glow_surf = glow_surfaces[0]
         surf.blit(glow_surf, (text_rect.x-1, text_rect.y))
         surf.blit(glow_surf, (text_rect.x+1, text_rect.y))
         surf.blit(glow_surf, (text_rect.x, text_rect.y-1))
         surf.blit(glow_surf, (text_rect.x, text_rect.y+1))
-    elif shadow:
-        shadow_surf = font.render(str(text), True, (0,0,0))
+    elif shadow and shadow_surf:
         shadow_rect = text_rect.copy()
         shadow_rect.x += 2
         shadow_rect.y += 2
         surf.blit(shadow_surf, shadow_rect)
+    
     surf.blit(text_surface, text_rect)
     return text_rect
 

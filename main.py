@@ -124,7 +124,7 @@ gallery_page = 0
 gallery_tab = 0 # 0:All, 1-4:Rarity
 
 # 档案
-codex_tab = 0 # 0:Plane, 1:Boss
+codex_tab = 0 # 0:Plane, 1:Boss, 2:Enemy
 codex_idx = 0
 codex_scroll_y = 0 
 
@@ -3832,26 +3832,53 @@ def draw_codex_ui():
     r = CODEX_UI
     mx, my = pygame.mouse.get_pos()
     
-    # Tabs
-    c1 = CYAN if codex_tab == 0 else GRAY
-    draw_cyber_rect(screen, r['tab_plane'], (30,30,40), fill=True)
-    if codex_tab == 0: draw_cyber_rect(screen, r['tab_plane'], c1, border_width=2, fill=False)
-    draw_text(screen, "机体数据", 18, r['tab_plane'].centerx, r['tab_plane'].centery-10, c1)
+    # Tabs - 3个标签
+    tab_width = 120
+    tab_height = 40
+    tab_y = 80
+    tab_start_x = WIDTH//2 - (tab_width * 3 + 20) // 2
     
+    # 机体数据标签
+    tab_plane_rect = pygame.Rect(tab_start_x, tab_y, tab_width, tab_height)
+    c1 = CYAN if codex_tab == 0 else GRAY
+    draw_cyber_rect(screen, tab_plane_rect, (30,30,40), fill=True)
+    if codex_tab == 0: draw_cyber_rect(screen, tab_plane_rect, c1, border_width=2, fill=False)
+    draw_text(screen, "机体数据", 18, tab_plane_rect.centerx, tab_plane_rect.centery-10, c1)
+    
+    # 领主图鉴标签
+    tab_boss_rect = pygame.Rect(tab_start_x + tab_width + 10, tab_y, tab_width, tab_height)
     c2 = RED if codex_tab == 1 else GRAY
-    draw_cyber_rect(screen, r['tab_boss'], (30,30,40), fill=True)
-    if codex_tab == 1: draw_cyber_rect(screen, r['tab_boss'], c2, border_width=2, fill=False)
-    draw_text(screen, "领主图鉴", 18, r['tab_boss'].centerx, r['tab_boss'].centery-10, c2)
+    draw_cyber_rect(screen, tab_boss_rect, (30,30,40), fill=True)
+    if codex_tab == 1: draw_cyber_rect(screen, tab_boss_rect, c2, border_width=2, fill=False)
+    draw_text(screen, "领主图鉴", 18, tab_boss_rect.centerx, tab_boss_rect.centery-10, c2)
+    
+    # 敌人图鉴标签
+    tab_enemy_rect = pygame.Rect(tab_start_x + (tab_width + 10) * 2, tab_y, tab_width, tab_height)
+    c3 = ORANGE if codex_tab == 2 else GRAY
+    draw_cyber_rect(screen, tab_enemy_rect, (30,30,40), fill=True)
+    if codex_tab == 2: draw_cyber_rect(screen, tab_enemy_rect, c3, border_width=2, fill=False)
+    draw_text(screen, "敌人图鉴", 18, tab_enemy_rect.centerx, tab_enemy_rect.centery-10, c3)
+    
+    # 保存标签矩形供点击检测使用
+    r['tab_plane'] = tab_plane_rect
+    r['tab_boss'] = tab_boss_rect
+    r['tab_enemy'] = tab_enemy_rect
     
     # List View (Scrolled)
     if codex_tab == 0:
         keys = plane_keys
         db = PLANES
         color_theme = CYAN
-    else:
+    elif codex_tab == 1:
         keys = list(BOSS_DB.keys())
         db = BOSS_DB
         color_theme = RED
+    else:  # codex_tab == 2
+        from enemy_manager import enemy_type_manager
+        enemy_data = enemy_type_manager.get_regular_types()
+        keys = [e["id"] for e in enemy_data]
+        db = {e["id"]: e for e in enemy_data}
+        color_theme = ORANGE
 
     draw_cyber_rect(screen, r['list_view'], (20,20,25), fill=True)
     screen.set_clip(r['list_view'])
@@ -3876,26 +3903,53 @@ def draw_codex_ui():
         cx = r['detail_area'].centerx
         cy = r['detail_area'].y + 50
         
-        if codex_tab == 0: preview = get_plane_surf(key, PLANES.get(key, {}).get('visual', None))
-        else: preview = get_boss_surf(key, data["color"])
-        preview = pygame.transform.scale(preview, (150, 150))
+        # 绘制预览图
+        if codex_tab == 0:
+            preview = get_plane_surf(key, PLANES.get(key, {}).get('visual', None))
+        elif codex_tab == 1:
+            preview = get_boss_surf(key, data["color"])
+        else:  # codex_tab == 2 - 敌人图鉴
+            # 绘制敌人预览（简单形状）
+            preview = pygame.Surface((150, 150), pygame.SRCALPHA)
+            enemy_color = data.get("color", (200, 100, 100))
+            # 绘制敌机轮廓
+            pygame.draw.polygon(preview, enemy_color, [(75, 30), (50, 120), (100, 120)])
+            pygame.draw.polygon(preview, tuple(min(255, c + 50) for c in enemy_color), 
+                              [(75, 30), (50, 120), (100, 120)], 2)
+        
+        if codex_tab != 2:
+            preview = pygame.transform.scale(preview, (150, 150))
         safe_blit(screen, preview, (cx - 75, cy))
         
-        draw_text(screen, data["name"], 30, cx, cy + 170, data["color"], glow=True)
-        draw_text(screen, data["desc"], 18, cx, cy + 210, WHITE)
+        draw_text(screen, data["name"], 30, cx, cy + 170, data.get("color", WHITE), glow=True)
+        draw_text(screen, data.get("desc", ""), 18, cx, cy + 210, WHITE)
         
         stats = []
         if codex_tab == 0:
             stats = [("生命", data["hp"], 200), ("速度", data["speed"]*10, 100), ("火力", data["damage"]*2, 200)]
-        else:
+        elif codex_tab == 1:
             stats = [(k, v, 100) for k,v in data["stats"]]
+        else:  # codex_tab == 2 - 敌人数据
+            stats = [
+                ("生命", data.get("hp", 50), 300),
+                ("速度", int(data.get("speed", 2) * 20), 100),
+                ("威胁", data.get("threat_level", 1), 5)
+            ]
+        
+        # 敌人图鉴使用更紧凑的布局
+        stat_spacing = 35 if codex_tab == 2 else 40
             
         for j, (lbl, val, mxv) in enumerate(stats):
-            y_off = cy + 260 + j*40
+            y_off = cy + 260 + j*stat_spacing
             draw_text(screen, lbl, 18, r['detail_area'].x + 150, y_off, WHITE, align="left")
             pygame.draw.rect(screen, (40,40,40), (r['detail_area'].x + 230, y_off+5, 200, 10))
             fill = min(200, (val/mxv)*200)
-            pygame.draw.rect(screen, data["color"], (r['detail_area'].x + 230, y_off+5, fill, 10))
+            pygame.draw.rect(screen, data.get("color", WHITE), (r['detail_area'].x + 230, y_off+5, fill, 10))
+        
+        # 敌人图鉴额外显示分数
+        if codex_tab == 2:
+            score_y = cy + 260 + len(stats) * stat_spacing + 5
+            draw_text(screen, f"分数: {data.get('score', 100)}", 16, r['detail_area'].x + 150, score_y, GOLD, align="left")
 
     hb = r['btn_back'].collidepoint(mx, my)
     draw_cyber_rect(screen, r['btn_back'], GRAY, fill=True)
@@ -6067,7 +6121,13 @@ while True:
                         # 涂装列表滚动
                         customization_scroll_y = max(0, customization_scroll_y - event.y * 30)
                 elif game_state == "codex":
-                    total_items = len(plane_keys) if codex_tab == 0 else len(BOSS_DB)
+                    if codex_tab == 0:
+                        total_items = len(plane_keys)
+                    elif codex_tab == 1:
+                        total_items = len(BOSS_DB)
+                    else:  # codex_tab == 2
+                        from enemy_manager import enemy_type_manager
+                        total_items = len(enemy_type_manager.get_regular_types())
                     content_h = total_items * 45
                     view_h = CODEX_UI['list_view'].height
                     max_scroll = max(0, content_h - view_h)
@@ -6555,10 +6615,17 @@ while True:
                     r = CODEX_UI
                     if r['tab_plane'].collidepoint(mx, my): codex_tab=0; codex_idx=0; codex_scroll_y=0
                     if r['tab_boss'].collidepoint(mx, my): codex_tab=1; codex_idx=0; codex_scroll_y=0
+                    if r.get('tab_enemy') and r['tab_enemy'].collidepoint(mx, my): codex_tab=2; codex_idx=0; codex_scroll_y=0
                     if r['list_view'].collidepoint(mx, my):
                         offset_y = my - r['list_view'].y + codex_scroll_y
                         clicked_idx = int(offset_y // 45)
-                        keys = plane_keys if codex_tab == 0 else list(BOSS_DB.keys())
+                        if codex_tab == 0:
+                            keys = plane_keys
+                        elif codex_tab == 1:
+                            keys = list(BOSS_DB.keys())
+                        else:  # codex_tab == 2
+                            from enemy_manager import enemy_type_manager
+                            keys = [e["id"] for e in enemy_type_manager.get_regular_types()]
                         if 0 <= clicked_idx < len(keys): codex_idx = clicked_idx
                     if r['btn_back'].collidepoint(mx, my):
                         if player and hasattr(player, 'achievement_manager'):
