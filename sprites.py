@@ -3429,12 +3429,15 @@ class Bullet(pygame.sprite.Sprite):
         if hasattr(self, 'effects') and self.timer % 5 == 0:
             self._update_bullet_animation()
         
+        # 【优化】速度因子降低子弹移动速度,提升性能和视觉清晰度
+        speed_factor = 0.25
+        
         # 特殊移动逻辑
         if not self.is_enemy and self.b_type == "flame":
             if self.timer > 25: self.kill()
-            self.pos += self.vel * (1.0 - self.timer/30.0)
+            self.pos += self.vel * (1.0 - self.timer/30.0) * speed_factor
         else: 
-            self.pos += self.vel
+            self.pos += self.vel * speed_factor
             
         # 追踪逻辑
         if not self.is_enemy and self.homing > 0:
