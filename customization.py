@@ -3229,6 +3229,14 @@ class CustomizationManager:
         # 子弹涂装系统
         self.unlocked_bullet_themes = {"default": True}
         self.equipped_bullet_themes = {}
+        # 僚机涂装系统
+        self.unlocked_wingman_themes = {"default": True}
+        self.equipped_wingman_themes = {
+            "slot_0": "default",
+            "slot_1": "default", 
+            "slot_2": "default",
+            "slot_3": "default"
+        }
         self.load_data()
     
     def load_data(self):
@@ -3242,6 +3250,14 @@ class CustomizationManager:
                     # 加载子弹涂装数据
                     self.unlocked_bullet_themes = data.get("unlocked_bullet_themes", {"default": True})
                     self.equipped_bullet_themes = data.get("equipped_bullet_themes", {})
+                    # 加载僚机涂装数据
+                    self.unlocked_wingman_themes = data.get("unlocked_wingman_themes", {"default": True})
+                    self.equipped_wingman_themes = data.get("equipped_wingman_themes", {
+                        "slot_0": "default",
+                        "slot_1": "default",
+                        "slot_2": "default", 
+                        "slot_3": "default"
+                    })
                     
                     # 清理不存在的主题
                     invalid_unlocked = [tid for tid in self.unlocked_themes if tid not in PAINT_THEMES]
@@ -3265,7 +3281,10 @@ class CustomizationManager:
                 "equipped_themes": self.equipped_themes,
                 # 保存子弹涂装数据
                 "unlocked_bullet_themes": self.unlocked_bullet_themes,
-                "equipped_bullet_themes": self.equipped_bullet_themes
+                "equipped_bullet_themes": self.equipped_bullet_themes,
+                # 保存僚机涂装数据
+                "unlocked_wingman_themes": self.unlocked_wingman_themes,
+                "equipped_wingman_themes": self.equipped_wingman_themes
             }
             with open(self.save_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
