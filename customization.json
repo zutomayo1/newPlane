@@ -164,5 +164,19 @@
     "arbiter": "arbiter_collapse_star",
     "eclipse": "eclipse_shadow_eclipse",
     "prism": "prism_rainbow_ray"
+  },
+  "unlocked_wingman_themes": {
+    "default": true,
+    "quantum_ghost": true,
+    "lava_titan": true,
+    "mech_swarm": true,
+    "shadow_reaper": true,
+    "aurora_valkyrie": true
+  },
+  "equipped_wingman_themes": {
+    "slot_0": "default",
+    "slot_1": "default",
+    "slot_2": "shadow_reaper",
+    "slot_3": "default"
   }
 }
