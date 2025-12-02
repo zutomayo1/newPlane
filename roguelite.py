@@ -829,17 +829,18 @@ class UpgradeManager:
         has_drone_guarantee = wingman_count < 4
         
         # Calculate weights for each rarity based on player level
+        # 【优化】调整权重分配,使高品质升级更容易出现
         base_weights = {0: 1.0, 1: 0.5, 2: 0.1, 3: 0.0}
         if player_level <= 5:
-            base_weights = {0: 1.0, 1: 0.3, 2: 0.05, 3: 0.0}
+            base_weights = {0: 1.0, 1: 0.4, 2: 0.08, 3: 0.0}
         elif player_level <= 10:
-            base_weights = {0: 0.8, 1: 0.6, 2: 0.2, 3: 0.05}
+            base_weights = {0: 0.7, 1: 0.8, 2: 0.3, 3: 0.08}
         elif player_level <= 15:
-            base_weights = {0: 0.4, 1: 0.8, 2: 0.5, 3: 0.1}
+            base_weights = {0: 0.3, 1: 1.0, 2: 0.6, 3: 0.15}
         elif player_level <= 20:
-            base_weights = {0: 0.2, 1: 0.5, 2: 0.8, 3: 0.3}
+            base_weights = {0: 0.15, 1: 0.6, 2: 1.0, 3: 0.4}
         else:
-            base_weights = {0: 0.1, 1: 0.3, 2: 0.6, 3: 0.8}
+            base_weights = {0: 0.08, 1: 0.3, 2: 0.7, 3: 1.0}
         
         # Group buffs by rarity
         buffs_by_rarity = {}
