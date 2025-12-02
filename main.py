@@ -135,7 +135,7 @@ customization_selected_plane = None  # 当前选中的飞机ID
 customization_msg = ""
 
 # 背景设置
-background_settings_scroll_y = 0
+background_settings_page = 0  # 当前页码
 background_settings_selected = 0  # 当前选中的背景索引
 customization_msg_timer = 0
 
@@ -3702,7 +3702,7 @@ def draw_arsenal_ui():
     draw_text(screen, "返回", 20, r['btn_back'].centerx, r['btn_back'].centery-10, WHITE)
 
 def draw_background_settings_ui():
-    """背景设置界面"""
+    """背景设置界面 - 分页版本"""
     draw_text(screen, "背景设置", 40, WIDTH//2, 30, (100, 200, 255), glow=True)
     
     mx, my = pygame.mouse.get_pos()
@@ -3710,38 +3710,49 @@ def draw_background_settings_ui():
     # 获取所有可用背景
     from systems import BackgroundManager
     bg_styles = BackgroundManager.BG_STYLES
+    bg_list = list(bg_styles.items())
+    
+    # 分页配置
+    cards_per_row = 4
+    rows_per_page = 2
+    cards_per_page = cards_per_row * rows_per_page  # 每页8个
+    total_pages = (len(bg_list) + cards_per_page - 1) // cards_per_page
+    
+    # 确保页码有效
+    global background_settings_page
+    background_settings_page = max(0, min(background_settings_page, total_pages - 1))
+    
+    # 获取当前页的背景
+    page_start = background_settings_page * cards_per_page
+    page_end = min(page_start + cards_per_page, len(bg_list))
+    page_items = bg_list[page_start:page_end]
+    
+    # 绘制页码指示器
+    page_text = f"第 {background_settings_page + 1}/{total_pages} 页"
+    draw_text(screen, page_text, 20, WIDTH//2, 80, CYAN)
     
     # 绘制背景选项卡
     card_w = 280
     card_h = 200
-    cards_per_row = 4
     gap = 30
     start_x = (WIDTH - (cards_per_row * card_w + (cards_per_row - 1) * gap)) // 2
-    start_y = 120
+    start_y = 130
     
-    # 创建可滚动区域
-    scroll_area = pygame.Rect(0, start_y, WIDTH, HEIGHT - start_y - 100)
-    screen.set_clip(scroll_area)
-    
-    i = 0
-    for style_key, style_data in bg_styles.items():
-        row = i // cards_per_row
-        col = i % cards_per_row
+    # 绘制当前页的背景卡片
+    for local_idx, (style_key, style_data) in enumerate(page_items):
+        global_idx = page_start + local_idx  # 全局索引
+        row = local_idx // cards_per_row
+        col = local_idx % cards_per_row
         
         x = start_x + col * (card_w + gap)
-        y = start_y + row * (card_h + gap) - background_settings_scroll_y
+        y = start_y + row * (card_h + gap)
         
         card_rect = pygame.Rect(x, y, card_w, card_h)
-        
-        # 如果卡片不在可见区域内,跳过绘制
-        if y + card_h < scroll_area.top or y > scroll_area.bottom:
-            i += 1
-            continue
         
         # 检查是否是当前选中的背景
         is_selected = (bg_manager.current_style == style_key)
         is_hover = card_rect.collidepoint(mx, my) and not is_selected
-        is_keyboard_selected = (i == background_settings_selected)  # 键盘选中
+        is_keyboard_selected = (global_idx == background_settings_selected)  # 键盘选中
         
         # 绘制卡片背景
         if is_selected:
@@ -3794,31 +3805,40 @@ def draw_background_settings_ui():
         if is_selected:
             check_text = "✓ 当前使用"
             draw_text(screen, check_text, 18, card_rect.centerx, y + 175, LIME)
-        
-        i += 1
     
-    # 取消裁剪
-    screen.set_clip(None)
+    # 绘制上一页/下一页按钮（放在卡片下方那一行的左右两侧）
+    button_y = start_y + rows_per_page * (card_h + gap) + 30
+    button_w = 100
+    button_h = 50
     
-    # 绘制滚动条
-    total_rows = (len(bg_styles) + cards_per_row - 1) // cards_per_row
-    content_height = total_rows * (card_h + gap)
-    visible_height = scroll_area.height
+    # 上一页按钮（左侧）
+    prev_btn = pygame.Rect(80, button_y, button_w, button_h)
+    if background_settings_page > 0:
+        prev_hover = prev_btn.collidepoint(mx, my)
+        prev_color = YELLOW if prev_hover else CYAN
+        draw_cyber_rect(screen, prev_btn, (30, 30, 40), fill=True)
+        draw_cyber_rect(screen, prev_btn, prev_color, border_width=2, fill=False)
+        draw_text(screen, "上一页", 20, prev_btn.centerx, prev_btn.centery - 10, prev_color)
+    else:
+        draw_cyber_rect(screen, prev_btn, (20, 20, 25), fill=True)
+        draw_cyber_rect(screen, prev_btn, GRAY, border_width=1, fill=False)
+        draw_text(screen, "上一页", 20, prev_btn.centerx, prev_btn.centery - 10, GRAY)
     
-    if content_height > visible_height:
-        scrollbar_height = max(30, int(visible_height * visible_height / content_height))
-        scrollbar_y = int(scroll_area.top + (background_settings_scroll_y / content_height) * visible_height)
-        scrollbar_rect = pygame.Rect(WIDTH - 15, scrollbar_y, 10, scrollbar_height)
-        pygame.draw.rect(screen, (100, 100, 100), scrollbar_rect, border_radius=5)
-        
-        # 滚动提示
-        if background_settings_scroll_y > 0:
-            draw_text(screen, "▲", 20, WIDTH - 10, scroll_area.top + 10, GRAY)
-        if background_settings_scroll_y < content_height - visible_height:
-            draw_text(screen, "▼", 20, WIDTH - 10, scroll_area.bottom - 20, GRAY)
+    # 下一页按钮（右侧）
+    next_btn = pygame.Rect(WIDTH - 180, button_y, button_w, button_h)
+    if background_settings_page < total_pages - 1:
+        next_hover = next_btn.collidepoint(mx, my)
+        next_color = YELLOW if next_hover else CYAN
+        draw_cyber_rect(screen, next_btn, (30, 30, 40), fill=True)
+        draw_cyber_rect(screen, next_btn, next_color, border_width=2, fill=False)
+        draw_text(screen, "下一页", 20, next_btn.centerx, next_btn.centery - 10, next_color)
+    else:
+        draw_cyber_rect(screen, next_btn, (20, 20, 25), fill=True)
+        draw_cyber_rect(screen, next_btn, GRAY, border_width=1, fill=False)
+        draw_text(screen, "下一页", 20, next_btn.centerx, next_btn.centery - 10, GRAY)
     
     # 操作提示
-    draw_text(screen, "点击卡片切换背景 | 方向键导航 | Enter确认", 16, WIDTH//2, HEIGHT - 110, (150, 150, 150))
+    draw_text(screen, "点击卡片切换背景 | 方向键导航 | Enter确认 | 鼠标滚轮翻页", 16, WIDTH//2, HEIGHT - 110, (150, 150, 150))
     
     # 返回按钮
     back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 80, 120, 50)
@@ -6143,17 +6163,16 @@ while True:
                     arsenal_scroll_y = max(0, min(arsenal_scroll_y - event.y * 30, max_scroll))
                     
                 elif game_state == "background_settings":
-                    # 背景设置滚动
+                    # 背景设置分页切换（鼠标滚轮）
                     from systems import BackgroundManager
                     bg_count = len(BackgroundManager.BG_STYLES)
-                    cards_per_row = 4
-                    card_h = 200
-                    gap = 30
-                    total_rows = (bg_count + cards_per_row - 1) // cards_per_row
-                    content_h = total_rows * (card_h + gap)
-                    view_h = HEIGHT - 120 - 100
-                    max_scroll = max(0, content_h - view_h)
-                    background_settings_scroll_y = max(0, min(background_settings_scroll_y - event.y * 30, max_scroll))
+                    cards_per_page = 8
+                    total_pages = (bg_count + cards_per_page - 1) // cards_per_page
+                    
+                    if event.y < 0:  # 向上滚动 - 下一页
+                        background_settings_page = min(background_settings_page + 1, total_pages - 1)
+                    else:  # 向下滚动 - 上一页
+                        background_settings_page = max(background_settings_page - 1, 0)
 
             # --- 键盘事件 ---
             if event.type == pygame.KEYDOWN:
@@ -6169,8 +6188,8 @@ while True:
                     from systems import BackgroundManager
                     bg_count = len(BackgroundManager.BG_STYLES)
                     cards_per_row = 4
-                    card_h = 200
-                    gap = 30
+                    cards_per_page = 8
+                    total_pages = (bg_count + cards_per_page - 1) // cards_per_page
                     
                     if event.key == pygame.K_LEFT:
                         background_settings_selected = (background_settings_selected - 1) % bg_count
@@ -6185,18 +6204,10 @@ while True:
                         background_settings_selected = (background_settings_selected + cards_per_row) % bg_count
                         sound_mgr.play("select")
                     
-                    # 自动滚动到选中项(对于方向键)
+                    # 自动切换到选中项所在的页
                     if event.key in (pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT):
-                        selected_row = background_settings_selected // cards_per_row
-                        card_y_top = selected_row * (card_h + gap)
-                        view_h = HEIGHT - 120 - 100
-                        
-                        # 如果选中项在视图上方
-                        if card_y_top < background_settings_scroll_y:
-                            background_settings_scroll_y = card_y_top
-                        # 如果选中项在视图下方
-                        elif card_y_top + card_h > background_settings_scroll_y + view_h:
-                            background_settings_scroll_y = card_y_top + card_h - view_h
+                        selected_page = background_settings_selected // cards_per_page
+                        background_settings_page = selected_page
                     
                     if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                         # 切换到选中的背景
@@ -6475,39 +6486,58 @@ while True:
                 elif game_state == "background_settings":
                     from systems import BackgroundManager
                     bg_styles = BackgroundManager.BG_STYLES
+                    bg_list = list(bg_styles.items())
                     
-                    # 计算卡片布局
+                    # 分页配置
                     card_w = 280
                     card_h = 200
                     cards_per_row = 4
+                    cards_per_page = 8
                     gap = 30
                     start_x = (WIDTH - (cards_per_row * card_w + (cards_per_row - 1) * gap)) // 2
-                    start_y = 120
+                    start_y = 130
                     
-                    i = 0
-                    for style_key in bg_styles.keys():
-                        row = i // cards_per_row
-                        col = i % cards_per_row
+                    # 获取当前页的背景
+                    page_start = background_settings_page * cards_per_page
+                    page_end = min(page_start + cards_per_page, len(bg_list))
+                    page_items = bg_list[page_start:page_end]
+                    
+                    # 检查卡片点击
+                    for local_idx, (style_key, _) in enumerate(page_items):
+                        global_idx = page_start + local_idx
+                        row = local_idx // cards_per_row
+                        col = local_idx % cards_per_row
                         
                         x = start_x + col * (card_w + gap)
-                        y = start_y + row * (card_h + gap) - background_settings_scroll_y
+                        y = start_y + row * (card_h + gap)
                         
                         card_rect = pygame.Rect(x, y, card_w, card_h)
                         
-                        # 检查卡片是否在可见区域内且被点击
-                        scroll_area_top = start_y
-                        scroll_area_bottom = HEIGHT - 100
-                        if y + card_h >= scroll_area_top and y <= scroll_area_bottom:
-                            if card_rect.collidepoint(mx, my):
-                                # 更新选中索引并切换背景
-                                background_settings_selected = i
-                                bg_manager.set_style(style_key)
-                                save_settings(background_style=style_key)
-                                sound_mgr.play("select")
-                                log_info(f"背景已切换为: {style_key}")
-                                break
-                        
-                        i += 1
+                        if card_rect.collidepoint(mx, my):
+                            # 更新选中索引并切换背景
+                            background_settings_selected = global_idx
+                            bg_manager.set_style(style_key)
+                            save_settings(background_style=style_key)
+                            sound_mgr.play("select")
+                            log_info(f"背景已切换为: {style_key}")
+                            break
+                    
+                    # 上一页/下一页按钮（卡片下方那一行的左右两侧）
+                    rows_per_page = 2
+                    button_y = start_y + rows_per_page * (card_h + gap) + 30
+                    button_w = 100
+                    button_h = 50
+                    total_pages = (len(bg_list) + cards_per_page - 1) // cards_per_page
+                    
+                    prev_btn = pygame.Rect(80, button_y, button_w, button_h)
+                    next_btn = pygame.Rect(WIDTH - 180, button_y, button_w, button_h)
+                    
+                    if prev_btn.collidepoint(mx, my) and background_settings_page > 0:
+                        background_settings_page -= 1
+                        sound_mgr.play("select")
+                    elif next_btn.collidepoint(mx, my) and background_settings_page < total_pages - 1:
+                        background_settings_page += 1
+                        sound_mgr.play("select")
                     
                     # 返回按钮
                     back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 80, 120, 50)
