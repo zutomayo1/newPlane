@@ -1446,6 +1446,483 @@ class PaperBird:
         pygame.draw.polygon(surf, self.color, points)
         pygame.draw.polygon(surf, (150, 140, 130), points, 2)
 
+class Sakura:
+    """樱花花瓣"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(-HEIGHT, 0)
+        self.vx = random.uniform(-0.5, 0.5)
+        self.vy = random.uniform(1.0, 2.5)
+        self.size = random.randint(6, 12)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(-2, 2)
+        self.sway = random.uniform(0, 6.28)
+        self.sway_speed = random.uniform(0.05, 0.15)
+        self.color = random.choice([(255, 200, 220), (255, 180, 200), (255, 220, 230)])
+    
+    def update(self, speed_mult=1.0):
+        self.sway += self.sway_speed * speed_mult
+        self.x += (self.vx + math.sin(self.sway) * 0.5) * speed_mult
+        self.y += self.vy * speed_mult
+        self.rotation += self.rot_speed * speed_mult
+        if self.y > HEIGHT + 20:
+            self.y = -20
+            self.x = random.randint(0, WIDTH)
+    
+    def draw(self, surf):
+        # 五瓣花瓣
+        points = []
+        for i in range(5):
+            angle = math.radians(i * 72 + self.rotation)
+            r = self.size if i % 2 == 0 else self.size * 0.4
+            points.append((self.x + r * math.cos(angle), self.y + r * math.sin(angle)))
+        pygame.draw.polygon(surf, self.color, points)
+
+class Lantern:
+    """灯笼"""
+    def __init__(self):
+        self.x = random.randint(50, WIDTH - 50)
+        self.y = random.randint(50, HEIGHT - 50)
+        self.size = random.randint(20, 40)
+        self.sway = random.uniform(0, 6.28)
+        self.sway_speed = random.uniform(0.02, 0.05)
+        self.glow = random.uniform(0, 6.28)
+        self.glow_speed = random.uniform(0.03, 0.08)
+        self.color = random.choice([(255, 100, 100), (255, 200, 100), (255, 50, 50)])
+    
+    def update(self, speed_mult=1.0):
+        self.sway += self.sway_speed * speed_mult
+        self.glow += self.glow_speed * speed_mult
+    
+    def draw(self, surf):
+        x_offset = int(5 * math.sin(self.sway))
+        glow_alpha = int(100 + 100 * math.sin(self.glow))
+        # 发光效果
+        glow_surf = pygame.Surface((self.size * 3, self.size * 3), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*self.color, glow_alpha // 2), (self.size * 1.5, self.size * 1.5), self.size * 1.5)
+        surf.blit(glow_surf, (self.x + x_offset - self.size * 1.5, self.y - self.size * 1.5))
+        # 灯笼主体
+        pygame.draw.ellipse(surf, self.color, (self.x + x_offset - self.size // 2, self.y - self.size, self.size, self.size * 2))
+        pygame.draw.line(surf, (200, 150, 100), (self.x + x_offset, self.y - self.size - 10), (self.x + x_offset, self.y - self.size), 2)
+
+class Firefly:
+    """萤火虫"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(-0.5, 0.5)
+        self.vy = random.uniform(-0.5, 0.5)
+        self.size = random.randint(2, 4)
+        self.glow = random.uniform(0, 6.28)
+        self.glow_speed = random.uniform(0.1, 0.2)
+        self.color = (150, 255, 100)
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        self.glow += self.glow_speed * speed_mult
+        # 随机改变方向
+        if random.random() < 0.02:
+            self.vx = random.uniform(-0.5, 0.5)
+            self.vy = random.uniform(-0.5, 0.5)
+        # 边界循环
+        if self.x < 0: self.x = WIDTH
+        if self.x > WIDTH: self.x = 0
+        if self.y < 0: self.y = HEIGHT
+        if self.y > HEIGHT: self.y = 0
+    
+    def draw(self, surf):
+        alpha = int(200 + 55 * math.sin(self.glow))
+        glow_surf = pygame.Surface((self.size * 6, self.size * 6), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*self.color, alpha // 3), (self.size * 3, self.size * 3), self.size * 3)
+        surf.blit(glow_surf, (self.x - self.size * 3, self.y - self.size * 3))
+        pygame.draw.circle(surf, self.color, (int(self.x), int(self.y)), self.size)
+
+class Coral:
+    """珊瑚"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.base_y = HEIGHT
+        self.branches = random.randint(3, 6)
+        self.height = random.randint(80, 150)
+        self.sway = random.uniform(0, 6.28)
+        self.sway_speed = random.uniform(0.02, 0.05)
+        self.color = random.choice([(255, 100, 150), (100, 200, 255), (150, 100, 255)])
+    
+    def update(self, speed_mult=1.0):
+        self.sway += self.sway_speed * speed_mult
+    
+    def draw(self, surf):
+        # 绘制珊瑚分支
+        for i in range(self.branches):
+            angle = (i / self.branches) * 180 - 90
+            sway_offset = 10 * math.sin(self.sway + i)
+            branch_points = []
+            for j in range(5):
+                t = j / 4
+                y = self.base_y - self.height * t
+                x = self.x + (angle - 90) / 3 * t * 20 + sway_offset * t
+                branch_points.append((x, y))
+            if len(branch_points) > 1:
+                pygame.draw.lines(surf, self.color, False, branch_points, 4)
+
+class Jellyfish:
+    """水母"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.size = random.randint(20, 40)
+        self.vy = random.uniform(-0.3, -0.1)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.05, 0.1)
+        self.tentacles = random.randint(6, 10)
+        self.color = random.choice([(100, 150, 255), (150, 100, 255), (100, 255, 200)])
+    
+    def update(self, speed_mult=1.0):
+        self.y += self.vy * speed_mult
+        self.pulse += self.pulse_speed * speed_mult
+        if self.y < -self.size * 2:
+            self.y = HEIGHT + self.size * 2
+            self.x = random.randint(0, WIDTH)
+    
+    def draw(self, surf):
+        pulse_size = int(self.size * (1 + 0.2 * math.sin(self.pulse)))
+        # 身体
+        alpha_surf = pygame.Surface((pulse_size * 2, pulse_size * 2), pygame.SRCALPHA)
+        pygame.draw.circle(alpha_surf, (*self.color, 150), (pulse_size, pulse_size), pulse_size)
+        surf.blit(alpha_surf, (self.x - pulse_size, self.y - pulse_size))
+        # 触手
+        for i in range(self.tentacles):
+            angle = (i / self.tentacles) * 360
+            wave = math.sin(self.pulse + i) * 10
+            end_x = self.x + math.cos(math.radians(angle)) * wave
+            end_y = self.y + self.size + 30
+            pygame.draw.line(surf, self.color, (self.x, self.y + self.size), (end_x, end_y), 2)
+
+class Bubble2:
+    """泡泡（海洋版）"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(HEIGHT, HEIGHT + 100)
+        self.size = random.randint(4, 12)
+        self.vy = random.uniform(-1.0, -0.3)
+        self.vx = random.uniform(-0.2, 0.2)
+        self.alpha = random.randint(100, 200)
+    
+    def update(self, speed_mult=1.0):
+        self.y += self.vy * speed_mult
+        self.x += self.vx * speed_mult
+        if self.y < -20:
+            self.y = HEIGHT + 20
+            self.x = random.randint(0, WIDTH)
+    
+    def draw(self, surf):
+        alpha_surf = pygame.Surface((self.size * 2, self.size * 2), pygame.SRCALPHA)
+        pygame.draw.circle(alpha_surf, (200, 230, 255, self.alpha), (self.size, self.size), self.size)
+        pygame.draw.circle(alpha_surf, (255, 255, 255, self.alpha), (self.size, self.size), self.size, 1)
+        surf.blit(alpha_surf, (self.x - self.size, self.y - self.size))
+
+class Sandstorm:
+    """沙尘暴粒子"""
+    def __init__(self):
+        self.x = random.randint(-50, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.size = random.randint(1, 3)
+        self.vx = random.uniform(3.0, 8.0)
+        self.vy = random.uniform(-0.5, 0.5)
+        self.alpha = random.randint(50, 150)
+        self.color = random.choice([(200, 180, 140), (220, 200, 160), (180, 160, 120)])
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        if self.x > WIDTH + 50:
+            self.x = -50
+            self.y = random.randint(0, HEIGHT)
+    
+    def draw(self, surf):
+        alpha_surf = pygame.Surface((self.size * 4, self.size * 4), pygame.SRCALPHA)
+        pygame.draw.circle(alpha_surf, (*self.color, self.alpha), (self.size * 2, self.size * 2), self.size * 2)
+        surf.blit(alpha_surf, (self.x - self.size * 2, self.y - self.size * 2))
+
+class Dune:
+    """沙丘"""
+    def __init__(self):
+        self.x = random.randint(-100, WIDTH)
+        self.y = random.randint(HEIGHT // 2, HEIGHT)
+        self.width = random.randint(100, 300)
+        self.height = random.randint(40, 100)
+        self.vx = random.uniform(0.2, 0.8)
+        self.color = random.choice([(200, 180, 120), (220, 200, 140), (180, 160, 100)])
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        if self.x > WIDTH + 100:
+            self.x = -100
+            self.y = random.randint(HEIGHT // 2, HEIGHT)
+    
+    def draw(self, surf):
+        # 绘制沙丘形状
+        points = [
+            (self.x - self.width // 2, self.y + self.height),
+            (self.x - self.width // 4, self.y),
+            (self.x + self.width // 4, self.y + self.height // 2),
+            (self.x + self.width // 2, self.y + self.height)
+        ]
+        pygame.draw.polygon(surf, self.color, points)
+
+class Cactus:
+    """仙人掌（装饰）"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = HEIGHT - random.randint(60, 100)
+        self.height = random.randint(40, 80)
+        self.color = (80, 120, 80)
+    
+    def update(self, speed_mult=1.0):
+        pass  # 静态装饰
+    
+    def draw(self, surf):
+        # 主体
+        pygame.draw.rect(surf, self.color, (self.x - 10, self.y, 20, self.height))
+        # 侧枝
+        pygame.draw.rect(surf, self.color, (self.x - 25, self.y + 20, 15, 25))
+        pygame.draw.rect(surf, self.color, (self.x + 10, self.y + 15, 15, 30))
+
+class Petal:
+    """花瓣漩涡"""
+    def __init__(self):
+        self.center_x = WIDTH // 2
+        self.center_y = HEIGHT // 2
+        self.angle = random.uniform(0, 360)
+        self.distance = random.randint(50, 300)
+        self.rotation_speed = random.uniform(0.5, 1.5)
+        self.size = random.randint(8, 16)
+        self.color = random.choice([(255, 150, 200), (200, 100, 255), (150, 200, 255)])
+        self.spiral_speed = random.uniform(-0.3, -0.1)
+    
+    def update(self, speed_mult=1.0):
+        self.angle += self.rotation_speed * speed_mult
+        self.distance += self.spiral_speed * speed_mult
+        if self.distance < 20:
+            self.distance = 300
+            self.angle = random.uniform(0, 360)
+    
+    def draw(self, surf):
+        rad = math.radians(self.angle)
+        x = self.center_x + self.distance * math.cos(rad)
+        y = self.center_y + self.distance * math.sin(rad)
+        alpha = int(200 * (self.distance / 300))
+        alpha_surf = pygame.Surface((self.size * 2, self.size * 2), pygame.SRCALPHA)
+        pygame.draw.circle(alpha_surf, (*self.color, alpha), (self.size, self.size), self.size)
+        surf.blit(alpha_surf, (x - self.size, y - self.size))
+
+class Butterfly:
+    """蝴蝶"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(-1.0, 1.0)
+        self.vy = random.uniform(-1.0, 1.0)
+        self.size = random.randint(10, 18)
+        self.flap = random.uniform(0, 6.28)
+        self.flap_speed = random.uniform(0.2, 0.4)
+        self.color = random.choice([(255, 200, 100), (100, 200, 255), (255, 100, 200)])
+        self.turn_timer = 0
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        self.flap += self.flap_speed * speed_mult
+        self.turn_timer += speed_mult
+        
+        # 随机转向
+        if self.turn_timer > 60:
+            self.turn_timer = 0
+            self.vx = random.uniform(-1.0, 1.0)
+            self.vy = random.uniform(-1.0, 1.0)
+        
+        # 边界循环
+        if self.x < -20: self.x = WIDTH + 20
+        if self.x > WIDTH + 20: self.x = -20
+        if self.y < -20: self.y = HEIGHT + 20
+        if self.y > HEIGHT + 20: self.y = -20
+    
+    def draw(self, surf):
+        wing_offset = int(self.size * 0.3 * math.sin(self.flap))
+        # 左翼
+        pygame.draw.ellipse(surf, self.color, (self.x - self.size - wing_offset, self.y - self.size // 2, self.size, self.size))
+        # 右翼
+        pygame.draw.ellipse(surf, self.color, (self.x + wing_offset, self.y - self.size // 2, self.size, self.size))
+        # 身体
+        pygame.draw.line(surf, (50, 50, 50), (self.x, self.y - self.size // 2), (self.x, self.y + self.size // 2), 3)
+
+class WindLeaf:
+    """风吹落叶"""
+    def __init__(self):
+        self.x = random.randint(-50, WIDTH + 50)
+        self.y = random.randint(-100, HEIGHT)
+        self.vx = random.uniform(2.0, 5.0)
+        self.vy = random.uniform(0.5, 1.5)
+        self.size = random.randint(8, 15)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(-5, 5)
+        self.color = random.choice([(180, 140, 80), (160, 120, 60), (200, 160, 100)])
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        self.rotation += self.rot_speed * speed_mult
+        if self.x > WIDTH + 50 or self.y > HEIGHT + 50:
+            self.x = random.randint(-50, 0)
+            self.y = random.randint(-50, 0)
+    
+    def draw(self, surf):
+        points = []
+        for i in range(4):
+            angle = math.radians(i * 90 + self.rotation)
+            r = self.size if i % 2 == 0 else self.size * 0.6
+            points.append((self.x + r * math.cos(angle), self.y + r * math.sin(angle)))
+        pygame.draw.polygon(surf, self.color, points)
+
+class Dandelion:
+    """蒲公英种子"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(-0.3, 0.3)
+        self.vy = random.uniform(-0.8, -0.2)
+        self.size = random.randint(3, 6)
+        self.float_offset = random.uniform(0, 6.28)
+        self.float_speed = random.uniform(0.05, 0.1)
+        self.color = (240, 240, 230)
+    
+    def update(self, speed_mult=1.0):
+        self.float_offset += self.float_speed * speed_mult
+        self.x += (self.vx + math.sin(self.float_offset) * 0.5) * speed_mult
+        self.y += self.vy * speed_mult
+        if self.y < -20:
+            self.y = HEIGHT + 20
+            self.x = random.randint(0, WIDTH)
+    
+    def draw(self, surf):
+        # 伞状结构
+        for i in range(8):
+            angle = math.radians(i * 45)
+            end_x = self.x + self.size * 2 * math.cos(angle)
+            end_y = self.y + self.size * 2 * math.sin(angle) - self.size
+            pygame.draw.line(surf, self.color, (self.x, self.y - self.size), (end_x, end_y), 1)
+        # 种子
+        pygame.draw.circle(surf, (200, 180, 160), (int(self.x), int(self.y)), self.size // 2)
+
+class Vine:
+    """藤蔓"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = 0
+        self.length = random.randint(100, 200)
+        self.segments = 10
+        self.sway = random.uniform(0, 6.28)
+        self.sway_speed = random.uniform(0.03, 0.06)
+        self.color = (60, 120, 60)
+        self.leaf_positions = [random.randint(2, 8) for _ in range(3)]
+    
+    def update(self, speed_mult=1.0):
+        self.sway += self.sway_speed * speed_mult
+    
+    def draw(self, surf):
+        points = []
+        for i in range(self.segments + 1):
+            t = i / self.segments
+            offset = 20 * math.sin(self.sway + t * 3) * t
+            points.append((self.x + offset, self.y + self.length * t))
+        
+        if len(points) > 1:
+            pygame.draw.lines(surf, self.color, False, points, 4)
+            # 叶子
+            for leaf_seg in self.leaf_positions:
+                if leaf_seg < len(points):
+                    lx, ly = points[leaf_seg]
+                    pygame.draw.ellipse(surf, (80, 150, 80), (lx - 8, ly - 4, 16, 8))
+
+class Mushroom:
+    """发光蘑菇"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = HEIGHT - random.randint(20, 60)
+        self.size = random.randint(15, 30)
+        self.glow = random.uniform(0, 6.28)
+        self.glow_speed = random.uniform(0.04, 0.08)
+        self.color = random.choice([(100, 200, 255), (255, 100, 200), (200, 255, 100)])
+    
+    def update(self, speed_mult=1.0):
+        self.glow += self.glow_speed * speed_mult
+    
+    def draw(self, surf):
+        alpha = int(150 + 100 * math.sin(self.glow))
+        # 发光效果
+        glow_surf = pygame.Surface((self.size * 3, self.size * 3), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*self.color, alpha // 2), (self.size * 1.5, self.size * 1.5), self.size * 1.5)
+        surf.blit(glow_surf, (self.x - self.size * 1.5, self.y - self.size - self.size * 1.5))
+        # 蘑菇帽
+        pygame.draw.circle(surf, self.color, (self.x, self.y - self.size), self.size)
+        # 蘑菇柄
+        pygame.draw.rect(surf, (200, 200, 200), (self.x - self.size // 4, self.y - self.size, self.size // 2, self.size))
+
+class Prism:
+    """三棱镜光线"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.angle = random.uniform(0, 360)
+        self.length = random.randint(50, 150)
+        self.width = random.randint(20, 40)
+        self.rotation_speed = random.uniform(0.2, 0.5)
+        self.colors = [(255, 0, 0), (255, 127, 0), (255, 255, 0), (0, 255, 0), (0, 0, 255), (75, 0, 130), (148, 0, 211)]
+        self.alpha = random.randint(50, 120)
+    
+    def update(self, speed_mult=1.0):
+        self.angle += self.rotation_speed * speed_mult
+    
+    def draw(self, surf):
+        rad = math.radians(self.angle)
+        alpha_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        for i, color in enumerate(self.colors):
+            offset = (i - 3) * (self.width // 7)
+            start_x = self.x + offset * math.cos(rad + math.pi/2)
+            start_y = self.y + offset * math.sin(rad + math.pi/2)
+            end_x = start_x + self.length * math.cos(rad)
+            end_y = start_y + self.length * math.sin(rad)
+            pygame.draw.line(alpha_surf, (*color, self.alpha), (start_x, start_y), (end_x, end_y), 3)
+        surf.blit(alpha_surf, (0, 0))
+
+class Particle:
+    """彩虹粒子"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(-1.0, 1.0)
+        self.vy = random.uniform(-1.0, 1.0)
+        self.size = random.randint(2, 5)
+        self.color = random.choice([(255, 0, 0), (255, 127, 0), (255, 255, 0), (0, 255, 0), (0, 255, 255), (0, 0, 255), (255, 0, 255)])
+        self.life = random.randint(100, 200)
+        self.max_life = self.life
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        self.life -= speed_mult
+        if self.life <= 0:
+            self.x = random.randint(0, WIDTH)
+            self.y = random.randint(0, HEIGHT)
+            self.life = self.max_life
+    
+    def draw(self, surf):
+        alpha = int(255 * (self.life / self.max_life))
+        alpha_surf = pygame.Surface((self.size * 4, self.size * 4), pygame.SRCALPHA)
+        pygame.draw.circle(alpha_surf, (*self.color, alpha), (self.size * 2, self.size * 2), self.size * 2)
+        surf.blit(alpha_surf, (self.x - self.size * 2, self.y - self.size * 2))
+
 class SkyShard:
     """天空碎片"""
     def __init__(self):
@@ -1651,6 +2128,60 @@ class BackgroundManager:
             "element_type": "paper",
             "gradient": [(245, 235, 220), (220, 200, 180), (200, 180, 160)],
             "bgm": "calm"
+        },
+        "sakura_night": {
+            "name": "樱花之夜",
+            "base_color": [20, 10, 40],
+            "elements": {"sakura": 80, "lanterns": 8, "fireflies": 50},
+            "grid_color": None,
+            "element_type": "sakura",
+            "gradient": [(30, 20, 50), (40, 20, 60), (20, 10, 40)],
+            "bgm": "calm"
+        },
+        "ocean_depths": {
+            "name": "深海秘境",
+            "base_color": [0, 20, 40],
+            "elements": {"corals": 12, "jellyfish": 8, "bubbles_ocean": 100},
+            "grid_color": None,
+            "element_type": "ocean",
+            "gradient": [(0, 30, 60), (0, 20, 50), (0, 10, 30)],
+            "bgm": "calm"
+        },
+        "desert_storm": {
+            "name": "沙漠风暴",
+            "base_color": [80, 70, 50],
+            "elements": {"sandstorm": 150, "dunes": 8, "cacti": 6},
+            "grid_color": None,
+            "element_type": "desert",
+            "gradient": [(120, 100, 60), (100, 80, 50), (80, 60, 40)],
+            "bgm": "battle"
+        },
+        "spiral_garden": {
+            "name": "螺旋花园",
+            "base_color": [25, 15, 35],
+            "elements": {"petals_spiral": 60, "butterflies": 15, "wind_leaves": 40},
+            "grid_color": None,
+            "element_type": "garden",
+            "gradient": [(40, 25, 50), (60, 40, 70), (30, 20, 45)],
+            "bgm": "calm"
+        },
+        "floating_meadow": {
+            "name": "浮空草甸",
+            "base_color": [100, 180, 220],
+            "elements": {"dandelions": 80, "vines": 12, "mushrooms": 10},
+            "grid_color": None,
+            "element_type": "meadow",
+            "gradient": [(120, 200, 240), (140, 220, 250), (100, 180, 220)],
+            "bgm": "calm"
+        },
+        "rainbow_realm": {
+            "name": "虹彩空间",
+            "base_color": [20, 20, 20],
+            "elements": {"prisms": 10, "rainbow_particles": 120},
+            "grid_color": None,
+            "element_type": "rainbow",
+            "gradient": [(40, 40, 40), (60, 30, 60), (30, 60, 60)],
+            "bgm": "mystery"
         }
     }
     
@@ -1849,6 +2380,80 @@ class BackgroundManager:
         if "paper_birds" in elements:
             for _ in range(elements["paper_birds"]):
                 self.special_elements.append(PaperBird())
+        
+        # 樱花之夜元素
+        if "sakura" in elements:
+            for _ in range(elements["sakura"]):
+                self.special_elements.append(Sakura())
+        
+        if "lanterns" in elements:
+            for _ in range(elements["lanterns"]):
+                self.special_elements.append(Lantern())
+        
+        if "fireflies" in elements:
+            for _ in range(elements["fireflies"]):
+                self.special_elements.append(Firefly())
+        
+        # 深海秘境元素
+        if "corals" in elements:
+            for _ in range(elements["corals"]):
+                self.special_elements.append(Coral())
+        
+        if "jellyfish" in elements:
+            for _ in range(elements["jellyfish"]):
+                self.special_elements.append(Jellyfish())
+        
+        if "bubbles_ocean" in elements:
+            for _ in range(elements["bubbles_ocean"]):
+                self.special_elements.append(Bubble2())
+        
+        # 沙漠风暴元素
+        if "sandstorm" in elements:
+            for _ in range(elements["sandstorm"]):
+                self.special_elements.append(Sandstorm())
+        
+        if "dunes" in elements:
+            for _ in range(elements["dunes"]):
+                self.special_elements.append(Dune())
+        
+        if "cacti" in elements:
+            for _ in range(elements["cacti"]):
+                self.special_elements.append(Cactus())
+        
+        # 螺旋花园元素
+        if "petals_spiral" in elements:
+            for _ in range(elements["petals_spiral"]):
+                self.special_elements.append(Petal())
+        
+        if "butterflies" in elements:
+            for _ in range(elements["butterflies"]):
+                self.special_elements.append(Butterfly())
+        
+        if "wind_leaves" in elements:
+            for _ in range(elements["wind_leaves"]):
+                self.special_elements.append(WindLeaf())
+        
+        # 浮空草甸元素
+        if "dandelions" in elements:
+            for _ in range(elements["dandelions"]):
+                self.special_elements.append(Dandelion())
+        
+        if "vines" in elements:
+            for _ in range(elements["vines"]):
+                self.special_elements.append(Vine())
+        
+        if "mushrooms" in elements:
+            for _ in range(elements["mushrooms"]):
+                self.special_elements.append(Mushroom())
+        
+        # 虹彩空间元素
+        if "prisms" in elements:
+            for _ in range(elements["prisms"]):
+                self.special_elements.append(Prism())
+        
+        if "rainbow_particles" in elements:
+            for _ in range(elements["rainbow_particles"]):
+                self.special_elements.append(Particle())
         
         # 设置基础颜色
         self.current_bg = config["base_color"].copy()
