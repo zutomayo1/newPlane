@@ -115,9 +115,9 @@
   "equipped_themes": {
     "thunderbird": "thunderbird_aurora",
     "viper": "viper_hydra",
-    "striker": "striker_quantum",
-    "phantom": "rare_cyan",
-    "titan": "titan_orbital",
+    "striker": "striker_dragon",
+    "phantom": "common_green",
+    "titan": "common_blue",
     "arbiter": "arbiter_truth",
     "solar": "solar_eclipse",
     "gaia": "gaia_titan",
@@ -152,7 +152,7 @@
     "striker": "default",
     "phantom": "phantom_matrix_bullet",
     "necro": "necro_bone_spike",
-    "titan": "titan_volcano_bullet",
+    "titan": "default",
     "thunderbird": "thunderbird_valkyrie_bullet",
     "viper": "viper_serpent_god_bullet",
     "specter": "specter_wraith_bullet",
@@ -174,7 +174,7 @@
     "aurora_valkyrie": true
   },
   "equipped_wingman_themes": {
-    "slot_0": "aurora_valkyrie",
+    "slot_0": "quantum_ghost",
     "slot_1": "default",
     "slot_2": "shadow_reaper",
     "slot_3": "default"

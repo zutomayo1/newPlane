@@ -5868,32 +5868,82 @@ def draw_top_hud():
     # 等级文本靠左，EXP条上方（放大字体，往上移）
     draw_text(screen, f"等级{int(player.level)}", 20, 8, exp_bar_y - 30, CYBER_AMBER, glow=True, align='left')
     
-    # ===== 底部中央：BOSS血条 (如果有BOSS) =====
+    # ===== 顶部中央：BOSS血条 (如果有BOSS) =====
     if boss:
-        boss_y = HEIGHT - 45
-        boss_bar_w = 500
+        boss_y = 130  # 顶部位置，避开玩家血条和属性图标
+        boss_bar_w = 600
         boss_x = (WIDTH - boss_bar_w) // 2
-        boss_bar_h = 12
+        boss_bar_h = 20  # 增加高度使其更明显
         
-        # BOSS名称 (炫光效果)
-        draw_text(screen, f"BOSS: {boss.name}", 14, boss_x, boss_y - 20, CYBER_RED_ALERT, glow=True)
+        # BOSS血条容器背景（半透明黑色）
+        container_padding = 15
+        container_rect = pygame.Rect(boss_x - container_padding, boss_y - 35, 
+                                     boss_bar_w + container_padding * 2, 65)
+        draw_cyber_rect(screen, container_rect, (10, 10, 15), alpha=200, fill=True)
         
-        # BOSS血条背景
-        pygame.draw.rect(screen, (60, 15, 15), (boss_x, boss_y, boss_bar_w, boss_bar_h))
-        pygame.draw.rect(screen, CYBER_RED_ALERT, (boss_x, boss_y, boss_bar_w, boss_bar_h), 2)
+        # BOSS名称（居中，更大字体，多层阴影）
+        boss_name_text = boss.name.upper()
+        center_x = WIDTH // 2
+        name_y = boss_y - 18
+        # 外层红色光晕
+        for offset_x, offset_y in [(-2, -2), (2, -2), (-2, 2), (2, 2), (-3, 0), (3, 0), (0, -3), (0, 3)]:
+            draw_text(screen, boss_name_text, 16, center_x + offset_x, name_y + offset_y, (100, 0, 0))
+        # 内层明亮描边
+        for offset_x, offset_y in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+            draw_text(screen, boss_name_text, 16, center_x + offset_x, name_y + offset_y, (255, 100, 100))
+        # 主文字
+        draw_text(screen, boss_name_text, 16, center_x, name_y, (255, 220, 220), glow=True)
         
-        # BOSS血条填充 (炫光渐变)
-        boss_hp_pct = (boss.hp / boss.max_hp) * 100
-        boss_fill = (boss_hp_pct / 100) * boss_bar_w
+        # BOSS血条外框（增强边框效果）
+        border_rect = pygame.Rect(boss_x - 2, boss_y - 2, boss_bar_w + 4, boss_bar_h + 4)
+        draw_cyber_rect(screen, border_rect, CYBER_RED_ALERT, border_width=2, fill=False)
+        
+        # BOSS血条背景（深色）
+        pygame.draw.rect(screen, (30, 10, 10), (boss_x, boss_y, boss_bar_w, boss_bar_h))
+        
+        # BOSS血条填充（渐变效果）
+        boss_hp_pct = max(0, min(1, boss.hp / boss.max_hp))
+        boss_fill = int(boss_hp_pct * boss_bar_w)
+        
         if boss_fill > 0:
-            pygame.draw.rect(screen, (255, 80, 80), (boss_x, boss_y, boss_fill, boss_bar_h))
-            # 边缘炫光
+            # 渐变色填充：从橙红到深红
+            for i in range(boss_fill):
+                ratio = i / boss_bar_w
+                r = int(255 - ratio * 50)
+                g = int(80 - ratio * 30)
+                b = int(80 - ratio * 30)
+                pygame.draw.line(screen, (r, g, b), 
+                               (boss_x + i, boss_y), 
+                               (boss_x + i, boss_y + boss_bar_h))
+            
+            # 血条顶部高光
+            highlight_h = boss_bar_h // 3
+            highlight_surf = pygame.Surface((boss_fill, highlight_h), pygame.SRCALPHA)
+            highlight_surf.fill((255, 150, 150, 80))
+            screen.blit(highlight_surf, (boss_x, boss_y))
+            
+            # 边缘发光线
             if boss_fill > 3:
-                pygame.draw.line(screen, (255, 150, 150), (boss_x + boss_fill - 2, boss_y),
-                               (boss_x + boss_fill - 2, boss_y + boss_bar_h), 2)
+                for offset in range(2):
+                    pygame.draw.line(screen, (255, 200, 200, 150), 
+                                   (boss_x + boss_fill - 1 - offset, boss_y),
+                                   (boss_x + boss_fill - 1 - offset, boss_y + boss_bar_h))
         
-        # BOSS血量数值
-        draw_text(screen, f"{int(boss.hp)}/{int(boss.max_hp)}", 11, boss_x + boss_bar_w//2 - 20, boss_y + 1, WHITE)
+        # BOSS血量数值（居中显示，使用百分比，增强质感）
+        hp_text = f"{int(boss.hp):,} / {int(boss.max_hp):,}"
+        hp_percent = f"({boss_hp_pct * 100:.1f}%)"
+        hp_text_y = boss_y + boss_bar_h // 2 - 6
+        percent_y = boss_y + boss_bar_h + 8
+        
+        # 血量数值 - 黑色描边 + 白色主体
+        for offset_x, offset_y in [(-1, -1), (1, -1), (-1, 1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)]:
+            draw_text(screen, hp_text, 12, center_x + offset_x, hp_text_y + offset_y, (0, 0, 0))
+        draw_text(screen, hp_text, 12, center_x, hp_text_y, (255, 255, 255), glow=True)
+        
+        # 百分比 - 黑色描边 + 琥珀色主体
+        for offset_x, offset_y in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+            draw_text(screen, hp_percent, 10, center_x + offset_x, percent_y + offset_y, (20, 10, 0))
+        draw_text(screen, hp_percent, 10, center_x, percent_y, CYBER_AMBER, glow=True)
         # Draw phase threshold markers
         try:
             phases = getattr(boss, 'phase_configs', boss.data.get('phases', []))

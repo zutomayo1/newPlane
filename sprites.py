@@ -914,14 +914,14 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.rect(self.image, CYBER_CYAN_BRIGHT, (3, 0, 8, 34), 2)
                 pygame.draw.rect(self.image, WHITE, (5, 10, 4, 16))
                 pygame.draw.circle(self.image, WHITE, (7, 6), 3)
-                self.speed = -15
+                self.speed = -22
                 
             elif b_type == "shard":  # 2. Phantom - 虚空幻影（洋红菱形碎片）
                 self.image = pygame.Surface((16, 30), pygame.SRCALPHA)
                 pygame.draw.polygon(self.image, MAGENTA, [(8,0), (16,15), (8,30), (0,15)])
                 pygame.draw.polygon(self.image, WHITE, [(8,0), (16,15), (8,30), (0,15)], 2)
                 pygame.draw.polygon(self.image, CYBER_CYAN_BRIGHT, [(8,6), (12,15), (8,24), (4,15)])
-                self.speed = -18
+                self.speed = -26
                 self.piercing = max(1, self.piercing)
                 
             elif b_type == "rocket":  # 3. Titan - 钢铁泰坦（橙色重型火箭）
@@ -931,7 +931,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.polygon(self.image, CYBER_AMBER, [(4,12), (10,0), (16,12)])
                 pygame.draw.rect(self.image, (255, 80, 0), (6, 34, 8, 4))
                 pygame.draw.circle(self.image, WHITE, (10, 22), 4)
-                self.speed = -10
+                self.speed = -15
                 
             elif b_type == "lightning":  # 4. Thunderbird - 雷霆战鹰（黄色闪电链）
                 self.image = pygame.Surface((18, 40), pygame.SRCALPHA)
@@ -940,7 +940,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.lines(self.image, WHITE, False, points, 2)
                 pygame.draw.line(self.image, YELLOW, (4,14), (0,18), 2)
                 pygame.draw.line(self.image, YELLOW, (14,26), (18,30), 2)
-                self.speed = -16
+                self.speed = -24
                 
             elif b_type == "acid":  # 5. Viper - 剧毒蝰蛇（绿色毒液滴）
                 self.image = pygame.Surface((26, 34), pygame.SRCALPHA)
@@ -956,7 +956,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.circle(self.image, (150, 255, 150), (10, 18), 3)
                 pygame.draw.circle(self.image, (150, 255, 150), (16, 15), 2)
                 pygame.draw.circle(self.image, (150, 255, 150), (13, 22), 2)
-                self.speed = -12
+                self.speed = -18
                 
             elif b_type == "spectral":  # 6. Specter - 幽灵收割者（紫色幽能箭）
                 self.image = pygame.Surface((18, 42), pygame.SRCALPHA)
@@ -965,7 +965,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.lines(self.image, (200, 150, 255), False, points, 3)
                 pygame.draw.circle(self.image, WHITE, (9, 8), 5)
                 pygame.draw.circle(self.image, (180, 130, 255), (9, 24), 4)
-                self.speed = -20
+                self.speed = -28
                 
             elif b_type == "aurora_beam":  # 7. Aurora - 极光女神（青绿波纹光环）
                 self.image = pygame.Surface((34, 34), pygame.SRCALPHA)
@@ -980,7 +980,7 @@ class Bullet(pygame.sprite.Sprite):
                 # 中心亮点
                 pygame.draw.circle(self.image, WHITE, (17, 17), 4)
                 pygame.draw.circle(self.image, (200, 255, 250), (17, 17), 2)
-                self.speed = -13
+                self.speed = -19
                 
             elif b_type == "blade":  # 8. Crimson - 绯红之刃（红色月牙刀光）
                 self.image = pygame.Surface((40, 40), pygame.SRCALPHA)
@@ -989,7 +989,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.arc(self.image, WHITE, (6,6,28,28), 0, 3.14, 3)
                 pygame.draw.line(self.image, CRIMSON, (0, 20), (40, 20), 3)
                 pygame.draw.circle(self.image, WHITE, (20, 20), 5)
-                self.speed = -18
+                self.speed = -26
                 
             elif b_type == "star":  # 9. Stalker - 星界潜行者（靛蓝八芒星）
                 self.image = pygame.Surface((24, 24), pygame.SRCALPHA)
@@ -998,7 +998,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.polygon(self.image, (150, 100, 255), points, 2)
                 pygame.draw.circle(self.image, WHITE, (12,12), 4)
                 pygame.draw.circle(self.image, INDIGO, (12,12), 2)
-                self.speed = -14
+                self.speed = -21
                 
             elif b_type == "thorn":  # 10. Gaia - 大地守护者（绿色荆棘箭）
                 self.image = pygame.Surface((16, 32), pygame.SRCALPHA)
@@ -1008,7 +1008,7 @@ class Bullet(pygame.sprite.Sprite):
                 for i in [10, 18, 26]:
                     pygame.draw.line(self.image, CYBER_LIME, (8, i), (2, i-4), 2)
                     pygame.draw.line(self.image, CYBER_LIME, (8, i), (14, i-4), 2)
-                self.speed = -11
+                self.speed = -16
                 
             elif b_type == "web":  # 11. Weaver - 虚空编织者（灰色蛛网十字）
                 self.image = pygame.Surface((26, 26), pygame.SRCALPHA)
@@ -1018,7 +1018,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.line(self.image, (220, 220, 220), (22,4), (4,22), 2)
                 pygame.draw.circle(self.image, WHITE, (13, 13), 5)
                 pygame.draw.circle(self.image, CYBER_CYAN_BRIGHT, (13, 13), 4, 2)
-                self.speed = -9
+                self.speed = -13
                 
             elif b_type == "flame":  # 12. Solar - 日冕耀斑（橙黄火焰）
                 self.image = pygame.Surface((30, 36), pygame.SRCALPHA)
@@ -1036,7 +1036,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.circle(self.image, (255, 200, 100), (22, 24), 3)
                 pygame.draw.circle(self.image, (255, 180, 80), (15, 30), 4)
                 pygame.draw.circle(self.image, (255, 220, 120), (15, 30), 2)
-                self.speed = -17
+                self.speed = -25
                 
             elif b_type == "quant":  # 13. Arbiter - 量子裁决者（紫色量子方块）
                 self.image = pygame.Surface((20, 20), pygame.SRCALPHA)
@@ -1046,7 +1046,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.rect(self.image, MAGENTA, (8,8,4,4))
                 pygame.draw.line(self.image, CYBER_CYAN_BRIGHT, (0, 10), (20, 10), 2)
                 pygame.draw.line(self.image, CYBER_CYAN_BRIGHT, (10, 0), (10, 20), 2)
-                self.speed = -13
+                self.speed = -19
                 
             elif b_type == "shadow":  # 14. Eclipse - 日食幽灵（紫黑暗影箭）
                 self.image = pygame.Surface((18, 36), pygame.SRCALPHA)
@@ -1055,7 +1055,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.circle(self.image, (200, 150, 255), (9, 12), 5)
                 pygame.draw.circle(self.image, WHITE, (9, 12), 3)
                 pygame.draw.circle(self.image, (80, 30, 120), (9, 26), 6)
-                self.speed = -14
+                self.speed = -21
                 
             elif b_type == "prism":  # 15. Prism - 棱镜分光（彩虹三棱镜）
                 self.image = pygame.Surface((22, 30), pygame.SRCALPHA)
@@ -1068,7 +1068,7 @@ class Bullet(pygame.sprite.Sprite):
                     x = 11 + int(6 * math.cos(rad))
                     y = 20 + int(6 * math.sin(rad))
                     pygame.draw.line(self.image, (200, 255, 255), (11, 20), (x, y), 2)
-                self.speed = -15
+                self.speed = -22
                 
             else:  # 16. Necro + 默认（紫红幽能，与Specter共用）
                 self.image = pygame.Surface((18, 42), pygame.SRCALPHA)
@@ -1077,7 +1077,7 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.lines(self.image, (255, 100, 200), False, points, 3)
                 pygame.draw.circle(self.image, WHITE, (9, 8), 5)
                 pygame.draw.circle(self.image, (220, 80, 180), (9, 24), 4)
-                self.speed = -16
+                self.speed = -24
         
         if angle != 0: 
             self.image = pygame.transform.rotate(self.image, -angle)
@@ -4470,6 +4470,9 @@ class Player(pygame.sprite.Sprite):
         # 缩小一点适配游戏
         self.image = pygame.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center=(WIDTH/2, HEIGHT-100))
+        
+        # 碰撞半径 - 比视觉大小小很多，方便躲避
+        self.radius = 15  # 从默认的50(rect的一半)减小到15
         
         self.speed = self.plane_data["speed"]
         self.max_hp = self.plane_data["hp"]
