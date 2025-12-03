@@ -3,13 +3,58 @@
 提供敌人类型信息的查询和管理
 """
 from config import *
+import json
 
 class EnemyTypeManager:
     """敌人类型管理器"""
     
     def __init__(self):
         """初始化敌人类型数据"""
-        self.enemy_types = [
+        self.enemy_types = self._load_enemy_types()
+    
+    def _load_enemy_types(self):
+        """从 JSON 和硬编码数据加载敌人类型"""
+        enemies = []
+        
+        # 首先尝试从 enemy_types.json 加载新敌人
+        try:
+            with open('enemy_types.json', 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 将 JSON 中的敌人转换为机密档案格式
+            for enemy_id, config in data.get('enemies', {}).items():
+                threat_level = 1
+                category = config.get('category', '')
+                if '高级' in category:
+                    threat_level = 3
+                elif '顶级' in category:
+                    threat_level = 5
+                
+                enemies.append({
+                    "id": enemy_id,
+                    "name": config.get('name', '未知'),
+                    "desc": config.get('description', ''),
+                    "hp": config.get('hp', 50),
+                    "speed": config.get('speed', 2.0),
+                    "score": config.get('score', 100),
+                    "color": tuple(config.get('color', [100, 100, 100])),
+                    "threat_level": threat_level,
+                    "abilities": [
+                        f"AI: {config.get('ai_behavior', 'straight')}",
+                        f"攻击: {config.get('attack_pattern', 'single')}"
+                    ],
+                    "special": config.get('special_ability', None),
+                })
+        except Exception as e:
+            # 如果加载失败，使用默认敌人
+            print(f"警告：加载 enemy_types.json 失败 ({e})，使用默认敌人")
+            enemies = self._get_default_enemies()
+        
+        return enemies
+    
+    def _get_default_enemies(self):
+        """默认敌人列表（备用）"""
+        return [
             {
                 "id": "basic",
                 "name": "基础敌机",
@@ -31,72 +76,6 @@ class EnemyTypeManager:
                 "color": (100, 200, 100),
                 "threat_level": 2,
                 "abilities": ["高速移动", "闪避", "快速射击"],
-            },
-            {
-                "id": "tank",
-                "name": "重装坦克",
-                "desc": "装甲厚重的敌方单位，移动缓慢但血量极高",
-                "hp": 200,
-                "speed": 1,
-                "score": 300,
-                "color": (100, 100, 200),
-                "threat_level": 3,
-                "abilities": ["重装甲", "缓慢移动", "强力炮击"],
-            },
-            {
-                "id": "sniper",
-                "name": "狙击机",
-                "desc": "远程精确打击型敌机，攻击力高但防御薄弱",
-                "hp": 40,
-                "speed": 2,
-                "score": 200,
-                "color": (200, 200, 100),
-                "threat_level": 3,
-                "abilities": ["精确射击", "远程攻击", "锁定"],
-            },
-            {
-                "id": "bomber",
-                "name": "轰炸机",
-                "desc": "大范围轰炸型敌机，造成区域伤害",
-                "hp": 80,
-                "speed": 1.5,
-                "score": 250,
-                "color": (200, 100, 200),
-                "threat_level": 3,
-                "abilities": ["投掷炸弹", "区域伤害"],
-            },
-            {
-                "id": "elite",
-                "name": "精英战机",
-                "desc": "敌方精锐部队，全面强化的战斗单位",
-                "hp": 150,
-                "speed": 3,
-                "score": 500,
-                "color": (255, 150, 50),
-                "threat_level": 4,
-                "abilities": ["强化攻击", "闪避", "护盾"],
-            },
-            {
-                "id": "kamikaze",
-                "name": "自爆机",
-                "desc": "冲向玩家自爆的敌机，速度快但易碎",
-                "hp": 20,
-                "speed": 5,
-                "score": 150,
-                "color": (255, 100, 100),
-                "threat_level": 2,
-                "abilities": ["高速冲撞", "自爆", "追踪"],
-            },
-            {
-                "id": "carrier",
-                "name": "母舰",
-                "desc": "能够释放小型敌机的大型单位",
-                "hp": 300,
-                "speed": 1,
-                "score": 800,
-                "color": (150, 150, 255),
-                "threat_level": 5,
-                "abilities": ["召唤敌机", "重装甲", "多管炮塔"],
             },
             {
                 "id": "boss_1",

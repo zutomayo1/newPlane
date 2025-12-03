@@ -9,6 +9,7 @@ from utils import *
 from systems import *
 from sprites import *
 from customization import customization_manager, PAINT_THEMES, BULLET_THEMES, EnhancedTrailEffect
+from enemies import enemy_factory, init_enemy_system
 
 # ==============================================================================
 #   全局初始化
@@ -28,6 +29,13 @@ try:
 except Exception as e:
     log_error(f"数据加载警告: {e}")
     leaderboard_data = []
+
+# 初始化敌人系统
+try:
+    init_enemy_system()
+    enemy_factory.load_from_json('enemy_types.json')
+except Exception as e:
+    log_error(f"敌人系统初始化失败: {e}")
 
 # 加载设置并初始化背景管理器
 game_settings = load_settings()
@@ -4101,20 +4109,243 @@ def draw_codex_ui():
         elif codex_tab == 1:
             preview = get_boss_surf(key, data["color"])
         else:  # codex_tab == 2 - 敌人图鉴
-            # 绘制敌人预览（简单形状）
+            # 绘制敌人预览（有机战机风格）
             preview = pygame.Surface((150, 150), pygame.SRCALPHA)
-            enemy_color = data.get("color", (200, 100, 100))
-            # 绘制敌机轮廓
-            pygame.draw.polygon(preview, enemy_color, [(75, 30), (50, 120), (100, 120)])
-            pygame.draw.polygon(preview, tuple(min(255, c + 50) for c in enemy_color), 
-                              [(75, 30), (50, 120), (100, 120)], 2)
+            enemy_color = tuple(data.get("color", (200, 100, 100)))
+            dark_color = tuple(max(0, c - 60) for c in enemy_color)
+            light_color = tuple(min(255, c + 80) for c in enemy_color)
+            center = 75
+            
+            enemy_id = key
+            
+            if enemy_id == "scout_moth":
+                # 灰蛾：尖锐梭形机身 + 三角翼
+                pygame.draw.polygon(preview, dark_color, [(center, 20), (55, 75), (center, 130), (95, 75)])
+                pygame.draw.polygon(preview, enemy_color, [(center, 25), (55, 75), (center, 125), (95, 75)])
+                pygame.draw.polygon(preview, light_color, [(center, 25), (55, 75), (center, 125), (95, 75)], 2)
+                # 前舷灯
+                pygame.draw.circle(preview, (255, 100, 100), (center, 35), 4)
+                pygame.draw.circle(preview, (255, 150, 100), (center, 35), 2)
+            elif enemy_id == "trooper_spear":
+                # 赤矛：宽阔流线体 + 双翼战机
+                pygame.draw.ellipse(preview, dark_color, (50, 40, 50, 70))
+                pygame.draw.ellipse(preview, enemy_color, (52, 42, 46, 66))
+                pygame.draw.ellipse(preview, light_color, (50, 40, 50, 70), 2)
+                # 双翼（对称）
+                pygame.draw.polygon(preview, dark_color, [(40, 60), (50, 65), (50, 90)])
+                pygame.draw.polygon(preview, enemy_color, [(42, 62), (50, 66), (50, 88)])
+                pygame.draw.polygon(preview, dark_color, [(110, 60), (100, 65), (100, 90)])
+                pygame.draw.polygon(preview, enemy_color, [(108, 62), (100, 66), (100, 88)])
+                # 机炮（中心）
+                pygame.draw.circle(preview, light_color, (center, 75), 3)
+                pygame.draw.line(preview, light_color, (center, 75), (center, 115), 2)
+            elif enemy_id == "lurker_halo":
+                # 光环盘：圆盘体 + 多层光环
+                pygame.draw.circle(preview, dark_color, (center, center), 22)
+                pygame.draw.circle(preview, enemy_color, (center, center), 22)
+                pygame.draw.circle(preview, light_color, (center, center), 22, 2)
+                # 光环层次
+                pygame.draw.circle(preview, tuple(max(0, c-40) for c in enemy_color), (center, center), 32, 2)
+                pygame.draw.circle(preview, tuple(max(0, c-20) for c in enemy_color), (center, center), 42, 1)
+                pygame.draw.circle(preview, light_color, (center, center), 48, 1)
+            elif enemy_id == "bomber_deepjelly":
+                # 深水母：胖圆轰炸机 + 下方舱门
+                # 上半身
+                pygame.draw.ellipse(preview, dark_color, (50, 35, 50, 45))
+                pygame.draw.ellipse(preview, enemy_color, (52, 37, 46, 41))
+                # 下半身（水滴形）
+                pygame.draw.polygon(preview, dark_color, [(center, 80), (55, 125), (95, 125)])
+                pygame.draw.polygon(preview, enemy_color, [(center, 78), (57, 123), (93, 123)])
+                pygame.draw.polygon(preview, light_color, [(center, 78), (57, 123), (93, 123)], 1)
+                # 舱门细节
+                pygame.draw.rect(preview, light_color, (62, 105, 11, 8), 1)
+                pygame.draw.rect(preview, light_color, (77, 105, 11, 8), 1)
+            elif enemy_id == "jammer_amethyst":
+                # 紫菱：尖锐菱形 + 节点系统
+                pygame.draw.polygon(preview, dark_color, [(center, 20), (105, center), (center, 130), (45, center)])
+                pygame.draw.polygon(preview, enemy_color, [(center, 25), (103, center), (center, 125), (47, center)])
+                pygame.draw.polygon(preview, light_color, [(center, 25), (103, center), (center, 125), (47, center)], 2)
+                # 4个角度节点（发光）
+                for angle, pos in [(0, (108, center)), (90, (center, 128)), (180, (42, center)), (270, (center, 22))]:
+                    pygame.draw.circle(preview, light_color, pos, 5)
+                    pygame.draw.circle(preview, dark_color, pos, 5, 1)
+            elif enemy_id == "shield_beeguard":
+                # 蜂巢卫士：圆形护盾 + 蜂窝纹理
+                pygame.draw.circle(preview, dark_color, (center, center), 26)
+                pygame.draw.circle(preview, enemy_color, (center, center), 26)
+                pygame.draw.circle(preview, light_color, (center, center), 26, 2)
+                # 蜂窝细节
+                for i in range(-1, 2):
+                    for j in range(-1, 2):
+                        x = center + i*16
+                        y = center + j*16
+                        if (x-center)**2 + (y-center)**2 < 600:
+                            pygame.draw.circle(preview, tuple(max(0, c-30) for c in enemy_color), (x, y), 4, 1)
+                # 外层能量盾
+                pygame.draw.circle(preview, tuple(max(0, c-40) for c in enemy_color), (center, center), 35, 1)
+            elif enemy_id in ["splitter_azurecore", "crystal_cluster", "prism_voidprism"]:
+                # 晶体群：中心晶核 + 4个环绕晶体
+                pygame.draw.circle(preview, dark_color, (center, center), 16)
+                pygame.draw.circle(preview, enemy_color, (center, center), 16)
+                pygame.draw.circle(preview, light_color, (center, center), 16, 2)
+                # 4个卫星晶体
+                for x, y in [(center+32, center), (center-32, center), (center, center+32), (center, center-32)]:
+                    pygame.draw.circle(preview, dark_color, (x, y), 9)
+                    pygame.draw.circle(preview, light_color, (x, y), 9, 1)
+                # 连接线
+                pygame.draw.line(preview, tuple(max(0, c-30) for c in enemy_color), (center, center), (center+32, center), 1)
+            elif enemy_id == "sniper_blackneedle":
+                # 黑针：细长狙击机 + 尖锐头部
+                pygame.draw.ellipse(preview, dark_color, (62, 45, 26, 65))
+                pygame.draw.ellipse(preview, enemy_color, (64, 47, 22, 61))
+                pygame.draw.ellipse(preview, light_color, (62, 45, 26, 65), 2)
+                # 尖头
+                pygame.draw.polygon(preview, dark_color, [(center, 30), (70, 38), (80, 30)])
+                pygame.draw.polygon(preview, light_color, [(center, 32), (70, 38), (80, 32)], 1)
+                # 散热片（两侧）
+                pygame.draw.line(preview, light_color, (55, 65), (55, 95), 2)
+                pygame.draw.line(preview, light_color, (95, 65), (95, 95), 2)
+            elif enemy_id == "weaver_dualwasp":
+                # 双蜂蛾：两个对称梭形 + 中心连接
+                # 左梭
+                pygame.draw.polygon(preview, dark_color, [(45, 50), (60, 75), (45, 100)])
+                pygame.draw.polygon(preview, enemy_color, [(45, 52), (58, 75), (45, 98)])
+                pygame.draw.polygon(preview, light_color, [(45, 52), (58, 75), (45, 98)], 1)
+                # 右梭
+                pygame.draw.polygon(preview, dark_color, [(105, 50), (90, 75), (105, 100)])
+                pygame.draw.polygon(preview, enemy_color, [(105, 52), (92, 75), (105, 98)])
+                pygame.draw.polygon(preview, light_color, [(105, 52), (92, 75), (105, 98)], 1)
+                # 连接杆（3层效果）
+                pygame.draw.line(preview, dark_color, (60, 75), (90, 75), 4)
+                pygame.draw.line(preview, light_color, (60, 75), (90, 75), 2)
+                # 中心能量球
+                pygame.draw.circle(preview, light_color, (center, center), 5)
+            elif enemy_id == "summoner_nethalo":
+                # 母巢光环：分层圆盘 + 魔法阵
+                # 圆盘
+                pygame.draw.circle(preview, dark_color, (center, center), 20)
+                pygame.draw.circle(preview, enemy_color, (center, center), 20)
+                pygame.draw.circle(preview, light_color, (center, center), 20, 2)
+                pygame.draw.circle(preview, tuple(max(0, c-30) for c in enemy_color), (center, center), 26, 1)
+                # 指挥塔
+                pygame.draw.polygon(preview, light_color, [(center-3, center-18), (center+3, center-18), (center, center-12)])
+                pygame.draw.circle(preview, (255, 100, 100), (center, center-15), 2)
+                # 魔法阵十字
+                pygame.draw.line(preview, light_color, (center-22, center), (center+22, center), 1)
+                pygame.draw.line(preview, light_color, (center, center-22), (center, center+22), 1)
+            elif enemy_id == "guard_heavyanvil":
+                # 铁砧：厚重装甲球 + 缝隙发光
+                pygame.draw.circle(preview, dark_color, (center, center), 26)
+                pygame.draw.circle(preview, enemy_color, (center, center), 26)
+                pygame.draw.circle(preview, light_color, (center, center), 26, 2)
+                # 四向缝隙发光
+                pygame.draw.line(preview, tuple(min(255, c+100) for c in enemy_color), 
+                               (center-26, center), (center+26, center), 3)
+                pygame.draw.line(preview, tuple(min(255, c+100) for c in enemy_color), 
+                               (center, center-26), (center, center+26), 3)
+                # 顶部炮塔
+                pygame.draw.circle(preview, light_color, (center, center-20), 4, 1)
+            elif enemy_id == "nestlord_livestarport":
+                # 巢穴领主：生物体 + 触须 + 卵囊
+                # 核心
+                pygame.draw.circle(preview, dark_color, (center, center), 18)
+                pygame.draw.circle(preview, enemy_color, (center, center), 18)
+                pygame.draw.circle(preview, light_color, (center, center), 18, 2)
+                # 中心灯
+                pygame.draw.circle(preview, (255, 100, 100), (center, center), 4)
+                # 触须（上下各3条）
+                for angle in [30, 0, -30]:
+                    rad = angle * 3.14159 / 180
+                    end_x = center + 24 * __import__('math').cos(rad)
+                    end_y = center - 30 + 10 * __import__('math').sin(rad)
+                    pygame.draw.line(preview, dark_color, (center, center-10), (int(end_x), int(end_y)), 2)
+                # 卵囊
+                pygame.draw.circle(preview, light_color, (center+25, center-15), 5)
+                pygame.draw.circle(preview, light_color, (center+25, center+15), 5)
+            elif enemy_id == "weaver_dimensionspindle":
+                # 时空纺锤：优雅纺锤 + 能量场
+                pygame.draw.polygon(preview, dark_color, [(center, 20), (105, center), (center, 130), (45, center)])
+                pygame.draw.polygon(preview, enemy_color, [(center, 25), (103, center), (center, 125), (47, center)])
+                pygame.draw.polygon(preview, light_color, [(center, 25), (103, center), (center, 125), (47, center)], 2)
+                # 多层能量场
+                pygame.draw.circle(preview, tuple(max(0, c-50) for c in enemy_color), (center, center), 32, 1)
+                pygame.draw.circle(preview, tuple(max(0, c-30) for c in enemy_color), (center, center), 40, 1)
+                pygame.draw.circle(preview, light_color, (center, center), 48, 1)
+            elif enemy_id == "judge_dualpolar":
+                # 镜像仲裁者：双仁对称 + 能量连接
+                # 左仁
+                pygame.draw.circle(preview, dark_color, (55, center), 16)
+                pygame.draw.circle(preview, enemy_color, (55, center), 16)
+                pygame.draw.circle(preview, light_color, (55, center), 16, 2)
+                # 右仁
+                pygame.draw.circle(preview, dark_color, (95, center), 16)
+                pygame.draw.circle(preview, enemy_color, (95, center), 16)
+                pygame.draw.circle(preview, light_color, (95, center), 16, 2)
+                # 连接能量线
+                pygame.draw.line(preview, light_color, (55, center), (95, center), 3)
+                pygame.draw.circle(preview, light_color, (center, center), 6)
+            elif enemy_id == "annihilator_soleye":
+                # 肃正之眼：舰体 + 环形眼睛 + 能量翼
+                # 舰体
+                pygame.draw.rect(preview, dark_color, (50, 45, 50, 60))
+                pygame.draw.rect(preview, enemy_color, (52, 47, 46, 56))
+                pygame.draw.rect(preview, light_color, (50, 45, 50, 60), 2)
+                # 环形眼睛
+                pygame.draw.circle(preview, tuple(max(0, c-30) for c in enemy_color), (center, center), 12, 2)
+                pygame.draw.circle(preview, light_color, (center, center), 10, 1)
+                pygame.draw.circle(preview, (255, 255, 255), (center, center), 4)
+                # 能量翼（两侧）
+                pygame.draw.polygon(preview, light_color, [(45, 60), (40, 65), (40, 85)])
+                pygame.draw.polygon(preview, light_color, [(105, 60), (110, 65), (110, 85)])
+            elif enemy_id == "chaos_discordantprism":
+                # 混沌棱柱：不规则菱形 + 混沌中心
+                pygame.draw.polygon(preview, dark_color, [(center, 22), (108, center), (center, 128), (42, center)])
+                pygame.draw.polygon(preview, enemy_color, [(center, 26), (106, center), (center, 124), (44, center)])
+                pygame.draw.polygon(preview, tuple(min(255, c+60) for c in enemy_color), 
+                                  [(center, 26), (106, center), (center, 124), (44, center)], 2)
+                # 混沌中心（多色）
+                pygame.draw.circle(preview, (255, 200, 100), (center, center), 6)
+                pygame.draw.circle(preview, light_color, (center, center), 6, 1)
+            elif enemy_id == "phantom_voidstrider":
+                # 幽影剪影：人形轮廓 + 相位刃
+                # 身体轮廓
+                pygame.draw.circle(preview, dark_color, (center, 55), 12, 2)
+                pygame.draw.polygon(preview, dark_color, [(center-8, 68), (center+8, 68), (center+12, 110), (center-12, 110)])
+                pygame.draw.line(preview, dark_color, (center-8, 68), (center-15, 90), 2)
+                pygame.draw.line(preview, dark_color, (center+8, 68), (center+15, 90), 2)
+                # 眼睛
+                pygame.draw.circle(preview, light_color, (center-3, 52), 2)
+                pygame.draw.circle(preview, light_color, (center+3, 52), 2)
+                # 相位刃（两把）
+                pygame.draw.polygon(preview, light_color, [(center-12, 75), (center-8, 75), (center-8, 120)])
+                pygame.draw.polygon(preview, light_color, [(center+12, 75), (center+8, 75), (center+8, 120)])
+            else:
+                # 默认：梭形战机
+                pygame.draw.polygon(preview, dark_color, [(center, 25), (55, 75), (center, 125), (95, 75)])
+                pygame.draw.polygon(preview, enemy_color, [(center, 30), (55, 75), (center, 120), (95, 75)])
+                pygame.draw.polygon(preview, light_color, [(center, 30), (55, 75), (center, 120), (95, 75)], 2)
         
         if codex_tab != 2:
             preview = pygame.transform.scale(preview, (150, 150))
         safe_blit(screen, preview, (cx - 75, cy))
         
         draw_text(screen, data["name"], 30, cx, cy + 170, data.get("color", WHITE), glow=True)
-        draw_text(screen, data.get("desc", ""), 18, cx, cy + 210, WHITE)
+        
+        # 多行描述显示
+        desc = data.get("desc", "")
+        desc_lines = 0
+        if desc:
+            # 按字符宽度换行，每行约40个中文字符
+            max_chars_per_line = 40
+            lines = []
+            for i in range(0, len(desc), max_chars_per_line):
+                lines.append(desc[i:i+max_chars_per_line])
+            
+            desc_y = cy + 210
+            desc_lines = len(lines)
+            for line in lines:
+                draw_text(screen, line, 16, cx, desc_y, WHITE)
+                desc_y += 28
         
         stats = []
         if codex_tab == 0:
@@ -4130,9 +4361,12 @@ def draw_codex_ui():
         
         # 敌人图鉴使用更紧凑的布局
         stat_spacing = 35 if codex_tab == 2 else 40
+        
+        # 根据描述行数动态调整统计信息位置
+        desc_offset = (desc_lines - 1) * 28 if desc_lines > 1 else 0
             
         for j, (lbl, val, mxv) in enumerate(stats):
-            y_off = cy + 260 + j*stat_spacing
+            y_off = cy + 260 + desc_offset + j*stat_spacing
             draw_text(screen, lbl, 18, r['detail_area'].x + 150, y_off, WHITE, align="left")
             pygame.draw.rect(screen, (40,40,40), (r['detail_area'].x + 230, y_off+5, 200, 10))
             fill = min(200, (val/mxv)*200)
@@ -4140,7 +4374,7 @@ def draw_codex_ui():
         
         # 敌人图鉴额外显示分数
         if codex_tab == 2:
-            score_y = cy + 260 + len(stats) * stat_spacing + 5
+            score_y = cy + 260 + desc_offset + len(stats) * stat_spacing + 5
             draw_text(screen, f"分数: {data.get('score', 100)}", 16, r['detail_area'].x + 150, score_y, GOLD, align="left")
 
     hb = r['btn_back'].collidepoint(mx, my)
@@ -7584,6 +7818,27 @@ while True:
                             # 根据分数段获取当前游戏阶段（0-4）
                             stage = min(4, score // 2000)
                             
+                            # 敌人类型映射：旧类型 -> 新类型
+                            # 将原有的简单标签映射到新敌人系统中
+                            enemy_type_mapping = {
+                                # 学习期敌人
+                                "drone": "scout_moth",           # 侦察机
+                                "chaser": "trooper_spear",       # 突击兵
+                                "sniper": "lurker_halo",         # 徘徊者
+                                "phantom": "jammer_amethyst",    # 干扰者
+                                # 过渡期敌人
+                                "tank": "bomber_deepjelly",      # 轰炸艇
+                                "spike": "shield_beeguard",      # 盾卫机
+                                # 挑战期敌人
+                                "wasp": "weaver_dualwasp",       # 编织者
+                                "sentinel": "splitter_azurecore",# 裂解者
+                                # 激烈期敌人
+                                "glitch": "prism_voidprism",     # 折射棱镜
+                                "orbiter": "sniper_blackneedle", # 狙击手
+                                # 绝望期敌人
+                                "vortex": "guard_heavyanvil",    # 脉冲守卫
+                            }
+                            
                             # 阶段性敌人池定义 + 加权概率
                             # 格式: (敌人名称, 权重)
                             # 权重越高，出现概率越大
@@ -7644,9 +7899,11 @@ while True:
                             # 加权随机选择
                             enemies = [e[0] for e in pool]
                             weights = [e[1] for e in pool]
-                            chosen_type = random.choices(enemies, weights=weights, k=1)[0]
+                            chosen_old_type = random.choices(enemies, weights=weights, k=1)[0]
                             
-                            Enemy(chosen_type)
+                            # 映射旧类型到新敌人系统
+                            chosen_new_type = enemy_type_mapping.get(chosen_old_type, "scout_moth")
+                            enemy_factory.create_enemy(chosen_new_type)
                     
                     hits = pygame.sprite.groupcollide(mobs, bullets, False, False)
                     for m, hit_bullets in hits.items():
