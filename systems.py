@@ -2844,6 +2844,1102 @@ class PowerCore:
             rect = rotated.get_rect(center=(self.x, self.y))
             surf.blit(rotated, rect)
 
+class ClockGear:
+    """时钟齿轮"""
+    def __init__(self):
+        self.x = random.randint(50, WIDTH - 50)
+        self.y = random.randint(50, HEIGHT - 50)
+        self.radius = random.randint(20, 45)
+        self.teeth = random.randint(12, 20)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(-0.8, 0.8)
+        if abs(self.rot_speed) < 0.2:
+            self.rot_speed = 0.5
+        self.color = (180, 150, 100)
+        self.cached_gear = None
+        self._build_gear()
+    
+    def _build_gear(self):
+        size = int(self.radius * 2.5)
+        self.cached_gear = pygame.Surface((size, size), pygame.SRCALPHA)
+        center = size // 2
+        # 绘制齿轮
+        outer_points = []
+        inner_points = []
+        for i in range(self.teeth * 2):
+            angle = math.radians(360 * i / (self.teeth * 2))
+            if i % 2 == 0:
+                r = self.radius
+            else:
+                r = self.radius * 0.85
+            x = center + r * math.cos(angle)
+            y = center + r * math.sin(angle)
+            outer_points.append((x, y))
+        
+        # 内圈
+        for i in range(12):
+            angle = math.radians(30 * i)
+            r = self.radius * 0.5
+            x = center + r * math.cos(angle)
+            y = center + r * math.sin(angle)
+            inner_points.append((x, y))
+        
+        pygame.draw.polygon(self.cached_gear, self.color, outer_points)
+        pygame.draw.polygon(self.cached_gear, (80, 70, 50), inner_points)
+        pygame.draw.circle(self.cached_gear, (60, 50, 30), (center, center), int(self.radius * 0.2))
+    
+    def update(self, speed_mult=1.0):
+        self.rotation += self.rot_speed * speed_mult
+    
+    def draw(self, surf):
+        if self.cached_gear:
+            rotated = pygame.transform.rotate(self.cached_gear, self.rotation)
+            rect = rotated.get_rect(center=(self.x, self.y))
+            surf.blit(rotated, rect)
+
+class ClockHand:
+    """时钟指针"""
+    def __init__(self):
+        self.x = random.randint(100, WIDTH - 100)
+        self.y = random.randint(100, HEIGHT - 100)
+        self.length = random.randint(40, 80)
+        self.angle = random.uniform(0, 360)
+        self.speed = random.uniform(0.5, 2.0)
+        self.width = random.randint(3, 6)
+        self.color = (200, 170, 120)
+    
+    def update(self, speed_mult=1.0):
+        self.angle += self.speed * speed_mult
+    
+    def draw(self, surf):
+        rad = math.radians(self.angle)
+        end_x = self.x + self.length * math.cos(rad)
+        end_y = self.y + self.length * math.sin(rad)
+        pygame.draw.line(surf, self.color, (self.x, self.y), (end_x, end_y), self.width)
+        pygame.draw.circle(surf, (150, 130, 90), (int(self.x), int(self.y)), 8)
+
+class RomanNumeral:
+    """罗马数字"""
+    def __init__(self):
+        self.x = random.randint(50, WIDTH - 50)
+        self.y = random.randint(50, HEIGHT - 50)
+        self.numeral = random.choice(['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'])
+        self.alpha = random.randint(100, 200)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.02, 0.05)
+        self.color = (180, 160, 120)
+        self.font_size = random.randint(24, 40)
+    
+    def update(self, speed_mult=1.0):
+        self.pulse += self.pulse_speed * speed_mult
+    
+    def draw(self, surf):
+        alpha = int(self.alpha * (0.8 + 0.2 * math.sin(self.pulse)))
+        # 简化绘制：用矩形模拟罗马数字
+        width = len(self.numeral) * 12
+        num_surf = pygame.Surface((width, 30), pygame.SRCALPHA)
+        for i, char in enumerate(self.numeral):
+            x = i * 12
+            if char == 'I':
+                pygame.draw.rect(num_surf, (*self.color, alpha), (x + 4, 0, 4, 30))
+            elif char in ['V', 'X']:
+                pygame.draw.line(num_surf, (*self.color, alpha), (x, 0), (x + 8, 30), 4)
+                pygame.draw.line(num_surf, (*self.color, alpha), (x + 8, 0), (x, 30), 4)
+        surf.blit(num_surf, (self.x - width // 2, self.y - 15))
+
+class Firefly:
+    """萤火虫"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(-0.8, 0.8)
+        self.vy = random.uniform(-0.8, 0.8)
+        self.brightness = random.uniform(0, 6.28)
+        self.brightness_speed = random.uniform(0.15, 0.25)
+        self.size = random.randint(3, 6)
+        self.color = random.choice([(200, 255, 100), (255, 200, 100), (100, 255, 200)])
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        self.brightness += self.brightness_speed * speed_mult
+        
+        # 随机改变方向
+        if random.random() < 0.02:
+            self.vx = random.uniform(-0.8, 0.8)
+            self.vy = random.uniform(-0.8, 0.8)
+        
+        if self.x < 0 or self.x > WIDTH:
+            self.vx = -self.vx
+        if self.y < 0 or self.y > HEIGHT:
+            self.vy = -self.vy
+    
+    def draw(self, surf):
+        alpha = int(200 * (0.5 + 0.5 * math.sin(self.brightness)))
+        glow_size = self.size * 3
+        glow_surf = pygame.Surface((glow_size * 2, glow_size * 2), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*self.color, alpha // 3), (glow_size, glow_size), glow_size)
+        surf.blit(glow_surf, (self.x - glow_size, self.y - glow_size))
+        pygame.draw.circle(surf, (*self.color, alpha), (int(self.x), int(self.y)), self.size)
+
+class MossClump:
+    """苔藓丛"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = HEIGHT - random.randint(0, 60)
+        self.width = random.randint(30, 60)
+        self.height = random.randint(15, 30)
+        self.sway = random.uniform(0, 6.28)
+        self.sway_speed = random.uniform(0.02, 0.04)
+        self.color = random.choice([(50, 150, 80), (40, 130, 70), (60, 140, 85)])
+    
+    def update(self, speed_mult=1.0):
+        self.sway += self.sway_speed * speed_mult
+    
+    def draw(self, surf):
+        offset = int(3 * math.sin(self.sway))
+        # 绘制多个小椭圆模拟苔藓
+        for i in range(5):
+            x = self.x - self.width // 2 + i * (self.width // 5)
+            y = self.y - random.randint(0, 5)
+            w = self.width // 5 + 5
+            h = self.height // 2 + random.randint(0, 5)
+            pygame.draw.ellipse(surf, self.color, (x + offset, y, w, h))
+
+class GlowSpore:
+    """发光孢子"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vy = random.uniform(-0.3, -0.1)
+        self.vx = random.uniform(-0.2, 0.2)
+        self.size = random.randint(2, 5)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.1, 0.2)
+        self.color = random.choice([(150, 255, 150), (100, 255, 200), (200, 255, 150)])
+    
+    def update(self, speed_mult=1.0):
+        self.y += self.vy * speed_mult
+        self.x += self.vx * speed_mult
+        self.pulse += self.pulse_speed * speed_mult
+        
+        if self.y < -10:
+            self.y = HEIGHT + 10
+            self.x = random.randint(0, WIDTH)
+    
+    def draw(self, surf):
+        alpha = int(180 * (0.6 + 0.4 * math.sin(self.pulse)))
+        glow_surf = pygame.Surface((self.size * 4, self.size * 4), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*self.color, alpha // 2), (self.size * 2, self.size * 2), self.size * 2)
+        surf.blit(glow_surf, (self.x - self.size * 2, self.y - self.size * 2))
+        pygame.draw.circle(surf, self.color, (int(self.x), int(self.y)), self.size)
+
+class MusicNote:
+    """音符"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = HEIGHT + random.randint(0, 100)
+        self.vy = random.uniform(-1.5, -0.8)
+        self.vx = random.uniform(-0.3, 0.3)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(-3, 3)
+        self.size = random.randint(15, 25)
+        self.note_type = random.randint(0, 2)
+        self.color = random.choice([(100, 200, 255), (255, 100, 200), (200, 255, 100)])
+        self.alpha = 255
+    
+    def update(self, speed_mult=1.0):
+        self.y += self.vy * speed_mult
+        self.x += self.vx * speed_mult
+        self.rotation += self.rot_speed * speed_mult
+        
+        if self.y < -50:
+            self.y = HEIGHT + random.randint(0, 50)
+            self.x = random.randint(0, WIDTH)
+            self.alpha = 255
+        
+        # 渐隐效果
+        if self.y < 100:
+            self.alpha = int(255 * (self.y / 100))
+    
+    def draw(self, surf):
+        note_surf = pygame.Surface((self.size * 2, self.size * 3), pygame.SRCALPHA)
+        # 音符头
+        pygame.draw.circle(note_surf, (*self.color, self.alpha), (self.size // 2, self.size * 2), self.size // 2)
+        # 音符杆
+        pygame.draw.line(note_surf, (*self.color, self.alpha), 
+                        (self.size - 2, self.size * 2), (self.size - 2, self.size // 2), 3)
+        # 音符旗
+        if self.note_type == 0:
+            pygame.draw.line(note_surf, (*self.color, self.alpha), 
+                           (self.size - 2, self.size // 2), (self.size + 8, self.size), 3)
+        elif self.note_type == 1:
+            for i in range(2):
+                pygame.draw.line(note_surf, (*self.color, self.alpha), 
+                               (self.size - 2, self.size // 2 + i * 6), 
+                               (self.size + 8, self.size + i * 6), 3)
+        
+        rotated = pygame.transform.rotate(note_surf, self.rotation)
+        rect = rotated.get_rect(center=(self.x, self.y))
+        surf.blit(rotated, rect)
+
+class SoundWave:
+    """声波"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.radius = 0
+        self.max_radius = random.randint(80, 150)
+        self.speed = random.uniform(2, 3.5)
+        self.color = random.choice([(150, 100, 255), (100, 255, 150), (255, 150, 100)])
+        self.frequency = random.randint(4, 8)
+    
+    def update(self, speed_mult=1.0):
+        self.radius += self.speed * speed_mult
+        if self.radius > self.max_radius:
+            self.radius = 0
+            self.x = random.randint(0, WIDTH)
+            self.y = random.randint(0, HEIGHT)
+    
+    def draw(self, surf):
+        if self.radius < self.max_radius:
+            alpha = int(200 * (1 - self.radius / self.max_radius))
+            # 波纹状声波
+            points = []
+            for angle in range(0, 360, 10):
+                rad = math.radians(angle)
+                wave = math.sin(angle * self.frequency / 60) * 5
+                r = self.radius + wave
+                x = self.x + r * math.cos(rad)
+                y = self.y + r * math.sin(rad)
+                points.append((x, y))
+            
+            if len(points) > 2:
+                wave_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                pygame.draw.polygon(wave_surf, (*self.color, alpha), points, 3)
+                surf.blit(wave_surf, (0, 0))
+
+class Equalizer:
+    """频谱柱"""
+    def __init__(self):
+        self.x = random.randint(50, WIDTH - 50)
+        self.base_y = HEIGHT - 30
+        self.width = random.randint(15, 25)
+        self.target_height = random.randint(30, 120)
+        self.current_height = 0
+        self.speed = random.uniform(3, 6)
+        self.color = random.choice([(255, 100, 150), (100, 255, 200), (255, 200, 100)])
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.1, 0.2)
+    
+    def update(self, speed_mult=1.0):
+        self.pulse += self.pulse_speed * speed_mult
+        
+        # 随机变化目标高度
+        if random.random() < 0.03:
+            self.target_height = random.randint(30, 120)
+        
+        # 平滑过渡
+        if self.current_height < self.target_height:
+            self.current_height += self.speed * speed_mult
+        elif self.current_height > self.target_height:
+            self.current_height -= self.speed * speed_mult
+    
+    def draw(self, surf):
+        height = int(self.current_height * (0.9 + 0.1 * math.sin(self.pulse)))
+        # 渐变效果
+        for i in range(int(height)):
+            alpha = int(255 * (1 - i / (height + 1)))
+            y = self.base_y - i
+            color = tuple(min(255, c + 30) for c in self.color)
+            pygame.draw.line(surf, (*color, alpha), 
+                           (self.x, y), (self.x + self.width, y), 1)
+
+class Torii:
+    """鸟居"""
+    def __init__(self):
+        self.x = random.randint(100, WIDTH - 100)
+        self.y = random.randint(100, HEIGHT - 100)
+        self.width = random.randint(80, 120)
+        self.height = random.randint(100, 140)
+        self.alpha = random.randint(120, 200)
+        self.fade = random.uniform(0, 6.28)
+        self.fade_speed = random.uniform(0.01, 0.03)
+        self.color = (200, 50, 50)
+    
+    def update(self, speed_mult=1.0):
+        self.fade += self.fade_speed * speed_mult
+    
+    def draw(self, surf):
+        alpha = int(self.alpha * (0.8 + 0.2 * math.sin(self.fade)))
+        # 上横梁（带翘起）
+        top_y = self.y - self.height // 2
+        points = [
+            (self.x - self.width // 2 - 10, top_y),
+            (self.x - self.width // 2, top_y - 8),
+            (self.x, top_y - 10),
+            (self.x + self.width // 2, top_y - 8),
+            (self.x + self.width // 2 + 10, top_y)
+        ]
+        for i in range(len(points) - 1):
+            pygame.draw.line(surf, (*self.color, alpha), points[i], points[i + 1], 8)
+        
+        # 下横梁
+        mid_y = self.y
+        pygame.draw.line(surf, (*self.color, alpha), 
+                        (self.x - self.width // 2, mid_y), 
+                        (self.x + self.width // 2, mid_y), 6)
+        
+        # 两根立柱
+        pygame.draw.line(surf, (*self.color, alpha), 
+                        (self.x - self.width // 3, top_y - 5), 
+                        (self.x - self.width // 3, self.y + self.height // 2), 10)
+        pygame.draw.line(surf, (*self.color, alpha), 
+                        (self.x + self.width // 3, top_y - 5), 
+                        (self.x + self.width // 3, self.y + self.height // 2), 10)
+
+class PaperCharm:
+    """纸符咒"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(-100, HEIGHT)
+        self.width = random.randint(20, 30)
+        self.height = random.randint(60, 90)
+        self.sway = random.uniform(0, 6.28)
+        self.sway_speed = random.uniform(0.08, 0.15)
+        self.vy = random.uniform(0.3, 0.8)
+        self.color = (250, 240, 220)
+    
+    def update(self, speed_mult=1.0):
+        self.y += self.vy * speed_mult
+        self.sway += self.sway_speed * speed_mult
+        if self.y > HEIGHT + 100:
+            self.y = -100
+            self.x = random.randint(0, WIDTH)
+    
+    def draw(self, surf):
+        offset = int(15 * math.sin(self.sway))
+        # 纸符主体
+        points = [
+            (self.x + offset, self.y),
+            (self.x + self.width + offset, self.y),
+            (self.x + self.width + offset // 2, self.y + self.height),
+            (self.x + offset // 2, self.y + self.height)
+        ]
+        pygame.draw.polygon(surf, self.color, points)
+        pygame.draw.polygon(surf, (200, 180, 160), points, 2)
+        # 符文线条
+        for i in range(4):
+            y = self.y + 15 + i * 15
+            pygame.draw.line(surf, (180, 60, 60), 
+                           (self.x + 5 + offset, y), 
+                           (self.x + self.width - 5 + offset, y), 2)
+
+class ShrineLight:
+    """神社光晕"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.radius = 0
+        self.max_radius = random.randint(60, 100)
+        self.speed = random.uniform(0.8, 1.5)
+        self.color = (255, 200, 100)
+        self.alpha_base = random.randint(80, 150)
+    
+    def update(self, speed_mult=1.0):
+        self.radius += self.speed * speed_mult
+        if self.radius > self.max_radius:
+            self.radius = 0
+            self.x = random.randint(0, WIDTH)
+            self.y = random.randint(0, HEIGHT)
+    
+    def draw(self, surf):
+        if self.radius < self.max_radius:
+            alpha = int(self.alpha_base * (1 - self.radius / self.max_radius))
+            glow_surf = pygame.Surface((int(self.radius * 2 + 10), int(self.radius * 2 + 10)), pygame.SRCALPHA)
+            pygame.draw.circle(glow_surf, (*self.color, alpha), 
+                             (int(self.radius) + 5, int(self.radius) + 5), int(self.radius), 2)
+            surf.blit(glow_surf, (self.x - self.radius - 5, self.y - self.radius - 5))
+
+class TeaCup:
+    """茶杯"""
+    def __init__(self):
+        self.x = random.randint(50, WIDTH - 50)
+        self.y = random.randint(50, HEIGHT - 50)
+        self.size = random.randint(30, 50)
+        self.steam_particles = []
+        for _ in range(5):
+            self.steam_particles.append({
+                'offset_x': random.uniform(-5, 5),
+                'y_offset': 0,
+                'alpha': random.randint(100, 200),
+                'speed': random.uniform(0.5, 1.2)
+            })
+        self.color = random.choice([(180, 220, 255), (255, 200, 180), (200, 255, 200)])
+    
+    def update(self, speed_mult=1.0):
+        for particle in self.steam_particles:
+            particle['y_offset'] -= particle['speed'] * speed_mult
+            particle['alpha'] = max(0, particle['alpha'] - 1 * speed_mult)
+            if particle['y_offset'] < -50 or particle['alpha'] <= 0:
+                particle['y_offset'] = 0
+                particle['alpha'] = random.randint(100, 200)
+                particle['offset_x'] = random.uniform(-5, 5)
+    
+    def draw(self, surf):
+        # 茶杯
+        cup_rect = (self.x - self.size // 2, self.y, self.size, self.size // 2)
+        pygame.draw.ellipse(surf, self.color, cup_rect)
+        pygame.draw.ellipse(surf, (150, 150, 150), cup_rect, 2)
+        # 杯把
+        handle_rect = (self.x + self.size // 2 - 5, self.y + 5, 15, 20)
+        pygame.draw.ellipse(surf, self.color, handle_rect, 3)
+        
+        # 蒸汽
+        for particle in self.steam_particles:
+            if particle['alpha'] > 0:
+                px = self.x + particle['offset_x']
+                py = self.y - 5 + particle['y_offset']
+                alpha = int(particle['alpha'])
+                glow_surf = pygame.Surface((12, 12), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surf, (200, 200, 220, alpha), (6, 6), 6)
+                surf.blit(glow_surf, (px - 6, py - 6))
+
+class Pastry:
+    """点心"""
+    def __init__(self):
+        self.x = random.randint(50, WIDTH - 50)
+        self.y = random.randint(50, HEIGHT - 50)
+        self.size = random.randint(25, 40)
+        self.rotation = random.uniform(0, 360)
+        self.float_offset = random.uniform(0, 6.28)
+        self.float_speed = random.uniform(0.03, 0.06)
+        self.pastry_type = random.randint(0, 2)
+        self.colors = [
+            (255, 220, 180),  # 饼干色
+            (255, 200, 200),  # 草莓色
+            (200, 255, 200)   # 抹茶色
+        ]
+        self.color = self.colors[self.pastry_type]
+    
+    def update(self, speed_mult=1.0):
+        self.float_offset += self.float_speed * speed_mult
+    
+    def draw(self, surf):
+        float_y = self.y + 5 * math.sin(self.float_offset)
+        
+        if self.pastry_type == 0:  # 圆形饼干
+            pygame.draw.circle(surf, self.color, (int(self.x), int(float_y)), self.size // 2)
+            pygame.draw.circle(surf, (200, 180, 150), (int(self.x), int(float_y)), self.size // 2, 2)
+            # 装饰点
+            for angle in range(0, 360, 60):
+                rad = math.radians(angle)
+                px = self.x + (self.size // 3) * math.cos(rad)
+                py = float_y + (self.size // 3) * math.sin(rad)
+                pygame.draw.circle(surf, (180, 150, 120), (int(px), int(py)), 3)
+        
+        elif self.pastry_type == 1:  # 方形蛋糕
+            rect = (self.x - self.size // 2, float_y - self.size // 2, self.size, self.size)
+            pygame.draw.rect(surf, self.color, rect)
+            pygame.draw.rect(surf, (255, 150, 150), rect, 2)
+            # 奶油装饰
+            pygame.draw.line(surf, (255, 255, 255), 
+                           (self.x - self.size // 3, float_y), 
+                           (self.x + self.size // 3, float_y), 3)
+        
+        else:  # 三角形点心
+            points = []
+            for i in range(3):
+                angle = math.radians(120 * i + self.rotation)
+                px = self.x + self.size // 2 * math.cos(angle)
+                py = float_y + self.size // 2 * math.sin(angle)
+                points.append((px, py))
+            pygame.draw.polygon(surf, self.color, points)
+            pygame.draw.polygon(surf, (150, 200, 150), points, 2)
+
+class TableCloth:
+    """桌布图案"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.size = random.randint(30, 50)
+        self.pattern_type = random.randint(0, 2)
+        self.alpha = random.randint(80, 150)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.02, 0.04)
+        self.color = random.choice([(200, 150, 150), (150, 200, 200), (200, 200, 150)])
+    
+    def update(self, speed_mult=1.0):
+        self.pulse += self.pulse_speed * speed_mult
+    
+    def draw(self, surf):
+        alpha = int(self.alpha * (0.7 + 0.3 * math.sin(self.pulse)))
+        
+        if self.pattern_type == 0:  # 花朵图案
+            # 中心
+            pygame.draw.circle(surf, (*self.color, alpha), (int(self.x), int(self.y)), 5)
+            # 花瓣
+            for angle in range(0, 360, 60):
+                rad = math.radians(angle)
+                px = self.x + self.size // 2 * math.cos(rad)
+                py = self.y + self.size // 2 * math.sin(rad)
+                pygame.draw.circle(surf, (*self.color, alpha), (int(px), int(py)), 8)
+        
+        elif self.pattern_type == 1:  # 格子图案
+            for i in range(-1, 2):
+                for j in range(-1, 2):
+                    x = self.x + i * 15
+                    y = self.y + j * 15
+                    pygame.draw.rect(surf, (*self.color, alpha), (x - 5, y - 5, 10, 10), 1)
+        
+        else:  # 波点图案
+            for i in range(4):
+                angle = random.uniform(0, 6.28)
+                r = random.randint(10, self.size // 2)
+                px = self.x + r * math.cos(angle)
+                py = self.y + r * math.sin(angle)
+                pygame.draw.circle(surf, (*self.color, alpha), (int(px), int(py)), 4)
+
+class BronzeCoin:
+    """青铜钱币"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vy = random.uniform(0.3, 0.8)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(-4, 4)
+        self.size = random.randint(20, 35)
+        self.shimmer = random.uniform(0, 6.28)
+        self.shimmer_speed = random.uniform(0.05, 0.1)
+        self.coin_type = random.randint(0, 2)
+    
+    def update(self, speed_mult=1.0):
+        self.y += self.vy * speed_mult
+        self.rotation += self.rot_speed * speed_mult
+        self.shimmer += self.shimmer_speed * speed_mult
+        
+        if self.y > HEIGHT + 50:
+            self.y = -50
+            self.x = random.randint(0, WIDTH)
+    
+    def draw(self, surf):
+        # 青铜钱币
+        coin_surf = pygame.Surface((self.size * 2, self.size * 2), pygame.SRCALPHA)
+        center = self.size
+        
+        # 钱币本体（青铜色）
+        shimmer_value = int(30 * math.sin(self.shimmer))
+        color = (180 + shimmer_value, 120 + shimmer_value, 80)
+        pygame.draw.circle(coin_surf, color, (center, center), self.size - 2)
+        pygame.draw.circle(coin_surf, (140, 90, 60), (center, center), self.size - 2, 2)
+        
+        # 方孔
+        hole_size = self.size // 3
+        pygame.draw.rect(coin_surf, (0, 0, 0, 0), 
+                        (center - hole_size // 2, center - hole_size // 2, hole_size, hole_size))
+        
+        # 古代文字装饰（简化的线条）
+        for angle in [0, 90, 180, 270]:
+            rad = math.radians(angle)
+            x = center + (self.size - 8) * math.cos(rad)
+            y = center + (self.size - 8) * math.sin(rad)
+            pygame.draw.circle(coin_surf, (100, 70, 50), (int(x), int(y)), 3)
+        
+        rotated = pygame.transform.rotate(coin_surf, self.rotation)
+        rect = rotated.get_rect(center=(self.x, self.y))
+        surf.blit(rotated, rect)
+
+class AncientSeal:
+    """古代印章"""
+    def __init__(self):
+        self.x = random.randint(50, WIDTH - 50)
+        self.y = random.randint(50, HEIGHT - 50)
+        self.size = random.randint(30, 50)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(0.2, 0.5)
+        self.glow = random.uniform(0, 6.28)
+        self.glow_speed = random.uniform(0.03, 0.06)
+        self.color = random.choice([(200, 80, 60), (180, 90, 70), (220, 100, 70)])
+    
+    def update(self, speed_mult=1.0):
+        self.rotation += self.rot_speed * speed_mult
+        self.glow += self.glow_speed * speed_mult
+    
+    def draw(self, surf):
+        alpha = int(180 + 75 * math.sin(self.glow))
+        
+        # 印章外框（六边形）
+        points = []
+        for i in range(6):
+            angle = math.radians(60 * i + self.rotation)
+            px = self.x + self.size * math.cos(angle)
+            py = self.y + self.size * math.sin(angle)
+            points.append((px, py))
+        
+        pygame.draw.polygon(surf, (*self.color, alpha), points, 3)
+        
+        # 内部纹路（十字纹）
+        pygame.draw.line(surf, (*self.color, alpha), 
+                        (self.x - self.size // 2, self.y), 
+                        (self.x + self.size // 2, self.y), 2)
+        pygame.draw.line(surf, (*self.color, alpha), 
+                        (self.x, self.y - self.size // 2), 
+                        (self.x, self.y + self.size // 2), 2)
+        
+        # 中心圆
+        pygame.draw.circle(surf, self.color, (int(self.x), int(self.y)), self.size // 4)
+
+class VerdigrisSpot:
+    """铜锈斑点"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.size = random.randint(5, 15)
+        self.growth = 0
+        self.max_growth = random.randint(10, 20)
+        self.grow_speed = random.uniform(0.1, 0.3)
+        self.fade = random.uniform(0, 6.28)
+        self.fade_speed = random.uniform(0.02, 0.04)
+    
+    def update(self, speed_mult=1.0):
+        if self.growth < self.max_growth:
+            self.growth += self.grow_speed * speed_mult
+        self.fade += self.fade_speed * speed_mult
+    
+    def draw(self, surf):
+        progress = min(1, self.growth / self.max_growth)
+        current_size = int(self.size * progress)
+        alpha = int(150 * (0.7 + 0.3 * math.sin(self.fade)))
+        
+        # 铜绿色斑点
+        for i in range(3):
+            offset_x = random.randint(-3, 3)
+            offset_y = random.randint(-3, 3)
+            pygame.draw.circle(surf, (100, 180, 150, alpha), 
+                             (int(self.x + offset_x), int(self.y + offset_y)), 
+                             current_size - i * 2)
+
+class ClayPot:
+    """陶器"""
+    def __init__(self):
+        self.x = random.randint(80, WIDTH - 80)
+        self.y = HEIGHT - random.randint(60, 100)
+        self.width = random.randint(40, 60)
+        self.height = random.randint(50, 80)
+        self.rotation = random.uniform(-15, 15)
+        self.shimmer = random.uniform(0, 6.28)
+        self.shimmer_speed = random.uniform(0.02, 0.04)
+        self.pot_type = random.randint(0, 2)
+        self.color = random.choice([(180, 100, 70), (200, 120, 80), (160, 90, 65)])
+    
+    def update(self, speed_mult=1.0):
+        self.shimmer += self.shimmer_speed * speed_mult
+    
+    def draw(self, surf):
+        shimmer_value = int(20 * math.sin(self.shimmer))
+        color = (self.color[0] + shimmer_value, self.color[1] + shimmer_value, self.color[2])
+        
+        if self.pot_type == 0:  # 瓶子
+            # 瓶口
+            pygame.draw.rect(surf, color, 
+                           (self.x - self.width // 4, self.y - self.height, 
+                            self.width // 2, self.height // 4))
+            # 瓶身
+            pygame.draw.ellipse(surf, color, 
+                              (self.x - self.width // 2, self.y - self.height * 0.7, 
+                               self.width, self.height * 0.7))
+        elif self.pot_type == 1:  # 罐子
+            pygame.draw.ellipse(surf, color, 
+                              (self.x - self.width // 2, self.y - self.height, 
+                               self.width, self.height))
+        else:  # 盘子
+            pygame.draw.ellipse(surf, color, 
+                              (self.x - self.width // 2, self.y - self.height // 3, 
+                               self.width, self.height // 3))
+        
+        # 陶器纹路
+        for i in range(3):
+            y = self.y - self.height + i * (self.height // 4)
+            pygame.draw.line(surf, (self.color[0] - 30, self.color[1] - 30, self.color[2] - 20),
+                           (self.x - self.width // 3, y), 
+                           (self.x + self.width // 3, y), 2)
+
+class PotteryWheel:
+    """陶轮"""
+    def __init__(self):
+        self.x = random.randint(100, WIDTH - 100)
+        self.y = random.randint(100, HEIGHT - 100)
+        self.radius = random.randint(30, 50)
+        self.rotation = 0
+        self.rot_speed = random.uniform(3, 6)
+        self.clay_height = 0
+        self.growing = True
+        self.grow_speed = random.uniform(0.5, 1.0)
+        self.max_height = random.randint(30, 60)
+    
+    def update(self, speed_mult=1.0):
+        self.rotation += self.rot_speed * speed_mult
+        
+        if self.growing:
+            self.clay_height += self.grow_speed * speed_mult
+            if self.clay_height >= self.max_height:
+                self.growing = False
+        else:
+            self.clay_height -= self.grow_speed * speed_mult * 0.5
+            if self.clay_height <= 0:
+                self.growing = True
+                self.max_height = random.randint(30, 60)
+    
+    def draw(self, surf):
+        # 陶轮基座
+        pygame.draw.circle(surf, (120, 80, 60), (int(self.x), int(self.y)), self.radius)
+        pygame.draw.circle(surf, (100, 70, 50), (int(self.x), int(self.y)), self.radius, 3)
+        
+        # 旋转线条（显示转动）
+        for i in range(4):
+            angle = math.radians(self.rotation + i * 90)
+            x = self.x + self.radius * 0.7 * math.cos(angle)
+            y = self.y + self.radius * 0.7 * math.sin(angle)
+            pygame.draw.line(surf, (80, 60, 45), (self.x, self.y), (x, y), 2)
+        
+        # 成型中的陶土
+        if self.clay_height > 0:
+            clay_width = int(self.radius * 0.6)
+            pygame.draw.ellipse(surf, (200, 120, 80), 
+                              (self.x - clay_width, 
+                               self.y - self.clay_height - 10, 
+                               clay_width * 2, 20))
+            pygame.draw.rect(surf, (180, 110, 70), 
+                           (self.x - clay_width // 2, 
+                            self.y - self.clay_height, 
+                            clay_width, int(self.clay_height)))
+
+class ClayRipple:
+    """陶土波纹"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.radius = 0
+        self.max_radius = random.randint(50, 100)
+        self.speed = random.uniform(1.0, 2.0)
+        self.color = random.choice([(200, 140, 100), (220, 160, 120), (180, 120, 90)])
+    
+    def update(self, speed_mult=1.0):
+        self.radius += self.speed * speed_mult
+        if self.radius > self.max_radius:
+            self.radius = 0
+            self.x = random.randint(0, WIDTH)
+            self.y = random.randint(0, HEIGHT)
+    
+    def draw(self, surf):
+        if self.radius < self.max_radius:
+            alpha = int(120 * (1 - self.radius / self.max_radius))
+            for i in range(2):
+                r = self.radius - i * 10
+                if r > 0:
+                    ring_surf = pygame.Surface((int(r * 2 + 10), int(r * 2 + 10)), pygame.SRCALPHA)
+                    pygame.draw.circle(ring_surf, (*self.color, alpha // (i + 1)), 
+                                     (int(r) + 5, int(r) + 5), int(r), 2)
+                    surf.blit(ring_surf, (self.x - r - 5, self.y - r - 5))
+
+class AmberGem:
+    """琥珀宝石"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(-0.3, 0.3)
+        self.vy = random.uniform(-0.3, 0.3)
+        self.size = random.randint(15, 30)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(-1, 1)
+        self.glow = random.uniform(0, 6.28)
+        self.glow_speed = random.uniform(0.05, 0.1)
+        self.color = random.choice([(255, 180, 80), (255, 160, 60), (255, 200, 100)])
+        # 内部的"古代生物"
+        self.insect_type = random.randint(0, 2)
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        self.rotation += self.rot_speed * speed_mult
+        self.glow += self.glow_speed * speed_mult
+        
+        if self.x < 0 or self.x > WIDTH:
+            self.vx = -self.vx
+        if self.y < 0 or self.y > HEIGHT:
+            self.vy = -self.vy
+    
+    def draw(self, surf):
+        glow_value = int(30 * math.sin(self.glow))
+        color = (self.color[0], self.color[1] + glow_value, self.color[2])
+        
+        # 琥珀外形（不规则多边形）
+        points = []
+        for i in range(6):
+            angle = math.radians(60 * i + self.rotation)
+            r = self.size * random.uniform(0.8, 1.0)
+            px = self.x + r * math.cos(angle)
+            py = self.y + r * math.sin(angle)
+            points.append((px, py))
+        
+        # 半透明效果
+        pygame.draw.polygon(surf, color, points)
+        pygame.draw.polygon(surf, (self.color[0] - 50, self.color[1] - 50, self.color[2] - 50), points, 2)
+        
+        # 内部"古代生物"形状
+        if self.insect_type == 0:  # 虫子
+            pygame.draw.line(surf, (100, 70, 40), 
+                           (self.x - self.size // 3, self.y), 
+                           (self.x + self.size // 3, self.y), 2)
+            for i in range(3):
+                x = self.x - self.size // 3 + i * (self.size // 3)
+                pygame.draw.circle(surf, (80, 60, 30), (int(x), int(self.y)), 3)
+        elif self.insect_type == 1:  # 叶子
+            pygame.draw.ellipse(surf, (100, 80, 50), 
+                              (self.x - self.size // 4, self.y - self.size // 3, 
+                               self.size // 2, self.size * 2 // 3))
+        else:  # 气泡
+            for i in range(4):
+                offset_x = random.randint(-self.size // 4, self.size // 4)
+                offset_y = random.randint(-self.size // 4, self.size // 4)
+                r = random.randint(2, 5)
+                pygame.draw.circle(surf, (200, 150, 80), 
+                                 (int(self.x + offset_x), int(self.y + offset_y)), r, 1)
+
+class ResinDrop:
+    """树脂滴"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = -random.randint(10, 50)
+        self.vy = random.uniform(0.5, 1.2)
+        self.length = random.randint(20, 40)
+        self.wobble = random.uniform(0, 6.28)
+        self.wobble_speed = random.uniform(0.08, 0.15)
+        self.color = random.choice([(220, 160, 80), (240, 180, 100), (200, 140, 70)])
+    
+    def update(self, speed_mult=1.0):
+        self.y += self.vy * speed_mult
+        self.wobble += self.wobble_speed * speed_mult
+        
+        if self.y > HEIGHT + 50:
+            self.y = -50
+            self.x = random.randint(0, WIDTH)
+    
+    def draw(self, surf):
+        wobble_x = int(5 * math.sin(self.wobble))
+        
+        # 树脂滴形状
+        points = [
+            (self.x + wobble_x, self.y),
+            (self.x - 8 + wobble_x, self.y + self.length // 3),
+            (self.x + wobble_x, self.y + self.length),
+            (self.x + 8 + wobble_x, self.y + self.length // 3)
+        ]
+        pygame.draw.polygon(surf, self.color, points)
+        # 高光
+        pygame.draw.line(surf, (255, 220, 150), 
+                        (self.x + wobble_x - 3, self.y + 5), 
+                        (self.x + wobble_x - 3, self.y + self.length // 2), 2)
+
+class AncientTentacle:
+    """古老触须"""
+    def __init__(self):
+        self.base_x = random.randint(0, WIDTH)
+        self.base_y = HEIGHT
+        self.segments = []
+        self.segment_count = random.randint(8, 15)
+        self.segment_length = random.randint(15, 25)
+        
+        # 生成触须节点
+        x, y = self.base_x, self.base_y
+        for i in range(self.segment_count):
+            x += random.uniform(-5, 5)
+            y -= self.segment_length
+            self.segments.append({'x': x, 'y': y, 'sway': random.uniform(0, 6.28)})
+        
+        self.sway_speed = random.uniform(0.03, 0.06)
+        self.color = random.choice([(150, 100, 60), (180, 120, 70), (140, 90, 55)])
+    
+    def update(self, speed_mult=1.0):
+        for i, seg in enumerate(self.segments):
+            seg['sway'] += self.sway_speed * speed_mult
+            # 每个节点随波动移动
+            offset = math.sin(seg['sway']) * (i + 1) * 2
+            seg['current_x'] = seg['x'] + offset
+    
+    def draw(self, surf):
+        # 绘制触须
+        if len(self.segments) > 1:
+            points = [(self.base_x, self.base_y)]
+            for seg in self.segments:
+                points.append((seg['current_x'] if 'current_x' in seg else seg['x'], seg['y']))
+            
+            # 绘制触须主体（渐变变细）
+            for i in range(len(points) - 1):
+                width = max(2, int(8 * (1 - i / len(points))))
+                pygame.draw.line(surf, self.color, points[i], points[i + 1], width)
+            
+            # 绘制吸盘
+            for i in range(0, len(self.segments), 2):
+                seg = self.segments[i]
+                x = seg['current_x'] if 'current_x' in seg else seg['x']
+                y = seg['y']
+                r = random.randint(3, 6)
+                pygame.draw.circle(surf, (self.color[0] - 30, self.color[1] - 30, self.color[2] - 30), 
+                                 (int(x), int(y)), r)
+
+class TechCube:
+    """科技立方体"""
+    def __init__(self):
+        self.x = random.randint(100, WIDTH - 100)
+        self.y = random.randint(100, HEIGHT - 100)
+        self.size = random.randint(30, 60)
+        self.rotation_x = random.uniform(0, 360)
+        self.rotation_y = random.uniform(0, 360)
+        self.rot_speed_x = random.uniform(0.5, 1.5)
+        self.rot_speed_y = random.uniform(0.5, 1.5)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.05, 0.1)
+        self.color = random.choice([(0, 255, 200), (200, 0, 255), (255, 200, 0)])
+    
+    def update(self, speed_mult=1.0):
+        self.rotation_x += self.rot_speed_x * speed_mult
+        self.rotation_y += self.rot_speed_y * speed_mult
+        self.pulse += self.pulse_speed * speed_mult
+    
+    def draw(self, surf):
+        # 简化的3D立方体投影
+        scale = 0.9 + 0.1 * math.sin(self.pulse)
+        s = int(self.size * scale)
+        
+        # 计算立方体顶点（简化的伪3D）
+        offset = s // 3
+        rad_x = math.radians(self.rotation_x)
+        rad_y = math.radians(self.rotation_y)
+        
+        # 前面
+        front = [
+            (self.x - s // 2, self.y - s // 2),
+            (self.x + s // 2, self.y - s // 2),
+            (self.x + s // 2, self.y + s // 2),
+            (self.x - s // 2, self.y + s // 2)
+        ]
+        
+        # 后面（带偏移产生3D效果）
+        back = [
+            (self.x - s // 2 + offset, self.y - s // 2 - offset),
+            (self.x + s // 2 + offset, self.y - s // 2 - offset),
+            (self.x + s // 2 + offset, self.y + s // 2 - offset),
+            (self.x - s // 2 + offset, self.y + s // 2 - offset)
+        ]
+        
+        alpha = int(150 + 105 * math.sin(self.pulse))
+        
+        # 绘制边框
+        pygame.draw.lines(surf, (*self.color, alpha), True, front, 2)
+        pygame.draw.lines(surf, (*self.color, alpha // 2), True, back, 2)
+        # 连接线
+        for i in range(4):
+            pygame.draw.line(surf, (*self.color, alpha // 3), front[i], back[i], 1)
+
+class CircuitLine:
+    """电路线"""
+    def __init__(self):
+        self.points = []
+        start_x = random.randint(0, WIDTH)
+        start_y = random.randint(0, HEIGHT)
+        x, y = start_x, start_y
+        
+        # 生成直角电路路径
+        for _ in range(random.randint(3, 6)):
+            if random.random() < 0.5:
+                x += random.randint(-100, 100)
+            else:
+                y += random.randint(-100, 100)
+            x = max(0, min(WIDTH, x))
+            y = max(0, min(HEIGHT, y))
+            self.points.append((x, y))
+        
+        self.flow_pos = 0
+        self.flow_speed = random.uniform(2, 4)
+        self.color = random.choice([(0, 255, 150), (0, 150, 255), (255, 150, 0)])
+    
+    def update(self, speed_mult=1.0):
+        self.flow_pos += self.flow_speed * speed_mult
+        if self.flow_pos > len(self.points) * 30:
+            self.flow_pos = 0
+    
+    def draw(self, surf):
+        if len(self.points) > 1:
+            # 绘制电路线
+            pygame.draw.lines(surf, (*self.color, 100), False, self.points, 2)
+            
+            # 绘制流动的能量点
+            total_len = 0
+            segment_lens = []
+            for i in range(len(self.points) - 1):
+                dx = self.points[i + 1][0] - self.points[i][0]
+                dy = self.points[i + 1][1] - self.points[i][1]
+                length = math.sqrt(dx * dx + dy * dy)
+                segment_lens.append(length)
+                total_len += length
+            
+            if total_len > 0:
+                current_len = self.flow_pos % total_len
+                accumulated = 0
+                for i, seg_len in enumerate(segment_lens):
+                    if accumulated + seg_len >= current_len:
+                        t = (current_len - accumulated) / seg_len
+                        x = self.points[i][0] + t * (self.points[i + 1][0] - self.points[i][0])
+                        y = self.points[i][1] + t * (self.points[i + 1][1] - self.points[i][1])
+                        pygame.draw.circle(surf, self.color, (int(x), int(y)), 5)
+                        break
+                    accumulated += seg_len
+
+class HologramShard:
+    """全息碎片"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(-0.5, 0.5)
+        self.vy = random.uniform(-0.5, 0.5)
+        self.size = random.randint(20, 40)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(-2, 2)
+        self.glitch = random.uniform(0, 6.28)
+        self.glitch_speed = random.uniform(0.1, 0.2)
+        self.color = random.choice([(0, 255, 200), (255, 0, 200), (255, 200, 0)])
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        self.rotation += self.rot_speed * speed_mult
+        self.glitch += self.glitch_speed * speed_mult
+        
+        if self.x < -50 or self.x > WIDTH + 50:
+            self.vx = -self.vx
+        if self.y < -50 or self.y > HEIGHT + 50:
+            self.vy = -self.vy
+    
+    def draw(self, surf):
+        # 故障效果
+        offset = int(5 * math.sin(self.glitch * 3))
+        alpha = int(150 + 105 * math.sin(self.glitch))
+        
+        # 绘制三角形碎片
+        points = []
+        for i in range(3):
+            angle = math.radians(120 * i + self.rotation)
+            px = self.x + self.size * math.cos(angle) + offset
+            py = self.y + self.size * math.sin(angle)
+            points.append((px, py))
+        
+        # 主碎片
+        pygame.draw.polygon(surf, (*self.color, alpha), points)
+        # 故障副本
+        points_glitch = [(p[0] + offset * 2, p[1]) for p in points]
+        pygame.draw.polygon(surf, (*self.color, alpha // 3), points_glitch, 2)
+
 class SkyShard:
     """天空碎片"""
     def __init__(self):
@@ -3013,6 +4109,87 @@ class BackgroundManager:
             "element_type": "energy",
             "gradient": [(20, 0, 40), (80, 20, 120), (150, 50, 200)],
             "bgm": "epic"
+        },
+        "clockwork_realm": {
+            "name": "钟表领域",
+            "base_color": [25, 20, 15],
+            "elements": {"clock_gears": 15, "clock_hands": 8, "roman_numerals": 12},
+            "grid_color": (120, 100, 70),
+            "element_type": "steampunk",
+            "gradient": [(40, 30, 20), (60, 50, 35), (50, 40, 25)],
+            "bgm": "mystery"
+        },
+        "firefly_forest": {
+            "name": "萤火森林",
+            "base_color": [5, 15, 10],
+            "elements": {"fireflies": 30, "moss_clumps": 12, "glow_spores": 25},
+            "grid_color": None,
+            "element_type": "nature",
+            "gradient": [(10, 25, 15), (15, 40, 25), (10, 30, 20)],
+            "bgm": "calm"
+        },
+        "symphony_hall": {
+            "name": "交响乐厅",
+            "base_color": [15, 10, 25],
+            "elements": {"music_notes": 20, "sound_waves": 10, "equalizers": 8},
+            "grid_color": (100, 80, 150),
+            "element_type": "music",
+            "gradient": [(25, 15, 40), (40, 25, 60), (30, 20, 50)],
+            "bgm": "epic"
+        },
+        "shinto_shrine": {
+            "name": "神道神社",
+            "base_color": [20, 15, 25],
+            "elements": {"torii": 4, "paper_charms": 15, "shrine_lights": 12},
+            "grid_color": None,
+            "element_type": "shrine",
+            "gradient": [(30, 20, 35), (50, 35, 50), (40, 30, 45)],
+            "bgm": "mystery"
+        },
+        "afternoon_tea": {
+            "name": "下午茶时光",
+            "base_color": [245, 235, 225],
+            "elements": {"tea_cups": 8, "pastries": 15, "tablecloth_patterns": 12},
+            "grid_color": (220, 200, 180),
+            "element_type": "tea_time",
+            "gradient": [(250, 240, 230), (255, 245, 235), (245, 235, 225)],
+            "bgm": "calm"
+        },
+        "cyber_dimension": {
+            "name": "赛博维度",
+            "base_color": [5, 5, 15],
+            "elements": {"tech_cubes": 10, "circuit_lines": 12, "hologram_shards": 15},
+            "grid_color": (0, 200, 150),
+            "element_type": "cyber",
+            "gradient": [(10, 10, 25), (15, 20, 40), (10, 15, 30)],
+            "bgm": "epic"
+        },
+        "ancient_coin_shop": {
+            "name": "古代钱币铺",
+            "base_color": [25, 20, 15],
+            "elements": {"bronze_coins": 20, "ancient_seals": 8, "verdigris_spots": 15},
+            "grid_color": (180, 120, 80),
+            "element_type": "ancient_coins",
+            "gradient": [(40, 30, 20), (60, 45, 30), (50, 35, 25)],
+            "bgm": "calm"
+        },
+        "pottery_workshop": {
+            "name": "陶艺工坊",
+            "base_color": [30, 20, 15],
+            "elements": {"clay_pots": 10, "pottery_wheels": 4, "clay_ripples": 12},
+            "grid_color": (200, 120, 80),
+            "element_type": "pottery",
+            "gradient": [(50, 35, 25), (70, 50, 35), (60, 40, 30)],
+            "bgm": "calm"
+        },
+        "amber_forest": {
+            "name": "琥珀森林",
+            "base_color": [35, 25, 10],
+            "elements": {"amber_gems": 15, "resin_drops": 20, "ancient_tentacles": 6},
+            "grid_color": (255, 180, 80),
+            "element_type": "amber",
+            "gradient": [(60, 45, 20), (80, 60, 30), (70, 50, 25)],
+            "bgm": "calm"
         },
         "quantum_foam": {
             "name": "量子泡沫",
@@ -3561,6 +4738,114 @@ class BackgroundManager:
         if "power_cores" in elements:
             for _ in range(elements["power_cores"]):
                 self.special_elements.append(PowerCore())
+        
+        if "clock_gears" in elements:
+            for _ in range(elements["clock_gears"]):
+                self.special_elements.append(ClockGear())
+        
+        if "clock_hands" in elements:
+            for _ in range(elements["clock_hands"]):
+                self.special_elements.append(ClockHand())
+        
+        if "roman_numerals" in elements:
+            for _ in range(elements["roman_numerals"]):
+                self.special_elements.append(RomanNumeral())
+        
+        if "fireflies" in elements:
+            for _ in range(elements["fireflies"]):
+                self.special_elements.append(Firefly())
+        
+        if "moss_clumps" in elements:
+            for _ in range(elements["moss_clumps"]):
+                self.special_elements.append(MossClump())
+        
+        if "glow_spores" in elements:
+            for _ in range(elements["glow_spores"]):
+                self.special_elements.append(GlowSpore())
+        
+        if "music_notes" in elements:
+            for _ in range(elements["music_notes"]):
+                self.special_elements.append(MusicNote())
+        
+        if "sound_waves" in elements:
+            for _ in range(elements["sound_waves"]):
+                self.special_elements.append(SoundWave())
+        
+        if "equalizers" in elements:
+            for _ in range(elements["equalizers"]):
+                self.special_elements.append(Equalizer())
+        
+        if "torii" in elements:
+            for _ in range(elements["torii"]):
+                self.special_elements.append(Torii())
+        
+        if "paper_charms" in elements:
+            for _ in range(elements["paper_charms"]):
+                self.special_elements.append(PaperCharm())
+        
+        if "shrine_lights" in elements:
+            for _ in range(elements["shrine_lights"]):
+                self.special_elements.append(ShrineLight())
+        
+        if "tea_cups" in elements:
+            for _ in range(elements["tea_cups"]):
+                self.special_elements.append(TeaCup())
+        
+        if "pastries" in elements:
+            for _ in range(elements["pastries"]):
+                self.special_elements.append(Pastry())
+        
+        if "tablecloth_patterns" in elements:
+            for _ in range(elements["tablecloth_patterns"]):
+                self.special_elements.append(TableCloth())
+        
+        if "tech_cubes" in elements:
+            for _ in range(elements["tech_cubes"]):
+                self.special_elements.append(TechCube())
+        
+        if "circuit_lines" in elements:
+            for _ in range(elements["circuit_lines"]):
+                self.special_elements.append(CircuitLine())
+        
+        if "hologram_shards" in elements:
+            for _ in range(elements["hologram_shards"]):
+                self.special_elements.append(HologramShard())
+        
+        if "bronze_coins" in elements:
+            for _ in range(elements["bronze_coins"]):
+                self.special_elements.append(BronzeCoin())
+        
+        if "ancient_seals" in elements:
+            for _ in range(elements["ancient_seals"]):
+                self.special_elements.append(AncientSeal())
+        
+        if "verdigris_spots" in elements:
+            for _ in range(elements["verdigris_spots"]):
+                self.special_elements.append(VerdigrisSpot())
+        
+        if "clay_pots" in elements:
+            for _ in range(elements["clay_pots"]):
+                self.special_elements.append(ClayPot())
+        
+        if "pottery_wheels" in elements:
+            for _ in range(elements["pottery_wheels"]):
+                self.special_elements.append(PotteryWheel())
+        
+        if "clay_ripples" in elements:
+            for _ in range(elements["clay_ripples"]):
+                self.special_elements.append(ClayRipple())
+        
+        if "amber_gems" in elements:
+            for _ in range(elements["amber_gems"]):
+                self.special_elements.append(AmberGem())
+        
+        if "resin_drops" in elements:
+            for _ in range(elements["resin_drops"]):
+                self.special_elements.append(ResinDrop())
+        
+        if "ancient_tentacles" in elements:
+            for _ in range(elements["ancient_tentacles"]):
+                self.special_elements.append(AncientTentacle())
         
         # 设置基础颜色
         self.current_bg = config["base_color"].copy()
