@@ -115,7 +115,7 @@
   "equipped_themes": {
     "thunderbird": "thunderbird_aurora",
     "viper": "viper_hydra",
-    "striker": "striker_stealth",
+    "striker": "striker_quantum",
     "phantom": "rare_cyan",
     "titan": "titan_orbital",
     "arbiter": "arbiter_truth",
@@ -149,7 +149,7 @@
     "necro_bullet": true
   },
   "equipped_bullet_themes": {
-    "striker": "striker_stealth_bullet",
+    "striker": "default",
     "phantom": "phantom_matrix_bullet",
     "necro": "necro_bone_spike",
     "titan": "titan_volcano_bullet",
@@ -174,7 +174,7 @@
     "aurora_valkyrie": true
   },
   "equipped_wingman_themes": {
-    "slot_0": "default",
+    "slot_0": "aurora_valkyrie",
     "slot_1": "default",
     "slot_2": "shadow_reaper",
     "slot_3": "default"

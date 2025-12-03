@@ -1923,6 +1923,927 @@ class Particle:
         pygame.draw.circle(alpha_surf, (*self.color, alpha), (self.size * 2, self.size * 2), self.size * 2)
         surf.blit(alpha_surf, (self.x - self.size * 2, self.y - self.size * 2))
 
+class Feather:
+    """羽毛"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(-100, HEIGHT)
+        self.vx = random.uniform(-0.3, 0.3)
+        self.vy = random.uniform(0.5, 1.5)
+        self.size = random.randint(12, 20)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(-1.5, 1.5)
+        self.sway = random.uniform(0, 6.28)
+        self.sway_speed = random.uniform(0.08, 0.15)
+        self.color = random.choice([(255, 255, 255), (240, 240, 250), (200, 220, 255)])
+    
+    def update(self, speed_mult=1.0):
+        self.sway += self.sway_speed * speed_mult
+        self.x += (self.vx + math.sin(self.sway) * 0.8) * speed_mult
+        self.y += self.vy * speed_mult
+        self.rotation += self.rot_speed * speed_mult
+        if self.y > HEIGHT + 50:
+            self.y = -50
+            self.x = random.randint(0, WIDTH)
+    
+    def draw(self, surf):
+        # 羽毛形状
+        rad = math.radians(self.rotation)
+        points = []
+        for i in range(7):
+            t = i / 6
+            offset = self.size * 0.4 * math.sin(t * math.pi)
+            px = self.x + (t * self.size - self.size / 2) * math.cos(rad) - offset * math.sin(rad)
+            py = self.y + (t * self.size - self.size / 2) * math.sin(rad) + offset * math.cos(rad)
+            points.append((px, py))
+        if len(points) > 2:
+            pygame.draw.lines(surf, self.color, False, points, 3)
+
+class Cloud2:
+    """云朵"""
+    def __init__(self):
+        self.x = random.randint(-100, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(0.2, 0.8)
+        self.size = random.randint(40, 80)
+        self.circles = [(random.randint(-self.size, self.size), random.randint(-20, 20), random.randint(20, 40)) for _ in range(4)]
+        self.alpha = random.randint(100, 180)
+        self.color = (255, 255, 255)
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        if self.x > WIDTH + 100:
+            self.x = -100
+            self.y = random.randint(0, HEIGHT)
+    
+    def draw(self, surf):
+        alpha_surf = pygame.Surface((self.size * 3, self.size * 2), pygame.SRCALPHA)
+        for ox, oy, r in self.circles:
+            pygame.draw.circle(alpha_surf, (*self.color, self.alpha), (self.size + ox, self.size // 2 + oy), r)
+        surf.blit(alpha_surf, (self.x - self.size, self.y - self.size // 2))
+
+class Bird:
+    """飞鸟剪影"""
+    def __init__(self):
+        self.x = random.randint(-50, WIDTH)
+        self.y = random.randint(0, HEIGHT // 2)
+        self.vx = random.uniform(2.0, 4.0)
+        self.size = random.randint(15, 25)
+        self.flap = random.uniform(0, 6.28)
+        self.flap_speed = random.uniform(0.15, 0.25)
+        self.color = (50, 50, 50)
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.flap += self.flap_speed * speed_mult
+        if self.x > WIDTH + 50:
+            self.x = -50
+            self.y = random.randint(0, HEIGHT // 2)
+    
+    def draw(self, surf):
+        wing_y = int(self.size * 0.3 * math.sin(self.flap))
+        # V字形飞鸟
+        points = [
+            (self.x, self.y),
+            (self.x - self.size, self.y - self.size // 2 + wing_y),
+            (self.x, self.y),
+            (self.x + self.size, self.y - self.size // 2 - wing_y)
+        ]
+        pygame.draw.lines(surf, self.color, False, points, 2)
+
+class Ripple:
+    """涟漪"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.radius = 0
+        self.max_radius = random.randint(50, 100)
+        self.speed = random.uniform(0.5, 1.0)
+        self.life = 255
+        self.color = random.choice([(100, 200, 255), (100, 255, 200), (200, 100, 255)])
+    
+    def update(self, speed_mult=1.0):
+        self.radius += self.speed * speed_mult
+        self.life = int(255 * (1 - self.radius / self.max_radius))
+        if self.radius > self.max_radius:
+            self.radius = 0
+            self.life = 255
+            self.x = random.randint(0, WIDTH)
+            self.y = random.randint(0, HEIGHT)
+    
+    def draw(self, surf):
+        if self.life > 0:
+            alpha_surf = pygame.Surface((int(self.radius * 2 + 10), int(self.radius * 2 + 10)), pygame.SRCALPHA)
+            pygame.draw.circle(alpha_surf, (*self.color, self.life), (int(self.radius) + 5, int(self.radius) + 5), int(self.radius), 2)
+            surf.blit(alpha_surf, (self.x - self.radius - 5, self.y - self.radius - 5))
+
+class Koi:
+    """锦鲤"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(-1.5, 1.5)
+        self.vy = random.uniform(-1.5, 1.5)
+        self.size = random.randint(20, 35)
+        self.tail_sway = random.uniform(0, 6.28)
+        self.tail_speed = random.uniform(0.1, 0.2)
+        self.color = random.choice([(255, 150, 100), (255, 200, 200), (255, 255, 200)])
+        self.turn_timer = 0
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        self.tail_sway += self.tail_speed * speed_mult
+        self.turn_timer += speed_mult
+        
+        # 随机转向
+        if self.turn_timer > 80:
+            self.turn_timer = 0
+            self.vx = random.uniform(-1.5, 1.5)
+            self.vy = random.uniform(-1.5, 1.5)
+        
+        # 边界循环
+        if self.x < -50: self.x = WIDTH + 50
+        if self.x > WIDTH + 50: self.x = -50
+        if self.y < -50: self.y = HEIGHT + 50
+        if self.y > HEIGHT + 50: self.y = -50
+    
+    def draw(self, surf):
+        # 身体
+        pygame.draw.ellipse(surf, self.color, (self.x - self.size, self.y - self.size // 2, self.size * 2, self.size))
+        # 尾巴
+        tail_offset = int(10 * math.sin(self.tail_sway))
+        tail_points = [
+            (self.x - self.size, self.y),
+            (self.x - self.size - 15, self.y - 10 + tail_offset),
+            (self.x - self.size - 15, self.y + 10 + tail_offset)
+        ]
+        pygame.draw.polygon(surf, self.color, tail_points)
+
+class Pollen:
+    """花粉"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(-0.5, 0.5)
+        self.vy = random.uniform(-0.5, 0.5)
+        self.size = random.randint(2, 4)
+        self.float_offset = random.uniform(0, 6.28)
+        self.float_speed = random.uniform(0.1, 0.2)
+        self.color = random.choice([(255, 255, 150), (255, 200, 150), (255, 220, 180)])
+    
+    def update(self, speed_mult=1.0):
+        self.float_offset += self.float_speed * speed_mult
+        self.x += (self.vx + math.cos(self.float_offset) * 0.3) * speed_mult
+        self.y += (self.vy + math.sin(self.float_offset) * 0.3) * speed_mult
+        
+        # 边界循环
+        if self.x < 0: self.x = WIDTH
+        if self.x > WIDTH: self.x = 0
+        if self.y < 0: self.y = HEIGHT
+        if self.y > HEIGHT: self.y = 0
+    
+    def draw(self, surf):
+        glow_surf = pygame.Surface((self.size * 4, self.size * 4), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*self.color, 180), (self.size * 2, self.size * 2), self.size * 2)
+        surf.blit(glow_surf, (self.x - self.size * 2, self.y - self.size * 2))
+        pygame.draw.circle(surf, self.color, (int(self.x), int(self.y)), self.size)
+
+class Mote:
+    """尘埃光点"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(-0.2, 0.2)
+        self.vy = random.uniform(-0.8, -0.2)
+        self.size = random.randint(1, 3)
+        self.alpha = random.randint(100, 255)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.05, 0.1)
+        self.color = (255, 250, 230)
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        self.pulse += self.pulse_speed * speed_mult
+        
+        if self.y < -10:
+            self.y = HEIGHT + 10
+            self.x = random.randint(0, WIDTH)
+        if self.x < -10: self.x = WIDTH + 10
+        if self.x > WIDTH + 10: self.x = -10
+    
+    def draw(self, surf):
+        alpha = int(self.alpha * (0.7 + 0.3 * math.sin(self.pulse)))
+        glow_surf = pygame.Surface((self.size * 4, self.size * 4), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*self.color, alpha), (self.size * 2, self.size * 2), self.size * 2)
+        surf.blit(glow_surf, (self.x - self.size * 2, self.y - self.size * 2))
+
+class HolyRay:
+    """圣光光柱"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = 0
+        self.width = random.randint(30, 60)
+        self.height = random.randint(200, 400)
+        self.alpha = random.randint(30, 80)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.02, 0.05)
+        self.color = (255, 250, 200)
+    
+    def update(self, speed_mult=1.0):
+        self.pulse += self.pulse_speed * speed_mult
+    
+    def draw(self, surf):
+        alpha = int(self.alpha * (0.8 + 0.2 * math.sin(self.pulse)))
+        alpha_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        # 渐变光柱
+        for i in range(self.height):
+            t = i / self.height
+            current_alpha = int(alpha * (1 - t * 0.5))
+            pygame.draw.line(alpha_surf, (*self.color, current_alpha), (0, i), (self.width, i))
+        surf.blit(alpha_surf, (self.x - self.width // 2, self.y))
+
+class Angel:
+    """天使光环"""
+    def __init__(self):
+        self.x = random.randint(100, WIDTH - 100)
+        self.y = random.randint(100, HEIGHT - 100)
+        self.radius = random.randint(40, 80)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(0.5, 1.5)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.04, 0.08)
+        self.float_offset = random.uniform(0, 6.28)
+        self.float_speed = random.uniform(0.03, 0.06)
+        self.color = (255, 240, 150)
+    
+    def update(self, speed_mult=1.0):
+        self.rotation += self.rot_speed * speed_mult
+        self.pulse += self.pulse_speed * speed_mult
+        self.float_offset += self.float_speed * speed_mult
+    
+    def draw(self, surf):
+        y_offset = 10 * math.sin(self.float_offset)
+        alpha = int(180 + 75 * math.sin(self.pulse))
+        
+        # 外圈光环
+        alpha_surf = pygame.Surface((self.radius * 3, self.radius * 3), pygame.SRCALPHA)
+        pygame.draw.circle(alpha_surf, (*self.color, alpha // 3), (self.radius * 1.5, self.radius * 1.5), int(self.radius * 1.2), 8)
+        surf.blit(alpha_surf, (self.x - self.radius * 1.5, self.y + y_offset - self.radius * 1.5))
+        
+        # 内圈光环
+        pygame.draw.circle(surf, self.color, (int(self.x), int(self.y + y_offset)), self.radius, 3)
+        
+        # 十字光
+        for angle in [0, 90]:
+            rad = math.radians(angle + self.rotation)
+            end_x = self.x + self.radius * 0.7 * math.cos(rad)
+            end_y = self.y + y_offset + self.radius * 0.7 * math.sin(rad)
+            pygame.draw.line(surf, self.color, (self.x, self.y + y_offset), (end_x, end_y), 2)
+
+class Pixel:
+    """像素方块"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH // 20) * 20
+        self.y = random.randint(0, HEIGHT // 20) * 20
+        self.size = 20
+        self.vy = random.choice([10, 20])
+        self.color = random.choice([(255, 0, 255), (0, 255, 255), (255, 255, 0), (255, 0, 0)])
+        self.blink = random.randint(0, 30)
+    
+    def update(self, speed_mult=1.0):
+        self.y += self.vy * speed_mult
+        self.blink = (self.blink + 1) % 60
+        if self.y > HEIGHT:
+            self.y = -self.size
+            self.x = random.randint(0, WIDTH // 20) * 20
+    
+    def draw(self, surf):
+        if self.blink < 30:
+            pygame.draw.rect(surf, self.color, (self.x, self.y, self.size, self.size))
+            pygame.draw.rect(surf, (255, 255, 255), (self.x, self.y, self.size, self.size), 2)
+
+class Glitch:
+    """故障条纹"""
+    def __init__(self):
+        self.y = random.randint(0, HEIGHT)
+        self.height = random.randint(5, 30)
+        self.speed = random.uniform(10, 30)
+        self.color = random.choice([(255, 0, 100), (0, 255, 200), (255, 255, 100)])
+        self.offset = random.randint(-20, 20)
+        self.life = random.randint(10, 30)
+    
+    def update(self, speed_mult=1.0):
+        self.y += self.speed * speed_mult
+        self.life -= speed_mult
+        if self.y > HEIGHT or self.life <= 0:
+            self.y = random.randint(-50, 0)
+            self.life = random.randint(10, 30)
+            self.offset = random.randint(-20, 20)
+    
+    def draw(self, surf):
+        alpha = int(150 * (self.life / 30))
+        rect_surf = pygame.Surface((WIDTH, self.height), pygame.SRCALPHA)
+        pygame.draw.rect(rect_surf, (*self.color, alpha), (0, 0, WIDTH, self.height))
+        surf.blit(rect_surf, (self.offset, self.y))
+
+class DigitalRain:
+    """数字雨"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(-HEIGHT, 0)
+        self.speed = random.uniform(3, 8)
+        self.chars = [str(random.randint(0, 1)) for _ in range(random.randint(5, 15))]
+        self.color = (0, 255, 150)
+    
+    def update(self, speed_mult=1.0):
+        self.y += self.speed * speed_mult
+        if self.y > HEIGHT + len(self.chars) * 20:
+            self.y = random.randint(-HEIGHT, 0)
+            self.x = random.randint(0, WIDTH)
+            self.chars = [str(random.randint(0, 1)) for _ in range(random.randint(5, 15))]
+    
+    def draw(self, surf):
+        font = pygame.font.Font(None, 20)
+        for i, char in enumerate(self.chars):
+            alpha = int(255 * ((len(self.chars) - i) / len(self.chars)))
+            text_surf = font.render(char, True, self.color)
+            text_surf.set_alpha(alpha)
+            surf.blit(text_surf, (self.x, self.y + i * 20))
+
+class Portal:
+    """传送门"""
+    def __init__(self):
+        self.x = random.randint(100, WIDTH - 100)
+        self.y = random.randint(100, HEIGHT - 100)
+        self.radius = random.randint(40, 80)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(1, 3)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.05, 0.1)
+        self.color = random.choice([(100, 100, 255), (255, 100, 255), (100, 255, 255)])
+    
+    def update(self, speed_mult=1.0):
+        self.rotation += self.rot_speed * speed_mult
+        self.pulse += self.pulse_speed * speed_mult
+    
+    def draw(self, surf):
+        pulse_radius = int(self.radius * (1 + 0.2 * math.sin(self.pulse)))
+        # 多层圆环
+        for i in range(5):
+            r = pulse_radius - i * 8
+            alpha = int(150 - i * 30)
+            ring_surf = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+            pygame.draw.circle(ring_surf, (*self.color, alpha), (r, r), r, 3)
+            surf.blit(ring_surf, (self.x - r, self.y - r))
+        # 旋转线条
+        for i in range(8):
+            angle = math.radians(i * 45 + self.rotation)
+            start_r = pulse_radius * 0.3
+            end_r = pulse_radius * 0.8
+            start_x = self.x + start_r * math.cos(angle)
+            start_y = self.y + start_r * math.sin(angle)
+            end_x = self.x + end_r * math.cos(angle)
+            end_y = self.y + end_r * math.sin(angle)
+            pygame.draw.line(surf, self.color, (start_x, start_y), (end_x, end_y), 2)
+
+class Wormhole:
+    """虫洞粒子"""
+    def __init__(self):
+        self.center_x = WIDTH // 2
+        self.center_y = HEIGHT // 2
+        self.angle = random.uniform(0, 360)
+        self.distance = random.randint(50, 300)
+        self.speed = random.uniform(-2, -0.5)
+        self.size = random.randint(2, 6)
+        self.color = random.choice([(150, 100, 255), (100, 150, 255), (255, 100, 200)])
+    
+    def update(self, speed_mult=1.0):
+        self.angle += random.uniform(-2, 2) * speed_mult
+        self.distance += self.speed * speed_mult
+        if self.distance < 10:
+            self.distance = 300
+            self.angle = random.uniform(0, 360)
+    
+    def draw(self, surf):
+        rad = math.radians(self.angle)
+        x = self.center_x + self.distance * math.cos(rad)
+        y = self.center_y + self.distance * math.sin(rad)
+        alpha = int(255 * (1 - self.distance / 300))
+        glow_surf = pygame.Surface((self.size * 3, self.size * 3), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*self.color, alpha), (self.size * 1.5, self.size * 1.5), self.size * 1.5)
+        surf.blit(glow_surf, (x - self.size * 1.5, y - self.size * 1.5))
+
+class Distortion:
+    """扭曲波纹"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.radius = 0
+        self.max_radius = random.randint(80, 150)
+        self.speed = random.uniform(1, 2)
+        self.color = random.choice([(100, 200, 255), (255, 100, 200), (100, 255, 200)])
+    
+    def update(self, speed_mult=1.0):
+        self.radius += self.speed * speed_mult
+        if self.radius > self.max_radius:
+            self.radius = 0
+            self.x = random.randint(0, WIDTH)
+            self.y = random.randint(0, HEIGHT)
+    
+    def draw(self, surf):
+        alpha = int(200 * (1 - self.radius / self.max_radius))
+        if alpha > 0:
+            ring_surf = pygame.Surface((int(self.radius * 2 + 10), int(self.radius * 2 + 10)), pygame.SRCALPHA)
+            pygame.draw.circle(ring_surf, (*self.color, alpha), (int(self.radius) + 5, int(self.radius) + 5), int(self.radius), 3)
+            surf.blit(ring_surf, (self.x - self.radius - 5, self.y - self.radius - 5))
+
+class Origami:
+    """折纸动物"""
+    def __init__(self):
+        self.x = random.randint(-50, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.vx = random.uniform(0.5, 1.5)
+        self.size = random.randint(20, 35)
+        self.rotation = 0
+        self.rot_speed = random.uniform(0.5, 1.5)
+        self.shape = random.randint(0, 2)  # 不同折纸形状
+        self.color = random.choice([(255, 200, 200), (200, 255, 200), (200, 200, 255)])
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.rotation += self.rot_speed * speed_mult
+        if self.x > WIDTH + 50:
+            self.x = -50
+            self.y = random.randint(0, HEIGHT)
+    
+    def draw(self, surf):
+        if self.shape == 0:  # 纸鹤
+            points = [
+                (self.x, self.y - self.size),
+                (self.x - self.size, self.y),
+                (self.x, self.y + self.size // 2),
+                (self.x + self.size, self.y)
+            ]
+        elif self.shape == 1:  # 纸船
+            points = [
+                (self.x - self.size, self.y + self.size // 2),
+                (self.x, self.y - self.size // 2),
+                (self.x + self.size, self.y + self.size // 2),
+                (self.x, self.y + self.size)
+            ]
+        else:  # 纸飞机
+            points = [
+                (self.x + self.size, self.y),
+                (self.x - self.size // 2, self.y - self.size // 2),
+                (self.x, self.y),
+                (self.x - self.size // 2, self.y + self.size // 2)
+            ]
+        pygame.draw.polygon(surf, self.color, points)
+        pygame.draw.polygon(surf, (150, 150, 150), points, 2)
+
+class PaperWave:
+    """纸浪"""
+    def __init__(self):
+        self.y = random.randint(0, HEIGHT)
+        self.wave_offset = random.uniform(0, 6.28)
+        self.wave_speed = random.uniform(0.05, 0.1)
+        self.amplitude = random.randint(20, 40)
+        self.color = (230, 230, 250)
+        self.last_offset = None
+        self.cached_surf = None
+        self.min_y = max(0, self.y - self.amplitude - 10)
+        self.max_y = min(HEIGHT, self.y + self.amplitude + 10)
+    
+    def update(self, speed_mult=1.0):
+        self.wave_offset += self.wave_speed * speed_mult
+    
+    def draw(self, surf):
+        # 只在偏移变化较大时重建Surface
+        if self.cached_surf is None or self.last_offset is None or abs(self.wave_offset - self.last_offset) > 0.2:
+            self.last_offset = self.wave_offset
+            height = self.max_y - self.min_y
+            self.cached_surf = pygame.Surface((WIDTH, height), pygame.SRCALPHA)
+            points = []
+            for x in range(0, WIDTH, 20):
+                wave_y = self.amplitude * math.sin((x / 50) + self.wave_offset)
+                points.append((x, wave_y + self.amplitude + 5))
+            if len(points) > 1:
+                pygame.draw.lines(self.cached_surf, self.color, False, points, 3)
+        
+        if self.cached_surf:
+            surf.blit(self.cached_surf, (0, self.min_y))
+
+class FoldLine:
+    """折痕线"""
+    def __init__(self):
+        self.x1 = random.randint(0, WIDTH)
+        self.y1 = random.randint(0, HEIGHT)
+        self.x2 = random.randint(0, WIDTH)
+        self.y2 = random.randint(0, HEIGHT)
+        self.alpha = random.randint(50, 150)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.03, 0.06)
+        self.color = (200, 200, 220)
+        self.last_alpha = None
+        self.cached_surf = None
+        # 计算线条边界
+        self.min_x = max(0, min(self.x1, self.x2) - 5)
+        self.max_x = min(WIDTH, max(self.x1, self.x2) + 5)
+        self.min_y = max(0, min(self.y1, self.y2) - 5)
+        self.max_y = min(HEIGHT, max(self.y1, self.y2) + 5)
+    
+    def update(self, speed_mult=1.0):
+        self.pulse += self.pulse_speed * speed_mult
+    
+    def draw(self, surf):
+        current_alpha = int(self.alpha * (0.7 + 0.3 * math.sin(self.pulse)))
+        # 只在alpha变化超过阈值时重建
+        if self.cached_surf is None or self.last_alpha is None or abs(current_alpha - self.last_alpha) > 5:
+            self.last_alpha = current_alpha
+            width = self.max_x - self.min_x
+            height = self.max_y - self.min_y
+            self.cached_surf = pygame.Surface((width, height), pygame.SRCALPHA)
+            local_x1 = self.x1 - self.min_x
+            local_y1 = self.y1 - self.min_y
+            local_x2 = self.x2 - self.min_x
+            local_y2 = self.y2 - self.min_y
+            pygame.draw.line(self.cached_surf, (*self.color, current_alpha), (local_x1, local_y1), (local_x2, local_y2), 2)
+        
+        if self.cached_surf:
+            surf.blit(self.cached_surf, (self.min_x, self.min_y))
+
+class Candle:
+    """蜡烛火焰"""
+    def __init__(self):
+        self.x = random.randint(50, WIDTH - 50)
+        self.y = HEIGHT - random.randint(30, 80)
+        self.base_size = random.randint(12, 20)
+        self.flicker = random.uniform(0, 6.28)
+        self.flicker_speed = random.uniform(0.3, 0.5)
+        self.color = (255, 180, 100)
+        self.last_size = None
+        self.cached_glow = None
+    
+    def update(self, speed_mult=1.0):
+        self.flicker += self.flicker_speed * speed_mult
+    
+    def draw(self, surf):
+        size = int(self.base_size * (0.9 + 0.2 * math.sin(self.flicker)))
+        alpha = int(220 + 35 * math.sin(self.flicker * 2))
+        # 只在尺寸变化时重建光晕
+        if self.last_size != size:
+            self.last_size = size
+            self.cached_glow = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
+            pygame.draw.circle(self.cached_glow, (255, 200, 100, alpha // 3), (size * 2, size * 2), size * 2)
+        
+        if self.cached_glow:
+            surf.blit(self.cached_glow, (self.x - size * 2, self.y - size * 3))
+        # 火焰
+        points = [
+            (self.x, self.y - size * 2),
+            (self.x - size // 2, self.y),
+            (self.x + size // 2, self.y)
+        ]
+        pygame.draw.polygon(surf, (255, 220, 150), points)
+        pygame.draw.polygon(surf, self.color, [(points[0][0], points[0][1] + 5), 
+                                                 (points[1][0] + 3, points[1][1] - 3),
+                                                 (points[2][0] - 3, points[2][1] - 3)])
+
+class BookPage:
+    """书页翻飞"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(-100, HEIGHT)
+        self.vx = random.uniform(-0.5, 0.5)
+        self.vy = random.uniform(0.5, 1.5)
+        self.width = random.randint(25, 40)
+        self.height = random.randint(35, 55)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(-2, 2)
+        self.color = (250, 245, 235)
+        # 预渲染书页
+        self.base_page = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        pygame.draw.rect(self.base_page, self.color, (0, 0, self.width, self.height))
+        pygame.draw.rect(self.base_page, (200, 195, 185), (0, 0, self.width, self.height), 1)
+        for i in range(3):
+            y = 8 + i * 10
+            pygame.draw.line(self.base_page, (180, 175, 165), (5, y), (self.width - 5, y), 1)
+    
+    def update(self, speed_mult=1.0):
+        self.x += self.vx * speed_mult
+        self.y += self.vy * speed_mult
+        self.rotation += self.rot_speed * speed_mult
+        if self.y > HEIGHT + 50:
+            self.y = -50
+            self.x = random.randint(0, WIDTH)
+    
+    def draw(self, surf):
+        rotated = pygame.transform.rotate(self.base_page, self.rotation)
+        rect = rotated.get_rect(center=(self.x, self.y))
+        surf.blit(rotated, rect)
+
+class Quill:
+    """羽毛笔痕迹"""
+    def __init__(self):
+        self.reset_points()
+        self.alpha = random.randint(150, 255)
+        self.fade_speed = random.uniform(0.5, 1.0)
+        self.color = (60, 50, 40)
+        self.cached_surf = None
+        self.last_alpha = None
+    
+    def reset_points(self):
+        start_x = random.randint(50, WIDTH - 50)
+        start_y = random.randint(50, HEIGHT - 50)
+        self.points = []
+        for i in range(random.randint(8, 15)):
+            self.points.append((
+                start_x + i * random.randint(-15, 15),
+                start_y + i * random.randint(-8, 8)
+            ))
+        # 计算边界
+        xs = [p[0] for p in self.points]
+        ys = [p[1] for p in self.points]
+        self.min_x = max(0, min(xs) - 5)
+        self.max_x = min(WIDTH, max(xs) + 5)
+        self.min_y = max(0, min(ys) - 5)
+        self.max_y = min(HEIGHT, max(ys) + 5)
+        self.cached_surf = None
+    
+    def update(self, speed_mult=1.0):
+        self.alpha -= self.fade_speed * speed_mult
+        if self.alpha < 0:
+            self.reset_points()
+            self.alpha = random.randint(150, 255)
+    
+    def draw(self, surf):
+        if len(self.points) > 1:
+            current_alpha = int(self.alpha)
+            # 只在alpha变化超过阈值时重建
+            if self.cached_surf is None or self.last_alpha is None or abs(current_alpha - self.last_alpha) > 10:
+                self.last_alpha = current_alpha
+                width = self.max_x - self.min_x
+                height = self.max_y - self.min_y
+                self.cached_surf = pygame.Surface((width, height), pygame.SRCALPHA)
+                local_points = [(p[0] - self.min_x, p[1] - self.min_y) for p in self.points]
+                pygame.draw.lines(self.cached_surf, (*self.color, current_alpha), False, local_points, 2)
+            
+            if self.cached_surf:
+                surf.blit(self.cached_surf, (self.min_x, self.min_y))
+
+class Satellite:
+    """卫星"""
+    def __init__(self):
+        self.angle = random.uniform(0, 360)
+        self.orbit_radius = random.randint(200, 350)
+        self.speed = random.uniform(0.3, 0.8)
+        self.size = random.randint(8, 15)
+        self.blink = random.uniform(0, 6.28)
+        self.blink_speed = random.uniform(0.1, 0.2)
+        self.color = (200, 200, 220)
+        self.center_x = WIDTH // 2
+        self.center_y = HEIGHT // 2
+    
+    def update(self, speed_mult=1.0):
+        self.angle += self.speed * speed_mult
+        self.blink += self.blink_speed * speed_mult
+    
+    def draw(self, surf):
+        rad = math.radians(self.angle)
+        x = self.center_x + self.orbit_radius * math.cos(rad)
+        y = self.center_y + self.orbit_radius * math.sin(rad)
+        
+        # 卫星本体
+        alpha = int(200 + 55 * math.sin(self.blink))
+        pygame.draw.rect(surf, self.color, (x - self.size // 2, y - self.size // 2, self.size, self.size))
+        # 太阳能板
+        pygame.draw.rect(surf, (100, 150, 200), (x - self.size * 1.5, y - 3, self.size, 6))
+        pygame.draw.rect(surf, (100, 150, 200), (x + self.size * 0.5, y - 3, self.size, 6))
+        # 信号光
+        glow_surf = pygame.Surface((self.size * 3, self.size * 3), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (200, 220, 255, alpha), (self.size * 1.5, self.size * 1.5), self.size)
+        surf.blit(glow_surf, (x - self.size * 1.5, y - self.size * 1.5))
+
+class SignalWave:
+    """信号波"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.radius = 0
+        self.max_radius = random.randint(60, 120)
+        self.speed = random.uniform(1.5, 2.5)
+        self.color = (100, 200, 255)
+    
+    def update(self, speed_mult=1.0):
+        self.radius += self.speed * speed_mult
+        if self.radius > self.max_radius:
+            self.radius = 0
+            self.x = random.randint(0, WIDTH)
+            self.y = random.randint(0, HEIGHT)
+    
+    def draw(self, surf):
+        alpha = int(180 * (1 - self.radius / self.max_radius))
+        if alpha > 0:
+            for i in range(3):
+                r = self.radius - i * 10
+                if r > 0:
+                    ring_surf = pygame.Surface((int(r * 2 + 10), int(r * 2 + 10)), pygame.SRCALPHA)
+                    pygame.draw.circle(ring_surf, (*self.color, alpha // (i + 1)), (int(r) + 5, int(r) + 5), int(r), 2)
+                    surf.blit(ring_surf, (self.x - r - 5, self.y - r - 5))
+
+class DataStream:
+    """数据流"""
+    def __init__(self):
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.target_x = random.randint(0, WIDTH)
+        self.target_y = random.randint(0, HEIGHT)
+        self.progress = 0
+        self.speed = random.uniform(0.02, 0.05)
+        self.particles = []
+        for _ in range(5):
+            self.particles.append(random.uniform(0, 1))
+        self.color = random.choice([(100, 255, 200), (100, 200, 255), (255, 200, 100)])
+    
+    def update(self, speed_mult=1.0):
+        self.progress += self.speed * speed_mult
+        if self.progress > 1:
+            self.progress = 0
+            self.x = random.randint(0, WIDTH)
+            self.y = random.randint(0, HEIGHT)
+            self.target_x = random.randint(0, WIDTH)
+            self.target_y = random.randint(0, HEIGHT)
+    
+    def draw(self, surf):
+        # 连线
+        alpha = 100
+        pygame.draw.line(surf, (*self.color, alpha), (self.x, self.y), (self.target_x, self.target_y), 1)
+        # 移动的粒子
+        for p in self.particles:
+            t = (self.progress + p * 0.2) % 1
+            px = self.x + (self.target_x - self.x) * t
+            py = self.y + (self.target_y - self.y) * t
+            alpha = int(200 * (1 - abs(t - 0.5) * 2))
+            glow_surf = pygame.Surface((8, 8), pygame.SRCALPHA)
+            pygame.draw.circle(glow_surf, (*self.color, alpha), (4, 4), 4)
+            surf.blit(glow_surf, (px - 4, py - 4))
+
+class EnergyNode:
+    """能量节点"""
+    def __init__(self):
+        self.x = random.randint(50, WIDTH - 50)
+        self.y = random.randint(50, HEIGHT - 50)
+        self.radius = random.randint(15, 25)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.08, 0.15)
+        self.color = random.choice([(200, 100, 255), (150, 50, 255), (255, 100, 200)])
+        self.rotation = 0
+        self.rot_speed = random.uniform(0.5, 1.5)
+        self.last_radius = None
+        self.cached_rings = None
+    
+    def update(self, speed_mult=1.0):
+        self.pulse += self.pulse_speed * speed_mult
+        self.rotation += self.rot_speed * speed_mult
+    
+    def draw(self, surf):
+        # 核心光球
+        scale = 0.8 + 0.2 * math.sin(self.pulse)
+        r = int(self.radius * scale)
+        alpha = int(200 + 55 * math.sin(self.pulse * 2))
+        
+        # 只在半径变化时重建能量环
+        if self.last_radius != r:
+            self.last_radius = r
+            max_r = r + 16
+            self.cached_rings = pygame.Surface((max_r * 2 + 10, max_r * 2 + 10), pygame.SRCALPHA)
+            for i in range(3):
+                ring_r = r + i * 8
+                pygame.draw.circle(self.cached_rings, (*self.color, alpha // (i + 2)), (max_r + 5, max_r + 5), ring_r, 2)
+        
+        if self.cached_rings:
+            max_r = r + 16
+            surf.blit(self.cached_rings, (self.x - max_r - 5, self.y - max_r - 5))
+        
+        # 核心
+        pygame.draw.circle(surf, self.color, (int(self.x), int(self.y)), r)
+        
+        # 旋转的能量线（减少到四条）
+        for angle in range(0, 360, 90):
+            rad = math.radians(angle + self.rotation)
+            x1 = self.x + r * math.cos(rad)
+            y1 = self.y + r * math.sin(rad)
+            x2 = self.x + (r + 15) * math.cos(rad)
+            y2 = self.y + (r + 15) * math.sin(rad)
+            pygame.draw.line(surf, (*self.color, 180), (x1, y1), (x2, y2), 2)
+
+class LightningArc:
+    """闪电弧"""
+    def __init__(self):
+        self.start_x = random.randint(0, WIDTH)
+        self.start_y = random.randint(0, HEIGHT)
+        self.end_x = random.randint(0, WIDTH)
+        self.end_y = random.randint(0, HEIGHT)
+        self.segments = []
+        self.generate_arc()
+        self.life = random.randint(10, 30)
+        self.max_life = self.life
+        self.color = random.choice([(150, 200, 255), (200, 150, 255), (255, 200, 150)])
+    
+    def generate_arc(self):
+        self.segments = []
+        steps = random.randint(8, 15)
+        for i in range(steps + 1):
+            t = i / steps
+            x = self.start_x + (self.end_x - self.start_x) * t
+            y = self.start_y + (self.end_y - self.start_y) * t
+            # 添加随机偏移
+            offset_x = random.uniform(-20, 20)
+            offset_y = random.uniform(-20, 20)
+            self.segments.append((x + offset_x, y + offset_y))
+    
+    def update(self, speed_mult=1.0):
+        self.life -= speed_mult
+        if self.life <= 0:
+            self.start_x = random.randint(0, WIDTH)
+            self.start_y = random.randint(0, HEIGHT)
+            self.end_x = random.randint(0, WIDTH)
+            self.end_y = random.randint(0, HEIGHT)
+            self.generate_arc()
+            self.life = random.randint(10, 30)
+            self.max_life = self.life
+    
+    def draw(self, surf):
+        if len(self.segments) > 1:
+            alpha = int(255 * (self.life / self.max_life))
+            # 先绘制辉光，再绘制主闪电（合并为一次循环）
+            for i in range(len(self.segments) - 1):
+                # 辉光
+                pygame.draw.line(surf, (*self.color, min(100, alpha // 2)), 
+                               self.segments[i], self.segments[i + 1], 6)
+                # 主闪电
+                pygame.draw.line(surf, (*self.color, min(255, alpha)), 
+                               self.segments[i], self.segments[i + 1], 3)
+
+class PowerCore:
+    """能量核心"""
+    def __init__(self):
+        self.x = random.randint(100, WIDTH - 100)
+        self.y = random.randint(100, HEIGHT - 100)
+        self.size = random.randint(30, 50)
+        self.rotation = random.uniform(0, 360)
+        self.rot_speed = random.uniform(1, 3)
+        self.pulse = random.uniform(0, 6.28)
+        self.pulse_speed = random.uniform(0.05, 0.1)
+        self.color = (200, 50, 255)
+        self.cached_rays = None
+        self.last_size = None
+    
+    def update(self, speed_mult=1.0):
+        self.rotation += self.rot_speed * speed_mult
+        self.pulse += self.pulse_speed * speed_mult
+    
+    def draw(self, surf):
+        scale = 0.85 + 0.15 * math.sin(self.pulse)
+        size = int(self.size * scale)
+        
+        # 六边形核心
+        points = []
+        for i in range(6):
+            angle = math.radians(60 * i + self.rotation)
+            px = self.x + size * math.cos(angle)
+            py = self.y + size * math.sin(angle)
+            points.append((px, py))
+        
+        # 内部填充
+        pygame.draw.polygon(surf, (100, 20, 150), points)
+        # 边框
+        pygame.draw.polygon(surf, self.color, points, 3)
+        
+        # 能量射线（使用局部Surface并缓存）
+        if self.last_size != size:
+            self.last_size = size
+            ray_size = (size + 25) * 2
+            self.cached_rays = pygame.Surface((ray_size, ray_size), pygame.SRCALPHA)
+            center = ray_size // 2
+            for i in range(6):
+                angle = math.radians(60 * i)
+                x1 = center + size * math.cos(angle)
+                y1 = center + size * math.sin(angle)
+                x2 = center + (size + 20) * math.cos(angle)
+                y2 = center + (size + 20) * math.sin(angle)
+                alpha = int(150 + 105 * math.sin(self.pulse + i))
+                pygame.draw.line(self.cached_rays, (*self.color, alpha), (x1, y1), (x2, y2), 2)
+        
+        if self.cached_rays:
+            ray_size = (size + 25) * 2
+            # 旋转射线并绘制
+            rotated = pygame.transform.rotate(self.cached_rays, -self.rotation)
+            rect = rotated.get_rect(center=(self.x, self.y))
+            surf.blit(rotated, rect)
+
 class SkyShard:
     """天空碎片"""
     def __init__(self):
@@ -2066,13 +2987,31 @@ class BackgroundManager:
             "gradient": [(25, 10, 35), (40, 20, 50), (30, 15, 40)],
             "bgm": "calm"
         },
-        "spacetime_rift": {
-            "name": "时空裂隙",
-            "base_color": [20, 0, 30],
-            "elements": {"distortions": 8, "stars": 250, "nebulae": 4},
+        "candle_library": {
+            "name": "烛火图书馆",
+            "base_color": [15, 10, 5],
+            "elements": {"candles": 15, "book_pages": 8, "quills": 5},
             "grid_color": None,
-            "element_type": "rift",
-            "gradient": [(10, 0, 20), (100, 0, 150), (200, 50, 255)],
+            "element_type": "library",
+            "gradient": [(30, 20, 10), (50, 35, 20), (40, 25, 15)],
+            "bgm": "calm"
+        },
+        "orbital_station": {
+            "name": "轨道空间站",
+            "base_color": [5, 10, 20],
+            "elements": {"satellites": 6, "signal_waves": 12, "data_streams": 20, "stars": 150},
+            "grid_color": (50, 100, 150),
+            "element_type": "space_tech",
+            "gradient": [(10, 20, 40), (30, 60, 100), (20, 40, 70)],
+            "bgm": "epic"
+        },
+        "energy_matrix": {
+            "name": "能量矩阵",
+            "base_color": [10, 0, 20],
+            "elements": {"energy_nodes": 12, "lightning_arcs": 8, "power_cores": 6},
+            "grid_color": (150, 50, 255),
+            "element_type": "energy",
+            "gradient": [(20, 0, 40), (80, 20, 120), (150, 50, 200)],
             "bgm": "epic"
         },
         "quantum_foam": {
@@ -2182,6 +3121,60 @@ class BackgroundManager:
             "element_type": "rainbow",
             "gradient": [(40, 40, 40), (60, 30, 60), (30, 60, 60)],
             "bgm": "mystery"
+        },
+        "heaven_bridge": {
+            "name": "天际之桥",
+            "base_color": [180, 220, 255],
+            "elements": {"feathers": 50, "clouds_soft": 15, "birds": 12},
+            "grid_color": None,
+            "element_type": "heaven",
+            "gradient": [(200, 230, 255), (220, 240, 255), (180, 220, 255)],
+            "bgm": "calm"
+        },
+        "jade_pond": {
+            "name": "碧玉池塘",
+            "base_color": [100, 180, 160],
+            "elements": {"ripples": 20, "koi": 8, "pollen": 60},
+            "grid_color": None,
+            "element_type": "pond",
+            "gradient": [(120, 200, 180), (140, 220, 200), (100, 180, 160)],
+            "bgm": "calm"
+        },
+        "holy_light": {
+            "name": "圣光殿堂",
+            "base_color": [250, 245, 230],
+            "elements": {"motes": 100, "feathers": 30, "holy_rays": 8, "angels": 6},
+            "grid_color": None,
+            "element_type": "holy",
+            "gradient": [(255, 250, 240), (255, 255, 245), (245, 240, 220)],
+            "bgm": "mystery"
+        },
+        "pixel_world": {
+            "name": "像素世界",
+            "base_color": [15, 15, 30],
+            "elements": {"pixels": 40, "glitches": 15, "digital_rain": 20},
+            "grid_color": (50, 50, 100),
+            "element_type": "pixel",
+            "gradient": [(20, 20, 40), (30, 30, 50), (15, 15, 30)],
+            "bgm": "cyber"
+        },
+        "void_portal": {
+            "name": "虚空之门",
+            "base_color": [5, 5, 15],
+            "elements": {"portals": 6, "wormhole_particles": 80, "distortions": 12},
+            "grid_color": None,
+            "element_type": "void",
+            "gradient": [(10, 10, 25), (15, 10, 30), (5, 5, 15)],
+            "bgm": "mystery"
+        },
+        "paper_dream": {
+            "name": "纸梦空间",
+            "base_color": [245, 240, 235],
+            "elements": {"origami": 12, "paper_waves": 4, "fold_lines": 8},
+            "grid_color": None,
+            "element_type": "paper_dream",
+            "gradient": [(255, 250, 245), (250, 245, 240), (245, 240, 235)],
+            "bgm": "calm"
         }
     }
     
@@ -2454,6 +3447,120 @@ class BackgroundManager:
         if "rainbow_particles" in elements:
             for _ in range(elements["rainbow_particles"]):
                 self.special_elements.append(Particle())
+        
+        # 天际之桥元素
+        if "feathers" in elements:
+            for _ in range(elements["feathers"]):
+                self.special_elements.append(Feather())
+        
+        if "clouds_soft" in elements:
+            for _ in range(elements["clouds_soft"]):
+                self.special_elements.append(Cloud2())
+        
+        if "birds" in elements:
+            for _ in range(elements["birds"]):
+                self.special_elements.append(Bird())
+        
+        # 碧玉池塘元素
+        if "ripples" in elements:
+            for _ in range(elements["ripples"]):
+                self.special_elements.append(Ripple())
+        
+        if "koi" in elements:
+            for _ in range(elements["koi"]):
+                self.special_elements.append(Koi())
+        
+        if "pollen" in elements:
+            for _ in range(elements["pollen"]):
+                self.special_elements.append(Pollen())
+        
+        # 圣光殿堂元素
+        if "motes" in elements:
+            for _ in range(elements["motes"]):
+                self.special_elements.append(Mote())
+        
+        if "holy_rays" in elements:
+            for _ in range(elements["holy_rays"]):
+                self.special_elements.append(HolyRay())
+        
+        if "angels" in elements:
+            for _ in range(elements["angels"]):
+                self.special_elements.append(Angel())
+        
+        # 像素世界元素
+        if "pixels" in elements:
+            for _ in range(elements["pixels"]):
+                self.special_elements.append(Pixel())
+        
+        if "glitches" in elements:
+            for _ in range(elements["glitches"]):
+                self.special_elements.append(Glitch())
+        
+        if "digital_rain" in elements:
+            for _ in range(elements["digital_rain"]):
+                self.special_elements.append(DigitalRain())
+        
+        # 虚空之门元素
+        if "portals" in elements:
+            for _ in range(elements["portals"]):
+                self.special_elements.append(Portal())
+        
+        if "wormhole_particles" in elements:
+            for _ in range(elements["wormhole_particles"]):
+                self.special_elements.append(Wormhole())
+        
+        if "distortions" in elements:
+            for _ in range(elements["distortions"]):
+                self.special_elements.append(Distortion())
+        
+        # 纸梦空间元素
+        if "origami" in elements:
+            for _ in range(elements["origami"]):
+                self.special_elements.append(Origami())
+        
+        if "paper_waves" in elements:
+            for _ in range(elements["paper_waves"]):
+                self.special_elements.append(PaperWave())
+        
+        if "fold_lines" in elements:
+            for _ in range(elements["fold_lines"]):
+                self.special_elements.append(FoldLine())
+        
+        if "candles" in elements:
+            for _ in range(elements["candles"]):
+                self.special_elements.append(Candle())
+        
+        if "book_pages" in elements:
+            for _ in range(elements["book_pages"]):
+                self.special_elements.append(BookPage())
+        
+        if "quills" in elements:
+            for _ in range(elements["quills"]):
+                self.special_elements.append(Quill())
+        
+        if "satellites" in elements:
+            for _ in range(elements["satellites"]):
+                self.special_elements.append(Satellite())
+        
+        if "signal_waves" in elements:
+            for _ in range(elements["signal_waves"]):
+                self.special_elements.append(SignalWave())
+        
+        if "data_streams" in elements:
+            for _ in range(elements["data_streams"]):
+                self.special_elements.append(DataStream())
+        
+        if "energy_nodes" in elements:
+            for _ in range(elements["energy_nodes"]):
+                self.special_elements.append(EnergyNode())
+        
+        if "lightning_arcs" in elements:
+            for _ in range(elements["lightning_arcs"]):
+                self.special_elements.append(LightningArc())
+        
+        if "power_cores" in elements:
+            for _ in range(elements["power_cores"]):
+                self.special_elements.append(PowerCore())
         
         # 设置基础颜色
         self.current_bg = config["base_color"].copy()
