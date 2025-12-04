@@ -219,17 +219,6 @@ class Wingman:
         if not self.active:
             return
         
-        # 【新功能】支持僚机涂装系统
-        if hasattr(self, 'paint_theme_id') and self.paint_theme_id != "default":
-            try:
-                from wingman_themes import WINGMAN_DRAW_FUNCTIONS
-                if self.paint_theme_id in WINGMAN_DRAW_FUNCTIONS:
-                    draw_func = WINGMAN_DRAW_FUNCTIONS[self.paint_theme_id]
-                    draw_func(screen, int(self.x), int(self.y))
-                    return
-            except (ImportError, KeyError):
-                pass
-        
         self._draw_wingman_plane(screen)
     
     def _draw_wingman_plane(self, screen):
