@@ -6168,48 +6168,189 @@ def draw_top_hud():
             glow_rect = pygame.Rect(slot_x - 3, slot_y - 3, slot_w + 6, slot_h + 6)
             draw_cyber_rect(screen, glow_rect, CYBER_LIME, alpha=100, border_width=1, fill=False)
     
-    # 大招名字（清晰显示）- 增加间距
+    # ===== 大招能量条系统（连续进度条设计）=====
+    ult_bar_width = 140  # 能量条宽度
+    ult_bar_x = bottom_right_x - ult_bar_width  # 右对齐
+    
+    # --- 主大招 [F] ---
     ult_name = player.plane_data.get('ult_name', 'ULT')
-    draw_text(screen, ult_name, 16, bottom_right_x, slot_y + 68, MAGENTA, align='right', glow=True)
+    ult1_y = slot_y + 40  # 上移30像素
     
-    # 储能条（3格，放大，放在大招名字下方，作为视觉辅助）- 增加间距
-    storage_y = slot_y + 92
-    storage_max = 3
-    storage_current = int(player.ult_charge / player.max_ult_charge * storage_max) if player.max_ult_charge > 0 else 0
-    
-    # 计算当前储存槽内的填充比例（用于部分填充最后一个槽）
+    # 主大招标签和百分比
     ult_ratio = player.ult_charge / player.max_ult_charge if player.max_ult_charge > 0 else 0
-    partial_fill = (ult_ratio * storage_max) % 1.0  # 小数部分
+    ult_pct = int(ult_ratio * 100)
+    ult_ready = ult_ratio >= 1.0 and player.ult_cooldown <= 0
     
-    for j in range(storage_max):
-        s_x = bottom_right_x - (storage_max - j) * 32 + 4
-        s_rect = pygame.Rect(s_x, storage_y, 28, 22)
+    # 标签颜色：满能量时高亮
+    label_color = CYBER_CYAN_BRIGHT if ult_ready else MAGENTA
+    draw_text(screen, f"[F] {ult_name}", 12, ult_bar_x, ult1_y, label_color, align='left', glow=ult_ready)
+    
+    # 主大招能量条（高度14）
+    bar1_y = ult1_y + 14
+    bar1_h = 14
+    bar1_rect = pygame.Rect(ult_bar_x, bar1_y, ult_bar_width, bar1_h)
+    
+    # 背景
+    pygame.draw.rect(screen, (40, 20, 50), bar1_rect)
+    pygame.draw.rect(screen, (80, 40, 90), bar1_rect, 1)
+    
+    # 填充
+    if ult_ratio > 0:
+        fill_w = int(ult_bar_width * min(ult_ratio, 1.0))
+        fill_rect = pygame.Rect(ult_bar_x, bar1_y, fill_w, bar1_h)
         
-        if j < storage_current:
-            # 完全填充的槽
-            draw_cyber_rect(screen, s_rect, MAGENTA, alpha=200, border_width=2, fill=True)
-            # 闪烁效果
-            pulse = abs(math.sin(pygame.time.get_ticks() / 500))
-            if pulse > 0.5:
-                pygame.draw.rect(screen, CYBER_CYAN_BRIGHT, (s_x + 2, storage_y + 2, 24, 18), 1)
-        elif j == storage_current:
-            # 部分填充的槽 - 显示充能进度
-            draw_cyber_rect(screen, s_rect, (60, 30, 60), alpha=200, border_width=2, fill=True)
-            if partial_fill > 0.1:  # 只在有明显填充时显示
-                fill_w = int(24 * partial_fill)
-                pygame.draw.rect(screen, MAGENTA, (s_x + 2, storage_y + 2, fill_w, 18))
-                # 进度闪烁
-                pulse = abs(math.sin(pygame.time.get_ticks() / 300))
-                if pulse > 0.4:
-                    pygame.draw.rect(screen, CYBER_CYAN_BRIGHT, (s_x + 2, storage_y + 2, fill_w, 18), 1)
+        if ult_ready:
+            # 满能量：渐变+闪烁效果
+            pulse = abs(math.sin(pygame.time.get_ticks() / 200))
+            glow_color = (200 + int(55 * pulse), 50 + int(50 * pulse), 200 + int(55 * pulse))
+            pygame.draw.rect(screen, glow_color, fill_rect)
+            # 发光边框
+            pygame.draw.rect(screen, CYBER_CYAN_BRIGHT, fill_rect, 2)
         else:
-            # 空槽
-            draw_cyber_rect(screen, s_rect, (40, 20, 40), alpha=150, border_width=1, fill=True)
+            # 充能中：紫红色渐变
+            pygame.draw.rect(screen, MAGENTA, fill_rect)
+            # 充能动画条纹
+            stripe_offset = (pygame.time.get_ticks() // 50) % 10
+            for sx in range(ult_bar_x + stripe_offset, ult_bar_x + fill_w, 10):
+                if sx < ult_bar_x + fill_w - 2:
+                    pygame.draw.line(screen, (255, 150, 255), (sx, bar1_y + 2), (sx + 4, bar1_y + bar1_h - 2), 1)
     
-    # 冷却时显示CD标签 - 增加间距
+    # 百分比文字
+    pct_color = CYBER_CYAN_BRIGHT if ult_ready else WHITE
+    draw_text(screen, f"{ult_pct}%", 12, ult_bar_x + ult_bar_width + 5, bar1_y + 2, pct_color, align='left')
+    
+    # 冷却显示
     if player.ult_cooldown > 0:
         cd_sec = player.ult_cooldown / 60.0
-        draw_text(screen, f"CD {cd_sec:.1f}s", 11, bottom_right_x - 5, storage_y + 36, CYBER_RED_ALERT, align='right')
+        # 冷却遮罩
+        cd_overlay = pygame.Surface((ult_bar_width, bar1_h), pygame.SRCALPHA)
+        cd_overlay.fill((0, 0, 0, 150))
+        screen.blit(cd_overlay, (ult_bar_x, bar1_y))
+        draw_text(screen, f"CD {cd_sec:.1f}s", 11, ult_bar_x + ult_bar_width // 2, bar1_y + 2, CYBER_RED_ALERT, align='center')
+    
+    # --- 副大招 [G] ---
+    ult2_names = {
+        "striker": "欧米伽激光", "phantom": "分身乱舞", "titan": "陨石轰炸",
+        "thunderbird": "连锁闪电", "viper": "酸雨倾盆", "specter": "亡魂哀嚎",
+        "aurora": "极光冲击波", "crimson": "刀刃风暴", "stalker": "引力陷阱",
+        "gaia": "岩石护盾", "weaver": "蛛网陷阱", "solar": "太阳耀斑",
+        "arbiter": "数据腐蚀", "eclipse": "暗物质爆发", "prism": "彩虹碎裂",
+        "necro": "生命汲取", "void": "虚空撕裂"
+    }
+    ult2_name = ult2_names.get(player.plane_id, '次级技能')
+    ult2_y = bar1_y + bar1_h + 3
+    
+    # 副大招标签和百分比
+    ult2_ratio = player.ult2_charge / player.max_ult2_charge if player.max_ult2_charge > 0 else 0
+    ult2_pct = int(ult2_ratio * 100)
+    ult2_ready = ult2_ratio >= 1.0 and player.ult2_cooldown <= 0
+    
+    # 标签颜色
+    label2_color = CYBER_LIME if ult2_ready else CYAN
+    draw_text(screen, f"[G] {ult2_name}", 11, ult_bar_x, ult2_y, label2_color, align='left', glow=ult2_ready)
+    
+    # 副大招能量条（高度12）
+    bar2_y = ult2_y + 13
+    bar2_h = 12
+    bar2_rect = pygame.Rect(ult_bar_x, bar2_y, ult_bar_width, bar2_h)
+    
+    # 背景
+    pygame.draw.rect(screen, (20, 40, 50), bar2_rect)
+    pygame.draw.rect(screen, (40, 80, 100), bar2_rect, 1)
+    
+    # 填充
+    if ult2_ratio > 0:
+        fill_w = int(ult_bar_width * min(ult2_ratio, 1.0))
+        fill_rect = pygame.Rect(ult_bar_x, bar2_y, fill_w, bar2_h)
+        
+        if ult2_ready:
+            # 满能量：闪烁
+            pulse = abs(math.sin(pygame.time.get_ticks() / 250))
+            glow_color = (50 + int(50 * pulse), 200 + int(55 * pulse), 200 + int(55 * pulse))
+            pygame.draw.rect(screen, glow_color, fill_rect)
+            pygame.draw.rect(screen, CYBER_LIME, fill_rect, 1)
+        else:
+            # 充能中：青色
+            pygame.draw.rect(screen, CYAN, fill_rect)
+            # 充能动画
+            stripe_offset = (pygame.time.get_ticks() // 60) % 8
+            for sx in range(ult_bar_x + stripe_offset, ult_bar_x + fill_w, 8):
+                if sx < ult_bar_x + fill_w - 2:
+                    pygame.draw.line(screen, (150, 255, 255), (sx, bar2_y + 1), (sx + 3, bar2_y + bar2_h - 1), 1)
+    
+    # 百分比文字
+    pct2_color = CYBER_LIME if ult2_ready else WHITE
+    draw_text(screen, f"{ult2_pct}%", 10, ult_bar_x + ult_bar_width + 5, bar2_y + 1, pct2_color, align='left')
+    
+    # 冷却显示
+    if player.ult2_cooldown > 0:
+        cd_sec = player.ult2_cooldown / 60.0
+        cd_overlay = pygame.Surface((ult_bar_width, bar2_h), pygame.SRCALPHA)
+        cd_overlay.fill((0, 0, 0, 150))
+        screen.blit(cd_overlay, (ult_bar_x, bar2_y))
+        draw_text(screen, f"CD {cd_sec:.1f}s", 10, ult_bar_x + ult_bar_width // 2, bar2_y + 1, CYBER_RED_ALERT, align='center')
+    
+    # --- 第三大招 [C] ---
+    ult3_names = {
+        "striker": "等离子漩涡", "phantom": "镜像分裂", "titan": "地震冲击",
+        "thunderbird": "球状闪电", "viper": "腐蚀云雾", "specter": "灵魂风暴",
+        "aurora": "北极光", "crimson": "刀刃旋风", "stalker": "重力炸弹",
+        "gaia": "水晶屏障", "weaver": "蜘蛛群袭", "solar": "太阳光束",
+        "arbiter": "病毒感染", "eclipse": "虚空坍缩", "prism": "光之棱镜",
+        "necro": "灵魂收割", "void": "等离子漩涡"
+    }
+    ult3_name = ult3_names.get(player.plane_id, '终极技能')
+    ult3_y = bar2_y + bar2_h + 3
+    
+    # 第三大招标签和百分比
+    ult3_ratio = player.ult3_charge / player.max_ult3_charge if player.max_ult3_charge > 0 else 0
+    ult3_pct = int(ult3_ratio * 100)
+    ult3_ready = ult3_ratio >= 1.0 and player.ult3_cooldown <= 0
+    
+    # 标签颜色（橙黄色主题）
+    label3_color = (255, 200, 50) if ult3_ready else (255, 165, 0)
+    draw_text(screen, f"[C] {ult3_name}", 11, ult_bar_x, ult3_y, label3_color, align='left', glow=ult3_ready)
+    
+    # 第三大招能量条（高度12）
+    bar3_y = ult3_y + 13
+    bar3_h = 12
+    bar3_rect = pygame.Rect(ult_bar_x, bar3_y, ult_bar_width, bar3_h)
+    
+    # 背景
+    pygame.draw.rect(screen, (50, 40, 20), bar3_rect)
+    pygame.draw.rect(screen, (100, 80, 40), bar3_rect, 1)
+    
+    # 填充
+    if ult3_ratio > 0:
+        fill_w = int(ult_bar_width * min(ult3_ratio, 1.0))
+        fill_rect = pygame.Rect(ult_bar_x, bar3_y, fill_w, bar3_h)
+        
+        if ult3_ready:
+            # 满能量：闪烁
+            pulse = abs(math.sin(pygame.time.get_ticks() / 200))
+            glow_color = (255, 180 + int(75 * pulse), 50 + int(50 * pulse))
+            pygame.draw.rect(screen, glow_color, fill_rect)
+            pygame.draw.rect(screen, (255, 220, 100), fill_rect, 1)
+        else:
+            # 充能中：橙色
+            pygame.draw.rect(screen, (255, 165, 0), fill_rect)
+            # 充能动画
+            stripe_offset = (pygame.time.get_ticks() // 70) % 8
+            for sx in range(ult_bar_x + stripe_offset, ult_bar_x + fill_w, 8):
+                if sx < ult_bar_x + fill_w - 2:
+                    pygame.draw.line(screen, (255, 220, 150), (sx, bar3_y + 1), (sx + 3, bar3_y + bar3_h - 1), 1)
+    
+    # 百分比文字
+    pct3_color = (255, 220, 100) if ult3_ready else WHITE
+    draw_text(screen, f"{ult3_pct}%", 10, ult_bar_x + ult_bar_width + 5, bar3_y + 1, pct3_color, align='left')
+    
+    # 冷却显示
+    if player.ult3_cooldown > 0:
+        cd_sec = player.ult3_cooldown / 60.0
+        cd_overlay = pygame.Surface((ult_bar_width, bar3_h), pygame.SRCALPHA)
+        cd_overlay.fill((0, 0, 0, 150))
+        screen.blit(cd_overlay, (ult_bar_x, bar3_y))
+        draw_text(screen, f"CD {cd_sec:.1f}s", 10, ult_bar_x + ult_bar_width // 2, bar3_y + 1, CYBER_RED_ALERT, align='center')
     
     # ===== 底部：厚的经验条，左侧显示等级 =====
     exp_bar_y = HEIGHT - 14
@@ -7148,6 +7289,12 @@ while True:
                             is_paused = True; pause_menu_selected = 0; sound_mgr.play("select")
                         elif event.key == pygame.K_f:
                             player.use_ultimate()
+                        elif event.key == pygame.K_g:
+                            # G键释放第二大招
+                            player.use_secondary_ultimate()
+                        elif event.key == pygame.K_c:
+                            # C键释放第三大招
+                            player.use_tertiary_ultimate()
                         elif event.key == pygame.K_SPACE:
                             if player.skill_cd <= 0:
                                 player.skill_cd = player.max_skill_cd
@@ -7950,6 +8097,10 @@ while True:
                             # 【新】战斗充能：每次伤害敌人时充能大招
                             ult_charge_gain = dmg / 10  # 伤害值的10%转化为大招能量
                             player.ult_charge = min(player.max_ult_charge, player.ult_charge + ult_charge_gain)
+                            # 【新】同时充能第二大招（G键）
+                            player.ult2_charge = min(player.max_ult2_charge, player.ult2_charge + ult_charge_gain * 0.8)
+                            # 【新】同时充能第三大招（C键）
+                            player.ult3_charge = min(player.max_ult3_charge, player.ult3_charge + ult_charge_gain * 0.6)
                             if b.piercing <= 0: b.kill()
                             else: b.piercing -= 1
                             if m.hp <= 0:

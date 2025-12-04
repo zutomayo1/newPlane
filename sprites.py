@@ -729,6 +729,3216 @@ class DeathScythe(pygame.sprite.Sprite):
                     else:
                         m.hp -= 80
 
+
+# ==============================================================================
+#   新大招特效类（重写版）
+# ==============================================================================
+
+class ThunderStorm(pygame.sprite.Sprite):
+    """雷霆战鹰·雷神降世 - 全屏雷暴风暴，闪电从天而降"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 90
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.strike_timer = 0
+        self.lightning_bolts = []  # 存储闪电路径
+        sound_mgr.play("nuke")
+        
+    def _generate_lightning_path(self, start, end):
+        """生成锯齿状闪电路径"""
+        points = [start]
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+        segments = 8
+        for i in range(1, segments):
+            t = i / segments
+            x = start[0] + dx * t + random.randint(-40, 40)
+            y = start[1] + dy * t + random.randint(-20, 20)
+            points.append((x, y))
+        points.append(end)
+        return points
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        self.strike_timer += 1
+        
+        # 每6帧生成新闪电
+        if self.strike_timer % 6 == 0:
+            # 随机选择目标（敌人或随机位置）
+            targets = list(mobs)
+            if targets:
+                target = random.choice(targets)
+                target_pos = target.rect.center
+            else:
+                target_pos = (random.randint(50, WIDTH-50), random.randint(100, HEIGHT-100))
+            
+            # 从天空降下闪电
+            start_x = target_pos[0] + random.randint(-100, 100)
+            start_pos = (start_x, -20)
+            path = self._generate_lightning_path(start_pos, target_pos)
+            self.lightning_bolts.append({'path': path, 'life': 15, 'width': 6})
+            
+            # 对目标位置周围敌人造成伤害
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - target_pos[0], m.rect.centery - target_pos[1])
+                if dist < 80:
+                    if m not in self.hit_enemies:
+                        m.hp -= 280
+                        self.hit_enemies.add(m)
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "⚡THUNDER!", YELLOW)
+                    else:
+                        m.hp -= 60
+                    for _ in range(3):
+                        Particle(m.rect.center, YELLOW)
+        
+        # 绘制所有闪电
+        for bolt in self.lightning_bolts[:]:
+            bolt['life'] -= 1
+            if bolt['life'] <= 0:
+                self.lightning_bolts.remove(bolt)
+                continue
+            
+            alpha = int(255 * (bolt['life'] / 15))
+            width = max(1, int(bolt['width'] * (bolt['life'] / 15)))
+            
+            # 主闪电 - 黄白色
+            for i in range(len(bolt['path']) - 1):
+                p1, p2 = bolt['path'][i], bolt['path'][i+1]
+                pygame.draw.line(self.image, (255, 255, 200, alpha), p1, p2, width)
+                pygame.draw.line(self.image, (255, 255, 0, alpha), p1, p2, max(1, width-2))
+            
+            # 分叉闪电
+            if len(bolt['path']) > 4:
+                branch_start = bolt['path'][3]
+                branch_end = (branch_start[0] + random.randint(-60, 60), branch_start[1] + random.randint(20, 80))
+                pygame.draw.line(self.image, (255, 255, 100, alpha//2), branch_start, branch_end, max(1, width-2))
+        
+        # 屏幕闪烁效果
+        if self.strike_timer % 6 < 2:
+            flash = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            flash.fill((255, 255, 200, 30))
+            self.image.blit(flash, (0, 0))
+
+
+class ToxicMiasma(pygame.sprite.Sprite):
+    """剧毒蝰蛇·腐蚀毒雾 - 全屏毒气弥漫，持续腐蚀"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 150
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.particles = []
+        self.hit_enemies = {}
+        sound_mgr.play("nuke")
+        
+        # 生成初始毒雾粒子
+        for _ in range(50):
+            self.particles.append({
+                'x': random.randint(0, WIDTH),
+                'y': random.randint(0, HEIGHT),
+                'size': random.randint(30, 80),
+                'vx': random.uniform(-1, 1),
+                'vy': random.uniform(-0.5, 0.5),
+                'alpha': random.randint(50, 100)
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        # 更新和绘制毒雾粒子
+        for p in self.particles:
+            p['x'] += p['vx']
+            p['y'] += p['vy']
+            # 边界循环
+            if p['x'] < -50: p['x'] = WIDTH + 50
+            if p['x'] > WIDTH + 50: p['x'] = -50
+            if p['y'] < -50: p['y'] = HEIGHT + 50
+            if p['y'] > HEIGHT + 50: p['y'] = -50
+            
+            # 脉动效果
+            pulse = 1 + 0.2 * math.sin(self.life * 0.1 + p['x'] * 0.01)
+            size = int(p['size'] * pulse)
+            alpha = int(p['alpha'] * (self.life / 150))
+            
+            # 绘制毒雾圆
+            surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            # 多层渐变
+            for r in range(size, 0, -5):
+                a = int(alpha * (r / size))
+                pygame.draw.circle(surf, (50, 200, 50, a), (size, size), r)
+            self.image.blit(surf, (int(p['x'] - size), int(p['y'] - size)))
+        
+        # 毒液滴落效果
+        if self.life % 10 == 0:
+            for _ in range(3):
+                x = random.randint(50, WIDTH-50)
+                Particle((x, random.randint(50, 150)), LIME, mode='spark')
+        
+        # 持续毒伤
+        if self.life % 5 == 0:
+            for m in list(mobs):
+                if m not in self.hit_enemies:
+                    self.hit_enemies[m] = 0
+                    m.hp -= 150
+                    FloatingText(m.rect.centerx, m.rect.top - 30, "☠TOXIC!", LIME)
+                else:
+                    m.hp -= 25
+                    self.hit_enemies[m] += 1
+                m.poison_timer = 60  # 标记中毒
+                if random.random() < 0.3:
+                    Particle(m.rect.center, LIME)
+
+
+class BloodMoonSlash(pygame.sprite.Sprite):
+    """绯红之刃·鲜血新月 - 360度旋转血刃斩击"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 60
+        self.angle = 0
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.slashes = []  # 存储刀痕
+        sound_mgr.play("laser")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        self.angle += 25
+        
+        cx, cy = self.owner.rect.center
+        
+        # 绘制旋转的6把血刃
+        for i in range(6):
+            blade_angle = self.angle + i * 60
+            rad = math.radians(blade_angle)
+            
+            # 刀刃轨迹
+            blade_length = 300
+            tip_x = cx + math.cos(rad) * blade_length
+            tip_y = cy + math.sin(rad) * blade_length
+            
+            # 刀身曲线（贝塞尔曲线效果）
+            points = []
+            for t in range(20):
+                prog = t / 19
+                r = blade_length * prog
+                curve = math.sin(prog * math.pi) * 30
+                px = cx + math.cos(rad) * r + math.cos(rad + math.pi/2) * curve
+                py = cy + math.sin(rad) * r + math.sin(rad + math.pi/2) * curve
+                points.append((px, py))
+            
+            if len(points) > 2:
+                # 血红刀刃
+                pygame.draw.lines(self.image, CRIMSON, False, points, 6)
+                pygame.draw.lines(self.image, (255, 100, 100), False, points, 2)
+            
+            # 刀尖光效
+            pygame.draw.circle(self.image, (255, 200, 200), (int(tip_x), int(tip_y)), 8)
+            
+            # 伤害检测
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                if dist < blade_length:
+                    angle_to_enemy = math.degrees(math.atan2(m.rect.centery - cy, m.rect.centerx - cx))
+                    angle_diff = abs((angle_to_enemy - blade_angle + 180) % 360 - 180)
+                    if angle_diff < 15:
+                        if m not in self.hit_enemies:
+                            m.hp -= 320
+                            self.hit_enemies.add(m)
+                            FloatingText(m.rect.centerx, m.rect.top - 30, "🌙CRESCENT!", CRIMSON)
+                            # 添加刀痕
+                            self.slashes.append({'pos': m.rect.center, 'life': 20, 'angle': blade_angle})
+                        else:
+                            m.hp -= 50
+                        for _ in range(2):
+                            Particle(m.rect.center, CRIMSON)
+        
+        # 绘制刀痕
+        for slash in self.slashes[:]:
+            slash['life'] -= 1
+            if slash['life'] <= 0:
+                self.slashes.remove(slash)
+                continue
+            alpha = int(255 * (slash['life'] / 20))
+            rad = math.radians(slash['angle'])
+            sx, sy = slash['pos']
+            s_len = 40
+            p1 = (sx - math.cos(rad) * s_len, sy - math.sin(rad) * s_len)
+            p2 = (sx + math.cos(rad) * s_len, sy + math.sin(rad) * s_len)
+            pygame.draw.line(self.image, (255, 50, 50, alpha), p1, p2, 3)
+        
+        # 中心血月
+        moon_surf = pygame.Surface((100, 100), pygame.SRCALPHA)
+        pygame.draw.circle(moon_surf, (150, 0, 0, 150), (50, 50), 40)
+        pygame.draw.circle(moon_surf, CRIMSON, (50, 50), 35, 3)
+        self.image.blit(moon_surf, (cx - 50, cy - 50))
+
+
+class StarfallBarrage(pygame.sprite.Sprite):
+    """星界潜行者·群星坠落 - 星镖从四面八方射向敌人"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 80
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.stars = []
+        self.hit_enemies = set()
+        sound_mgr.play("nuke")
+        
+        # 生成初始星镖
+        for _ in range(24):
+            angle = random.uniform(0, 360)
+            rad = math.radians(angle)
+            dist = random.randint(400, 600)
+            self.stars.append({
+                'x': WIDTH/2 + math.cos(rad) * dist,
+                'y': HEIGHT/2 + math.sin(rad) * dist,
+                'size': random.randint(8, 15),
+                'target': None,
+                'speed': random.uniform(12, 18),
+                'trail': [],
+                'color': random.choice([(75, 0, 130), (138, 43, 226), (148, 0, 211)])
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        for star in self.stars[:]:
+            # 寻找目标
+            if star['target'] is None or star['target'] not in mobs:
+                targets = [m for m in mobs if m not in self.hit_enemies]
+                if targets:
+                    star['target'] = random.choice(targets)
+                else:
+                    star['target'] = None
+            
+            # 追踪或直线飞行
+            if star['target']:
+                tx, ty = star['target'].rect.center
+            else:
+                tx, ty = self.owner.rect.center
+            
+            dx = tx - star['x']
+            dy = ty - star['y']
+            dist = math.hypot(dx, dy)
+            
+            if dist > 5:
+                star['x'] += (dx / dist) * star['speed']
+                star['y'] += (dy / dist) * star['speed']
+            
+            # 记录尾迹
+            star['trail'].append((star['x'], star['y']))
+            if len(star['trail']) > 10:
+                star['trail'].pop(0)
+            
+            # 绘制尾迹
+            for i, pos in enumerate(star['trail']):
+                alpha = int(255 * (i / len(star['trail'])))
+                size = int(star['size'] * (i / len(star['trail'])))
+                pygame.draw.circle(self.image, (*star['color'], alpha), (int(pos[0]), int(pos[1])), max(1, size//2))
+            
+            # 绘制星镖（五角星）
+            self._draw_star(self.image, star['x'], star['y'], star['size'], star['color'])
+            
+            # 碰撞检测
+            if star['target'] and dist < 30:
+                m = star['target']
+                if m not in self.hit_enemies:
+                    m.hp -= 200
+                    self.hit_enemies.add(m)
+                    FloatingText(m.rect.centerx, m.rect.top - 30, "☆STAR!", INDIGO)
+                for _ in range(4):
+                    Particle(m.rect.center, star['color'])
+                self.stars.remove(star)
+    
+    def _draw_star(self, surf, x, y, size, color):
+        """绘制五角星"""
+        points = []
+        for i in range(10):
+            angle = math.radians(i * 36 - 90)
+            r = size if i % 2 == 0 else size * 0.4
+            px = x + math.cos(angle) * r
+            py = y + math.sin(angle) * r
+            points.append((px, py))
+        pygame.draw.polygon(surf, color, points)
+        pygame.draw.polygon(surf, (200, 150, 255), points, 2)
+
+
+class NatureWrath(pygame.sprite.Sprite):
+    """大地守护者·自然之怒 - 荆棘从地面涌出"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 100
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.thorns = []
+        self.hit_enemies = set()
+        sound_mgr.play("nuke")
+        
+        # 生成荆棘位置
+        for _ in range(15):
+            self.thorns.append({
+                'x': random.randint(50, WIDTH-50),
+                'y': HEIGHT,
+                'target_y': random.randint(100, HEIGHT-100),
+                'height': 0,
+                'max_height': random.randint(150, 300),
+                'width': random.randint(20, 40),
+                'phase': 'grow',
+                'branches': random.randint(2, 4)
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        for thorn in self.thorns:
+            if thorn['phase'] == 'grow':
+                thorn['height'] = min(thorn['height'] + 15, thorn['max_height'])
+                if thorn['height'] >= thorn['max_height']:
+                    thorn['phase'] = 'hold'
+            elif thorn['phase'] == 'hold' and self.life < 30:
+                thorn['phase'] = 'shrink'
+            elif thorn['phase'] == 'shrink':
+                thorn['height'] = max(0, thorn['height'] - 10)
+            
+            if thorn['height'] > 0:
+                # 绘制主茎
+                base_x = thorn['x']
+                base_y = thorn['target_y'] + thorn['max_height'] // 2
+                tip_y = base_y - thorn['height']
+                
+                # 荆棘主体
+                points = [
+                    (base_x - thorn['width']//2, base_y),
+                    (base_x, tip_y),
+                    (base_x + thorn['width']//2, base_y)
+                ]
+                pygame.draw.polygon(self.image, FOREST, points)
+                pygame.draw.polygon(self.image, (100, 200, 100), points, 2)
+                
+                # 绘制分支刺
+                for i in range(thorn['branches']):
+                    branch_y = base_y - (thorn['height'] * (i + 1) / (thorn['branches'] + 1))
+                    side = 1 if i % 2 == 0 else -1
+                    branch_len = 30 + i * 10
+                    bx = base_x + side * branch_len
+                    by = branch_y - 20
+                    pygame.draw.line(self.image, FOREST, (base_x, branch_y), (bx, by), 4)
+                    pygame.draw.circle(self.image, (100, 200, 100), (int(bx), int(by)), 5)
+                
+                # 伤害检测
+                thorn_rect = pygame.Rect(base_x - thorn['width'], tip_y, thorn['width']*2, thorn['height'])
+                for m in list(mobs):
+                    if thorn_rect.colliderect(m.rect):
+                        if m not in self.hit_enemies:
+                            m.hp -= 250
+                            self.hit_enemies.add(m)
+                            FloatingText(m.rect.centerx, m.rect.top - 30, "🌿THORN!", FOREST)
+                        else:
+                            m.hp -= 30
+                        Particle(m.rect.center, FOREST)
+
+
+class DimensionTrap(pygame.sprite.Sprite):
+    """虚空编织者·维度陷阱 - 蛛网维度牢笼"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.web_angle = 0
+        self.trapped = {}  # 被困敌人
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        self.web_angle += 2
+        
+        cx, cy = WIDTH//2, HEIGHT//2
+        
+        # 绘制多层蛛网
+        for layer in range(5):
+            radius = 100 + layer * 80
+            alpha = 150 - layer * 20
+            
+            # 同心环
+            pygame.draw.circle(self.image, (*WEB_GRAY[:3], alpha), (cx, cy), radius, 2)
+            
+            # 放射线
+            for i in range(12):
+                angle = math.radians(i * 30 + self.web_angle * (1 if layer % 2 == 0 else -1))
+                x1 = cx + math.cos(angle) * (radius - 80)
+                y1 = cy + math.sin(angle) * (radius - 80)
+                x2 = cx + math.cos(angle) * radius
+                y2 = cy + math.sin(angle) * radius
+                pygame.draw.line(self.image, (*WEB_GRAY[:3], alpha), (x1, y1), (x2, y2), 2)
+        
+        # 中心虚空核心
+        pulse = abs(math.sin(self.life * 0.1))
+        core_size = int(30 + 20 * pulse)
+        pygame.draw.circle(self.image, (100, 0, 150, 200), (cx, cy), core_size)
+        pygame.draw.circle(self.image, MAGENTA, (cx, cy), core_size, 3)
+        
+        # 敌人困住效果
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if dist < 400:
+                m.frozen_timer = 30  # 减速
+                if m not in self.hit_enemies:
+                    m.hp -= 180
+                    self.hit_enemies.add(m)
+                    self.trapped[m] = m.rect.center
+                    FloatingText(m.rect.centerx, m.rect.top - 30, "🕸TRAPPED!", WEB_GRAY)
+                else:
+                    m.hp -= 20
+                
+                # 绘制连接线
+                pygame.draw.line(self.image, (*WEB_GRAY[:3], 100), (cx, cy), m.rect.center, 1)
+                
+                # 吸引向中心
+                pull = 0.05
+                m.rect.centerx += (cx - m.rect.centerx) * pull
+                m.rect.centery += (cy - m.rect.centery) * pull
+                
+                Particle(m.rect.center, WEB_GRAY)
+
+
+class SupernovaExplosion(pygame.sprite.Sprite):
+    """日冕耀斑·超新星爆发 - 太阳核心爆发"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 80
+        self.radius = 30
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.flares = []
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        cx, cy = self.owner.rect.center
+        
+        # 阶段1: 能量聚集 (60-80)
+        if self.life > 60:
+            charge = (80 - self.life) / 20
+            core_size = int(50 * charge)
+            # 吸入粒子效果
+            for _ in range(3):
+                angle = random.uniform(0, 360)
+                dist = 200 + random.randint(0, 100)
+                rad = math.radians(angle)
+                px = cx + math.cos(rad) * dist
+                py = cy + math.sin(rad) * dist
+                pygame.draw.line(self.image, BRIGHT_ORANGE, (px, py), (cx, cy), 2)
+        
+        # 阶段2: 爆发 (0-60)
+        else:
+            self.radius += 25
+            
+            # 太阳核心
+            for r in range(5, 0, -1):
+                color_intensity = int(255 - r * 30)
+                pygame.draw.circle(self.image, (255, color_intensity, 0), (cx, cy), 30 + r * 5)
+            
+            # 放射状火焰
+            num_rays = 16
+            for i in range(num_rays):
+                angle = (i * 360 / num_rays) + self.life * 3
+                rad = math.radians(angle)
+                
+                # 火焰长度随机波动
+                ray_len = self.radius + random.randint(-30, 30)
+                end_x = cx + math.cos(rad) * ray_len
+                end_y = cy + math.sin(rad) * ray_len
+                
+                # 火焰渐变
+                for w in range(8, 0, -1):
+                    alpha = int(200 * (w / 8))
+                    pygame.draw.line(self.image, (255, 150, 0, alpha), (cx, cy), (end_x, end_y), w)
+            
+            # 外层冲击波
+            wave_alpha = int(150 * (self.life / 60))
+            pygame.draw.circle(self.image, (255, 200, 0, wave_alpha), (cx, cy), self.radius, 5)
+            pygame.draw.circle(self.image, (255, 100, 0, wave_alpha//2), (cx, cy), self.radius + 20, 3)
+            
+            # 伤害判定
+            if self.life % 3 == 0:
+                for m in list(mobs):
+                    dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                    if dist < self.radius:
+                        if m not in self.hit_enemies:
+                            m.hp -= 350
+                            self.hit_enemies.add(m)
+                            FloatingText(m.rect.centerx, m.rect.top - 30, "☀NOVA!", BRIGHT_ORANGE)
+                        else:
+                            m.hp -= 60
+                        for _ in range(3):
+                            Particle(m.rect.center, BRIGHT_ORANGE)
+
+
+class QuantumMatrix(pygame.sprite.Sprite):
+    """量子裁决者·矩阵重置 - 几何量子打击"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 90
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.shapes = []
+        sound_mgr.play("nuke")
+        
+        # 生成几何图形
+        for _ in range(12):
+            self.shapes.append({
+                'x': random.randint(100, WIDTH-100),
+                'y': random.randint(100, HEIGHT-100),
+                'size': random.randint(30, 60),
+                'type': random.choice(['triangle', 'square', 'hexagon']),
+                'angle': random.randint(0, 360),
+                'pulse': random.uniform(0, math.pi * 2)
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        # 背景网格
+        grid_alpha = int(50 * (self.life / 90))
+        for x in range(0, WIDTH, 40):
+            pygame.draw.line(self.image, (*NEON_PURPLE[:3], grid_alpha), (x, 0), (x, HEIGHT), 1)
+        for y in range(0, HEIGHT, 40):
+            pygame.draw.line(self.image, (*NEON_PURPLE[:3], grid_alpha), (0, y), (WIDTH, y), 1)
+        
+        for shape in self.shapes:
+            shape['angle'] += 3
+            shape['pulse'] += 0.1
+            pulse_scale = 1 + 0.2 * math.sin(shape['pulse'])
+            size = shape['size'] * pulse_scale
+            
+            # 绘制几何图形
+            points = []
+            if shape['type'] == 'triangle':
+                sides = 3
+            elif shape['type'] == 'square':
+                sides = 4
+            else:
+                sides = 6
+            
+            for i in range(sides):
+                angle = math.radians(shape['angle'] + i * 360 / sides)
+                px = shape['x'] + math.cos(angle) * size
+                py = shape['y'] + math.sin(angle) * size
+                points.append((px, py))
+            
+            # 外框
+            pygame.draw.polygon(self.image, NEON_PURPLE, points, 3)
+            # 内部填充
+            inner_points = [(shape['x'] + (p[0]-shape['x'])*0.6, shape['y'] + (p[1]-shape['y'])*0.6) for p in points]
+            pygame.draw.polygon(self.image, (*NEON_PURPLE[:3], 100), inner_points)
+            
+            # 连接线到中心
+            pygame.draw.line(self.image, (*NEON_PURPLE[:3], 80), (shape['x'], shape['y']), (WIDTH//2, HEIGHT//2), 1)
+            
+            # 伤害判定
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - shape['x'], m.rect.centery - shape['y'])
+                if dist < size:
+                    if m not in self.hit_enemies:
+                        m.hp -= 180
+                        self.hit_enemies.add(m)
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "⬡MATRIX!", NEON_PURPLE)
+                    else:
+                        m.hp -= 25
+                    Particle(m.rect.center, NEON_PURPLE)
+
+
+class EclipseVortex(pygame.sprite.Sprite):
+    """日食幽灵·黑日降临 - 双核吸收黑洞"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 100
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.angle = 0
+        self.absorbed_hp = 0
+        sound_mgr.play("blackhole")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            # 吸收转化护盾
+            if hasattr(self.owner, 'shield'):
+                self.owner.shield = min(self.owner.max_shield + 100, self.owner.shield + self.absorbed_hp // 3)
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        self.angle += 5
+        
+        cx, cy = self.owner.rect.center
+        
+        # 双核黑洞
+        offsets = [(-60, -30), (60, -30)]
+        for ox, oy in offsets:
+            hx, hy = cx + ox, cy + oy
+            
+            # 黑洞核心
+            pygame.draw.circle(self.image, (20, 10, 40), (hx, hy), 40)
+            pygame.draw.circle(self.image, (100, 50, 180), (hx, hy), 40, 3)
+            
+            # 旋转吸积盘
+            for ring in range(3):
+                ring_radius = 50 + ring * 20
+                for i in range(8):
+                    angle = math.radians(self.angle + i * 45 + ring * 15)
+                    px = hx + math.cos(angle) * ring_radius
+                    py = hy + math.sin(angle) * ring_radius
+                    size = 5 - ring
+                    pygame.draw.circle(self.image, (150, 80, 220), (int(px), int(py)), size)
+        
+        # 中央连接光束
+        pygame.draw.line(self.image, (100, 50, 180, 150), (cx - 60, cy - 30), (cx + 60, cy - 30), 3)
+        
+        # 吸收和伤害
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if dist < 200:
+                # 吸引
+                pull = 0.08 * (1 - dist / 200)
+                m.rect.centerx += (cx - m.rect.centerx) * pull
+                m.rect.centery += (cy - m.rect.centery) * pull
+                
+                if m not in self.hit_enemies:
+                    dmg = 220
+                    m.hp -= dmg
+                    self.absorbed_hp += dmg
+                    self.hit_enemies.add(m)
+                    FloatingText(m.rect.centerx, m.rect.top - 30, "🌑ECLIPSE!", (100, 50, 180))
+                else:
+                    m.hp -= 30
+                    self.absorbed_hp += 30
+                
+                Particle(m.rect.center, (100, 50, 180))
+
+
+class PrismBurst(pygame.sprite.Sprite):
+    """棱镜分光·光谱爆裂 - 彩虹光线分裂"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 70
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.beams = []
+        self.colors = [(255, 0, 0), (255, 127, 0), (255, 255, 0), (0, 255, 0), (0, 127, 255), (75, 0, 130), (148, 0, 211)]
+        sound_mgr.play("laser")
+        
+        # 初始光束
+        for i, color in enumerate(self.colors):
+            angle = i * (360 / len(self.colors))
+            self.beams.append({
+                'angle': angle,
+                'length': 0,
+                'max_length': 500,
+                'color': color,
+                'width': 8
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        cx, cy = self.owner.rect.center
+        
+        # 中心棱镜
+        prism_size = 30
+        prism_points = []
+        for i in range(6):
+            angle = math.radians(i * 60 + self.life * 2)
+            px = cx + math.cos(angle) * prism_size
+            py = cy + math.sin(angle) * prism_size
+            prism_points.append((px, py))
+        pygame.draw.polygon(self.image, (200, 220, 255), prism_points)
+        pygame.draw.polygon(self.image, WHITE, prism_points, 2)
+        
+        for beam in self.beams:
+            beam['angle'] += 2  # 旋转
+            beam['length'] = min(beam['length'] + 20, beam['max_length'])
+            
+            rad = math.radians(beam['angle'])
+            end_x = cx + math.cos(rad) * beam['length']
+            end_y = cy + math.sin(rad) * beam['length']
+            
+            # 主光束
+            pygame.draw.line(self.image, beam['color'], (cx, cy), (end_x, end_y), beam['width'])
+            # 光晕
+            pygame.draw.line(self.image, (*beam['color'], 100), (cx, cy), (end_x, end_y), beam['width'] + 4)
+            
+            # 分裂效果（每条光束分出3条子光束）
+            if beam['length'] > 200:
+                for split in [-20, 0, 20]:
+                    split_rad = math.radians(beam['angle'] + split)
+                    split_start_x = cx + math.cos(rad) * 200
+                    split_start_y = cy + math.sin(rad) * 200
+                    split_end_x = split_start_x + math.cos(split_rad) * (beam['length'] - 200)
+                    split_end_y = split_start_y + math.sin(split_rad) * (beam['length'] - 200)
+                    pygame.draw.line(self.image, beam['color'], (split_start_x, split_start_y), (split_end_x, split_end_y), 3)
+            
+            # 伤害检测
+            for m in list(mobs):
+                # 检测是否在光束路径上
+                mx, my = m.rect.center
+                # 简化：检测距离光束端点的距离
+                dist_to_beam = abs((end_y - cy) * mx - (end_x - cx) * my + end_x * cy - end_y * cx) / max(1, beam['length'])
+                dist_along = math.hypot(mx - cx, my - cy)
+                
+                if dist_to_beam < 40 and dist_along < beam['length']:
+                    if m not in self.hit_enemies:
+                        m.hp -= 200
+                        self.hit_enemies.add(m)
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "🌈PRISM!", beam['color'])
+                    else:
+                        m.hp -= 35
+                    Particle(m.rect.center, beam['color'])
+
+
+class SoulHarvest(pygame.sprite.Sprite):
+    """死灵骑士·亡灵收割 - 灵魂吸取风暴"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 100
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.souls = []
+        self.total_heal = 0
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            # 最终治疗
+            if hasattr(self.owner, 'hp') and hasattr(self.owner, 'max_hp'):
+                heal = self.total_heal // 4
+                self.owner.hp = min(self.owner.max_hp, self.owner.hp + heal)
+                if heal > 0:
+                    FloatingText(self.owner.rect.centerx, self.owner.rect.top - 50, f"+{heal} HP", LIME)
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        
+        cx, cy = self.owner.rect.center
+        
+        # 死灵光环
+        aura_radius = 300
+        pulse = abs(math.sin(self.life * 0.1))
+        for ring in range(3):
+            r = aura_radius - ring * 50
+            alpha = int(80 - ring * 20)
+            pygame.draw.circle(self.image, (200, 50, 150, alpha), (cx, cy), int(r * (0.8 + 0.2 * pulse)), 3)
+        
+        # 骷髅符文
+        for i in range(8):
+            angle = math.radians(i * 45 + self.life * 2)
+            rx = cx + math.cos(angle) * 150
+            ry = cy + math.sin(angle) * 150
+            # 简单骷髅图案
+            pygame.draw.circle(self.image, (200, 50, 150), (int(rx), int(ry)), 15)
+            pygame.draw.circle(self.image, (50, 0, 50), (int(rx) - 5, int(ry) - 3), 3)
+            pygame.draw.circle(self.image, (50, 0, 50), (int(rx) + 5, int(ry) - 3), 3)
+            pygame.draw.line(self.image, (50, 0, 50), (rx - 4, ry + 5), (rx + 4, ry + 5), 2)
+        
+        # 灵魂收集
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if dist < aura_radius:
+                if m not in self.hit_enemies:
+                    dmg = 250
+                    m.hp -= dmg
+                    self.total_heal += dmg
+                    self.hit_enemies.add(m)
+                    FloatingText(m.rect.centerx, m.rect.top - 30, "💀HARVEST!", (200, 50, 150))
+                    # 生成灵魂
+                    self.souls.append({
+                        'x': m.rect.centerx,
+                        'y': m.rect.centery,
+                        'size': 15
+                    })
+                else:
+                    m.hp -= 30
+                    self.total_heal += 30
+                
+                Particle(m.rect.center, (200, 50, 150))
+        
+        # 更新灵魂飞向玩家
+        for soul in self.souls[:]:
+            dx = cx - soul['x']
+            dy = cy - soul['y']
+            dist = math.hypot(dx, dy)
+            if dist < 20:
+                self.souls.remove(soul)
+                continue
+            
+            speed = 8
+            soul['x'] += (dx / dist) * speed
+            soul['y'] += (dy / dist) * speed
+            
+            # 绘制灵魂
+            pygame.draw.circle(self.image, (200, 100, 180), (int(soul['x']), int(soul['y'])), soul['size'])
+            pygame.draw.circle(self.image, (255, 150, 200), (int(soul['x']), int(soul['y'])), soul['size'] - 3)
+
+
+class VoidRift(pygame.sprite.Sprite):
+    """虚空幻影（void）·虚空撕裂 - 维度裂隙"""
+    def __init__(self, pos):
+        super().__init__()
+        all_sprites.add(self)
+        self.pos = pos
+        self.life = 150
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.rifts = []
+        self.angle = 0
+        sound_mgr.play("blackhole")
+        
+        # 生成裂隙
+        for i in range(5):
+            angle = i * 72
+            rad = math.radians(angle)
+            self.rifts.append({
+                'x': pos[0] + math.cos(rad) * 150,
+                'y': pos[1] + math.sin(rad) * 150,
+                'angle': angle,
+                'width': 0,
+                'max_width': 100
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        self.angle += 1
+        
+        cx, cy = self.pos
+        
+        # 中心虚空核心
+        core_pulse = abs(math.sin(self.life * 0.1))
+        core_size = int(40 + 20 * core_pulse)
+        pygame.draw.circle(self.image, (30, 0, 50), (int(cx), int(cy)), core_size)
+        pygame.draw.circle(self.image, MAGENTA, (int(cx), int(cy)), core_size, 3)
+        
+        # 虚空粒子环
+        for i in range(20):
+            p_angle = math.radians(self.angle * 2 + i * 18)
+            p_dist = 60 + 30 * math.sin(self.life * 0.1 + i)
+            px = cx + math.cos(p_angle) * p_dist
+            py = cy + math.sin(p_angle) * p_dist
+            pygame.draw.circle(self.image, (150, 0, 200), (int(px), int(py)), 3)
+        
+        for rift in self.rifts:
+            rift['angle'] += 0.5
+            rift['width'] = min(rift['width'] + 3, rift['max_width'])
+            
+            # 绘制裂隙（椭圆形撕裂）
+            rx, ry = rift['x'], rift['y']
+            w = rift['width']
+            h = w // 3
+            
+            # 裂隙主体
+            rift_surf = pygame.Surface((w * 2, h * 2), pygame.SRCALPHA)
+            pygame.draw.ellipse(rift_surf, (50, 0, 80), (0, 0, w * 2, h * 2))
+            pygame.draw.ellipse(rift_surf, MAGENTA, (0, 0, w * 2, h * 2), 2)
+            
+            # 旋转
+            rotated = pygame.transform.rotate(rift_surf, rift['angle'])
+            rot_rect = rotated.get_rect(center=(rx, ry))
+            self.image.blit(rotated, rot_rect)
+            
+            # 连接到中心
+            pygame.draw.line(self.image, (100, 0, 150, 100), (cx, cy), (rx, ry), 2)
+            
+            # 伤害检测
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - rx, m.rect.centery - ry)
+                if dist < w:
+                    if m not in self.hit_enemies:
+                        m.hp -= 200
+                        self.hit_enemies.add(m)
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "🌀VOID!", MAGENTA)
+                    else:
+                        m.hp -= 25
+                    Particle(m.rect.center, MAGENTA)
+        
+        # 吸引效果
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if dist < 250:
+                pull = 0.04 * (1 - dist / 250)
+                m.rect.centerx += (cx - m.rect.centerx) * pull
+                m.rect.centery += (cy - m.rect.centery) * pull
+
+
+# ==============================================================================
+#   第二大招特效类（G键释放）
+# ==============================================================================
+
+class OmegaLaser(pygame.sprite.Sprite):
+    """霓虹突击者·欧米伽激光 - 三道交叉激光扫射"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 80
+        self.angle = -30
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = {}
+        sound_mgr.play("laser")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        self.angle += 1.5  # 扫射角度
+        
+        cx, cy = self.owner.rect.center
+        
+        # 三道激光
+        for i, offset in enumerate([-30, 0, 30]):
+            angle = self.angle + offset
+            rad = math.radians(angle - 90)
+            
+            # 激光端点
+            end_x = cx + math.cos(rad) * HEIGHT
+            end_y = cy + math.sin(rad) * HEIGHT
+            
+            # 多层激光效果
+            for w, alpha in [(12, 80), (8, 150), (4, 255), (2, 255)]:
+                color = (0, 255, 255, alpha) if w > 4 else (255, 255, 255, alpha)
+                pygame.draw.line(self.image, color, (cx, cy), (end_x, end_y), w)
+            
+            # 伤害检测（沿激光线）
+            for m in list(mobs):
+                # 点到线距离
+                mx, my = m.rect.center
+                dist = abs((end_y - cy) * mx - (end_x - cx) * my + end_x * cy - end_y * cx) / max(1, math.hypot(end_x - cx, end_y - cy))
+                if dist < 30:
+                    if m not in self.hit_enemies:
+                        self.hit_enemies[m] = 0
+                        m.hp -= 180
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "ΩLASER!", CYAN)
+                    elif self.hit_enemies[m] < 3:
+                        m.hp -= 40
+                        self.hit_enemies[m] += 1
+                    Particle(m.rect.center, CYAN)
+
+
+class PhantomClone(pygame.sprite.Sprite):
+    """虚空幻影·分身乱舞 - 生成多个攻击分身"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 90
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.clones = []
+        self.hit_enemies = set()
+        sound_mgr.play("dash")
+        
+        # 生成4个分身
+        for i in range(4):
+            angle = i * 90
+            rad = math.radians(angle)
+            self.clones.append({
+                'x': owner.rect.centerx + math.cos(rad) * 150,
+                'y': owner.rect.centery + math.sin(rad) * 150,
+                'angle': angle,
+                'attack_timer': i * 10
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        for clone in self.clones:
+            clone['angle'] += 5
+            rad = math.radians(clone['angle'])
+            clone['x'] = self.owner.rect.centerx + math.cos(rad) * 120
+            clone['y'] = self.owner.rect.centery + math.sin(rad) * 120
+            
+            # 绘制分身（紫色幻影）
+            cx, cy = int(clone['x']), int(clone['y'])
+            
+            # 幻影轮廓
+            pygame.draw.polygon(self.image, (200, 0, 255, 150), [
+                (cx, cy - 25), (cx + 15, cy + 15), (cx, cy + 5), (cx - 15, cy + 15)
+            ])
+            pygame.draw.polygon(self.image, MAGENTA, [
+                (cx, cy - 25), (cx + 15, cy + 15), (cx, cy + 5), (cx - 15, cy + 15)
+            ], 2)
+            
+            # 分身攻击
+            clone['attack_timer'] += 1
+            if clone['attack_timer'] % 15 == 0:
+                # 向最近敌人发射
+                for m in list(mobs):
+                    dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                    if dist < 200:
+                        if m not in self.hit_enemies:
+                            m.hp -= 100
+                            self.hit_enemies.add(m)
+                        else:
+                            m.hp -= 30
+                        Particle(m.rect.center, MAGENTA)
+                        pygame.draw.line(self.image, MAGENTA, (cx, cy), m.rect.center, 3)
+
+
+class MeteorStrike(pygame.sprite.Sprite):
+    """钢铁泰坦·陨石轰炸 - 召唤陨石群"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 100
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.meteors = []
+        self.hit_enemies = set()
+        sound_mgr.play("nuke")
+        
+        # 生成陨石
+        for _ in range(8):
+            self.meteors.append({
+                'x': random.randint(100, WIDTH - 100),
+                'y': -50 - random.randint(0, 200),
+                'size': random.randint(30, 50),
+                'speed': random.uniform(8, 12),
+                'trail': [],
+                'exploded': False
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        for meteor in self.meteors:
+            if meteor['exploded']:
+                continue
+            
+            meteor['y'] += meteor['speed']
+            meteor['trail'].append((meteor['x'], meteor['y']))
+            if len(meteor['trail']) > 15:
+                meteor['trail'].pop(0)
+            
+            # 绘制尾迹
+            for i, pos in enumerate(meteor['trail']):
+                alpha = int(200 * (i / len(meteor['trail'])))
+                size = int(meteor['size'] * (i / len(meteor['trail'])) * 0.5)
+                pygame.draw.circle(self.image, (255, 100, 0, alpha), (int(pos[0]), int(pos[1])), max(1, size))
+            
+            # 绘制陨石
+            pygame.draw.circle(self.image, (200, 80, 0), (int(meteor['x']), int(meteor['y'])), meteor['size'])
+            pygame.draw.circle(self.image, (255, 150, 50), (int(meteor['x']), int(meteor['y'])), meteor['size'] - 5)
+            pygame.draw.circle(self.image, ORANGE, (int(meteor['x']), int(meteor['y'])), meteor['size'], 3)
+            
+            # 落地爆炸
+            if meteor['y'] > HEIGHT - 50:
+                meteor['exploded'] = True
+                # 爆炸伤害
+                for m in list(mobs):
+                    dist = math.hypot(m.rect.centerx - meteor['x'], m.rect.centery - meteor['y'])
+                    if dist < 150:
+                        if m not in self.hit_enemies:
+                            m.hp -= 300
+                            self.hit_enemies.add(m)
+                        else:
+                            m.hp -= 80
+                        for _ in range(5):
+                            Particle(m.rect.center, ORANGE)
+                # 爆炸视觉效果
+                for _ in range(10):
+                    Particle((meteor['x'], meteor['y']), (255, random.randint(100, 200), 0))
+
+
+class ChainLightning(pygame.sprite.Sprite):
+    """雷霆战鹰·连锁闪电 - 闪电在敌人间跳跃"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 60
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.chains = []
+        self.hit_enemies = set()
+        sound_mgr.play("zap")
+        self._start_chain()
+        
+    def _start_chain(self):
+        """从玩家开始连锁"""
+        targets = list(mobs)
+        if not targets:
+            return
+        
+        current = self.owner.rect.center
+        for _ in range(min(10, len(targets))):
+            # 找最近未击中的敌人
+            nearest = None
+            min_dist = 300
+            for m in targets:
+                if m not in self.hit_enemies:
+                    dist = math.hypot(m.rect.centerx - current[0], m.rect.centery - current[1])
+                    if dist < min_dist:
+                        min_dist = dist
+                        nearest = m
+            
+            if nearest:
+                self.chains.append({
+                    'start': current,
+                    'end': nearest.rect.center,
+                    'life': 20
+                })
+                nearest.hp -= 150
+                self.hit_enemies.add(nearest)
+                FloatingText(nearest.rect.centerx, nearest.rect.top - 30, "⚡CHAIN!", YELLOW)
+                current = nearest.rect.center
+            else:
+                break
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        for chain in self.chains[:]:
+            chain['life'] -= 1
+            if chain['life'] <= 0:
+                self.chains.remove(chain)
+                continue
+            
+            # 绘制锯齿闪电
+            points = [chain['start']]
+            dx = chain['end'][0] - chain['start'][0]
+            dy = chain['end'][1] - chain['start'][1]
+            for i in range(1, 6):
+                t = i / 6
+                px = chain['start'][0] + dx * t + random.randint(-20, 20)
+                py = chain['start'][1] + dy * t + random.randint(-20, 20)
+                points.append((px, py))
+            points.append(chain['end'])
+            
+            alpha = int(255 * (chain['life'] / 20))
+            for i in range(len(points) - 1):
+                pygame.draw.line(self.image, (255, 255, 0, alpha), points[i], points[i+1], 4)
+                pygame.draw.line(self.image, (255, 255, 255, alpha), points[i], points[i+1], 2)
+
+
+class AcidRain(pygame.sprite.Sprite):
+    """剧毒蝰蛇·酸雨倾盆 - 全屏毒液雨"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.drops = []
+        self.pools = []
+        self.hit_enemies = {}
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        # 生成新雨滴
+        if self.life > 30 and self.life % 2 == 0:
+            for _ in range(3):
+                self.drops.append({
+                    'x': random.randint(0, WIDTH),
+                    'y': -10,
+                    'speed': random.uniform(10, 15)
+                })
+        
+        # 更新雨滴
+        for drop in self.drops[:]:
+            drop['y'] += drop['speed']
+            
+            # 绘制雨滴
+            pygame.draw.line(self.image, LIME, (drop['x'], drop['y']), (drop['x'], drop['y'] + 15), 2)
+            
+            if drop['y'] > HEIGHT:
+                self.drops.remove(drop)
+                # 生成毒池
+                self.pools.append({
+                    'x': drop['x'],
+                    'y': HEIGHT - 20,
+                    'size': 30,
+                    'life': 60
+                })
+        
+        # 更新毒池
+        for pool in self.pools[:]:
+            pool['life'] -= 1
+            if pool['life'] <= 0:
+                self.pools.remove(pool)
+                continue
+            
+            alpha = int(150 * (pool['life'] / 60))
+            pygame.draw.ellipse(self.image, (*LIME[:3], alpha), 
+                              (pool['x'] - pool['size'], pool['y'] - 10, pool['size'] * 2, 20))
+            
+            # 毒池伤害
+            for m in list(mobs):
+                if abs(m.rect.centerx - pool['x']) < pool['size'] and m.rect.bottom > HEIGHT - 50:
+                    if m not in self.hit_enemies:
+                        self.hit_enemies[m] = 0
+                        m.hp -= 80
+                    elif self.hit_enemies[m] < 5:
+                        m.hp -= 20
+                        self.hit_enemies[m] += 1
+                    m.poison_timer = 30
+
+
+class GhostWail(pygame.sprite.Sprite):
+    """幽灵收割者·亡魂哀嚎 - 释放尖啸灵魂波"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 70
+        self.radius = 0
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.ghosts = []
+        sound_mgr.play("nuke")
+        
+        # 生成幽灵
+        for i in range(6):
+            angle = i * 60
+            self.ghosts.append({
+                'angle': angle,
+                'dist': 50,
+                'size': 20
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        self.radius += 8
+        
+        cx, cy = self.owner.rect.center
+        
+        # 音波环
+        wave_alpha = int(150 * (self.life / 70))
+        for i in range(3):
+            r = self.radius - i * 30
+            if r > 0:
+                pygame.draw.circle(self.image, (150, 100, 255, wave_alpha - i * 30), (cx, cy), r, 3)
+        
+        # 幽灵环绕
+        for ghost in self.ghosts:
+            ghost['angle'] += 4
+            ghost['dist'] = min(ghost['dist'] + 5, self.radius * 0.8)
+            
+            rad = math.radians(ghost['angle'])
+            gx = cx + math.cos(rad) * ghost['dist']
+            gy = cy + math.sin(rad) * ghost['dist']
+            
+            # 绘制幽灵
+            pygame.draw.circle(self.image, (180, 150, 255, 150), (int(gx), int(gy)), ghost['size'])
+            pygame.draw.circle(self.image, (150, 100, 255), (int(gx), int(gy)), ghost['size'] - 5)
+            # 眼睛
+            pygame.draw.circle(self.image, (50, 0, 80), (int(gx) - 5, int(gy) - 3), 3)
+            pygame.draw.circle(self.image, (50, 0, 80), (int(gx) + 5, int(gy) - 3), 3)
+        
+        # 伤害判定
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if dist < self.radius and dist > self.radius - 50:
+                if m not in self.hit_enemies:
+                    m.hp -= 220
+                    self.hit_enemies.add(m)
+                    FloatingText(m.rect.centerx, m.rect.top - 30, "👻WAIL!", (150, 100, 255))
+                    m.frozen_timer = 60  # 恐惧效果
+                Particle(m.rect.center, (150, 100, 255))
+
+
+class AuroraWave(pygame.sprite.Sprite):
+    """极光女神·极光冲击波 - 全屏极光爆发"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 60
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.waves = []
+        self.hit_enemies = set()
+        sound_mgr.play("nuke")
+        
+        # 从玩家位置发出多波
+        for i in range(5):
+            self.waves.append({
+                'radius': 30 + i * 30,
+                'max_radius': 500,
+                'color': [(0, 255, 200), (0, 200, 255), (100, 255, 200), (0, 255, 150), (50, 200, 255)][i]
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        cx, cy = self.owner.rect.center
+        
+        for wave in self.waves:
+            wave['radius'] += 12
+            if wave['radius'] > wave['max_radius']:
+                continue
+            
+            # 绘制极光波
+            alpha = int(200 * (1 - wave['radius'] / wave['max_radius']))
+            for w in range(8, 0, -2):
+                pygame.draw.circle(self.image, (*wave['color'], alpha), (cx, cy), int(wave['radius']), w)
+            
+            # 伤害判定
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                if abs(dist - wave['radius']) < 30:
+                    if m not in self.hit_enemies:
+                        m.hp -= 180
+                        self.hit_enemies.add(m)
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "🌊WAVE!", TEAL)
+                    else:
+                        m.hp -= 30
+                    m.frozen_timer = 30
+                    Particle(m.rect.center, wave['color'])
+
+
+class BladeStorm(pygame.sprite.Sprite):
+    """绯红之刃·刀刃风暴 - 环绕飞刃护盾"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.angle = 0
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_timers = {}
+        self.blades = []
+        sound_mgr.play("laser")
+        
+        # 生成12把飞刃
+        for i in range(12):
+            self.blades.append({
+                'angle': i * 30,
+                'dist': 100,
+                'length': 40
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        self.angle += 8
+        
+        cx, cy = self.owner.rect.center
+        
+        for blade in self.blades:
+            blade['angle'] += 8
+            rad = math.radians(blade['angle'])
+            bx = cx + math.cos(rad) * blade['dist']
+            by = cy + math.sin(rad) * blade['dist']
+            
+            # 刀刃方向
+            blade_rad = rad + math.pi / 2
+            tip_x = bx + math.cos(blade_rad) * blade['length']
+            tip_y = by + math.sin(blade_rad) * blade['length']
+            base_x = bx - math.cos(blade_rad) * blade['length'] * 0.3
+            base_y = by - math.sin(blade_rad) * blade['length'] * 0.3
+            
+            # 绘制刀刃
+            pygame.draw.line(self.image, (255, 200, 200), (base_x, base_y), (tip_x, tip_y), 6)
+            pygame.draw.line(self.image, CRIMSON, (base_x, base_y), (tip_x, tip_y), 3)
+            pygame.draw.circle(self.image, (255, 100, 100), (int(tip_x), int(tip_y)), 4)
+            
+            # 伤害检测
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - bx, m.rect.centery - by)
+                if dist < 50:
+                    if m not in self.hit_timers or self.hit_timers[m] <= 0:
+                        m.hp -= 80
+                        self.hit_timers[m] = 10
+                        Particle(m.rect.center, CRIMSON)
+        
+        # 更新冷却
+        for m in list(self.hit_timers.keys()):
+            self.hit_timers[m] -= 1
+
+
+class GravityWell(pygame.sprite.Sprite):
+    """星界潜行者·引力陷阱 - 创建吸引力场"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 100
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.wells = []
+        self.hit_enemies = {}
+        sound_mgr.play("blackhole")
+        
+        # 生成3个引力井
+        positions = [(WIDTH * 0.25, HEIGHT * 0.4), (WIDTH * 0.5, HEIGHT * 0.5), (WIDTH * 0.75, HEIGHT * 0.4)]
+        for pos in positions:
+            self.wells.append({
+                'x': pos[0],
+                'y': pos[1],
+                'radius': 80,
+                'angle': 0
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        for well in self.wells:
+            well['angle'] += 3
+            wx, wy = well['x'], well['y']
+            
+            # 绘制引力场
+            for ring in range(4):
+                r = well['radius'] - ring * 15
+                alpha = 100 - ring * 20
+                pygame.draw.circle(self.image, (75, 0, 130, alpha), (int(wx), int(wy)), r, 2)
+            
+            # 旋转粒子
+            for i in range(8):
+                angle = math.radians(well['angle'] + i * 45)
+                px = wx + math.cos(angle) * well['radius'] * 0.7
+                py = wy + math.sin(angle) * well['radius'] * 0.7
+                pygame.draw.circle(self.image, INDIGO, (int(px), int(py)), 4)
+            
+            # 吸引和伤害
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - wx, m.rect.centery - wy)
+                if dist < well['radius'] * 1.5:
+                    # 吸引
+                    pull = 0.1 * (1 - dist / (well['radius'] * 1.5))
+                    m.rect.centerx += (wx - m.rect.centerx) * pull
+                    m.rect.centery += (wy - m.rect.centery) * pull
+                    
+                    if dist < well['radius']:
+                        if m not in self.hit_enemies:
+                            self.hit_enemies[m] = 0
+                            m.hp -= 120
+                            FloatingText(m.rect.centerx, m.rect.top - 30, "🌀GRAVITY!", INDIGO)
+                        elif self.hit_enemies[m] < 8:
+                            m.hp -= 25
+                            self.hit_enemies[m] += 1
+
+
+class EarthShield(pygame.sprite.Sprite):
+    """大地守护者·岩石护盾 - 召唤岩石防御"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 150
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.rocks = []
+        self.hit_enemies = set()
+        sound_mgr.play("nuke")
+        
+        # 生成岩石
+        for i in range(8):
+            angle = i * 45
+            self.rocks.append({
+                'angle': angle,
+                'dist': 80,
+                'size': random.randint(20, 35),
+                'hp': 100
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        cx, cy = self.owner.rect.center
+        
+        # 更新岩石位置（跟随玩家）
+        for rock in self.rocks[:]:
+            if rock['hp'] <= 0:
+                self.rocks.remove(rock)
+                continue
+            
+            rock['angle'] += 1.5
+            rad = math.radians(rock['angle'])
+            rx = cx + math.cos(rad) * rock['dist']
+            ry = cy + math.sin(rad) * rock['dist']
+            
+            # 绘制岩石
+            points = []
+            for i in range(6):
+                a = math.radians(i * 60 + rock['angle'])
+                r = rock['size'] * (0.7 + random.uniform(0, 0.3))
+                points.append((rx + math.cos(a) * r, ry + math.sin(a) * r))
+            pygame.draw.polygon(self.image, (100, 80, 60), points)
+            pygame.draw.polygon(self.image, (60, 50, 40), points, 3)
+            pygame.draw.polygon(self.image, FOREST, points, 2)
+            
+            # 阻挡敌人子弹
+            for eb in list(enemy_bullets):
+                dist = math.hypot(eb.rect.centerx - rx, eb.rect.centery - ry)
+                if dist < rock['size']:
+                    rock['hp'] -= 20
+                    eb.kill()
+                    Particle((rx, ry), FOREST)
+            
+            # 撞击敌人
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - rx, m.rect.centery - ry)
+                if dist < rock['size'] + 20:
+                    if m not in self.hit_enemies:
+                        m.hp -= 150
+                        self.hit_enemies.add(m)
+                        Particle(m.rect.center, FOREST)
+
+
+class WebTrap(pygame.sprite.Sprite):
+    """虚空编织者·蛛网陷阱 - 放置多个减速网"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.webs = []
+        self.hit_enemies = {}
+        sound_mgr.play("nuke")
+        
+        # 随机放置蛛网
+        for _ in range(6):
+            self.webs.append({
+                'x': random.randint(100, WIDTH - 100),
+                'y': random.randint(100, HEIGHT - 100),
+                'size': random.randint(60, 100),
+                'angle': random.randint(0, 360)
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        for web in self.webs:
+            web['angle'] += 0.5
+            wx, wy = web['x'], web['y']
+            size = web['size']
+            
+            # 绘制蛛网
+            # 同心环
+            for ring in range(4):
+                r = size * (ring + 1) / 4
+                alpha = 120 - ring * 20
+                pygame.draw.circle(self.image, (*WEB_GRAY[:3], alpha), (int(wx), int(wy)), int(r), 1)
+            
+            # 放射线
+            for i in range(8):
+                angle = math.radians(i * 45 + web['angle'])
+                ex = wx + math.cos(angle) * size
+                ey = wy + math.sin(angle) * size
+                pygame.draw.line(self.image, (*WEB_GRAY[:3], 100), (wx, wy), (ex, ey), 1)
+            
+            # 减速和伤害
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - wx, m.rect.centery - wy)
+                if dist < size:
+                    m.frozen_timer = 20  # 持续减速
+                    if m not in self.hit_enemies:
+                        self.hit_enemies[m] = 0
+                        m.hp -= 60
+                    elif self.hit_enemies[m] < 10:
+                        m.hp -= 10
+                        self.hit_enemies[m] += 1
+
+
+class SolarFlare(pygame.sprite.Sprite):
+    """日冕耀斑·太阳耀斑 - 持续燃烧光柱"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 80
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.flares = []
+        self.hit_enemies = {}
+        sound_mgr.play("laser")
+        
+        # 生成耀斑柱
+        for i in range(5):
+            self.flares.append({
+                'x': 100 + i * (WIDTH - 200) / 4,
+                'width': 60,
+                'intensity': random.uniform(0.8, 1.2)
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        for flare in self.flares:
+            fx = flare['x']
+            fw = flare['width']
+            intensity = flare['intensity']
+            
+            # 闪烁效果
+            pulse = abs(math.sin(self.life * 0.2)) * intensity
+            
+            # 绘制火焰柱
+            for layer in range(5):
+                w = fw - layer * 10
+                alpha = int((200 - layer * 30) * pulse)
+                color = (255, 200 - layer * 30, 0, alpha)
+                pygame.draw.rect(self.image, color, (fx - w/2, 0, w, HEIGHT))
+            
+            # 顶部火焰
+            for i in range(10):
+                flame_x = fx + random.randint(-int(fw/2), int(fw/2))
+                flame_y = random.randint(0, 100)
+                flame_size = random.randint(10, 30)
+                pygame.draw.circle(self.image, (255, 150, 0, 150), (int(flame_x), flame_y), flame_size)
+            
+            # 伤害判定
+            for m in list(mobs):
+                if abs(m.rect.centerx - fx) < fw:
+                    if m not in self.hit_enemies:
+                        self.hit_enemies[m] = 0
+                        m.hp -= 100
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "🔥FLARE!", BRIGHT_ORANGE)
+                    elif self.hit_enemies[m] < 10:
+                        m.hp -= 25
+                        self.hit_enemies[m] += 1
+                    Particle(m.rect.center, BRIGHT_ORANGE)
+
+
+class DataCorruption(pygame.sprite.Sprite):
+    """量子裁决者·数据腐蚀 - 病毒式扩散攻击"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 100
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.corrupted = set()
+        self.glitch_rects = []
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        # 生成故障方块
+        if self.life % 3 == 0:
+            for _ in range(5):
+                self.glitch_rects.append({
+                    'x': random.randint(0, WIDTH),
+                    'y': random.randint(0, HEIGHT),
+                    'w': random.randint(20, 80),
+                    'h': random.randint(10, 40),
+                    'life': 15,
+                    'color': random.choice([NEON_PURPLE, (255, 0, 100), (0, 255, 200), (255, 255, 0)])
+                })
+        
+        # 绘制故障效果
+        for rect in self.glitch_rects[:]:
+            rect['life'] -= 1
+            if rect['life'] <= 0:
+                self.glitch_rects.remove(rect)
+                continue
+            
+            alpha = int(200 * (rect['life'] / 15))
+            # 故障条纹
+            pygame.draw.rect(self.image, (*rect['color'][:3], alpha), 
+                           (rect['x'], rect['y'], rect['w'], rect['h']))
+            # 边框
+            pygame.draw.rect(self.image, (*NEON_PURPLE[:3], alpha), 
+                           (rect['x'], rect['y'], rect['w'], rect['h']), 2)
+        
+        # 病毒感染敌人
+        for m in list(mobs):
+            # 检查是否在故障区域
+            for rect in self.glitch_rects:
+                if (rect['x'] < m.rect.centerx < rect['x'] + rect['w'] and
+                    rect['y'] < m.rect.centery < rect['y'] + rect['h']):
+                    if m not in self.corrupted:
+                        m.hp -= 200
+                        self.corrupted.add(m)
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "💀CORRUPT!", NEON_PURPLE)
+                        # 感染扩散
+                        for m2 in list(mobs):
+                            if m2 != m:
+                                dist = math.hypot(m2.rect.centerx - m.rect.centerx, m2.rect.centery - m.rect.centery)
+                                if dist < 100 and m2 not in self.corrupted:
+                                    m2.hp -= 80
+                                    self.corrupted.add(m2)
+                    break
+
+
+class DarkMatter(pygame.sprite.Sprite):
+    """日食幽灵·暗物质爆发 - 释放暗能量波"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 90
+        self.radius = 0
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.tendrils = []
+        sound_mgr.play("blackhole")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        self.radius += 6
+        
+        cx, cy = self.owner.rect.center
+        
+        # 暗物质核心
+        core_pulse = abs(math.sin(self.life * 0.15))
+        core_size = int(50 + 20 * core_pulse)
+        pygame.draw.circle(self.image, (30, 10, 50), (cx, cy), core_size)
+        pygame.draw.circle(self.image, (100, 50, 180), (cx, cy), core_size, 3)
+        
+        # 暗能量波
+        if self.radius < 400:
+            for i in range(3):
+                r = self.radius - i * 20
+                if r > 0:
+                    alpha = int(150 * (1 - r / 400))
+                    pygame.draw.circle(self.image, (80, 30, 120, alpha), (cx, cy), r, 4)
+        
+        # 暗物质触手
+        if self.life % 10 == 0:
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                if dist < self.radius:
+                    self.tendrils.append({
+                        'start': (cx, cy),
+                        'end': m.rect.center,
+                        'life': 15
+                    })
+        
+        for tendril in self.tendrils[:]:
+            tendril['life'] -= 1
+            if tendril['life'] <= 0:
+                self.tendrils.remove(tendril)
+                continue
+            alpha = int(200 * (tendril['life'] / 15))
+            pygame.draw.line(self.image, (100, 50, 180, alpha), tendril['start'], tendril['end'], 3)
+        
+        # 伤害判定
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if dist < self.radius and dist > self.radius - 40:
+                if m not in self.hit_enemies:
+                    m.hp -= 200
+                    self.hit_enemies.add(m)
+                    FloatingText(m.rect.centerx, m.rect.top - 30, "🌑DARK!", (100, 50, 180))
+                Particle(m.rect.center, (100, 50, 180))
+
+
+class RainbowShatter(pygame.sprite.Sprite):
+    """棱镜分光·彩虹碎裂 - 爆炸式光谱分裂"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 70
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.shards = []
+        self.hit_enemies = set()
+        sound_mgr.play("nuke")
+        
+        colors = [(255, 0, 0), (255, 127, 0), (255, 255, 0), (0, 255, 0), (0, 127, 255), (75, 0, 130), (148, 0, 211)]
+        
+        # 生成碎片
+        for i in range(28):
+            angle = i * (360 / 28)
+            color = colors[i % len(colors)]
+            self.shards.append({
+                'x': owner.rect.centerx,
+                'y': owner.rect.centery,
+                'angle': angle,
+                'speed': random.uniform(8, 12),
+                'color': color,
+                'size': random.randint(10, 20),
+                'trail': []
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        
+        self.image.fill((0,0,0,0))
+        
+        for shard in self.shards:
+            rad = math.radians(shard['angle'])
+            shard['x'] += math.cos(rad) * shard['speed']
+            shard['y'] += math.sin(rad) * shard['speed']
+            
+            shard['trail'].append((shard['x'], shard['y']))
+            if len(shard['trail']) > 10:
+                shard['trail'].pop(0)
+            
+            # 绘制尾迹
+            for i, pos in enumerate(shard['trail']):
+                alpha = int(200 * (i / len(shard['trail'])))
+                size = int(shard['size'] * (i / len(shard['trail'])))
+                pygame.draw.circle(self.image, (*shard['color'], alpha), (int(pos[0]), int(pos[1])), max(1, size))
+            
+            # 绘制碎片（菱形）
+            sx, sy = int(shard['x']), int(shard['y'])
+            s = shard['size']
+            points = [(sx, sy - s), (sx + s//2, sy), (sx, sy + s), (sx - s//2, sy)]
+            pygame.draw.polygon(self.image, shard['color'], points)
+            pygame.draw.polygon(self.image, (255, 255, 255), points, 2)
+            
+            # 碰撞检测
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - shard['x'], m.rect.centery - shard['y'])
+                if dist < 30:
+                    if m not in self.hit_enemies:
+                        m.hp -= 120
+                        self.hit_enemies.add(m)
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "✨SHATTER!", shard['color'])
+                    Particle(m.rect.center, shard['color'])
+
+
+class LifeDrain(pygame.sprite.Sprite):
+    """死灵骑士·生命汲取 - 持续吸取生命"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.drain_links = {}
+        self.total_heal = 0
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            # 最终治疗
+            if hasattr(self.owner, 'hp') and hasattr(self.owner, 'max_hp'):
+                heal = self.total_heal // 5
+                self.owner.hp = min(self.owner.max_hp, self.owner.hp + heal)
+                if heal > 0:
+                    FloatingText(self.owner.rect.centerx, self.owner.rect.top - 50, f"+{heal} HP", LIME)
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        
+        cx, cy = self.owner.rect.center
+        
+        # 生命汲取光环
+        pulse = abs(math.sin(self.life * 0.1))
+        aura_size = int(200 + 50 * pulse)
+        pygame.draw.circle(self.image, (200, 50, 150, 50), (cx, cy), aura_size)
+        pygame.draw.circle(self.image, (200, 50, 150), (cx, cy), aura_size, 2)
+        
+        # 连接所有范围内敌人
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if dist < aura_size:
+                # 生命链接线
+                pygame.draw.line(self.image, (200, 100, 150, 150), (cx, cy), m.rect.center, 2)
+                
+                # 流动的生命能量
+                for i in range(5):
+                    t = (self.life + i * 10) % 50 / 50
+                    px = cx + (m.rect.centerx - cx) * t
+                    py = cy + (m.rect.centery - cy) * t
+                    pygame.draw.circle(self.image, (255, 100, 150), (int(px), int(py)), 4)
+                
+                # 持续伤害和治疗
+                if m not in self.drain_links:
+                    self.drain_links[m] = 0
+                
+                if self.life % 10 == 0:
+                    dmg = 30
+                    m.hp -= dmg
+                    self.total_heal += dmg
+                    self.drain_links[m] += 1
+                    Particle(m.rect.center, (200, 50, 150))
+
+
+# ==============================================================================
+#   第三大招特效类（C键释放）
+# ==============================================================================
+
+class PlasmaVortex(pygame.sprite.Sprite):
+    """先锋战机·等离子漩涡 - 释放吸引敌人的等离子漩涡"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 150
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = set()
+        self.vortex_angle = 0
+        self.absorbed_enemies = []
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            # 最终爆炸
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - self.owner.rect.centerx, 
+                                 m.rect.centery - self.owner.rect.centery)
+                if dist < 250:
+                    m.hp -= 200
+                    FloatingText(m.rect.centerx, m.rect.top - 20, "💥IMPLODE!", CYAN)
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        cx, cy = self.owner.rect.center
+        self.vortex_angle += 8
+        
+        # 绘制等离子漩涡
+        for i in range(6):
+            angle = math.radians(self.vortex_angle + i * 60)
+            r = 80 + 60 * abs(math.sin(self.life * 0.05))
+            for j in range(20):
+                t = j / 20
+                spiral_r = r * (1 - t * 0.7)
+                spiral_angle = angle + t * math.pi * 3
+                px = cx + spiral_r * math.cos(spiral_angle)
+                py = cy + spiral_r * math.sin(spiral_angle)
+                size = int(8 * (1 - t))
+                alpha = int(255 * (1 - t * 0.5))
+                color = (100, 200 + int(55 * t), 255, alpha)
+                pygame.draw.circle(self.image, color, (int(px), int(py)), size)
+        
+        # 核心发光
+        pygame.draw.circle(self.image, (150, 230, 255), (cx, cy), 30)
+        pygame.draw.circle(self.image, WHITE, (cx, cy), 15)
+        
+        # 吸引并伤害敌人
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if dist < 200 and dist > 30:
+                # 吸引效果
+                pull_strength = 3
+                dx = (cx - m.rect.centerx) / dist * pull_strength
+                dy = (cy - m.rect.centery) / dist * pull_strength
+                m.rect.x += dx
+                m.rect.y += dy
+                
+                # 持续伤害
+                if self.life % 15 == 0:
+                    m.hp -= 25
+                    Particle(m.rect.center, CYAN)
+
+
+class MirrorImage(pygame.sprite.Sprite):
+    """幻影刺客·镜像分裂 - 创建攻击敌人的镜像"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.mirrors = []
+        # 创建4个镜像
+        for i in range(4):
+            angle = i * 90
+            self.mirrors.append({
+                'angle': angle,
+                'dist': 100,
+                'attack_timer': 0
+            })
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        cx, cy = self.owner.rect.center
+        
+        for mirror in self.mirrors:
+            mirror['angle'] += 3
+            mirror['attack_timer'] += 1
+            
+            # 镜像位置
+            rad = math.radians(mirror['angle'])
+            mx = cx + mirror['dist'] * math.cos(rad)
+            my = cy + mirror['dist'] * math.sin(rad)
+            
+            # 绘制半透明镜像
+            pygame.draw.polygon(self.image, (100, 150, 255, 150), [
+                (mx, my - 25), (mx - 15, my + 15), (mx + 15, my + 15)
+            ])
+            pygame.draw.polygon(self.image, CYAN, [
+                (mx, my - 25), (mx - 15, my + 15), (mx + 15, my + 15)
+            ], 2)
+            
+            # 每30帧攻击
+            if mirror['attack_timer'] % 30 == 0:
+                targets = list(mobs)
+                if targets:
+                    target = min(targets, key=lambda t: math.hypot(
+                        t.rect.centerx - mx, t.rect.centery - my))
+                    # 绘制攻击线
+                    pygame.draw.line(self.image, CYAN, (mx, my), target.rect.center, 3)
+                    target.hp -= 50
+                    FloatingText(target.rect.centerx, target.rect.top - 20, "👤MIRROR!", (150, 200, 255))
+                    Particle(target.rect.center, CYAN)
+
+
+class SeismicSlam(pygame.sprite.Sprite):
+    """钢铁堡垒·地震冲击 - 制造扩散的地震波"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 90
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.waves = []
+        self.wave_timer = 0
+        self.hit_by_wave = {}
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        cx, cy = self.owner.rect.center
+        self.wave_timer += 1
+        
+        # 每15帧发射新波
+        if self.wave_timer % 15 == 0 and self.life > 30:
+            self.waves.append({'radius': 20, 'alpha': 255})
+        
+        # 更新和绘制波
+        for wave in self.waves[:]:
+            wave['radius'] += 12
+            wave['alpha'] = max(0, wave['alpha'] - 5)
+            
+            if wave['alpha'] <= 0:
+                self.waves.remove(wave)
+                continue
+            
+            # 绘制地震波
+            color = (180, 120, 60, wave['alpha'])
+            pygame.draw.circle(self.image, color, (cx, cy), int(wave['radius']), 8)
+            
+            # 裂缝效果
+            for i in range(8):
+                angle = math.radians(i * 45 + wave['radius'])
+                x1 = cx + (wave['radius'] - 20) * math.cos(angle)
+                y1 = cy + (wave['radius'] - 20) * math.sin(angle)
+                x2 = cx + (wave['radius'] + 10) * math.cos(angle)
+                y2 = cy + (wave['radius'] + 10) * math.sin(angle)
+                pygame.draw.line(self.image, (139, 90, 43), (x1, y1), (x2, y2), 3)
+            
+            # 伤害敌人
+            wave_id = id(wave)
+            if wave_id not in self.hit_by_wave:
+                self.hit_by_wave[wave_id] = set()
+            
+            for m in list(mobs):
+                if m in self.hit_by_wave[wave_id]:
+                    continue
+                dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                if abs(dist - wave['radius']) < 30:
+                    m.hp -= 80
+                    self.hit_by_wave[wave_id].add(m)
+                    FloatingText(m.rect.centerx, m.rect.top - 20, "🌋QUAKE!", (180, 120, 60))
+                    Particle(m.rect.center, (139, 90, 43))
+
+
+class BallLightning(pygame.sprite.Sprite):
+    """雷霆战鹰·球状闪电 - 释放追踪敌人的球状闪电"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.balls = []
+        # 创建3个球状闪电
+        for i in range(3):
+            angle = random.uniform(0, math.pi * 2)
+            self.balls.append({
+                'x': owner.rect.centerx + math.cos(angle) * 50,
+                'y': owner.rect.centery + math.sin(angle) * 50,
+                'vx': 0, 'vy': 0,
+                'target': None,
+                'hit_count': 0
+            })
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        
+        for ball in self.balls:
+            # 寻找目标
+            targets = [m for m in mobs if m not in [b.get('last_hit') for b in self.balls]]
+            if targets:
+                ball['target'] = min(targets, key=lambda t: math.hypot(
+                    t.rect.centerx - ball['x'], t.rect.centery - ball['y']))
+            
+            # 追踪移动
+            if ball['target'] and ball['target'].alive():
+                dx = ball['target'].rect.centerx - ball['x']
+                dy = ball['target'].rect.centery - ball['y']
+                dist = math.hypot(dx, dy)
+                if dist > 0:
+                    ball['vx'] += dx / dist * 0.8
+                    ball['vy'] += dy / dist * 0.8
+            
+            # 限制速度
+            speed = math.hypot(ball['vx'], ball['vy'])
+            if speed > 8:
+                ball['vx'] = ball['vx'] / speed * 8
+                ball['vy'] = ball['vy'] / speed * 8
+            
+            ball['x'] += ball['vx']
+            ball['y'] += ball['vy']
+            
+            # 绘制球状闪电
+            bx, by = int(ball['x']), int(ball['y'])
+            
+            # 外层电弧
+            for i in range(8):
+                angle = random.uniform(0, math.pi * 2)
+                r = random.randint(15, 35)
+                ex = bx + math.cos(angle) * r
+                ey = by + math.sin(angle) * r
+                pygame.draw.line(self.image, (150, 200, 255), (bx, by), (int(ex), int(ey)), 2)
+            
+            # 核心
+            pygame.draw.circle(self.image, (200, 230, 255), (bx, by), 20)
+            pygame.draw.circle(self.image, WHITE, (bx, by), 12)
+            
+            # 碰撞检测
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - ball['x'], m.rect.centery - ball['y'])
+                if dist < 35:
+                    m.hp -= 60
+                    ball['hit_count'] += 1
+                    ball['last_hit'] = m
+                    ball['target'] = None
+                    # 反弹
+                    ball['vx'] = -ball['vx'] * 0.5 + random.uniform(-3, 3)
+                    ball['vy'] = -ball['vy'] * 0.5 + random.uniform(-3, 3)
+                    FloatingText(m.rect.centerx, m.rect.top - 20, "⚡BALL!", (200, 230, 255))
+                    Particle(m.rect.center, (150, 200, 255))
+                    break
+
+
+class CorrosiveCloud(pygame.sprite.Sprite):
+    """毒蛇轰炸机·腐蚀云雾 - 释放扩散的腐蚀性毒云"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.clouds = [{'x': owner.rect.centerx, 'y': owner.rect.centery, 
+                       'size': 50, 'growing': True}]
+        self.affected = {}
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        
+        # 扩散云雾
+        if self.life % 40 == 0 and len(self.clouds) < 5:
+            parent = random.choice(self.clouds)
+            angle = random.uniform(0, math.pi * 2)
+            self.clouds.append({
+                'x': parent['x'] + math.cos(angle) * 80,
+                'y': parent['y'] + math.sin(angle) * 80,
+                'size': 30, 'growing': True
+            })
+        
+        for cloud in self.clouds:
+            if cloud['growing'] and cloud['size'] < 120:
+                cloud['size'] += 1
+            
+            # 绘制毒云
+            cx, cy = int(cloud['x']), int(cloud['y'])
+            size = int(cloud['size'])
+            
+            # 多层云雾效果
+            for i in range(3):
+                layer_size = size - i * 15
+                if layer_size > 0:
+                    alpha = 80 - i * 20
+                    color = (100, 180, 50, alpha)
+                    pygame.draw.circle(self.image, color, (cx, cy), layer_size)
+            
+            # 毒气粒子
+            for _ in range(3):
+                px = cx + random.randint(-size, size)
+                py = cy + random.randint(-size, size)
+                if math.hypot(px - cx, py - cy) < size:
+                    pygame.draw.circle(self.image, (150, 220, 80), (px, py), 3)
+            
+            # 伤害敌人
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                if dist < size:
+                    if m not in self.affected:
+                        self.affected[m] = 0
+                    self.affected[m] += 1
+                    
+                    if self.affected[m] % 20 == 0:
+                        m.hp -= 15 + self.affected[m] // 20 * 5  # 递增伤害
+                        FloatingText(m.rect.centerx, m.rect.top - 20, "☠️TOXIC!", LIME)
+                        Particle(m.rect.center, (100, 180, 50))
+
+
+class SoulStorm(pygame.sprite.Sprite):
+    """幽灵战机·灵魂风暴 - 召唤亡魂漩涡"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 150
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.souls = []
+        self.storm_angle = 0
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        cx, cy = self.owner.rect.center
+        self.storm_angle += 5
+        
+        # 生成新灵魂
+        if self.life % 10 == 0 and len(self.souls) < 20:
+            angle = random.uniform(0, math.pi * 2)
+            self.souls.append({
+                'angle': angle,
+                'dist': random.randint(50, 150),
+                'speed': random.uniform(2, 4),
+                'size': random.randint(8, 15),
+                'phase': random.uniform(0, math.pi * 2)
+            })
+        
+        # 绘制漩涡中心
+        pygame.draw.circle(self.image, (80, 50, 120, 100), (cx, cy), 60)
+        pygame.draw.circle(self.image, (120, 80, 180), (cx, cy), 60, 3)
+        
+        # 更新灵魂
+        for soul in self.souls[:]:
+            soul['angle'] += soul['speed'] * 0.05
+            soul['dist'] += math.sin(self.life * 0.1 + soul['phase']) * 2
+            
+            # 灵魂位置
+            sx = cx + soul['dist'] * math.cos(soul['angle'])
+            sy = cy + soul['dist'] * math.sin(soul['angle'])
+            
+            # 绘制灵魂
+            alpha = 150 + int(50 * math.sin(self.life * 0.2 + soul['phase']))
+            color = (180, 150, 220, alpha)
+            pygame.draw.circle(self.image, color, (int(sx), int(sy)), soul['size'])
+            
+            # 灵魂尾迹
+            for i in range(3):
+                trail_angle = soul['angle'] - i * 0.2
+                trail_dist = soul['dist'] - i * 5
+                tx = cx + trail_dist * math.cos(trail_angle)
+                ty = cy + trail_dist * math.sin(trail_angle)
+                trail_alpha = alpha - i * 40
+                if trail_alpha > 0:
+                    pygame.draw.circle(self.image, (150, 120, 200, trail_alpha), 
+                                     (int(tx), int(ty)), soul['size'] - i * 2)
+        
+        # 伤害敌人
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if dist < 180:
+                if self.life % 12 == 0:
+                    m.hp -= 35
+                    FloatingText(m.rect.centerx, m.rect.top - 20, "👻HAUNT!", (180, 150, 220))
+                    Particle(m.rect.center, (150, 120, 200))
+
+
+class NorthernLights(pygame.sprite.Sprite):
+    """极光之翼·北极光 - 释放治疗和伤害的极光波"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.wave_offset = 0
+        self.heal_total = 0
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            if self.heal_total > 0:
+                FloatingText(self.owner.rect.centerx, self.owner.rect.top - 60, 
+                           f"✨+{self.heal_total} HP", CYAN)
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        self.wave_offset += 3
+        
+        # 绘制极光波
+        colors = [(100, 255, 200), (150, 200, 255), (200, 150, 255), (100, 255, 150)]
+        
+        for i, color in enumerate(colors):
+            points = []
+            for x in range(0, WIDTH, 10):
+                y_base = HEIGHT // 2
+                wave1 = math.sin((x + self.wave_offset + i * 30) * 0.02) * 100
+                wave2 = math.sin((x + self.wave_offset * 1.5 + i * 50) * 0.015) * 50
+                y = y_base + wave1 + wave2 + i * 30
+                points.append((x, int(y)))
+            
+            if len(points) > 2:
+                # 绘制填充区域
+                fill_points = points + [(WIDTH, HEIGHT), (0, HEIGHT)]
+                pygame.draw.polygon(self.image, (*color, 30), fill_points)
+                # 绘制线条
+                pygame.draw.lines(self.image, (*color, 150), False, points, 3)
+        
+        # 伤害敌人 + 治疗自己
+        for m in list(mobs):
+            if self.life % 15 == 0:
+                m.hp -= 40
+                heal = 5
+                self.owner.hp = min(self.owner.max_hp, self.owner.hp + heal)
+                self.heal_total += heal
+                Particle(m.rect.center, random.choice(colors))
+
+
+class BladeWhirlwind(pygame.sprite.Sprite):
+    """血色男爵·刀刃旋风 - 生成旋转的刀刃风暴"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.angle = 0
+        self.blades = []
+        # 创建刀刃
+        for i in range(12):
+            self.blades.append({
+                'angle': i * 30,
+                'dist': 80 + (i % 3) * 40,
+                'length': 40
+            })
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        cx, cy = self.owner.rect.center
+        self.angle += 8
+        
+        # 更新和绘制刀刃
+        for blade in self.blades:
+            blade['angle'] += 6
+            rad = math.radians(blade['angle'] + self.angle)
+            
+            # 刀刃中心位置
+            bx = cx + blade['dist'] * math.cos(rad)
+            by = cy + blade['dist'] * math.sin(rad)
+            
+            # 刀刃两端
+            blade_rad = rad + math.pi / 2
+            x1 = bx + blade['length'] * math.cos(blade_rad)
+            y1 = by + blade['length'] * math.sin(blade_rad)
+            x2 = bx - blade['length'] * math.cos(blade_rad)
+            y2 = by - blade['length'] * math.sin(blade_rad)
+            
+            # 绘制刀刃
+            pygame.draw.line(self.image, (255, 50, 50), (int(x1), int(y1)), (int(x2), int(y2)), 4)
+            pygame.draw.line(self.image, (255, 200, 200), (int(x1), int(y1)), (int(x2), int(y2)), 2)
+            
+            # 刀刃轨迹
+            trail_rad = math.radians(blade['angle'] + self.angle - 15)
+            tx = cx + blade['dist'] * math.cos(trail_rad)
+            ty = cy + blade['dist'] * math.sin(trail_rad)
+            pygame.draw.line(self.image, (255, 100, 100, 100), (int(bx), int(by)), (int(tx), int(ty)), 2)
+            
+            # 碰撞检测
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - bx, m.rect.centery - by)
+                if dist < 50:
+                    if self.life % 8 == 0:
+                        m.hp -= 45
+                        FloatingText(m.rect.centerx, m.rect.top - 20, "🗡️SLASH!", RED)
+                        Particle(m.rect.center, RED)
+
+
+class GravityBomb(pygame.sprite.Sprite):
+    """暗影猎手·重力炸弹 - 投掷黑洞炸弹"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 150
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.bomb_x = owner.rect.centerx
+        self.bomb_y = owner.rect.centery - 100
+        self.phase = 'grow'  # grow -> implode -> explode
+        self.size = 10
+        self.pulled_enemies = set()
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        
+        if self.phase == 'grow':
+            self.size = min(80, self.size + 2)
+            if self.life < 80:
+                self.phase = 'implode'
+        elif self.phase == 'implode':
+            if self.life < 30:
+                self.phase = 'explode'
+        
+        # 绘制黑洞
+        bx, by = int(self.bomb_x), int(self.bomb_y)
+        
+        if self.phase != 'explode':
+            # 吸积盘
+            for i in range(5):
+                ring_size = self.size + i * 15
+                alpha = 150 - i * 25
+                pygame.draw.circle(self.image, (100, 50, 150, alpha), (bx, by), ring_size, 2)
+            
+            # 黑洞核心
+            pygame.draw.circle(self.image, (20, 10, 30), (bx, by), self.size)
+            pygame.draw.circle(self.image, (80, 40, 120), (bx, by), self.size, 2)
+            
+            # 扭曲效果
+            for i in range(12):
+                angle = math.radians(i * 30 + self.life * 5)
+                r = self.size + 20
+                ex = bx + r * math.cos(angle)
+                ey = by + r * math.sin(angle)
+                pygame.draw.line(self.image, (150, 100, 200), (bx, by), (int(ex), int(ey)), 1)
+            
+            # 吸引敌人
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - bx, m.rect.centery - by)
+                if dist < 200 and dist > 20:
+                    pull = 4 if self.phase == 'implode' else 2
+                    dx = (bx - m.rect.centerx) / dist * pull
+                    dy = (by - m.rect.centery) / dist * pull
+                    m.rect.x += dx
+                    m.rect.y += dy
+                    self.pulled_enemies.add(m)
+                    
+                    if dist < 50 and self.life % 10 == 0:
+                        m.hp -= 30
+        
+        else:
+            # 爆炸阶段
+            explode_size = (30 - self.life) * 15
+            pygame.draw.circle(self.image, (200, 100, 255, 150), (bx, by), explode_size)
+            pygame.draw.circle(self.image, (255, 200, 255), (bx, by), explode_size, 3)
+            
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - bx, m.rect.centery - by)
+                if dist < explode_size and m in self.pulled_enemies:
+                    m.hp -= 150
+                    self.pulled_enemies.discard(m)
+                    FloatingText(m.rect.centerx, m.rect.top - 20, "🕳️CRUSH!", (200, 100, 255))
+
+
+class CrystalBarrier(pygame.sprite.Sprite):
+    """盖亚守护者·水晶屏障 - 生成反弹伤害的水晶护盾"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.crystals = []
+        self.shield_hp = 500
+        self.angle = 0
+        # 生成水晶
+        for i in range(8):
+            self.crystals.append({
+                'angle': i * 45,
+                'size': random.randint(20, 35)
+            })
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0 or self.shield_hp <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        cx, cy = self.owner.rect.center
+        self.angle += 1
+        
+        # 护盾圆环
+        shield_radius = 100
+        pygame.draw.circle(self.image, (100, 200, 200, 50), (cx, cy), shield_radius)
+        pygame.draw.circle(self.image, CYAN, (cx, cy), shield_radius, 2)
+        
+        # 绘制水晶
+        for crystal in self.crystals:
+            rad = math.radians(crystal['angle'] + self.angle)
+            crx = cx + shield_radius * math.cos(rad)
+            cry = cy + shield_radius * math.sin(rad)
+            
+            # 水晶形状（六边形）
+            points = []
+            for i in range(6):
+                a = math.radians(i * 60 + self.angle * 2)
+                px = crx + crystal['size'] * math.cos(a) * (0.5 if i % 2 else 1)
+                py = cry + crystal['size'] * math.sin(a) * (0.5 if i % 2 else 1)
+                points.append((px, py))
+            
+            pygame.draw.polygon(self.image, (150, 230, 230, 180), points)
+            pygame.draw.polygon(self.image, CYAN, points, 2)
+            
+            # 水晶光芒
+            pygame.draw.circle(self.image, (200, 255, 255, 100), (int(crx), int(cry)), 5)
+        
+        # 检测并反弹敌人/敌方子弹
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if dist < shield_radius + 30 and dist > shield_radius - 30:
+                # 反弹伤害
+                m.hp -= 50
+                self.shield_hp -= 20
+                # 推开敌人
+                if dist > 0:
+                    push_x = (m.rect.centerx - cx) / dist * 10
+                    push_y = (m.rect.centery - cy) / dist * 10
+                    m.rect.x += push_x
+                    m.rect.y += push_y
+                FloatingText(m.rect.centerx, m.rect.top - 20, "💎REFLECT!", CYAN)
+                Particle(m.rect.center, CYAN)
+
+
+class SpiderSwarm(pygame.sprite.Sprite):
+    """织网者·蜘蛛群袭 - 召唤蜘蛛大军攻击敌人"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.spiders = []
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        
+        # 生成蜘蛛
+        if self.life % 15 == 0 and len(self.spiders) < 15:
+            self.spiders.append({
+                'x': self.owner.rect.centerx + random.randint(-30, 30),
+                'y': self.owner.rect.centery + random.randint(-30, 30),
+                'vx': 0, 'vy': 0,
+                'target': None,
+                'leg_phase': random.uniform(0, math.pi * 2)
+            })
+        
+        # 更新蜘蛛
+        for spider in self.spiders[:]:
+            # 寻找目标
+            targets = list(mobs)
+            if targets:
+                spider['target'] = min(targets, key=lambda t: math.hypot(
+                    t.rect.centerx - spider['x'], t.rect.centery - spider['y']))
+            
+            # 移动向目标
+            if spider['target'] and spider['target'].alive():
+                dx = spider['target'].rect.centerx - spider['x']
+                dy = spider['target'].rect.centery - spider['y']
+                dist = math.hypot(dx, dy)
+                if dist > 0:
+                    spider['vx'] = dx / dist * 4
+                    spider['vy'] = dy / dist * 4
+            
+            spider['x'] += spider['vx']
+            spider['y'] += spider['vy']
+            spider['leg_phase'] += 0.3
+            
+            sx, sy = int(spider['x']), int(spider['y'])
+            
+            # 绘制蜘蛛身体
+            pygame.draw.circle(self.image, (60, 40, 30), (sx, sy), 8)
+            pygame.draw.circle(self.image, (80, 60, 50), (sx, sy - 5), 5)
+            
+            # 绘制蜘蛛腿
+            for i in range(8):
+                leg_angle = math.radians(i * 45)
+                leg_wave = math.sin(spider['leg_phase'] + i) * 3
+                leg_len = 12 + leg_wave
+                lx = sx + math.cos(leg_angle) * leg_len
+                ly = sy + math.sin(leg_angle) * leg_len
+                pygame.draw.line(self.image, (60, 40, 30), (sx, sy), (int(lx), int(ly)), 2)
+            
+            # 攻击
+            if spider['target'] and spider['target'].alive():
+                dist = math.hypot(spider['target'].rect.centerx - spider['x'],
+                                spider['target'].rect.centery - spider['y'])
+                if dist < 20:
+                    spider['target'].hp -= 25
+                    FloatingText(spider['target'].rect.centerx, spider['target'].rect.top - 20, 
+                               "🕷️BITE!", (80, 60, 50))
+                    Particle(spider['target'].rect.center, (60, 40, 30))
+                    # 蜘蛛死亡
+                    self.spiders.remove(spider)
+
+
+class SolarBeam(pygame.sprite.Sprite):
+    """烈日凤凰·太阳光束 - 蓄力后发射毁灭性光束"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.charge_phase = 60  # 蓄力时间
+        self.beam_angle = -90  # 向上
+        self.hit_enemies = set()
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        cx, cy = self.owner.rect.center
+        
+        if self.charge_phase > 0:
+            # 蓄力阶段
+            self.charge_phase -= 1
+            charge_pct = 1 - self.charge_phase / 60
+            
+            # 能量聚集效果
+            for i in range(int(20 * charge_pct)):
+                angle = random.uniform(0, math.pi * 2)
+                dist = random.randint(50, 150) * (1 - charge_pct * 0.5)
+                px = cx + math.cos(angle) * dist
+                py = cy + math.sin(angle) * dist
+                
+                # 能量粒子向中心移动
+                pygame.draw.line(self.image, (255, 200, 50), (int(px), int(py)), (cx, cy), 2)
+                pygame.draw.circle(self.image, (255, 220, 100), (int(px), int(py)), 4)
+            
+            # 中心蓄能球
+            ball_size = int(20 + 30 * charge_pct)
+            pygame.draw.circle(self.image, (255, 200, 50, 150), (cx, cy), ball_size)
+            pygame.draw.circle(self.image, (255, 255, 200), (cx, cy), ball_size // 2)
+            
+        else:
+            # 发射光束
+            beam_width = 60
+            
+            # 光束主体
+            for i in range(3):
+                w = beam_width - i * 15
+                alpha = 200 - i * 50
+                color = (255, 220 - i * 30, 50, alpha)
+                pygame.draw.rect(self.image, color, 
+                               (cx - w // 2, 0, w, cy))
+            
+            # 光束边缘效果
+            for i in range(10):
+                side_x = cx + random.randint(-beam_width // 2, beam_width // 2)
+                side_y = random.randint(0, cy)
+                pygame.draw.circle(self.image, (255, 255, 200), (side_x, side_y), 3)
+            
+            # 伤害
+            self.hit_enemies.clear()
+            for m in list(mobs):
+                if abs(m.rect.centerx - cx) < beam_width // 2 + 20 and m.rect.centery < cy:
+                    m.hp -= 100
+                    FloatingText(m.rect.centerx, m.rect.top - 20, "☀️SOLAR!", (255, 200, 50))
+                    Particle(m.rect.center, (255, 220, 100))
+
+
+class VirusInfection(pygame.sprite.Sprite):
+    """仲裁者·病毒感染 - 释放传染性病毒"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.infected = {}  # 感染的敌人及其感染等级
+        self.virus_particles = []
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        cx, cy = self.owner.rect.center
+        
+        # 初始感染
+        if self.life == 179:
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                if dist < 150:
+                    self.infected[m] = 1
+        
+        # 病毒传播
+        newly_infected = {}
+        for m, level in list(self.infected.items()):
+            if not m.alive():
+                del self.infected[m]
+                continue
+            
+            # 伤害
+            if self.life % 20 == 0:
+                dmg = 20 * level
+                m.hp -= dmg
+                
+                # 生成病毒粒子
+                for _ in range(3):
+                    self.virus_particles.append({
+                        'x': m.rect.centerx,
+                        'y': m.rect.centery,
+                        'vx': random.uniform(-3, 3),
+                        'vy': random.uniform(-3, 3),
+                        'life': 30
+                    })
+            
+            # 传播到附近敌人
+            for other in list(mobs):
+                if other not in self.infected and other not in newly_infected:
+                    dist = math.hypot(other.rect.centerx - m.rect.centerx,
+                                    other.rect.centery - m.rect.centery)
+                    if dist < 80:
+                        newly_infected[other] = level + 1
+                        FloatingText(other.rect.centerx, other.rect.top - 20, 
+                                   "🦠INFECTED!", (150, 255, 100))
+        
+        self.infected.update(newly_infected)
+        
+        # 绘制病毒粒子
+        for p in self.virus_particles[:]:
+            p['x'] += p['vx']
+            p['y'] += p['vy']
+            p['life'] -= 1
+            
+            if p['life'] <= 0:
+                self.virus_particles.remove(p)
+                continue
+            
+            alpha = int(255 * p['life'] / 30)
+            pygame.draw.circle(self.image, (150, 255, 100, alpha), 
+                             (int(p['x']), int(p['y'])), 4)
+        
+        # 绘制感染标记
+        for m, level in self.infected.items():
+            if m.alive():
+                color = (100 + level * 30, 255, 100, 150)
+                pygame.draw.circle(self.image, color, m.rect.center, 15 + level * 5, 2)
+                # 病毒符号
+                pygame.draw.circle(self.image, (150, 255, 100), m.rect.center, 5)
+
+
+class VoidCollapse(pygame.sprite.Sprite):
+    """日蚀使者·虚空坍缩 - 创造吞噬一切的虚空裂隙"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 150
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.rifts = []
+        self.spawn_timer = 0
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        self.spawn_timer += 1
+        
+        # 生成裂隙
+        if self.spawn_timer % 30 == 0 and len(self.rifts) < 5:
+            targets = list(mobs)
+            if targets:
+                target = random.choice(targets)
+                x, y = target.rect.center
+            else:
+                x = random.randint(100, WIDTH - 100)
+                y = random.randint(100, HEIGHT - 100)
+            
+            self.rifts.append({
+                'x': x, 'y': y,
+                'size': 10,
+                'max_size': random.randint(60, 100),
+                'phase': 'grow',
+                'rotation': 0
+            })
+        
+        # 更新裂隙
+        for rift in self.rifts[:]:
+            rift['rotation'] += 3
+            
+            if rift['phase'] == 'grow':
+                rift['size'] = min(rift['max_size'], rift['size'] + 3)
+                if rift['size'] >= rift['max_size']:
+                    rift['phase'] = 'stable'
+            elif rift['phase'] == 'stable' and self.life < 30:
+                rift['phase'] = 'collapse'
+            elif rift['phase'] == 'collapse':
+                rift['size'] -= 5
+                if rift['size'] <= 0:
+                    self.rifts.remove(rift)
+                    continue
+            
+            rx, ry = int(rift['x']), int(rift['y'])
+            size = int(rift['size'])
+            
+            # 绘制虚空裂隙
+            pygame.draw.circle(self.image, (10, 5, 20), (rx, ry), size)
+            
+            # 扭曲边缘
+            for i in range(12):
+                angle = math.radians(i * 30 + rift['rotation'])
+                dist = size + random.randint(-5, 10)
+                ex = rx + math.cos(angle) * dist
+                ey = ry + math.sin(angle) * dist
+                pygame.draw.line(self.image, (80, 40, 120), (rx, ry), (int(ex), int(ey)), 2)
+            
+            pygame.draw.circle(self.image, (100, 50, 150), (rx, ry), size, 3)
+            
+            # 吸引并伤害
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - rx, m.rect.centery - ry)
+                if dist < size + 50 and dist > 10:
+                    # 吸引
+                    pull = 3
+                    dx = (rx - m.rect.centerx) / dist * pull
+                    dy = (ry - m.rect.centery) / dist * pull
+                    m.rect.x += dx
+                    m.rect.y += dy
+                
+                if dist < size:
+                    if self.life % 10 == 0:
+                        m.hp -= 40
+                        FloatingText(m.rect.centerx, m.rect.top - 20, "🌀VOID!", (100, 50, 150))
+
+
+class LightPrism(pygame.sprite.Sprite):
+    """棱镜守卫·光之棱镜 - 分裂成多彩光线攻击"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.prism_angle = 0
+        self.beams = []
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        cx, cy = self.owner.rect.center
+        self.prism_angle += 2
+        
+        # 绘制棱镜
+        prism_size = 40
+        prism_points = []
+        for i in range(3):
+            angle = math.radians(self.prism_angle + i * 120)
+            px = cx + prism_size * math.cos(angle)
+            py = cy + prism_size * math.sin(angle)
+            prism_points.append((px, py))
+        
+        pygame.draw.polygon(self.image, (200, 200, 255, 150), prism_points)
+        pygame.draw.polygon(self.image, WHITE, prism_points, 3)
+        
+        # 彩虹光束
+        colors = [RED, (255, 165, 0), YELLOW, LIME, CYAN, (100, 100, 255), (200, 100, 255)]
+        
+        for i, color in enumerate(colors):
+            beam_angle = math.radians(self.prism_angle + i * (360 / len(colors)))
+            
+            # 光束路径
+            beam_length = 400
+            ex = cx + math.cos(beam_angle) * beam_length
+            ey = cy + math.sin(beam_angle) * beam_length
+            
+            # 绘制光束
+            pygame.draw.line(self.image, (*color, 200), (cx, cy), (int(ex), int(ey)), 4)
+            pygame.draw.line(self.image, (*color, 100), (cx, cy), (int(ex), int(ey)), 8)
+            
+            # 光束碰撞
+            for m in list(mobs):
+                # 点到线段距离
+                mx, my = m.rect.center
+                dx, dy = ex - cx, ey - cy
+                t = max(0, min(1, ((mx - cx) * dx + (my - cy) * dy) / (dx * dx + dy * dy + 0.001)))
+                closest_x = cx + t * dx
+                closest_y = cy + t * dy
+                dist = math.hypot(mx - closest_x, my - closest_y)
+                
+                if dist < 30 and self.life % 15 == 0:
+                    m.hp -= 35
+                    Particle(m.rect.center, color)
+
+
+class SoulReap(pygame.sprite.Sprite):
+    """死灵骑士·灵魂收割 - 收割敌人灵魂转化为攻击"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 150
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.souls_collected = []
+        self.scythe_angle = 0
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            # 释放所有灵魂
+            for soul in self.souls_collected:
+                targets = list(mobs)
+                if targets:
+                    target = random.choice(targets)
+                    target.hp -= 80
+                    FloatingText(target.rect.centerx, target.rect.top - 20, "💀SOUL!", (180, 100, 200))
+            self.kill()
+            return
+        
+        self.image.fill((0,0,0,0))
+        cx, cy = self.owner.rect.center
+        self.scythe_angle += 6
+        
+        # 绘制死神镰刀
+        scythe_len = 100
+        scythe_rad = math.radians(self.scythe_angle)
+        sx = cx + scythe_len * math.cos(scythe_rad)
+        sy = cy + scythe_len * math.sin(scythe_rad)
+        
+        # 镰刀柄
+        pygame.draw.line(self.image, (80, 60, 100), (cx, cy), (int(sx), int(sy)), 4)
+        
+        # 镰刀刃
+        blade_angle = scythe_rad + math.pi / 2
+        blade_len = 50
+        bx1 = sx + blade_len * math.cos(blade_angle)
+        by1 = sy + blade_len * math.sin(blade_angle)
+        bx2 = sx + blade_len * 0.3 * math.cos(blade_angle + 0.5)
+        by2 = sy + blade_len * 0.3 * math.sin(blade_angle + 0.5)
+        
+        pygame.draw.polygon(self.image, (150, 100, 180), [
+            (sx, sy), (int(bx1), int(by1)), (int(bx2), int(by2))
+        ])
+        pygame.draw.polygon(self.image, (200, 150, 220), [
+            (sx, sy), (int(bx1), int(by1)), (int(bx2), int(by2))
+        ], 2)
+        
+        # 收割灵魂
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - sx, m.rect.centery - sy)
+            if dist < 60:
+                if self.life % 20 == 0:
+                    dmg = 50
+                    m.hp -= dmg
+                    # 收集灵魂
+                    self.souls_collected.append({
+                        'x': m.rect.centerx,
+                        'y': m.rect.centery
+                    })
+                    FloatingText(m.rect.centerx, m.rect.top - 20, "👻REAP!", (180, 100, 200))
+        
+        # 绘制收集的灵魂
+        for i, soul in enumerate(self.souls_collected):
+            orbit_angle = math.radians(self.scythe_angle * 2 + i * 60)
+            orbit_dist = 60 + i * 10
+            soul_x = cx + orbit_dist * math.cos(orbit_angle)
+            soul_y = cy + orbit_dist * math.sin(orbit_angle)
+            
+            pygame.draw.circle(self.image, (180, 150, 220, 150), (int(soul_x), int(soul_y)), 10)
+            pygame.draw.circle(self.image, (220, 200, 255), (int(soul_x), int(soul_y)), 5)
+        
+        # 灵魂数量显示
+        if self.souls_collected:
+            draw_text(self.image, f"Souls: {len(self.souls_collected)}", 14, cx, cy - 80, 
+                     (200, 150, 255), align='center')
+
+
 # ==============================================================================
 #   核心实体：Bullet, Player, Enemy, Boss
 # ==============================================================================
@@ -4496,9 +7706,22 @@ class Player(pygame.sprite.Sprite):
         self.dash_energy = 100
         self.is_dashing = False
         self.ult_charge = 0
-        self.max_ult_charge = 300
+        self.max_ult_charge = 100  # 主大招：只能储存1次
         self.ult_cooldown = 0  # 【新】大招冷却计时器
         self.ult_max_cooldown = 60  # 【新】大招冷却时间：1秒(60帧)
+        
+        # ========== 【新增】第二大招系统（G键） ==========
+        self.ult2_charge = 0
+        self.max_ult2_charge = 100  # 副大招：只能储存1次
+        self.ult2_cooldown = 0
+        self.ult2_max_cooldown = 90  # 冷却1.5秒
+        
+        # ========== 【新增】第三大招系统（C键） ==========
+        self.ult3_charge = 0
+        self.max_ult3_charge = 100  # 第三大招：只能储存1次
+        self.ult3_cooldown = 0
+        self.ult3_max_cooldown = 120  # 冷却2秒
+        
         self.last_shot = 0
         self.damage_reduction = 0.0
         
@@ -4567,6 +7790,10 @@ class Player(pygame.sprite.Sprite):
         if self.skill_cd > 0: self.skill_cd -= 1
         # 【新】大招冷却更新
         if self.ult_cooldown > 0: self.ult_cooldown -= 1
+        # 【新】第二大招冷却更新
+        if self.ult2_cooldown > 0: self.ult2_cooldown -= 1
+        # 【新】第三大招冷却更新
+        if self.ult3_cooldown > 0: self.ult3_cooldown -= 1
         
         # 武器更新
         if self.switch_cooldown > 0: self.switch_cooldown -= 1
@@ -4815,142 +8042,79 @@ class Player(pygame.sprite.Sprite):
             # 根据机体ID释放不同大招
             pid = self.plane_id
             
-            # ========== 原有机体 ==========
+            # ========== 重写后的机体大招 ==========
             if pid == "striker":
+                # 毁灭光束：超强贯穿光柱
                 FinalBeam(self)
+            
             elif pid == "phantom": 
-                # 时空冻结：冻结所有敌人和子弹3秒
+                # 时空冻结：冻结所有敌人和子弹3秒，释放时间斩击
                 global global_time_freeze
                 global_time_freeze = 180
                 for m in mobs:
                     TimeSlash(m.rect.center)
                 for eb in enemy_bullets:
                     eb.frozen = True
-            elif pid == "titan":
-                NukeExplosion()
-            elif pid == "aurora":
-                AuroraCurtain()
-            elif pid == "specter":
-                DeathScythe(self.rect.center)
-            elif pid == "void":
-                BlackHole((WIDTH/2, HEIGHT/2))
             
-            # ========== 新增机体大招 ==========
+            elif pid == "titan":
+                # 战术核弹：全屏核爆
+                NukeExplosion()
+            
+            elif pid == "aurora":
+                # 极光天幕：波动控场
+                AuroraCurtain()
+            
+            elif pid == "specter":
+                # 死神降临：旋转镰刀收割
+                DeathScythe(self.rect.center)
+            
+            elif pid == "void":
+                # 虚空撕裂：维度裂隙阵列
+                VoidRift((WIDTH/2, HEIGHT/2))
+            
             elif pid == "thunderbird":
-                # 雷神降世：链式闪电击中所有敌人
-                for m in list(mobs):
-                    for _ in range(3):
-                        Bullet(m.rect.centerx, m.rect.centery, is_enemy=False, color=YELLOW, b_type="lightning")
-                    m.hp -= 200
-                    Particle(m.rect.center, YELLOW)
-                    # 链式传导
-                    for m2 in list(mobs):
-                        if m != m2 and abs(m.rect.centerx - m2.rect.centerx) < 200:
-                            for _ in range(2):
-                                Particle(m2.rect.center, (200, 150, 50))
-                            m2.hp -= 50
+                # 雷神降世：全屏雷暴风暴，闪电从天而降
+                ThunderStorm(self)
             
             elif pid == "viper":
-                # 腐蚀毒雾：全屏毒气伤害
-                for m in list(mobs):
-                    m.hp -= 150
-                    # 持续毒伤标记
-                    m.poison_timer = 180  # 3秒持续伤害
-                    Particle(m.rect.center, LIME)
+                # 腐蚀毒雾：全屏毒气弥漫，持续腐蚀
+                ToxicMiasma(self)
             
             elif pid == "crimson":
-                # 鲜血新月：释放扇形刀刃
-                for angle in range(-45, 46, 15):
-                    Bullet(self.rect.centerx, self.rect.centery, angle=angle, is_enemy=False, 
-                          color=CRIMSON, b_type="blade", piercing=5)
+                # 鲜血新月：360度旋转血刃斩击
+                BloodMoonSlash(self)
             
             elif pid == "stalker":
-                # 群星坠落：发射追踪星镖群
-                for angle in range(0, 360, 30):
-                    Bullet(self.rect.centerx, self.rect.centery, angle=angle, is_enemy=False, 
-                          color=INDIGO, b_type="star", homing=3, piercing=3)
+                # 群星坠落：星镖从四面八方射向敌人
+                StarfallBarrage(self)
             
             elif pid == "gaia":
-                # 自然之怒：释放分散荆棘
-                for angle in range(0, 360, 45):
-                    Bullet(self.rect.centerx, self.rect.centery, angle=angle, is_enemy=False, 
-                          color=FOREST, b_type="thorn", piercing=5)
-                # 伤害所有敌人
-                for m in mobs:
-                    m.hp -= 100
-                    Particle(m.rect.center, FOREST)
+                # 自然之怒：荆棘从地面涌出
+                NatureWrath(self)
             
             elif pid == "weaver":
-                # 维度陷阱：放置减速蛛网
-                for m in list(mobs):
-                    m.hp -= 80
-                    m.frozen_timer = 120  # 冻结2秒
-                    Particle(m.rect.center, WEB_GRAY)
+                # 维度陷阱：蛛网维度牢笼
+                DimensionTrap(self)
             
             elif pid == "solar":
-                # 超新星爆发：范围火焰爆炸
-                cx, cy = WIDTH/2, HEIGHT/2
-                for angle in range(0, 360, 30):
-                    rad = math.radians(angle)
-                    for dist in range(50, 300, 50):
-                        px = cx + math.cos(rad) * dist
-                        py = cy + math.sin(rad) * dist
-                        Particle((px, py), BRIGHT_ORANGE)
-                # 伤害范围内敌人
-                for m in list(mobs):
-                    dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
-                    if dist < 300:
-                        m.hp -= 180
+                # 超新星爆发：太阳核心爆发
+                SupernovaExplosion(self)
             
             elif pid == "arbiter":
-                # 矩阵重置：生成爆炸量子块
-                for i in range(12):
-                    angle = i * 30
-                    Bullet(self.rect.centerx, self.rect.centery, angle=angle, is_enemy=False, 
-                          color=NEON_PURPLE, b_type="quant", piercing=3)
-                # 屏幕闪烁效果
-                for m in mobs:
-                    m.hp -= 120
+                # 矩阵重置：几何量子打击
+                QuantumMatrix(self)
             
             elif pid == "eclipse":
-                # 黑日降临：双核吸收光束
-                for offset in [-20, 20]:
-                    for i in range(8):
-                        angle = i * 45
-                        Bullet(self.rect.centerx + offset, self.rect.centery, angle=angle, is_enemy=False,
-                              color=(100, 50, 180), b_type="shadow", piercing=4)
-                # 吸收伤害转为护盾
-                for m in list(mobs):
-                    dmg = 140
-                    m.hp -= dmg
-                    self.shield = min(self.max_shield + 100, self.shield + dmg // 2)
-                    Particle(m.rect.center, (100, 50, 180))
+                # 黑日降临：双核吸收黑洞
+                EclipseVortex(self)
             
             elif pid == "prism":
-                # 光谱爆裂：多向分光射线
-                for angle in range(0, 360, 30):
-                    for split_angle in [-15, 0, 15]:
-                        Bullet(self.rect.centerx, self.rect.centery, angle=angle + split_angle, is_enemy=False,
-                              color=(100, 180, 255), b_type="prism", piercing=2)
-                # 范围伤害
-                for m in list(mobs):
-                    dist = math.hypot(m.rect.centerx - self.rect.centerx, m.rect.centery - self.rect.centery)
-                    if dist < 250:
-                        m.hp -= 110
-                        Particle(m.rect.center, (0, 255, 200))
+                # 光谱爆裂：彩虹光线分裂
+                PrismBurst(self)
             
             elif pid == "necro":
-                # 亡灵收割：扩散吸血光线
-                for angle in range(0, 360, 45):
-                    Bullet(self.rect.centerx, self.rect.centery, angle=angle, is_enemy=False,
-                          color=(200, 50, 150), b_type="spectral", piercing=6, homing=2)
-                # 每次伤害都转为治疗
-                for m in list(mobs):
-                    dmg = 130
-                    m.hp -= dmg
-                    self.hp = min(self.max_hp, self.hp + dmg // 3)
-                    FloatingText(self.rect.centerx, self.rect.centery - 30, f"+{dmg//3} HP", LIME)
-                    Particle(m.rect.center, (200, 50, 150))
+                # 亡灵收割：灵魂吸取风暴
+                SoulHarvest(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -4974,6 +8138,232 @@ class Player(pygame.sprite.Sprite):
                 elif ability == 'area_field':
                     for angle in range(0, 360, 60):
                         Particle(self.rect.center, TEAL, mode='shockwave')
+
+    def use_secondary_ultimate(self):
+        """第二大招（G键释放）"""
+        # 冷却检查
+        if self.ult2_cooldown > 0:
+            return  # 冷却中，无法释放
+        
+        if self.ult2_charge >= 100:
+            self.ult2_charge -= 100
+            # 设置冷却计时
+            self.ult2_cooldown = self.ult2_max_cooldown
+            
+            # 获取第二大招名称
+            ult2_names = {
+                "striker": "欧米伽激光",
+                "phantom": "分身乱舞",
+                "titan": "陨石轰炸",
+                "thunderbird": "连锁闪电",
+                "viper": "酸雨倾盆",
+                "specter": "亡魂哀嚎",
+                "aurora": "极光冲击波",
+                "crimson": "刀刃风暴",
+                "stalker": "引力陷阱",
+                "gaia": "岩石护盾",
+                "weaver": "蛛网陷阱",
+                "solar": "太阳耀斑",
+                "arbiter": "数据腐蚀",
+                "eclipse": "暗物质爆发",
+                "prism": "彩虹碎裂",
+                "necro": "生命汲取",
+                "void": "虚空撕裂"
+            }
+            
+            pid = self.plane_id
+            name = ult2_names.get(pid, "次级大招")
+            
+            FloatingText(self.rect.centerx, self.rect.top - 50, f"◆ {name} ◆", self.plane_data["color"])
+            sound_mgr.play("nuke")
+            
+            # 根据机体ID释放不同的第二大招
+            if pid == "striker":
+                # 欧米伽激光：三道交叉激光扫射
+                OmegaLaser(self)
+            
+            elif pid == "phantom":
+                # 分身乱舞：生成多个攻击分身
+                PhantomClone(self)
+            
+            elif pid == "titan":
+                # 陨石轰炸：召唤陨石群
+                MeteorStrike(self)
+            
+            elif pid == "thunderbird":
+                # 连锁闪电：闪电在敌人间跳跃
+                ChainLightning(self)
+            
+            elif pid == "viper":
+                # 酸雨倾盆：全屏毒液雨
+                AcidRain(self)
+            
+            elif pid == "specter":
+                # 亡魂哀嚎：释放尖啸灵魂波
+                GhostWail(self)
+            
+            elif pid == "aurora":
+                # 极光冲击波：全屏极光爆发
+                AuroraWave(self)
+            
+            elif pid == "crimson":
+                # 刀刃风暴：环绕飞刃护盾
+                BladeStorm(self)
+            
+            elif pid == "stalker":
+                # 引力陷阱：创建吸引力场
+                GravityWell(self)
+            
+            elif pid == "gaia":
+                # 岩石护盾：召唤岩石防御
+                EarthShield(self)
+            
+            elif pid == "weaver":
+                # 蛛网陷阱：放置多个减速网
+                WebTrap(self)
+            
+            elif pid == "solar":
+                # 太阳耀斑：持续燃烧光柱
+                SolarFlare(self)
+            
+            elif pid == "arbiter":
+                # 数据腐蚀：病毒式扩散攻击
+                DataCorruption(self)
+            
+            elif pid == "eclipse":
+                # 暗物质爆发：释放暗能量波
+                DarkMatter(self)
+            
+            elif pid == "prism":
+                # 彩虹碎裂：爆炸式光谱分裂
+                RainbowShatter(self)
+            
+            elif pid == "necro":
+                # 生命汲取：持续吸取生命
+                LifeDrain(self)
+            
+            elif pid == "void":
+                # 虚空撕裂（与主大招相同但稍弱）
+                VoidRift(self.rect.center)
+            
+            else:
+                # 通用：清弹
+                enemy_bullets.empty()
+                for _ in range(8):
+                    Particle(self.rect.center, self.plane_data["color"], mode='shockwave')
+
+    def use_tertiary_ultimate(self):
+        """第三大招（C键释放）"""
+        # 冷却检查
+        if self.ult3_cooldown > 0:
+            return  # 冷却中，无法释放
+        
+        if self.ult3_charge >= 100:
+            self.ult3_charge -= 100
+            # 设置冷却计时
+            self.ult3_cooldown = self.ult3_max_cooldown
+            
+            # 获取第三大招名称
+            ult3_names = {
+                "striker": "等离子漩涡",
+                "phantom": "镜像分裂",
+                "titan": "地震冲击",
+                "thunderbird": "球状闪电",
+                "viper": "腐蚀云雾",
+                "specter": "灵魂风暴",
+                "aurora": "北极光",
+                "crimson": "刀刃旋风",
+                "stalker": "重力炸弹",
+                "gaia": "水晶屏障",
+                "weaver": "蜘蛛群袭",
+                "solar": "太阳光束",
+                "arbiter": "病毒感染",
+                "eclipse": "虚空坍缩",
+                "prism": "光之棱镜",
+                "necro": "灵魂收割",
+                "void": "等离子漩涡"
+            }
+            
+            pid = self.plane_id
+            name = ult3_names.get(pid, "终极大招")
+            
+            FloatingText(self.rect.centerx, self.rect.top - 50, f"★ {name} ★", self.plane_data["color"])
+            sound_mgr.play("nuke")
+            
+            # 根据机体ID释放不同的第三大招
+            if pid == "striker":
+                # 等离子漩涡：吸引敌人并爆炸
+                PlasmaVortex(self)
+            
+            elif pid == "phantom":
+                # 镜像分裂：创建攻击镜像
+                MirrorImage(self)
+            
+            elif pid == "titan":
+                # 地震冲击：制造地震波
+                SeismicSlam(self)
+            
+            elif pid == "thunderbird":
+                # 球状闪电：追踪电球
+                BallLightning(self)
+            
+            elif pid == "viper":
+                # 腐蚀云雾：扩散毒云
+                CorrosiveCloud(self)
+            
+            elif pid == "specter":
+                # 灵魂风暴：召唤灵魂漩涡
+                SoulStorm(self)
+            
+            elif pid == "aurora":
+                # 北极光：治疗和伤害的极光波
+                NorthernLights(self)
+            
+            elif pid == "crimson":
+                # 刀刃旋风：旋转刀刃风暴
+                BladeWhirlwind(self)
+            
+            elif pid == "stalker":
+                # 重力炸弹：黑洞炸弹
+                GravityBomb(self)
+            
+            elif pid == "gaia":
+                # 水晶屏障：反弹护盾
+                CrystalBarrier(self)
+            
+            elif pid == "weaver":
+                # 蜘蛛群袭：召唤蜘蛛大军
+                SpiderSwarm(self)
+            
+            elif pid == "solar":
+                # 太阳光束：蓄力毁灭光束
+                SolarBeam(self)
+            
+            elif pid == "arbiter":
+                # 病毒感染：传染性病毒
+                VirusInfection(self)
+            
+            elif pid == "eclipse":
+                # 虚空坍缩：虚空裂隙
+                VoidCollapse(self)
+            
+            elif pid == "prism":
+                # 光之棱镜：彩虹光线
+                LightPrism(self)
+            
+            elif pid == "necro":
+                # 灵魂收割：死神镰刀
+                SoulReap(self)
+            
+            elif pid == "void":
+                # 虚空类也用等离子漩涡
+                PlasmaVortex(self)
+            
+            else:
+                # 通用：全屏伤害
+                for m in list(mobs):
+                    m.hp -= 100
+                    Particle(m.rect.center, self.plane_data["color"], mode='shockwave')
 
     def draw_trail(self, surf):
         if len(self.trail_pos) > 2:

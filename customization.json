@@ -127,8 +127,22 @@
     "necro_undead": true
   },
   "equipped_themes": {
-    "arbiter": "arbiter_matrix",
-    "phantom": "phantom_nightmare"
+    "arbiter": "arbiter_judge",
+    "phantom": "phantom_nightmare",
+    "crimson": "crimson_rose",
+    "titan": "titan_orbital",
+    "striker": "striker_infinity",
+    "thunderbird": "thunderbird_cosmic",
+    "viper": "viper_neon",
+    "specter": "specter_wraith",
+    "aurora": "aurora_prism",
+    "stalker": "stalker_drone",
+    "gaia": "gaia_elemental",
+    "weaver": "weaver_web",
+    "solar": "solar_fusion",
+    "eclipse": "eclipse_cosmos",
+    "prism": "prism_laser",
+    "necro": "necro_reaper"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -253,7 +267,21 @@
     "necro_necrotic_burst": true
   },
   "equipped_bullet_themes": {
-    "striker": "striker_overdrive_bullet"
+    "striker": "striker_infinity_bullet",
+    "crimson": "crimson_demon_bullet",
+    "titan": "titan_orbital_bullet",
+    "thunderbird": "thunderbird_tesla_bullet",
+    "viper": "viper_serpent_god_bullet",
+    "specter": "specter_wraith_bullet",
+    "aurora": "aurora_goddess_bullet",
+    "stalker": "stalker_xenomorph_bullet",
+    "gaia": "gaia_flower_bullet",
+    "weaver": "weaver_quantum_bullet",
+    "solar": "solar_photon_bullet",
+    "arbiter": "arbiter_quantum_entangle",
+    "eclipse": "eclipse_black_sun",
+    "prism": "prism_lens_flare",
+    "necro": "necro_ghost_chain"
   },
   "equipped_wingman_themes": {
     "slot_0": "striker_holy",
