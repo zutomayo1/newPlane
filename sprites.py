@@ -6639,6 +6639,9 @@ class Bullet(pygame.sprite.Sprite):
         if hasattr(self, 'effects') and self.timer % 5 == 0:
             self._update_bullet_animation()
         
+        # 【新增】通用子弹动态效果（不依赖effects属性）
+        self._apply_bullet_dynamics()
+        
         # 【优化】速度因子降低子弹移动速度,提升性能和视觉清晰度
         speed_factor = 0.25
         
@@ -6666,6 +6669,751 @@ class Bullet(pygame.sprite.Sprite):
                     
         self.rect.center = self.pos
     
+    def _apply_bullet_dynamics(self):
+        """为所有子弹类型添加动态视觉效果 - 优先使用涂装主题效果"""
+        # 每3帧更新一次以优化性能
+        if self.timer % 3 != 0:
+            return
+            
+        # 保存原始图像（首次调用时）
+        if not hasattr(self, '_base_image'):
+            self._base_image = self.image.copy()
+            self._base_rect_size = self.image.get_size()
+        
+        # 时间参数
+        t = self.timer * 0.15
+        
+        # 【新】如果有涂装主题，使用主题效果
+        if self.bullet_theme and not self.is_enemy:
+            self._apply_theme_dynamics(t)
+            return
+        
+        # 根据子弹类型应用不同效果
+        if self.is_enemy:
+            # 敌方子弹：不添加额外效果
+            pass
+            
+        else:
+            # 玩家子弹：根据类型应用效果
+            bt = self.b_type
+            
+            if bt == "beam":
+                # 激光束：脉冲亮度 + 尾焰
+                pulse = 0.8 + 0.2 * abs(math.sin(t * 2))
+                base_w, base_h = self._base_rect_size
+                
+                new_image = pygame.Surface((base_w + 8, base_h + 12), pygame.SRCALPHA)
+                
+                # 尾焰效果
+                flame_alpha = int(120 * pulse)
+                for i in range(3):
+                    flame_y = base_h + i * 4
+                    flame_w = base_w - i * 2
+                    if flame_w > 0:
+                        pygame.draw.ellipse(new_image, (100, 200, 255, flame_alpha - i * 30), 
+                                          (4 + i, flame_y, flame_w, 6 - i))
+                
+                # 原始子弹
+                new_image.blit(self._base_image, (4, 0))
+                
+                old_center = self.rect.center
+                self.image = new_image
+                self.rect = self.image.get_rect(center=old_center)
+                
+            elif bt == "lightning":
+                # 闪电：闪烁 + 电弧
+                if random.random() < 0.3:  # 30%概率闪烁
+                    base_w, base_h = self._base_rect_size
+                    new_image = pygame.Surface((base_w + 10, base_h + 10), pygame.SRCALPHA)
+                    
+                    # 电弧光晕
+                    glow_alpha = random.randint(100, 180)
+                    pygame.draw.ellipse(new_image, (255, 255, 100, glow_alpha), (0, 0, base_w + 10, base_h + 10))
+                    
+                    # 随机小电弧
+                    cx, cy = (base_w + 10) // 2, (base_h + 10) // 2
+                    for _ in range(2):
+                        angle = random.uniform(0, math.pi * 2)
+                        length = random.randint(8, 15)
+                        ex = cx + int(length * math.cos(angle))
+                        ey = cy + int(length * math.sin(angle))
+                        pygame.draw.line(new_image, (255, 255, 200), (cx, cy), (ex, ey), 1)
+                    
+                    new_image.blit(self._base_image, (5, 5))
+                    
+                    old_center = self.rect.center
+                    self.image = new_image
+                    self.rect = self.image.get_rect(center=old_center)
+                    
+            elif bt == "flame":
+                # 火焰：摇曳 + 粒子
+                flicker = 0.8 + 0.2 * math.sin(t * 3 + random.uniform(-0.5, 0.5))
+                base_w, base_h = self._base_rect_size
+                
+                new_image = pygame.Surface((base_w + 10, base_h + 10), pygame.SRCALPHA)
+                
+                # 火焰粒子
+                for _ in range(2):
+                    px = random.randint(2, base_w + 8)
+                    py = random.randint(base_h, base_h + 8)
+                    psize = random.randint(2, 4)
+                    alpha = int(150 * flicker)
+                    pygame.draw.circle(new_image, (255, 200, 50, alpha), (px, py), psize)
+                
+                new_image.blit(self._base_image, (5, 0))
+                
+                old_center = self.rect.center
+                self.image = new_image
+                self.rect = self.image.get_rect(center=old_center)
+                
+            elif bt == "acid":
+                # 毒液：气泡效果
+                base_w, base_h = self._base_rect_size
+                new_image = pygame.Surface((base_w + 8, base_h + 8), pygame.SRCALPHA)
+                
+                # 气泡
+                for _ in range(2):
+                    bx = random.randint(2, base_w + 6)
+                    by = random.randint(2, base_h + 6)
+                    bsize = random.randint(2, 4)
+                    pygame.draw.circle(new_image, (150, 255, 150, 100), (bx, by), bsize)
+                    pygame.draw.circle(new_image, (200, 255, 200), (bx, by), bsize, 1)
+                
+                new_image.blit(self._base_image, (4, 4))
+                
+                old_center = self.rect.center
+                self.image = new_image
+                self.rect = self.image.get_rect(center=old_center)
+                
+            elif bt in ["shard", "shadow", "spectral"]:
+                # 幽能类：闪烁 + 拖尾
+                pulse = 0.7 + 0.3 * abs(math.sin(t * 1.5))
+                base_w, base_h = self._base_rect_size
+                
+                new_image = pygame.Surface((base_w + 6, base_h + 15), pygame.SRCALPHA)
+                
+                # 能量拖尾
+                for i in range(4):
+                    trail_alpha = int(60 * pulse * (1 - i / 4))
+                    trail_y = base_h + i * 3
+                    trail_w = max(2, base_w - i * 3)
+                    pygame.draw.ellipse(new_image, (*self.color[:3], trail_alpha), 
+                                      (3 + i, trail_y, trail_w, 4))
+                
+                new_image.blit(self._base_image, (3, 0))
+                
+                old_center = self.rect.center
+                self.image = new_image
+                self.rect = self.image.get_rect(center=old_center)
+                
+            elif bt == "blade":
+                # 刀刃：旋转光效
+                rotation_angle = (self.timer * 8) % 360
+                base_w, base_h = self._base_rect_size
+                
+                # 旋转原图
+                rotated = pygame.transform.rotate(self._base_image, rotation_angle)
+                
+                old_center = self.rect.center
+                self.image = rotated
+                self.rect = self.image.get_rect(center=old_center)
+                
+            elif bt == "prism":
+                # 棱镜：彩虹闪烁（无光晕）
+                pass
+                
+            elif bt == "rocket":
+                # 火箭：推进尾焰
+                base_w, base_h = self._base_rect_size
+                new_image = pygame.Surface((base_w + 8, base_h + 20), pygame.SRCALPHA)
+                
+                # 尾焰
+                flicker = 0.7 + 0.3 * random.random()
+                flame_colors = [(255, 200, 50), (255, 150, 0), (255, 80, 0)]
+                for i, fc in enumerate(flame_colors):
+                    flame_h = int((12 - i * 3) * flicker)
+                    flame_w = base_w // 2 - i * 2
+                    if flame_w > 0 and flame_h > 0:
+                        pygame.draw.ellipse(new_image, (*fc, 180 - i * 40), 
+                                          ((base_w + 8) // 2 - flame_w // 2, base_h + i * 2, flame_w, flame_h))
+                
+                new_image.blit(self._base_image, (4, 0))
+                
+                old_center = self.rect.center
+                self.image = new_image
+                self.rect = self.image.get_rect(center=old_center)
+                
+            elif bt == "star":
+                # 星形：旋转（无光晕）
+                rotation_angle = (self.timer * 5) % 360
+                
+                # 旋转
+                rotated = pygame.transform.rotate(self._base_image, rotation_angle)
+                
+                old_center = self.rect.center
+                self.image = rotated
+                self.rect = self.image.get_rect(center=old_center)
+                
+            elif bt == "aurora_beam":
+                # 极光：波纹扩散
+                pulse = abs(math.sin(t))
+                base_w, base_h = self._base_rect_size
+                
+                expand = int(4 * pulse)
+                new_w = base_w + expand * 2
+                new_h = base_h + expand * 2
+                
+                new_image = pygame.Surface((new_w, new_h), pygame.SRCALPHA)
+                
+                # 外层波纹
+                pygame.draw.ellipse(new_image, (100, 255, 220, int(80 * (1 - pulse))), 
+                                  (0, 0, new_w, new_h), 2)
+                
+                # 缩放原图
+                scaled = pygame.transform.scale(self._base_image, (base_w + expand, base_h + expand))
+                new_image.blit(scaled, (expand // 2, expand // 2))
+                
+                old_center = self.rect.center
+                self.image = new_image
+                self.rect = self.image.get_rect(center=old_center)
+
+    def _apply_theme_dynamics(self, t):
+        """根据涂装主题应用动态效果"""
+        theme = self.bullet_theme
+        effects = theme.get("effects", [])
+        colors = theme.get("colors", {})
+        visual = theme.get("visual", {})
+        animation = visual.get("animation", "")
+        
+        primary = colors.get("primary", self.color)
+        secondary = colors.get("secondary", (255, 255, 255))
+        glow = colors.get("glow", (200, 200, 255))
+        
+        base_w, base_h = self._base_rect_size
+        
+        # ========== 火花/金属类效果 ==========
+        if "spark_trail" in effects or "metal_shine" in effects:
+            # 火花拖尾 + 金属闪光
+            pulse = 0.8 + 0.2 * abs(math.sin(t * 2.5))
+            new_image = pygame.Surface((base_w + 12, base_h + 18), pygame.SRCALPHA)
+            
+            # 火花尾迹
+            for i in range(4):
+                spark_alpha = int(120 * (1 - i / 4) * pulse)
+                spark_y = base_h + i * 4
+                spark_w = max(4, base_w // 2 - i * 2)
+                pygame.draw.ellipse(new_image, (*primary[:3], spark_alpha), 
+                                  ((base_w + 12) // 2 - spark_w // 2, spark_y, spark_w, 5))
+            
+            # 金属高光闪烁
+            if "metal_shine" in effects and self.timer % 8 < 4:
+                shine_x = (base_w + 12) // 2 + int(3 * math.sin(t * 3))
+                pygame.draw.circle(new_image, (255, 255, 255, 200), (shine_x, 8), 3)
+            
+            new_image.blit(self._base_image, (6, 0))
+            self._update_bullet_image(new_image)
+            
+        # ========== 相位/虚空类效果 ==========
+        elif "phase_flicker" in effects or "void_crack_trail" in effects:
+            # 相位闪烁 + 虚空裂缝
+            flicker = 0.6 + 0.4 * abs(math.sin(t * 4)) if self.timer % 6 < 3 else 1.0
+            new_image = pygame.Surface((base_w + 10, base_h + 14), pygame.SRCALPHA)
+            
+            # 虚空裂缝拖尾
+            if "void_crack_trail" in effects:
+                for i in range(3):
+                    crack_y = base_h + i * 4
+                    crack_alpha = int(80 * (1 - i / 3))
+                    pygame.draw.line(new_image, (*secondary[:3], crack_alpha),
+                                   ((base_w + 10) // 2 - 4, crack_y),
+                                   ((base_w + 10) // 2 + 4, crack_y + 3), 2)
+            
+            # 相位闪烁效果
+            if flicker < 0.8:
+                temp = self._base_image.copy()
+                temp.set_alpha(int(255 * flicker))
+                new_image.blit(temp, (5, 0))
+            else:
+                new_image.blit(self._base_image, (5, 0))
+            
+            self._update_bullet_image(new_image)
+            
+        # ========== 量子/时空类效果 ==========
+        elif "quantum_glitch" in effects or "position_echo" in effects:
+            # 量子故障 + 位置残影
+            new_image = pygame.Surface((base_w + 16, base_h + 10), pygame.SRCALPHA)
+            
+            # 位置残影
+            if "position_echo" in effects:
+                for i in range(3):
+                    echo_alpha = int(60 * (1 - i / 3))
+                    offset_x = int(3 * math.sin(t * 2 + i))
+                    temp = self._base_image.copy()
+                    temp.set_alpha(echo_alpha)
+                    new_image.blit(temp, (8 + offset_x - i * 2, 5))
+            
+            # 量子故障效果
+            if "quantum_glitch" in effects and random.random() < 0.15:
+                glitch_offset = random.randint(-3, 3)
+                new_image.blit(self._base_image, (8 + glitch_offset, 5))
+            else:
+                new_image.blit(self._base_image, (8, 5))
+            
+            self._update_bullet_image(new_image)
+            
+        # ========== 圣光类效果 ==========
+        elif "holy_ray" in effects or "divine_glow" in effects:
+            # 圣光射线（无光晕）
+            pulse = 0.7 + 0.3 * abs(math.sin(t * 1.5))
+            new_image = pygame.Surface((base_w + 14, base_h + 14), pygame.SRCALPHA)
+            
+            # 十字光芒
+            if "holy_ray" in effects:
+                cx, cy = (base_w + 14) // 2, (base_h + 14) // 2
+                ray_len = int(10 * pulse)
+                pygame.draw.line(new_image, (*primary[:3], 150), (cx - ray_len, cy), (cx + ray_len, cy), 2)
+                pygame.draw.line(new_image, (*primary[:3], 150), (cx, cy - ray_len), (cx, cy + ray_len), 2)
+            
+            new_image.blit(self._base_image, (7, 7))
+            self._update_bullet_image(new_image)
+            
+        # ========== 龙息/火焰类效果 ==========
+        elif "dragon_breath" in effects or "scale_shimmer" in effects:
+            # 龙息火焰 + 鳞片闪烁
+            flicker = 0.75 + 0.25 * random.random()
+            new_image = pygame.Surface((base_w + 12, base_h + 16), pygame.SRCALPHA)
+            
+            # 火焰拖尾
+            flame_colors = [(255, 100, 0), (255, 180, 0), (255, 220, 100)]
+            for i, fc in enumerate(flame_colors):
+                flame_alpha = int(150 * flicker * (1 - i / 3))
+                flame_y = base_h + i * 4
+                flame_w = max(4, base_w // 2 - i * 2)
+                pygame.draw.ellipse(new_image, (*fc, flame_alpha),
+                                  ((base_w + 12) // 2 - flame_w // 2, flame_y, flame_w, 6))
+            
+            # 鳞片闪光
+            if "scale_shimmer" in effects and self.timer % 10 < 5:
+                pygame.draw.circle(new_image, (255, 215, 0, 180), 
+                                 ((base_w + 12) // 2, base_h // 3), 2)
+            
+            new_image.blit(self._base_image, (6, 0))
+            self._update_bullet_image(new_image)
+            
+        # ========== 闪电/电弧类效果 ==========
+        elif "lightning_arc" in effects or "blade_trail" in effects:
+            # 闪电弧 + 刀刃轨迹
+            new_image = pygame.Surface((base_w + 14, base_h + 12), pygame.SRCALPHA)
+            
+            # 电弧效果
+            if "lightning_arc" in effects and random.random() < 0.4:
+                cx, cy = (base_w + 14) // 2, (base_h + 12) // 2
+                for _ in range(2):
+                    angle = random.uniform(0, math.pi * 2)
+                    length = random.randint(6, 12)
+                    ex = cx + int(length * math.cos(angle))
+                    ey = cy + int(length * math.sin(angle))
+                    pygame.draw.line(new_image, (*primary[:3], 200), (cx, cy), (ex, ey), 1)
+            
+            # 刀刃轨迹
+            if "blade_trail" in effects:
+                for i in range(3):
+                    trail_alpha = int(100 * (1 - i / 3))
+                    pygame.draw.line(new_image, (*secondary[:3], trail_alpha),
+                                   ((base_w + 14) // 2, base_h + i * 3),
+                                   ((base_w + 14) // 2, base_h + i * 3 + 4), 2)
+            
+            new_image.blit(self._base_image, (7, 0))
+            self._update_bullet_image(new_image)
+            
+        # ========== 虚空/扭曲类效果 ==========
+        elif "void_distortion" in effects or "nebula_swirl" in effects:
+            # 虚空扭曲 + 星云漩涡
+            pulse = 0.8 + 0.2 * abs(math.sin(t * 1.2))
+            new_image = pygame.Surface((base_w + 16, base_h + 16), pygame.SRCALPHA)
+            
+            # 星云漩涡
+            if "nebula_swirl" in effects:
+                cx, cy = (base_w + 16) // 2, (base_h + 16) // 2
+                for i in range(4):
+                    angle = (i * 90 + self.timer * 3) * math.pi / 180
+                    px = cx + int(8 * math.cos(angle))
+                    py = cy + int(8 * math.sin(angle))
+                    pygame.draw.circle(new_image, (*secondary[:3], int(60 * pulse)), (px, py), 3)
+            
+            new_image.blit(self._base_image, (8, 8))
+            self._update_bullet_image(new_image)
+            
+        # ========== 幽灵/灵魂类效果 ==========
+        elif "ghost_face" in effects or "soul_wail" in effects:
+            # 幽灵面孔 + 哀嚎
+            flicker = 0.5 + 0.5 * abs(math.sin(t * 3)) if random.random() < 0.1 else 1.0
+            new_image = pygame.Surface((base_w + 10, base_h + 12), pygame.SRCALPHA)
+            
+            # 飘动残影
+            if "soul_wail" in effects:
+                for i in range(2):
+                    offset_y = int(2 * math.sin(t * 2 + i))
+                    temp = self._base_image.copy()
+                    temp.set_alpha(int(60 * (1 - i / 2)))
+                    new_image.blit(temp, (5, 0 + offset_y))
+            
+            temp = self._base_image.copy()
+            temp.set_alpha(int(255 * flicker))
+            new_image.blit(temp, (5, 6))
+            self._update_bullet_image(new_image)
+            
+        # ========== 水晶/棱镜类效果 ==========
+        elif "crystal_prism" in effects or "light_scatter" in effects:
+            # 水晶棱镜 + 光线散射
+            new_image = pygame.Surface((base_w + 14, base_h + 14), pygame.SRCALPHA)
+            
+            # 彩虹散射
+            if "light_scatter" in effects:
+                rainbow = [(255, 0, 0), (255, 165, 0), (255, 255, 0), 
+                          (0, 255, 0), (0, 255, 255), (0, 0, 255)]
+                for i, color in enumerate(rainbow):
+                    angle = (i * 60 + self.timer * 4) * math.pi / 180
+                    px = (base_w + 14) // 2 + int(6 * math.cos(angle))
+                    py = (base_h + 14) // 2 + int(6 * math.sin(angle))
+                    pygame.draw.circle(new_image, (*color, 80), (px, py), 2)
+            
+            new_image.blit(self._base_image, (7, 7))
+            self._update_bullet_image(new_image)
+            
+        # ========== 触手/生物类效果 ==========
+        elif "tentacle_crawl" in effects or "bio_pulse" in effects:
+            # 触手蠕动 + 生物脉冲
+            pulse = 0.85 + 0.15 * abs(math.sin(t * 2.5))
+            new_image = pygame.Surface((base_w + 12, base_h + 12), pygame.SRCALPHA)
+            
+            # 脉冲光环
+            if "bio_pulse" in effects:
+                pulse_alpha = int(60 * pulse)
+                pygame.draw.ellipse(new_image, (*primary[:3], pulse_alpha), 
+                                  (2, 2, base_w + 8, base_h + 8))
+            
+            new_image.blit(self._base_image, (6, 6))
+            self._update_bullet_image(new_image)
+            
+        # ========== 极光/彗星类效果 ==========
+        elif "aurora_tail" in effects or "comet_trail" in effects:
+            # 极光尾迹 + 彗星轨迹
+            new_image = pygame.Surface((base_w + 10, base_h + 20), pygame.SRCALPHA)
+            
+            # 彩色尾迹
+            trail_colors = [(255, 100, 100), (100, 255, 100), (100, 100, 255), (255, 255, 100)]
+            for i, tc in enumerate(trail_colors):
+                trail_alpha = int(100 * (1 - i / 4))
+                trail_y = base_h + i * 4
+                pygame.draw.ellipse(new_image, (*tc, trail_alpha),
+                                  ((base_w + 10) // 2 - 3, trail_y, 6, 5))
+            
+            new_image.blit(self._base_image, (5, 0))
+            self._update_bullet_image(new_image)
+            
+        # ========== 时空/沙漏类效果 ==========
+        elif "hourglass_flow" in effects or "time_sand" in effects:
+            # 沙漏流动 + 时间沙
+            new_image = pygame.Surface((base_w + 10, base_h + 10), pygame.SRCALPHA)
+            
+            # 流沙粒子
+            if "time_sand" in effects:
+                for _ in range(3):
+                    px = random.randint(3, base_w + 7)
+                    py = random.randint(3, base_h + 7)
+                    pygame.draw.circle(new_image, (*secondary[:3], 120), (px, py), 1)
+            
+            new_image.blit(self._base_image, (5, 5))
+            self._update_bullet_image(new_image)
+            
+        # ========== 熔岩/反应堆类效果 ==========
+        elif "lava_crack" in effects or "reactor_pulse" in effects:
+            # 熔岩裂纹（无光晕）
+            new_image = pygame.Surface((base_w + 12, base_h + 12), pygame.SRCALPHA)
+            
+            # 能量裂纹
+            if "lava_crack" in effects:
+                cx, cy = (base_w + 12) // 2, (base_h + 12) // 2
+                for i in range(4):
+                    angle = (i * 90 + 45) * math.pi / 180
+                    ex = cx + int(6 * math.cos(angle))
+                    ey = cy + int(6 * math.sin(angle))
+                    pygame.draw.line(new_image, (255, 200, 0, 180), (cx, cy), (ex, ey), 1)
+            
+            new_image.blit(self._base_image, (6, 6))
+            self._update_bullet_image(new_image)
+            
+        # ========== 齿轮/机械类效果 ==========
+        elif "gear_rotate" in effects or "piston_pump" in effects:
+            # 齿轮旋转（无光晕）
+            rotation_angle = (self.timer * 6) % 360
+            rotated = pygame.transform.rotate(self._base_image, rotation_angle)
+            
+            old_center = self.rect.center
+            self.image = rotated
+            self.rect = self.image.get_rect(center=old_center)
+            
+        # ========== 灵魂/火焰类效果 ==========
+        elif "soul_fire" in effects or "ghostly_fade" in effects:
+            # 幽灵火焰
+            flicker = 0.6 + 0.4 * abs(math.sin(t * 3))
+            new_image = pygame.Surface((base_w + 12, base_h + 14), pygame.SRCALPHA)
+            
+            # 魂火粒子
+            for i in range(3):
+                fire_y = base_h - 2 + int(4 * math.sin(t * 2 + i))
+                fire_alpha = int(100 * flicker * (1 - i / 3))
+                pygame.draw.circle(new_image, (*secondary[:3], fire_alpha),
+                                 ((base_w + 12) // 2 + i * 3 - 3, fire_y), 3)
+            
+            # 渐隐效果
+            if "ghostly_fade" in effects and random.random() < 0.1:
+                temp = self._base_image.copy()
+                temp.set_alpha(int(180 * flicker))
+                new_image.blit(temp, (6, 0))
+            else:
+                new_image.blit(self._base_image, (6, 0))
+            
+            self._update_bullet_image(new_image)
+            
+        # ========== 镜面/棱光类效果 ==========
+        elif "mirror_reflect" in effects or "prism_ray" in effects:
+            # 镜面反射 + 棱镜光线
+            new_image = pygame.Surface((base_w + 14, base_h + 14), pygame.SRCALPHA)
+            
+            # 棱镜光线
+            if "prism_ray" in effects:
+                cx, cy = (base_w + 14) // 2, (base_h + 14) // 2
+                rainbow = [(255, 0, 0), (255, 165, 0), (255, 255, 0), 
+                          (0, 255, 0), (0, 255, 255), (0, 0, 255)]
+                for i, color in enumerate(rainbow):
+                    angle = (i * 60 + self.timer * 5) * math.pi / 180
+                    ex = cx + int(8 * math.cos(angle))
+                    ey = cy + int(8 * math.sin(angle))
+                    pygame.draw.line(new_image, (*color, 100), (cx, cy), (ex, ey), 1)
+            
+            # 镜面高光
+            if "mirror_reflect" in effects and self.timer % 6 < 3:
+                pygame.draw.circle(new_image, (255, 255, 255, 200),
+                                 ((base_w + 14) // 2, 6), 2)
+            
+            new_image.blit(self._base_image, (7, 7))
+            self._update_bullet_image(new_image)
+            
+        # ========== 黑雾/恐惧类效果 ==========
+        elif "dark_mist" in effects or "fear_aura" in effects:
+            # 黑雾弥漫 + 恐惧光环
+            pulse = 0.7 + 0.3 * abs(math.sin(t * 1.5))
+            new_image = pygame.Surface((base_w + 16, base_h + 16), pygame.SRCALPHA)
+            
+            # 黑雾
+            for i in range(3):
+                mist_alpha = int(40 * (1 - i / 3))
+                offset_x = int(4 * math.sin(t + i))
+                pygame.draw.ellipse(new_image, (30, 0, 50, mist_alpha),
+                                  (offset_x, i * 3, base_w + 10, base_h + 10))
+            
+            new_image.blit(self._base_image, (8, 8))
+            self._update_bullet_image(new_image)
+            
+        # ========== 极光波/彩虹类效果 ==========
+        elif "aurora_wave" in effects or "rainbow_trail" in effects:
+            # 极光波动 + 彩虹拖尾
+            new_image = pygame.Surface((base_w + 12, base_h + 18), pygame.SRCALPHA)
+            
+            # 彩虹尾迹
+            rainbow = [(255, 100, 100), (255, 200, 100), (255, 255, 100),
+                      (100, 255, 100), (100, 200, 255), (150, 100, 255)]
+            for i, color in enumerate(rainbow):
+                trail_y = base_h + i * 3
+                trail_alpha = int(80 * (1 - i / 6))
+                pygame.draw.ellipse(new_image, (*color, trail_alpha),
+                                  ((base_w + 12) // 2 - 4, trail_y, 8, 4))
+            
+            new_image.blit(self._base_image, (6, 0))
+            self._update_bullet_image(new_image)
+            
+        # ========== 时间波纹/残影类效果 ==========
+        elif "time_ripple" in effects or "afterimage_trail" in effects:
+            # 时间波纹 + 残影拖尾
+            new_image = pygame.Surface((base_w + 12, base_h + 14), pygame.SRCALPHA)
+            
+            # 残影
+            if "afterimage_trail" in effects:
+                for i in range(3):
+                    temp = self._base_image.copy()
+                    temp.set_alpha(int(60 * (1 - i / 3)))
+                    new_image.blit(temp, (6, i * 3))
+            
+            # 时间波纹
+            if "time_ripple" in effects:
+                pulse = abs(math.sin(t))
+                ripple_alpha = int(50 * (1 - pulse))
+                cx, cy = (base_w + 12) // 2, (base_h + 14) // 2
+                pygame.draw.circle(new_image, (*secondary[:3], ripple_alpha),
+                                 (cx, cy), int(8 + 4 * pulse), 1)
+            
+            new_image.blit(self._base_image, (6, 0))
+            self._update_bullet_image(new_image)
+            
+        # ========== 矩阵/代码类效果 ==========
+        elif "matrix_rain" in effects or "code_glitch" in effects:
+            # 数字矩阵雨 + 代码故障
+            new_image = pygame.Surface((base_w + 10, base_h + 16), pygame.SRCALPHA)
+            
+            # 数字雨粒子
+            if "matrix_rain" in effects:
+                for i in range(4):
+                    py = base_h + i * 4
+                    alpha = int(100 * (1 - i / 4))
+                    pygame.draw.rect(new_image, (*primary[:3], alpha),
+                                   ((base_w + 10) // 2 - 2, py, 4, 3))
+            
+            # 故障闪烁
+            if "code_glitch" in effects and random.random() < 0.2:
+                glitch_x = random.randint(-2, 2)
+                new_image.blit(self._base_image, (5 + glitch_x, 0))
+            else:
+                new_image.blit(self._base_image, (5, 0))
+            
+            self._update_bullet_image(new_image)
+            
+        # ========== 烟雾/金属类效果 ==========
+        elif "smoke_exhaust" in effects or "metal_texture" in effects:
+            # 烟雾排放 + 金属质感
+            new_image = pygame.Surface((base_w + 10, base_h + 14), pygame.SRCALPHA)
+            
+            # 烟雾
+            if "smoke_exhaust" in effects:
+                for i in range(3):
+                    smoke_alpha = int(60 * (1 - i / 3))
+                    smoke_y = base_h + i * 4
+                    smoke_w = 6 + i * 2
+                    offset_x = int(2 * math.sin(t * 2 + i))
+                    pygame.draw.ellipse(new_image, (100, 100, 100, smoke_alpha),
+                                      ((base_w + 10) // 2 - smoke_w // 2 + offset_x, smoke_y, smoke_w, 5))
+            
+            new_image.blit(self._base_image, (5, 0))
+            self._update_bullet_image(new_image)
+            
+        # ========== 辐射/毒素类效果 ==========
+        elif "radiation_wave" in effects or "toxic_glow" in effects:
+            # 辐射波 + 毒素发光
+            pulse = 0.7 + 0.3 * abs(math.sin(t * 2.5))
+            new_image = pygame.Surface((base_w + 14, base_h + 14), pygame.SRCALPHA)
+            
+            # 辐射波纹
+            if "radiation_wave" in effects:
+                cx, cy = (base_w + 14) // 2, (base_h + 14) // 2
+                for i in range(2):
+                    wave_r = int(6 + 4 * ((t + i * 0.5) % 1))
+                    wave_alpha = int(80 * (1 - (t + i * 0.5) % 1))
+                    pygame.draw.circle(new_image, (*primary[:3], wave_alpha), (cx, cy), wave_r, 1)
+            
+            new_image.blit(self._base_image, (7, 7))
+            self._update_bullet_image(new_image)
+            
+        # ========== 熔岩/火星类效果 ==========
+        elif "lava_drip" in effects or "ember_burst" in effects:
+            # 熔岩滴落 + 火星迸发
+            new_image = pygame.Surface((base_w + 12, base_h + 16), pygame.SRCALPHA)
+            
+            # 熔岩滴
+            if "lava_drip" in effects:
+                for i in range(2):
+                    drip_y = base_h + random.randint(4, 12)
+                    drip_x = (base_w + 12) // 2 + random.randint(-4, 4)
+                    pygame.draw.circle(new_image, (255, 100, 0, 150), (drip_x, drip_y), 2)
+            
+            # 火星
+            if "ember_burst" in effects:
+                for _ in range(2):
+                    ex = random.randint(2, base_w + 10)
+                    ey = random.randint(0, base_h)
+                    pygame.draw.circle(new_image, (255, 200, 50, 200), (ex, ey), 1)
+            
+            new_image.blit(self._base_image, (6, 0))
+            self._update_bullet_image(new_image)
+            
+        # ========== 等离子/推进类效果 ==========
+        elif "plasma_thrust" in effects or "mech_exhaust" in effects:
+            # 等离子推进 + 机械排气
+            flicker = 0.7 + 0.3 * random.random()
+            new_image = pygame.Surface((base_w + 10, base_h + 18), pygame.SRCALPHA)
+            
+            # 等离子尾焰
+            flame_colors = [(100, 200, 255), (50, 150, 255), (0, 100, 200)]
+            for i, fc in enumerate(flame_colors):
+                flame_alpha = int(180 * flicker * (1 - i / 3))
+                flame_y = base_h + i * 4
+                flame_w = max(4, 8 - i * 2)
+                pygame.draw.ellipse(new_image, (*fc, flame_alpha),
+                                  ((base_w + 10) // 2 - flame_w // 2, flame_y, flame_w, 6))
+            
+            new_image.blit(self._base_image, (5, 0))
+            self._update_bullet_image(new_image)
+            
+        # ========== 冰霜/水晶类效果 ==========
+        elif "frost_aura" in effects or "crystal_shine" in effects:
+            # 水晶闪光（无光晕）
+            new_image = pygame.Surface((base_w + 12, base_h + 12), pygame.SRCALPHA)
+            
+            # 水晶闪光
+            if "crystal_shine" in effects and self.timer % 10 < 5:
+                cx, cy = (base_w + 12) // 2, (base_h + 12) // 2
+                for i in range(4):
+                    angle = (i * 90 + 45) * math.pi / 180
+                    ex = cx + int(5 * math.cos(angle))
+                    ey = cy + int(5 * math.sin(angle))
+                    pygame.draw.line(new_image, (255, 255, 255, 180), (cx, cy), (ex, ey), 1)
+            
+            new_image.blit(self._base_image, (6, 6))
+            self._update_bullet_image(new_image)
+            
+        # ========== 恶魔/血浆类效果 ==========
+        elif "demon_aura" in effects or "blood_splatter" in effects:
+            # 血浆飞溅（无光晕）
+            new_image = pygame.Surface((base_w + 14, base_h + 14), pygame.SRCALPHA)
+            
+            # 血浆飞溅
+            if "blood_splatter" in effects and random.random() < 0.15:
+                for _ in range(2):
+                    bx = random.randint(2, base_w + 12)
+                    by = random.randint(2, base_h + 12)
+                    pygame.draw.circle(new_image, (180, 0, 0, 180), (bx, by), 2)
+            
+            new_image.blit(self._base_image, (7, 7))
+            self._update_bullet_image(new_image)
+            
+        # ========== 等离子柱/轨道类效果 ==========
+        elif "plasma_column" in effects or "orbital_strike" in effects:
+            # 等离子柱 + 轨道打击
+            new_image = pygame.Surface((base_w + 14, base_h + 14), pygame.SRCALPHA)
+            
+            # 轨道环
+            if "orbital_strike" in effects:
+                cx, cy = (base_w + 14) // 2, (base_h + 14) // 2
+                for i in range(3):
+                    ring_angle = (self.timer * 4 + i * 120) * math.pi / 180
+                    rx = cx + int(6 * math.cos(ring_angle))
+                    ry = cy + int(6 * math.sin(ring_angle))
+                    pygame.draw.circle(new_image, (*secondary[:3], 120), (rx, ry), 2)
+            
+            new_image.blit(self._base_image, (7, 7))
+            self._update_bullet_image(new_image)
+            
+        # ========== 默认效果 ==========
+        else:
+            # 无额外效果
+            pass
+    
+    def _update_bullet_image(self, new_image):
+        """更新子弹图像并保持中心位置"""
+        old_center = self.rect.center
+        self.image = new_image
+        self.rect = self.image.get_rect(center=old_center)
+
     def _update_bullet_animation(self):
         """更新子弹动画效果"""
         if not hasattr(self, 'effects'):

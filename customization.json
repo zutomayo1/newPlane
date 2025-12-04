@@ -139,7 +139,7 @@
     "stalker": "stalker_drone",
     "gaia": "gaia_elemental",
     "weaver": "weaver_web",
-    "solar": "solar_fusion",
+    "solar": "common_red",
     "eclipse": "eclipse_cosmos",
     "prism": "prism_laser",
     "necro": "necro_reaper"
@@ -267,9 +267,9 @@
     "necro_necrotic_burst": true
   },
   "equipped_bullet_themes": {
-    "striker": "striker_infinity_bullet",
+    "striker": "striker_stealth_bullet",
     "crimson": "crimson_demon_bullet",
-    "titan": "titan_orbital_bullet",
+    "titan": "titan_nuclear_bullet",
     "thunderbird": "thunderbird_tesla_bullet",
     "viper": "viper_serpent_god_bullet",
     "specter": "specter_wraith_bullet",
@@ -278,7 +278,7 @@
     "gaia": "gaia_flower_bullet",
     "weaver": "weaver_quantum_bullet",
     "solar": "solar_photon_bullet",
-    "arbiter": "arbiter_quantum_entangle",
+    "arbiter": "arbiter_collapse_star",
     "eclipse": "eclipse_black_sun",
     "prism": "prism_lens_flare",
     "necro": "necro_ghost_chain"
