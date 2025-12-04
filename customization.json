@@ -256,9 +256,9 @@
     "striker": "striker_overdrive_bullet"
   },
   "equipped_wingman_themes": {
-    "slot_0": "weaver_spider",
-    "slot_1": "weaver_silk",
-    "slot_2": "prism_refraction",
-    "slot_3": "prism_rainbow"
+    "slot_0": "striker_holy",
+    "slot_1": "viper_serpent_god",
+    "slot_2": "aurora_rainbow",
+    "slot_3": "crimson_inferno"
   }
 }

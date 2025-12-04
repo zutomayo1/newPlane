@@ -33,7 +33,7 @@ class Wingman:
         # 位置
         self.x = player.rect.centerx
         self.y = player.rect.centery
-        self.rect = pygame.Rect(self.x - 15, self.y - 15, 30, 30)
+        self.rect = pygame.Rect(self.x - 40, self.y - 40, 80, 80)
         
         # 编队配置 - 4个方向（上、右、下、左）
         # 初始角度 - 每个槽位相隔90度
@@ -240,10 +240,10 @@ class Wingman:
                         if "trail_color" in theme: visual["trail_color"] = theme["trail_color"]
                         if "model_style" in theme: visual["model_style"] = theme["model_style"]
                         
-                        # 绘制带涂装的僚机（缩小尺寸）
-                        wingman_surf = get_plane_surf(exclusive_plane, visual, static=True)
-                        wingman_surf = pygame.transform.scale(wingman_surf, (40, 40))
-                        screen.blit(wingman_surf, (int(self.x) - 20, int(self.y) - 20))
+                        # 绘制带涂装的僚机（使用动态效果）
+                        wingman_surf = get_plane_surf(exclusive_plane, visual, static=False)
+                        wingman_surf = pygame.transform.scale(wingman_surf, (80, 80))
+                        screen.blit(wingman_surf, (int(self.x) - 40, int(self.y) - 40))
                         return
             except Exception:
                 pass  # 如果涂装加载失败，使用默认绘制
@@ -257,6 +257,9 @@ class Wingman:
         """
         x, y = int(self.x), int(self.y)
         
+        # 缩放因子（2倍放大）
+        scale = 2.0
+        
         # 获取脉动效果
         t = pygame.time.get_ticks() / 1000.0
         pulse = abs(math.sin(t * 4))  # 更快的脉动
@@ -267,7 +270,7 @@ class Wingman:
         glow_color = (100, 200, 255)  # 青蓝色
         
         # === 背景光晕（透明） ===
-        glow_radius = int(18 + 4 * pulse)
+        glow_radius = int((18 + 4 * pulse) * scale)
         # 使用Surface实现透明光晕
         glow_surf = pygame.Surface((glow_radius * 2 + 4, glow_radius * 2 + 4), pygame.SRCALPHA)
         pygame.draw.circle(glow_surf, (*glow_color, 8), (glow_radius + 2, glow_radius + 2), glow_radius)  # alpha=8 很透明
@@ -276,18 +279,18 @@ class Wingman:
         # === 主机体：菱形战斗机设计 ===
         # 机头（上）- 锐利的尖端
         nose_points = [
-            (x, y - 14),      # 机头顶点
-            (x + 3, y - 10),  # 右机头边
-            (x - 3, y - 10)   # 左机头边
+            (x, y - int(14 * scale)),      # 机头顶点
+            (x + int(3 * scale), y - int(10 * scale)),  # 右机头边
+            (x - int(3 * scale), y - int(10 * scale))   # 左机头边
         ]
         pygame.draw.polygon(screen, edge_color, nose_points)
         
         # 机身主体（中央菱形）
         fuselage_points = [
-            (x, y - 14),      # 上（机头）
-            (x + 10, y),      # 右
-            (x, y + 14),      # 下
-            (x - 10, y)       # 左
+            (x, y - int(14 * scale)),      # 上（机头）
+            (x + int(10 * scale), y),      # 右
+            (x, y + int(14 * scale)),      # 下
+            (x - int(10 * scale), y)       # 左
         ]
         pygame.draw.polygon(screen, main_color, fuselage_points)
         pygame.draw.polygon(screen, edge_color, fuselage_points, 1)  # 边框
@@ -295,56 +298,56 @@ class Wingman:
         # === 机翼 ===
         # 左翼
         left_wing = [
-            (x - 10, y - 2),
-            (x - 16, y - 4),
-            (x - 16, y + 4),
-            (x - 10, y + 2)
+            (x - int(10 * scale), y - int(2 * scale)),
+            (x - int(16 * scale), y - int(4 * scale)),
+            (x - int(16 * scale), y + int(4 * scale)),
+            (x - int(10 * scale), y + int(2 * scale))
         ]
         pygame.draw.polygon(screen, main_color, left_wing)
-        pygame.draw.line(screen, edge_color, (x - 10, y - 2), (x - 16, y - 4), 1)
+        pygame.draw.line(screen, edge_color, (x - int(10 * scale), y - int(2 * scale)), (x - int(16 * scale), y - int(4 * scale)), 1)
         
         # 右翼
         right_wing = [
-            (x + 10, y - 2),
-            (x + 16, y - 4),
-            (x + 16, y + 4),
-            (x + 10, y + 2)
+            (x + int(10 * scale), y - int(2 * scale)),
+            (x + int(16 * scale), y - int(4 * scale)),
+            (x + int(16 * scale), y + int(4 * scale)),
+            (x + int(10 * scale), y + int(2 * scale))
         ]
         pygame.draw.polygon(screen, main_color, right_wing)
-        pygame.draw.line(screen, edge_color, (x + 10, y - 2), (x + 16, y - 4), 1)
+        pygame.draw.line(screen, edge_color, (x + int(10 * scale), y - int(2 * scale)), (x + int(16 * scale), y - int(4 * scale)), 1)
         
         # === 副翼细节 ===
         # 上副翼
-        pygame.draw.line(screen, glow_color, (x - 3, y - 8), (x + 3, y - 8), 1)
+        pygame.draw.line(screen, glow_color, (x - int(3 * scale), y - int(8 * scale)), (x + int(3 * scale), y - int(8 * scale)), 1)
         
         # 下副翼
-        pygame.draw.line(screen, glow_color, (x - 3, y + 8), (x + 3, y + 8), 1)
+        pygame.draw.line(screen, glow_color, (x - int(3 * scale), y + int(8 * scale)), (x + int(3 * scale), y + int(8 * scale)), 1)
         
         # === 能量核心（驾驶舱） ===
-        core_radius = int(3 + 1.5 * pulse)
-        pygame.draw.circle(screen, (255, 200, 100), (x, y - 4), core_radius)  # 能量核心
-        pygame.draw.circle(screen, (255, 255, 200), (x, y - 4), core_radius - 1)  # 内核
+        core_radius = int((3 + 1.5 * pulse) * scale)
+        pygame.draw.circle(screen, (255, 200, 100), (x, y - int(4 * scale)), core_radius)  # 能量核心
+        pygame.draw.circle(screen, (255, 255, 200), (x, y - int(4 * scale)), core_radius - 1)  # 内核
         
         # === 引擎尾焰 ===
         if self.weapon and self.weapon.is_firing:  # 正在射击时显示加强尾焰
             flame_brightness = int(100 + 155 * pulse)
             flame_points = [
-                (x - 2, y + 14),
-                (x - 4, y + 20 + int(3 * pulse)),
-                (x, y + 18),
-                (x + 4, y + 20 + int(3 * pulse)),
-                (x + 2, y + 14)
+                (x - int(2 * scale), y + int(14 * scale)),
+                (x - int(4 * scale), y + int(20 * scale) + int(3 * pulse * scale)),
+                (x, y + int(18 * scale)),
+                (x + int(4 * scale), y + int(20 * scale) + int(3 * pulse * scale)),
+                (x + int(2 * scale), y + int(14 * scale))
             ]
             pygame.draw.polygon(screen, (flame_brightness, flame_brightness // 2, 0), flame_points)
             pygame.draw.polygon(screen, (255, 150, 0), flame_points, 1)
         else:
             # 待机时的微弱尾焰
             tail_points = [
-                (x - 1, y + 14),
-                (x - 2, y + 17),
-                (x, y + 16),
-                (x + 2, y + 17),
-                (x + 1, y + 14)
+                (x - int(1 * scale), y + int(14 * scale)),
+                (x - int(2 * scale), y + int(17 * scale)),
+                (x, y + int(16 * scale)),
+                (x + int(2 * scale), y + int(17 * scale)),
+                (x + int(1 * scale), y + int(14 * scale))
             ]
             pygame.draw.polygon(screen, (100, 80, 20), tail_points)
         
@@ -365,27 +368,27 @@ class Wingman:
             }.get(self.weapon.type, (200, 200, 200))
             
             # 左右翼的武器指示灯
-            pygame.draw.circle(screen, weapon_color, (x - 10, y - 2), 2)
-            pygame.draw.circle(screen, weapon_color, (x + 10, y - 2), 2)
+            pygame.draw.circle(screen, weapon_color, (x - int(10 * scale), y - int(2 * scale)), int(2 * scale))
+            pygame.draw.circle(screen, weapon_color, (x + int(10 * scale), y - int(2 * scale)), int(2 * scale))
             
             # 武器充能条（在机身两侧）
             charge_ratio = min(1.0, 1.0 - self.weapon.reload_timer / max(1, self.weapon.cooldown_max))
-            bar_length = 6
-            bar_height = 1
+            bar_length = int(6 * scale)
+            bar_height = int(1 * scale)
             
             # 左侧充能条
-            pygame.draw.rect(screen, (50, 50, 50), (x - 12, y - 6, bar_length, bar_height))
-            pygame.draw.rect(screen, weapon_color, (x - 12, y - 6, int(bar_length * charge_ratio), bar_height))
+            pygame.draw.rect(screen, (50, 50, 50), (x - int(12 * scale), y - int(6 * scale), bar_length, bar_height))
+            pygame.draw.rect(screen, weapon_color, (x - int(12 * scale), y - int(6 * scale), int(bar_length * charge_ratio), bar_height))
             
             # 右侧充能条
-            pygame.draw.rect(screen, (50, 50, 50), (x + 6, y - 6, bar_length, bar_height))
-            pygame.draw.rect(screen, weapon_color, (x + 6, y - 6, int(bar_length * charge_ratio), bar_height))
+            pygame.draw.rect(screen, (50, 50, 50), (x + int(6 * scale), y - int(6 * scale), bar_length, bar_height))
+            pygame.draw.rect(screen, weapon_color, (x + int(6 * scale), y - int(6 * scale), int(bar_length * charge_ratio), bar_height))
         
         # === 护盾指示 ===
         if self.health < self.max_health:
             health_ratio = self.health / self.max_health
             shield_color = (100 + int(155 * health_ratio), 150, 255)
-            pygame.draw.circle(screen, shield_color, (x, y), 20, 1)
+            pygame.draw.circle(screen, shield_color, (x, y), int(20 * scale), 1)
         
         # === 编队编号显示 ===
         # 在机身后方显示编队位置
@@ -393,10 +396,10 @@ class Wingman:
         slot_color = (150, 200, 255)
         # 绘制小指示符（在机体下方）
         pygame.draw.polygon(screen, slot_color, [
-            (x - 4, y + 18),
-            (x - 2, y + 20),
-            (x + 2, y + 20),
-            (x + 4, y + 18)
+            (x - int(4 * scale), y + int(18 * scale)),
+            (x - int(2 * scale), y + int(20 * scale)),
+            (x + int(2 * scale), y + int(20 * scale)),
+            (x + int(4 * scale), y + int(18 * scale))
         ])
     
     def take_damage(self, amount):
