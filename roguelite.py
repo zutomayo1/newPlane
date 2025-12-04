@@ -405,27 +405,57 @@ def add_wingmen_to_player(player, count=2):
     :param count: 要添加的僚机数量
     :return: 实际添加的僚机数量
     """
+    print(f"[DEBUG] add_wingmen_to_player 开始, count={count}")
     if not hasattr(player, 'wingman_squadron') or player.wingman_squadron is None:
         # 如果编队系统还没初始化，先初始化
         try:
             from wingman import WingmanSquadron
+            print("[DEBUG] 初始化 wingman_squadron")
             player.wingman_squadron = WingmanSquadron(player, max_wingmen=player.max_wingmen)
-        except ImportError:
+            print("[DEBUG] wingman_squadron 初始化完成")
+        except Exception as e:
+            print(f"[DEBUG] 导入wingman失败: {e}")
+            import traceback
+            traceback.print_exc()
             log_error("无法导入wingman模块")
             return 0
+    
+    # 获取涂装配置（直接从 customization 模块读取文件）
+    equipped_wingman_themes = {}
+    try:
+        import json
+        import os
+        save_file = "customization.json"
+        if os.path.exists(save_file):
+            with open(save_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                equipped_wingman_themes = data.get("equipped_wingman_themes", {})
+        print(f"[DEBUG] 获取僚机涂装配置成功: {equipped_wingman_themes}")
+    except Exception as e:
+        print(f"[DEBUG] 获取涂装配置失败: {e}")
     
     added = 0
     for _ in range(count):
         # 为僚机创建副武器，使用玩家当前选中的武器
+        print(f"[DEBUG] 创建僚机武器...")
         wingman_weapon = create_wingman_weapon(player)
         
+        # 获取当前槽位的涂装
+        slot_index = len(player.wingman_squadron.wingmen)
+        paint_theme_id = equipped_wingman_themes.get(f"slot_{slot_index}", "default")
+        print(f"[DEBUG] 僚机涂装: slot_{slot_index} -> {paint_theme_id}")
+        
         # 添加带武器的僚机
-        if player.wingman_squadron.add_wingman(wingman_weapon):
+        print(f"[DEBUG] 添加僚机...")
+        if player.wingman_squadron.add_wingman(wingman_weapon, paint_theme_id=paint_theme_id):
             added += 1
             player.wingman_count += 1
+            print(f"[DEBUG] 僚机添加成功, added={added}")
         else:
+            print(f"[DEBUG] 僚机添加失败，达到上限")
             break  # 达到上限
     
+    print(f"[DEBUG] add_wingmen_to_player 完成, added={added}")
     log_info(f"玩家获得 {added} 个僚机，当前僚机数: {player.wingman_count}")
     return added
 
@@ -967,7 +997,9 @@ def apply_buff_to_player(player, buff_id):
             player.on_buff_received(buff_id, buff)
         return True
     except Exception as e:
+        import traceback
         log_error(f"Failed to apply buff {buff_id}: {e}")
+        log_error(traceback.format_exc())
         return False
 
 def get_buff_info(buff_id):

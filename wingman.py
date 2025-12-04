@@ -215,9 +215,38 @@ class Wingman:
         Bullet(int(self.x), int(self.y), angle=angle_deg, is_enemy=False, piercing=0, color=color, b_type=b_type)
     
     def draw(self, screen):
-        """绘制僚机"""
+        """绘制僚机（支持涂装）"""
         if not self.active:
             return
+        
+        # 如果有专属涂装，使用涂装绘制
+        if hasattr(self, 'paint_theme_id') and self.paint_theme_id != "default":
+            try:
+                from customization import PAINT_THEMES
+                from sprites import get_plane_surf
+                from config import PLANES
+                
+                theme = PAINT_THEMES.get(self.paint_theme_id)
+                if theme:
+                    exclusive_plane = theme.get("exclusive_plane")
+                    if exclusive_plane and exclusive_plane in PLANES:
+                        # 直接从 PAINT_THEMES 获取涂装视觉效果（不依赖 main 模块）
+                        default_visual = PLANES[exclusive_plane].get('visual', {})
+                        visual = default_visual.copy() if default_visual else {}
+                        
+                        # 应用涂装的颜色
+                        if "neon_color" in theme: visual["neon_color"] = theme["neon_color"]
+                        if "accent_color" in theme: visual["accent_color"] = theme["accent_color"]
+                        if "trail_color" in theme: visual["trail_color"] = theme["trail_color"]
+                        if "model_style" in theme: visual["model_style"] = theme["model_style"]
+                        
+                        # 绘制带涂装的僚机（缩小尺寸）
+                        wingman_surf = get_plane_surf(exclusive_plane, visual, static=True)
+                        wingman_surf = pygame.transform.scale(wingman_surf, (40, 40))
+                        screen.blit(wingman_surf, (int(self.x) - 20, int(self.y) - 20))
+                        return
+            except Exception:
+                pass  # 如果涂装加载失败，使用默认绘制
         
         self._draw_wingman_plane(screen)
     
@@ -403,18 +432,30 @@ class WingmanSquadron:
         self.max_wingmen = max_wingmen
         self.wingmen = []  # 活跃的僚机列表
         
-    def add_wingman(self, weapon_system):
-        """添加僚机"""
+    def add_wingman(self, weapon_system, paint_theme_id="default"):
+        """添加僚机（应用涂装）
+        
+        :param weapon_system: 僚机武器系统
+        :param paint_theme_id: 涂装主题ID，由调用方传入
+        """
+        print(f"[DEBUG wingman] add_wingman 开始, paint_theme_id={paint_theme_id}")
         if len(self.wingmen) >= self.max_wingmen:
+            print(f"[DEBUG wingman] 达到上限")
             return False
         
         slot_index = len(self.wingmen)
-        wingman = Wingman(self.player, slot_index, weapon_system)
+        print(f"[DEBUG wingman] slot_index={slot_index}")
+        
+        print(f"[DEBUG wingman] 创建 Wingman 实例...")
+        wingman = Wingman(self.player, slot_index, weapon_system, paint_theme_id=paint_theme_id)
+        print(f"[DEBUG wingman] Wingman 实例创建成功")
         self.wingmen.append(wingman)
         
         # 重新调整所有僚机的slot_index和初始角度，确保均匀分布
         # 这样即使分次添加僚机，它们也会自动排列成正方形
+        print(f"[DEBUG wingman] 调用 _rearrange_wingmen...")
         self._rearrange_wingmen()
+        print(f"[DEBUG wingman] _rearrange_wingmen 完成")
         
         return True
     
@@ -426,6 +467,7 @@ class WingmanSquadron:
             wingman.initial_angle = i * math.pi / 2.0
             # 重置累积旋转，使得角度计算一致
             wingman.accumulated_rotation = 0
+            # 注意：涂装ID不在这里更新，由调用方在添加时传入
     
     def remove_wingman(self, index):
         """移除僚机"""

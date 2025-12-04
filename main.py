@@ -136,18 +136,20 @@ codex_tab = 0 # 0:Plane, 1:Boss, 2:Enemy
 codex_idx = 0
 codex_scroll_y = 0 
 
-# 涂装系统 - 重写版本
+# 涂装系统
 customization_scroll_y = 0
 customization_plane_scroll_y = 0  # 飞机列表滚动
 customization_selected_plane = None  # 当前选中的飞机ID
 customization_msg = ""
-customization_mode = "plane"  # "plane" 或 "wingman" - 当前涂装模式
-customization_wingman_slot = 0  # 当前选中的僚机槽位 (0-3)
+customization_msg_timer = 0
+customization_tab = 0
+customization_mode = "plane"  # "plane" 或 "wingman"
+customization_selected_wingman = 0  # 当前选中的僚机槽位 (0-3)
+wingman_theme_filter = None  # 僚机涂装筛选器 (None=全部, plane_id=按机体筛选)
 
 # 背景设置
 background_settings_page = 0  # 当前页码
 background_settings_selected = 0  # 当前选中的背景索引
-customization_msg_timer = 0
 
 # 暂停菜单状态
 pause_menu_selected = 0  # 0: 继续, 1: 重新开始, 2: 退出战斗
@@ -3341,7 +3343,7 @@ def get_menu_buttons():
         ("开始游戏", YELLOW, "select_plane"),
         ("Boss挑战模式", CYAN, "boss_challenge"),
         ("武器库", ORANGE, "arsenal"),
-        ("机体涂装", MAGENTA, "customization"),
+        ("涂装", MAGENTA, "customization"),
         ("背景设置", (100, 200, 255), "background_settings"),
         ("系统设置", (255, 150, 0), "settings"),
         ("战术图鉴", MAGENTA, "gallery"),
@@ -3710,176 +3712,6 @@ def draw_arsenal_ui():
     draw_cyber_rect(screen, r['btn_back'], GRAY, fill=True)
     if hb: draw_cyber_rect(screen, r['btn_back'], WHITE, border_width=2, fill=False)
     draw_text(screen, "返回", 20, r['btn_back'].centerx, r['btn_back'].centery-10, WHITE)
-
-def draw_wingman_customization_ui():
-    """绘制僚机涂装界面"""
-    global customization_wingman_slot, customization_msg, customization_msg_timer
-    
-    mx, my = pygame.mouse.get_pos()
-    
-    # 货币显示
-    currency_text = f"核心: {arsenal_save_data['currencies']['cores']}"
-    draw_text(screen, currency_text, 20, WIDTH - 200, 100, GOLD, align="left")
-    
-    # 左侧：僚机槽位选择（4个槽位）
-    slot_area = pygame.Rect(50, 150, 250, 500)
-    draw_cyber_rect(screen, slot_area, (20, 20, 30), alpha=220, fill=True)
-    draw_text(screen, "僚机槽位", 24, slot_area.centerx, 160, MAGENTA)
-    
-    slot_start_y = 200
-    slot_height = 100
-    slot_gap = 10
-    
-    for slot_idx in range(4):
-        slot_rect = pygame.Rect(slot_area.x + 10, slot_start_y + slot_idx * (slot_height + slot_gap), 
-                                slot_area.width - 20, slot_height)
-        
-        is_selected = (customization_wingman_slot == slot_idx)
-        is_hover = slot_rect.collidepoint(mx, my)
-        
-        # 获取当前槽位装备的涂装
-        equipped_theme = customization_manager.equipped_wingman_themes.get(f"slot_{slot_idx}", "default")
-        
-        # 背景色
-        if is_selected:
-            bg_color = (60, 40, 80)
-            border_color = MAGENTA
-            border_width = 3
-        elif is_hover:
-            bg_color = (50, 50, 60)
-            border_color = CYAN
-            border_width = 2
-        else:
-            bg_color = (30, 30, 40)
-            border_color = GRAY
-            border_width = 1
-        
-        draw_cyber_rect(screen, slot_rect, bg_color, fill=True)
-        draw_cyber_rect(screen, slot_rect, border_color, border_width=border_width, fill=False)
-        
-        # 绘制槽位信息
-        draw_text(screen, f"僚机 {slot_idx + 1}", 20, slot_rect.x + 60, slot_rect.y + 15, WHITE, align="left")
-        
-        # 显示当前涂装（预留位置，暂时显示文字）
-        if equipped_theme == "default":
-            theme_name = "默认涂装"
-            theme_color = GRAY
-        else:
-            # 从WINGMAN_THEMES获取涂装名称
-            try:
-                from wingman_themes import WINGMAN_THEMES
-                theme_name = WINGMAN_THEMES.get(equipped_theme, {}).get("name", "未知涂装")
-                theme_color = WINGMAN_THEMES.get(equipped_theme, {}).get("main_color", WHITE)
-            except:
-                theme_name = equipped_theme
-                theme_color = WHITE
-        
-        draw_text(screen, theme_name, 16, slot_rect.x + 60, slot_rect.y + 45, theme_color, align="left")
-        
-        # 预览区域（占位符）
-        preview_rect = pygame.Rect(slot_rect.x + 10, slot_rect.y + 10, 40, 40)
-        draw_cyber_rect(screen, preview_rect, (40, 40, 50), fill=True)
-        draw_text(screen, "僚机", 12, preview_rect.centerx, preview_rect.centery - 6, GRAY)
-    
-    # 右侧：涂装主题列表
-    theme_area = pygame.Rect(320, 150, 600, 500)
-    draw_cyber_rect(screen, theme_area, (20, 20, 30), alpha=220, fill=True)
-    draw_text(screen, f"僚机 {customization_wingman_slot + 1} - 涂装选择", 24, theme_area.centerx, 160, CYAN)
-    
-    # 获取所有僚机涂装主题
-    try:
-        from wingman_themes import WINGMAN_THEMES
-        
-        # 涂装卡片网格
-        card_w = 180
-        card_h = 140
-        cards_per_row = 3
-        gap = 15
-        
-        start_x = theme_area.x + 20
-        start_y = 200
-        
-        row = 0
-        col = 0
-        
-        for theme_id, theme_data in WINGMAN_THEMES.items():
-            x = start_x + col * (card_w + gap)
-            y = start_y + row * (card_h + gap)
-            
-            card_rect = pygame.Rect(x, y, card_w, card_h)
-            
-            # 检查是否在可见区域
-            if y + card_h > theme_area.bottom - 20:
-                break
-            
-            # 检查是否已装备
-            current_equipped = customization_manager.equipped_wingman_themes.get(f"slot_{customization_wingman_slot}", "default")
-            is_equipped = (theme_id == current_equipped)
-            
-            # 检查是否已解锁
-            is_unlocked = customization_manager.unlocked_wingman_themes.get(theme_id, False)
-            
-            is_hover = card_rect.collidepoint(mx, my) and is_unlocked
-            
-            # 背景色
-            if is_equipped:
-                bg_color = (50, 70, 90)
-            elif is_hover:
-                bg_color = (60, 60, 70)
-            elif not is_unlocked:
-                bg_color = (25, 25, 30)
-            else:
-                bg_color = (35, 35, 45)
-            
-            draw_cyber_rect(screen, card_rect, bg_color, fill=True)
-            
-            # 边框
-            if is_equipped:
-                draw_cyber_rect(screen, card_rect, MAGENTA, border_width=3, fill=False)
-            elif is_hover:
-                draw_cyber_rect(screen, card_rect, CYAN, border_width=2, fill=False)
-            else:
-                draw_cyber_rect(screen, card_rect, GRAY, border_width=1, fill=False)
-            
-            # 预览区域（占位符 - 等待下次实现具体绘制）
-            preview_rect = pygame.Rect(x + 10, y + 10, 160, 80)
-            draw_cyber_rect(screen, preview_rect, (40, 40, 50), fill=True)
-            draw_text(screen, "涂装预览", 14, preview_rect.centerx, preview_rect.centery - 7, GRAY)
-            
-            # 涂装名称
-            name_color = WHITE if is_unlocked else (80, 80, 80)
-            draw_text(screen, theme_data["name"], 16, card_rect.centerx, y + 100, name_color)
-            
-            # 状态显示
-            if is_equipped:
-                draw_text(screen, "✓ 已装备", 14, card_rect.centerx, y + 118, LIME)
-            elif not is_unlocked:
-                cost = theme_data.get("cost", 0)
-                draw_text(screen, f"🔒 {cost} 核心", 14, card_rect.centerx, y + 118, GOLD)
-            
-            # 更新列位置
-            col += 1
-            if col >= cards_per_row:
-                col = 0
-                row += 1
-    
-    except ImportError:
-        draw_text(screen, "僚机涂装系统加载失败", 24, theme_area.centerx, theme_area.centery - 12, RED)
-        draw_text(screen, "请确保 wingman_themes.py 文件存在", 18, theme_area.centerx, theme_area.centery + 12, GRAY)
-    
-    # 消息提示
-    if customization_msg and customization_msg_timer > 0:
-        msg_rect = pygame.Rect(WIDTH//2 - 200, HEIGHT - 100, 400, 40)
-        draw_cyber_rect(screen, msg_rect, (40, 40, 60), alpha=200, fill=True)
-        draw_text(screen, customization_msg, 18, msg_rect.centerx, msg_rect.centery - 9, LIME)
-    
-    # 返回按钮
-    back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 80, 120, 50)
-    hb = back_btn.collidepoint(mx, my)
-    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
-    if hb: 
-        draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
-    draw_text(screen, "返回", 20, back_btn.centerx, back_btn.centery - 10, WHITE)
 
 def draw_background_settings_ui():
     """背景设置界面 - 分页版本"""
@@ -4992,7 +4824,11 @@ def handle_plane_customization_click(mx, my):
             if card_rect.bottom < 100 or card_rect.top > HEIGHT - 80:
                 continue
             
-            is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
+            # 根据涂装类型检查解锁状态
+            if is_bullet:
+                is_unlocked = customization_manager.unlocked_bullet_themes.get(theme_id, False)
+            else:
+                is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
             btn_x = card_rect.right - 120
             btn_y = card_rect.y + 25
             btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
@@ -5037,121 +4873,159 @@ def handle_plane_customization_click(mx, my):
                         sound_mgr.play("warning")
                 break
 
+
 def handle_wingman_customization_click(mx, my):
-    """处理僚机涂装点击事件"""
-    global customization_wingman_slot, customization_msg, customization_msg_timer, game_state
+    """处理僚机涂装界面的点击事件"""
+    global customization_selected_wingman, customization_msg, customization_msg_timer, wingman_theme_filter, customization_scroll_y
     
-    # 返回按钮
-    back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 80, 120, 50)
-    if back_btn.collidepoint(mx, my):
-        sound_mgr.play("select")
-        customization_manager.save_data()
-        game_state = "menu"
+    # 槽位选择
+    list_content_rect = pygame.Rect(30, 140, 280, HEIGHT - 220)
+    wingman_start_y = list_content_rect.y + 5
+    
+    for i in range(4):
+        rect = pygame.Rect(40, wingman_start_y + i * 60, 260, 55)
+        if rect.collidepoint(mx, my):
+            customization_selected_wingman = i
+            return
+    
+    # 机体筛选按钮点击
+    theme_list_area = pygame.Rect(330, 100, 600, HEIGHT - 180)
+    filter_y = 140
+    filter_btn_w = 55
+    filter_btn_h = 25
+    filter_start_x = theme_list_area.x + 5
+    
+    # "全部"按钮
+    all_btn = pygame.Rect(filter_start_x, filter_y, filter_btn_w, filter_btn_h)
+    if all_btn.collidepoint(mx, my):
+        wingman_theme_filter = None
+        customization_scroll_y = 0
         return
     
-    # 僚机槽位选择
-    slot_area = pygame.Rect(50, 150, 250, 500)
-    slot_start_y = 200
-    slot_height = 100
-    slot_gap = 10
+    # 第一行机体筛选按钮
+    plane_keys_list = list(PLANES.keys())
+    for pi, plane_id in enumerate(plane_keys_list[:10]):
+        btn_x = filter_start_x + (pi + 1) * (filter_btn_w + 3)
+        if btn_x + filter_btn_w > theme_list_area.right - 5:
+            break
+        plane_btn = pygame.Rect(btn_x, filter_y, filter_btn_w, filter_btn_h)
+        if plane_btn.collidepoint(mx, my):
+            wingman_theme_filter = plane_id
+            customization_scroll_y = 0
+            return
     
-    for slot_idx in range(4):
-        slot_rect = pygame.Rect(slot_area.x + 10, slot_start_y + slot_idx * (slot_height + slot_gap), 
-                                slot_area.width - 20, slot_height)
-        if slot_rect.collidepoint(mx, my):
-            customization_wingman_slot = slot_idx
-            sound_mgr.play("select")
+    # 第二行机体筛选按钮
+    filter_y2 = filter_y + filter_btn_h + 3
+    for pi, plane_id in enumerate(plane_keys_list[10:]):
+        btn_x = filter_start_x + pi * (filter_btn_w + 3)
+        if btn_x + filter_btn_w > theme_list_area.right - 5:
+            break
+        plane_btn = pygame.Rect(btn_x, filter_y2, filter_btn_w, filter_btn_h)
+        if plane_btn.collidepoint(mx, my):
+            wingman_theme_filter = plane_id
+            customization_scroll_y = 0
             return
     
     # 涂装卡片点击
-    try:
-        from wingman_themes import WINGMAN_THEMES
+    theme_y_start = 200
+    
+    # 筛选涂装（按机体筛选）
+    filtered_themes = []
+    for tid, theme in PAINT_THEMES.items():
+        exclusive_plane = theme.get("exclusive_plane")
+        if not exclusive_plane:
+            continue
+        if wingman_theme_filter is not None and exclusive_plane != wingman_theme_filter:
+            continue
+        filtered_themes.append((tid, theme))
+    
+    for i, (theme_id, theme) in enumerate(filtered_themes):
+        card_rect = pygame.Rect(350, theme_y_start + i * 100 - customization_scroll_y, 560, 90)
         
-        theme_area = pygame.Rect(320, 150, 600, 500)
-        card_w = 180
-        card_h = 140
-        cards_per_row = 3
-        gap = 15
+        if not card_rect.collidepoint(mx, my):
+            continue
         
-        start_x = theme_area.x + 20
-        start_y = 200
+        is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
+        current_equipped = customization_manager.equipped_wingman_themes.get(f"slot_{customization_selected_wingman}", "default")
+        is_equipped = (current_equipped == theme_id)
         
-        row = 0
-        col = 0
+        # 按钮区域
+        btn_x = card_rect.right - 120
+        btn_y = card_rect.y + 25
+        btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
         
-        for theme_id, theme_data in WINGMAN_THEMES.items():
-            x = start_x + col * (card_w + gap)
-            y = start_y + row * (card_h + gap)
-            
-            card_rect = pygame.Rect(x, y, card_w, card_h)
-            
-            if y + card_h > theme_area.bottom - 20:
-                break
-            
-            if card_rect.collidepoint(mx, my):
-                is_unlocked = customization_manager.unlocked_wingman_themes.get(theme_id, False)
-                
-                if is_unlocked:
-                    # 装备涂装
-                    customization_manager.equipped_wingman_themes[f"slot_{customization_wingman_slot}"] = theme_id
-                    customization_manager.save_data()
-                    customization_msg = f"僚机 {customization_wingman_slot + 1} 已装备 {theme_data['name']}"
+        if btn_rect.collidepoint(mx, my):
+            if is_unlocked and not is_equipped:
+                # 装备涂装
+                customization_manager.equipped_wingman_themes[f"slot_{customization_selected_wingman}"] = theme_id
+                customization_manager.save_data()
+                customization_msg = f"已为僚机槽位 {customization_selected_wingman + 1} 装备 {theme['name']}！"
+                customization_msg_timer = 120
+                sound_mgr.play("powerup")
+            elif not is_unlocked:
+                # 解锁涂装
+                cost = theme.get("cost", 0)
+                if arsenal_save_data["currencies"]["cores"] >= cost:
+                    arsenal_save_data["currencies"]["cores"] -= cost
+                    with open("arsenal.json", "w", encoding="utf-8") as f:
+                        json.dump(arsenal_save_data, f, ensure_ascii=False, indent=2)
+                    customization_manager.unlock_theme(theme_id)
+                    customization_msg = f"已解锁 {theme['name']}！"
                     customization_msg_timer = 120
                     sound_mgr.play("powerup")
                 else:
-                    # 购买涂装
-                    cost = theme_data.get("cost", 0)
-                    if arsenal_save_data["currencies"]["cores"] >= cost:
-                        arsenal_save_data["currencies"]["cores"] -= cost
-                        # 保存arsenal数据
-                        with open("arsenal.json", "w", encoding="utf-8") as f:
-                            json.dump(arsenal_save_data, f, ensure_ascii=False, indent=2)
-                        customization_manager.unlocked_wingman_themes[theme_id] = True
-                        customization_manager.save_data()
-                        customization_msg = f"已解锁 {theme_data['name']}！"
-                        customization_msg_timer = 120
-                        sound_mgr.play("powerup")
-                    else:
-                        customization_msg = f"核心不足！需要 {cost} 核心"
-                        customization_msg_timer = 120
-                        sound_mgr.play("warning")
-                return
-            
-            col += 1
-            if col >= cards_per_row:
-                col = 0
-                row += 1
-    except ImportError:
-        pass
+                    customization_msg = f"核心不足！需要 {cost} 核心"
+                    customization_msg_timer = 120
+                    sound_mgr.play("warning")
+            break
 
 def draw_customization_ui():
-    """绘制涂装自定义界面 - 重写版本"""
-    global customization_selected_plane, customization_msg_timer, customization_tab, customization_scroll_y, customization_plane_scroll_y
-    global customization_mode, customization_wingman_slot
+    """绘制涂装自定义界面"""
+    global customization_mode, game_state
     
-    # 顶部标题和模式切换按钮
     mx, my = pygame.mouse.get_pos()
     
-    # 模式切换按钮
+    # 左上角返回按钮
+    back_btn = pygame.Rect(30, 30, 100, 40)
+    hb = back_btn.collidepoint(mx, my)
+    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
+    if hb: 
+        draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
+    draw_text(screen, "返回", 20, back_btn.centerx, back_btn.centery - 8, WHITE)
+    
+    # 处理返回按钮点击
+    if hb and pygame.mouse.get_pressed()[0]:
+        game_state = "menu"
+        pygame.mouse.set_visible(True)
+        return
+    
+    # 模式切换按钮（居中）
     mode_btn_y = 30
-    plane_btn = pygame.Rect(WIDTH//2 - 200, mode_btn_y, 180, 50)
-    wingman_btn = pygame.Rect(WIDTH//2 + 20, mode_btn_y, 180, 50)
+    plane_btn = pygame.Rect(WIDTH // 2 - 120, mode_btn_y, 100, 40)
+    wingman_btn = pygame.Rect(WIDTH // 2 + 20, mode_btn_y, 100, 40)
     
-    # 绘制机体涂装按钮
     plane_active = (customization_mode == "plane")
-    plane_color = CYAN if plane_active else GRAY
-    draw_cyber_rect(screen, plane_btn, (40, 40, 60) if plane_active else (30, 30, 40), fill=True)
-    draw_cyber_rect(screen, plane_btn, plane_color, border_width=3 if plane_active else 1, fill=False)
-    draw_text(screen, "机体涂装", 24, plane_btn.centerx, plane_btn.centery - 10, plane_color)
-    
-    # 绘制僚机涂装按钮
     wingman_active = (customization_mode == "wingman")
-    wingman_color = MAGENTA if wingman_active else GRAY
-    draw_cyber_rect(screen, wingman_btn, (60, 40, 60) if wingman_active else (30, 30, 40), fill=True)
-    draw_cyber_rect(screen, wingman_btn, wingman_color, border_width=3 if wingman_active else 1, fill=False)
-    draw_text(screen, "僚机涂装", 24, wingman_btn.centerx, wingman_btn.centery - 10, wingman_color)
     
-    # 根据模式显示不同UI
+    draw_cyber_rect(screen, plane_btn, (0, 100, 100) if plane_active else (40, 40, 50), fill=True)
+    if plane_active:
+        draw_cyber_rect(screen, plane_btn, CYAN, border_width=2, fill=False)
+    draw_text(screen, "机体涂装", 18, plane_btn.centerx, plane_btn.centery - 8, CYAN if plane_active else WHITE)
+    
+    draw_cyber_rect(screen, wingman_btn, (0, 100, 100) if wingman_active else (40, 40, 50), fill=True)
+    if wingman_active:
+        draw_cyber_rect(screen, wingman_btn, CYAN, border_width=2, fill=False)
+    draw_text(screen, "僚机涂装", 18, wingman_btn.centerx, wingman_btn.centery - 8, CYAN if wingman_active else WHITE)
+    
+    # 处理按钮点击
+    if plane_btn.collidepoint(mx, my) and pygame.mouse.get_pressed()[0]:
+        if customization_mode != "plane":
+            customization_mode = "plane"
+    elif wingman_btn.collidepoint(mx, my) and pygame.mouse.get_pressed()[0]:
+        if customization_mode != "wingman":
+            customization_mode = "wingman"
+    
+    # 根据模式绘制不同的UI
     if customization_mode == "plane":
         draw_plane_customization_ui()
     else:
@@ -5163,14 +5037,14 @@ def draw_plane_customization_ui():
     global customization_selected_plane, customization_msg_timer, customization_tab, customization_scroll_y, customization_plane_scroll_y
     
     mx, my = pygame.mouse.get_pos()
+    
+    # 右上角显示核心和进度
     currency_text = f"核心: {arsenal_save_data['currencies']['cores']}"
     draw_text(screen, currency_text, 20, WIDTH - 200, 30, GOLD, align="left")
     unlocked_count = customization_manager.get_unlocked_count()
     total_count = customization_manager.get_total_count()
     progress_text = f"已解锁: {unlocked_count}/{total_count}"
     draw_text(screen, progress_text, 18, WIDTH - 200, 60, CYAN, align="left")
-    
-    mx, my = pygame.mouse.get_pos()
     
     # 左侧：飞机列表
     plane_list_area = pygame.Rect(30, 100, 280, HEIGHT - 180)
@@ -5288,7 +5162,11 @@ def draw_plane_customization_ui():
             if card_rect.bottom < list_view_rect.top or card_rect.top > list_view_rect.bottom:
                 continue
             
-            is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
+            # 根据涂装类型检查解锁状态
+            if is_bullet:
+                is_unlocked = customization_manager.unlocked_bullet_themes.get(theme_id, False)
+            else:
+                is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
             is_equipped = customization_manager.get_equipped_theme(customization_selected_plane, bullet=is_bullet) == theme_id
             h = card_rect.collidepoint(mx, my)
             
@@ -5425,12 +5303,262 @@ def draw_plane_customization_ui():
             big_preview = pygame.transform.scale(big_preview, (120, 120))
             safe_blit(screen, big_preview, (preview_area.centerx - 60, preview_area.y + 40))
     
-    # 返回按钮 (移动到左上角，避免遮挡列表)
-    back_btn = pygame.Rect(30, 30, 100, 40)
-    h = back_btn.collidepoint(mx, my)
-    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
-    if h: draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
-    draw_text(screen, "返回", 20, back_btn.centerx, back_btn.centery - 10, WHITE)
+
+def draw_wingman_customization_ui():
+    """绘制僚机涂装界面（结构与机体涂装界面完全相同）"""
+    global customization_selected_wingman, customization_msg_timer, customization_tab, customization_scroll_y, customization_plane_scroll_y
+    
+    mx, my = pygame.mouse.get_pos()
+    
+    # 右上角显示核心
+    currency_text = f"核心: {arsenal_save_data['currencies']['cores']}"
+    draw_text(screen, currency_text, 20, WIDTH - 200, 30, GOLD, align="left")
+    
+    # 左侧：僚机槽位列表（4个槽位）
+    wingman_list_area = pygame.Rect(30, 100, 280, HEIGHT - 180)
+    draw_cyber_rect(screen, wingman_list_area, (20, 20, 30), alpha=220, fill=True)
+    draw_text(screen, "选择僚机", 22, wingman_list_area.centerx, 110, CYAN)
+    
+    # 列表内容区域
+    list_content_rect = pygame.Rect(wingman_list_area.x, wingman_list_area.y + 40, wingman_list_area.width, wingman_list_area.height - 40)
+    screen.set_clip(list_content_rect)
+    
+    wingman_start_y = list_content_rect.y + 5
+    wingman_slots = [
+        {"id": 0, "name": "僚机 1"},
+        {"id": 1, "name": "僚机 2"},
+        {"id": 2, "name": "僚机 3"},
+        {"id": 3, "name": "僚机 4"}
+    ]
+    
+    for i, slot in enumerate(wingman_slots):
+        rect = pygame.Rect(40, wingman_start_y + i * 60, 260, 55)
+        
+        equipped_theme = customization_manager.equipped_wingman_themes.get(f"slot_{slot['id']}", "default")
+        is_selected = (customization_selected_wingman == slot['id'])
+        h = rect.collidepoint(mx, my) or is_selected
+        
+        bg_color = (0, 80, 80) if is_selected else ((40, 50, 60) if h else (30, 30, 40))
+        draw_cyber_rect(screen, rect, bg_color, fill=True)
+        if is_selected: 
+            draw_cyber_rect(screen, rect, CYAN, border_width=2, fill=False)
+        
+        # 左侧预览图（与机体涂装一样）
+        if equipped_theme != "default" and equipped_theme in PAINT_THEMES:
+            theme = PAINT_THEMES[equipped_theme]
+            exclusive_plane = theme.get("exclusive_plane")
+            if exclusive_plane and exclusive_plane in PLANES:
+                visual = customization_manager.get_theme_visual(exclusive_plane, PLANES[exclusive_plane].get('visual', None), preview_theme_id=equipped_theme)
+                icon = get_plane_surf(exclusive_plane, visual, static=True)
+                icon = pygame.transform.scale(icon, (40, 40))
+                safe_blit(screen, icon, (rect.x + 5, rect.y + 7))
+        
+        # 显示僚机编号（右移为预览图腾出空间）
+        draw_text(screen, slot['name'], 16, rect.x + 150, rect.y + 12, WHITE, align="center")
+        
+        # 显示当前装备的涂装
+        if equipped_theme != "default" and equipped_theme in PAINT_THEMES:
+            theme = PAINT_THEMES[equipped_theme]
+            theme_name = theme["name"]
+            cat = theme.get("category", "default")
+            quality_colors = {
+                "default": (150, 150, 150),
+                "common": (220, 220, 220),
+                "rare": (100, 150, 255),
+                "epic": (200, 100, 255),
+                "legendary": (255, 215, 0),
+                "exclusive": (255, 50, 150)
+            }
+            q_color = quality_colors.get(cat, GRAY)
+            draw_text(screen, f"[{theme_name}]", 13, rect.x + 150, rect.y + 32, q_color, align="center")
+        else:
+            draw_text(screen, "[默认涂装]", 13, rect.x + 150, rect.y + 32, GRAY, align="center")
+    
+    screen.set_clip(None)
+    
+    # 右侧：涂装列表（仅显示专属涂装）
+    theme_list_area = pygame.Rect(330, 100, 600, HEIGHT - 180)
+    draw_cyber_rect(screen, theme_list_area, (20, 20, 30), alpha=220, fill=True)
+    
+    # 机体筛选标签
+    filter_text = "全部机体" if wingman_theme_filter is None else PLANES[wingman_theme_filter]["name"]
+    draw_text(screen, f"筛选: {filter_text}", 22, theme_list_area.centerx, 110, CYAN)
+    
+    # 机体筛选按钮行
+    filter_y = 140
+    filter_btn_w = 55
+    filter_btn_h = 25
+    filter_start_x = theme_list_area.x + 5
+    
+    # "全部"按钮
+    all_btn = pygame.Rect(filter_start_x, filter_y, filter_btn_w, filter_btn_h)
+    all_active = (wingman_theme_filter is None)
+    draw_cyber_rect(screen, all_btn, (0, 100, 100) if all_active else (40, 40, 50), fill=True)
+    if all_active:
+        draw_cyber_rect(screen, all_btn, CYAN, border_width=1, fill=False)
+    draw_text(screen, "全部", 12, all_btn.centerx, all_btn.centery - 6, CYAN if all_active else WHITE)
+    
+    # 机体筛选按钮（显示前10个机体）
+    plane_keys_list = list(PLANES.keys())
+    for pi, plane_id in enumerate(plane_keys_list[:10]):
+        btn_x = filter_start_x + (pi + 1) * (filter_btn_w + 3)
+        if btn_x + filter_btn_w > theme_list_area.right - 5:
+            break
+        plane_btn = pygame.Rect(btn_x, filter_y, filter_btn_w, filter_btn_h)
+        is_active = (wingman_theme_filter == plane_id)
+        draw_cyber_rect(screen, plane_btn, (0, 100, 100) if is_active else (40, 40, 50), fill=True)
+        if is_active:
+            draw_cyber_rect(screen, plane_btn, CYAN, border_width=1, fill=False)
+        # 显示机体简称（取前2个字）
+        short_name = PLANES[plane_id]["name"][:2]
+        draw_text(screen, short_name, 11, plane_btn.centerx, plane_btn.centery - 6, CYAN if is_active else WHITE)
+    
+    # 第二行筛选按钮（剩余机体）
+    filter_y2 = filter_y + filter_btn_h + 3
+    for pi, plane_id in enumerate(plane_keys_list[10:]):
+        btn_x = filter_start_x + pi * (filter_btn_w + 3)
+        if btn_x + filter_btn_w > theme_list_area.right - 5:
+            break
+        plane_btn = pygame.Rect(btn_x, filter_y2, filter_btn_w, filter_btn_h)
+        is_active = (wingman_theme_filter == plane_id)
+        draw_cyber_rect(screen, plane_btn, (0, 100, 100) if is_active else (40, 40, 50), fill=True)
+        if is_active:
+            draw_cyber_rect(screen, plane_btn, CYAN, border_width=1, fill=False)
+        short_name = PLANES[plane_id]["name"][:2]
+        draw_text(screen, short_name, 11, plane_btn.centerx, plane_btn.centery - 6, CYAN if is_active else WHITE)
+    
+    # --- 筛选涂装（按机体筛选）---
+    filtered_themes = []
+    for tid, theme in PAINT_THEMES.items():
+        exclusive_plane = theme.get("exclusive_plane")
+        if not exclusive_plane:
+            continue
+        # 如果设置了筛选器，只显示对应机体的涂装
+        if wingman_theme_filter is not None and exclusive_plane != wingman_theme_filter:
+            continue
+        filtered_themes.append((tid, theme))
+    
+    theme_y_start = 200
+    
+    # 列表裁剪区域
+    list_view_rect = pygame.Rect(theme_list_area.x, theme_y_start, theme_list_area.width, theme_list_area.height - (theme_y_start - theme_list_area.y))
+    screen.set_clip(list_view_rect)
+    screen.set_clip(list_view_rect)
+    
+    for i, (theme_id, theme) in enumerate(filtered_themes):
+        card_rect = pygame.Rect(350, theme_y_start + i * 100 - customization_scroll_y, 560, 90)
+        
+        # 跳过不可见的卡片
+        if card_rect.bottom < list_view_rect.top or card_rect.top > list_view_rect.bottom:
+            continue
+        
+        is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
+        current_equipped = customization_manager.equipped_wingman_themes.get(f"slot_{customization_selected_wingman}", "default")
+        is_equipped = (current_equipped == theme_id)
+        h = card_rect.collidepoint(mx, my)
+        
+        # 背景颜色
+        if is_equipped:
+            bg_color = (0, 100, 100)
+        elif is_unlocked:
+            bg_color = (40, 50, 40) if h else (30, 35, 30)
+        else:
+            bg_color = (50, 30, 30) if h else (30, 20, 20)
+        
+        draw_cyber_rect(screen, card_rect, bg_color, fill=True)
+        
+        # 品质颜色定义
+        cat = theme.get("category", "default")
+        quality_colors = {
+            "default": (150, 150, 150),
+            "common": (220, 220, 220),
+            "rare": (100, 150, 255),
+            "epic": (200, 100, 255),
+            "legendary": (255, 215, 0),
+            "exclusive": (255, 50, 150)
+        }
+        q_color = quality_colors.get(cat, GRAY)
+        
+        # 边框
+        if is_equipped:
+            draw_cyber_rect(screen, card_rect, CYAN, border_width=3, fill=False)
+            pygame.draw.rect(screen, q_color, card_rect.inflate(-8, -8), 1)
+        elif h:
+            draw_cyber_rect(screen, card_rect, WHITE, border_width=2, fill=False)
+        else:
+            draw_cyber_rect(screen, card_rect, q_color, border_width=1, fill=False)
+        
+        # 预览图（使用专属机体的视觉效果）
+        exclusive_plane = theme.get("exclusive_plane")
+        if exclusive_plane and exclusive_plane in PLANES:
+            visual = customization_manager.get_theme_visual(exclusive_plane, PLANES[exclusive_plane].get('visual', None), preview_theme_id=theme_id)
+            preview = get_plane_surf(exclusive_plane, visual, static=True)
+            preview = pygame.transform.scale(preview, (60, 60))
+            safe_blit(screen, preview, (card_rect.x + 10, card_rect.y + 15))
+        
+        # 信息文字
+        info_x = card_rect.x + 85
+        draw_text(screen, theme["name"], 18, info_x, card_rect.y + 10, q_color, align="left")
+        draw_text(screen, theme["desc"], 14, info_x, card_rect.y + 32, GRAY, align="left")
+        
+        # 显示专属机体信息
+        if exclusive_plane:
+            p_name = PLANES.get(exclusive_plane, {}).get("name", exclusive_plane)
+            draw_text(screen, f"专属: {p_name}", 12, info_x, card_rect.y + 52, MAGENTA, align="left")
+        
+        # 按钮
+        btn_x = card_rect.right - 120
+        btn_y = card_rect.y + 25
+        btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
+        
+        if is_equipped:
+            draw_text(screen, "已装备", 16, btn_rect.centerx, btn_rect.centery - 8, GREEN)
+        elif is_unlocked:
+            btn_h = btn_rect.collidepoint(mx, my)
+            draw_cyber_rect(screen, btn_rect, CYAN if btn_h else (0, 100, 100), fill=True)
+            draw_text(screen, "装备", 16, btn_rect.centerx, btn_rect.centery - 8, WHITE)
+        else:
+            cost = theme.get("cost", 0)
+            btn_h = btn_rect.collidepoint(mx, my)
+            can_afford = arsenal_save_data["currencies"]["cores"] >= cost
+            btn_color = GOLD if (btn_h and can_afford) else ((80, 60, 0) if can_afford else (60, 30, 30))
+            draw_cyber_rect(screen, btn_rect, btn_color, fill=True)
+            draw_text(screen, f"{cost}", 14, btn_rect.centerx, btn_rect.centery - 8, WHITE if can_afford else RED)
+    
+    screen.set_clip(None)
+    
+    # 消息提示
+    if customization_msg_timer > 0:
+        msg_y = HEIGHT - 150
+        msg_rect = pygame.Rect(WIDTH//2 - 200, msg_y, 400, 40)
+        draw_cyber_rect(screen, msg_rect, (50, 50, 50), alpha=200, fill=True)
+        draw_text(screen, customization_msg, 18, msg_rect.centerx, msg_rect.centery - 8, CYAN)
+        customization_msg_timer -= 1
+    
+    # 大预览区（右下角）
+    preview_area = pygame.Rect(WIDTH - 350, HEIGHT - 280, 320, 250)
+    draw_cyber_rect(screen, preview_area, (20, 20, 30), alpha=240, fill=True)
+    draw_text(screen, "涂装预览", 20, preview_area.centerx, preview_area.y + 15, MAGENTA)
+    
+    # 获取当前装备的涂装预览
+    equipped_theme = customization_manager.equipped_wingman_themes.get(f"slot_{customization_selected_wingman}", "default")
+    if equipped_theme != "default" and equipped_theme in PAINT_THEMES:
+        theme = PAINT_THEMES[equipped_theme]
+        exclusive_plane = theme.get("exclusive_plane")
+        if exclusive_plane and exclusive_plane in PLANES:
+            visual = customization_manager.get_theme_visual(exclusive_plane, PLANES[exclusive_plane].get('visual', None), preview_theme_id=equipped_theme)
+            big_preview = get_plane_surf(exclusive_plane, visual)
+            big_preview = pygame.transform.scale(big_preview, (150, 150))
+            safe_blit(screen, big_preview, (preview_area.centerx - 75, preview_area.y + 50))
+            
+            # 显示涂装名称和专属机体
+            draw_text(screen, theme["name"], 18, preview_area.centerx, preview_area.bottom - 35, CYAN)
+            p_name = PLANES.get(exclusive_plane, {}).get("name", exclusive_plane)
+            draw_text(screen, f"[{p_name}]", 14, preview_area.centerx, preview_area.bottom - 15, MAGENTA)
+    else:
+        # 显示默认涂装提示
+        draw_text(screen, "未装备涂装", 16, preview_area.centerx, preview_area.centery, GRAY)
+
 
 def draw_bar(x, y, w, h, current, max_val, color, bg_color=(30,30,40), border_color=None):
     """绘制进度条 (赛博朋克风格)"""
@@ -6935,7 +7063,14 @@ while True:
                         # 玩家选择一个增益
                         if 0 <= upgrade_selected < len(upgrade_options):
                             buff_id = upgrade_options[upgrade_selected]
-                            player.apply_buff(buff_id)
+                            print(f"[DEBUG] 准备应用增益: {buff_id}")
+                            try:
+                                result = player.apply_buff(buff_id)
+                                print(f"[DEBUG] 增益应用结果: {result}")
+                            except Exception as e:
+                                print(f"[DEBUG] 增益应用异常: {e}")
+                                import traceback
+                                traceback.print_exc()
                             sound_mgr.play("levelup")
                             # 重置升级状态并恢复游戏
                             upgrade_options = []
@@ -7429,133 +7564,11 @@ while True:
                                     break
                 
                 elif game_state == "customization":
-                    # 模式切换按钮
-                    mode_btn_y = 30
-                    plane_btn = pygame.Rect(WIDTH//2 - 200, mode_btn_y, 180, 50)
-                    wingman_btn = pygame.Rect(WIDTH//2 + 20, mode_btn_y, 180, 50)
-                    
-                    if plane_btn.collidepoint(mx, my):
-                        if customization_mode != "plane":
-                            customization_mode = "plane"
-                            customization_scroll_y = 0
-                            sound_mgr.play("select")
-                    elif wingman_btn.collidepoint(mx, my):
-                        if customization_mode != "wingman":
-                            customization_mode = "wingman"
-                            customization_scroll_y = 0
-                            sound_mgr.play("select")
-                    
-                    # 根据模式处理不同的点击
-                    elif customization_mode == "plane":
-                        # 机体涂装点击处理
+                    # 根据模式处理点击
+                    if customization_mode == "plane":
                         handle_plane_customization_click(mx, my)
                     else:
-                        # 僚机涂装点击处理
                         handle_wingman_customization_click(mx, my)
-                        # 考虑滚动偏移（与绘制逻辑保持一致）
-                        plane_list_area = pygame.Rect(30, 100, 280, HEIGHT - 180)
-                        list_content_rect = pygame.Rect(plane_list_area.x, plane_list_area.y + 40, plane_list_area.width, plane_list_area.height - 40)
-                        plane_start_y = list_content_rect.y + 5 - customization_plane_scroll_y
-                        plane_found = False
-                        
-                        # 仅在列表区域内检测点击（使用计算出的边界）
-                        if list_content_rect.collidepoint(mx, my):
-                            for i, plane_id in enumerate(plane_keys):
-                                rect = pygame.Rect(40, plane_start_y + i * 45, 260, 40)
-                                if rect.collidepoint(mx, my):
-                                    sound_mgr.play("select")
-                                    customization_selected_plane = plane_id
-                                    plane_found = True
-                                    break
-                        
-                        # 如果没有点击飞机，检查涂装按钮
-                        if not plane_found and customization_selected_plane:
-                            # --- 筛选涂装 (必须与绘制逻辑一致) ---
-                            categories = [None, "common", "rare", "epic", "legendary", "exclusive"]
-                            filtered_themes = []
-                            
-                            # 判断是否为子弹涂装标签
-                            if customization_tab == 6:  # 子弹标签
-                                for tid, theme in BULLET_THEMES.items():
-                                    exclusive_plane = theme.get("exclusive_plane")
-                                    if exclusive_plane and exclusive_plane != customization_selected_plane:
-                                        continue
-                                    filtered_themes.append((tid, theme, True))
-                            else:
-                                # 机体涂装
-                                for tid, theme in PAINT_THEMES.items():
-                                    # 过滤掉其他飞机的专属涂装
-                                    exclusive_plane = theme.get("exclusive_plane")
-                                    if exclusive_plane and exclusive_plane != customization_selected_plane:
-                                        continue
-
-                                    if customization_tab == 0:
-                                        filtered_themes.append((tid, theme, False))
-                                    else:
-                                        target_cat = categories[customization_tab]
-                                        if theme.get("category") == target_cat:
-                                            filtered_themes.append((tid, theme, False))
-                            
-                            theme_y_start = 180
-                            
-                            # 遍历筛选后的列表
-                            for i, (theme_id, theme, is_bullet) in enumerate(filtered_themes):
-                                card_rect = pygame.Rect(350, theme_y_start + i * 100 - customization_scroll_y, 560, 90)
-                                
-                                # 跳过不可见的卡片 (虽然点击检测不一定需要剔除，但为了性能和逻辑一致性)
-                                if card_rect.bottom < 100 or card_rect.top > HEIGHT - 80:
-                                    continue
-                                
-                                is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
-                                btn_x = card_rect.right - 120
-                                btn_y = card_rect.y + 25
-                                btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
-                                
-                                if btn_rect.collidepoint(mx, my):
-                                    # 检查专属限制
-                                    exclusive_plane = theme.get("exclusive_plane")
-                                    if exclusive_plane and exclusive_plane != customization_selected_plane:
-                                        customization_msg = f"该涂装仅限 {PLANES[exclusive_plane]['name']} 使用"
-                                        customization_msg_timer = 120
-                                        sound_mgr.play("warning")
-                                        continue
-
-                                    if is_unlocked:
-                                        success, msg = customization_manager.equip_theme(customization_selected_plane, theme_id)
-                                        customization_msg = msg
-                                        customization_msg_timer = 120
-                                        sound_mgr.play("powerup" if success else "warning")
-                                        
-                                        # 立即更新玩家实例的视觉效果 (如果玩家已存在)
-                                        if player and player.plane_id == customization_selected_plane:
-                                            try:
-                                                new_visual = customization_manager.get_theme_visual(
-                                                    customization_selected_plane, 
-                                                    PLANES[customization_selected_plane].get('visual', None)
-                                                )
-                                                player.visual = new_visual
-                                                # 重新生成玩家图像
-                                                player.image = get_plane_surf(player.plane_id, player.visual)
-                                                player.original_image = player.image.copy()
-                                            except Exception as e:
-                                                print(f"Error updating player visual: {e}")
-
-                                    else:
-                                        cost = theme.get("cost", 0)
-                                        if arsenal_save_data['currencies']['cores'] >= cost:
-                                            success, msg = customization_manager.unlock_theme(theme_id, arsenal_save_data)
-                                            customization_msg = msg
-                                            customization_msg_timer = 120
-                                            if success:
-                                                sound_mgr.play("powerup")
-                                                save_arsenal()
-                                            else:
-                                                sound_mgr.play("warning")
-                                        else:
-                                            customization_msg = f"核心不足，需要 {cost}"
-                                            customization_msg_timer = 120
-                                            sound_mgr.play("warning")
-                                    break
                 
                 # --- 游戏中的点击逻辑 (彻底修复输入冲突) ---
                 elif game_state == "game" or game_state == "boss_challenge_play":
@@ -7929,7 +7942,7 @@ while True:
                                 for _ in range(1):  # 仅1个粒子
                                     angle = random.uniform(0, math.pi * 2)
                                     speed = random.uniform(3, 5)
-                                    Particle(m.rect.center, GOLD, lifetime=20)
+                                    Particle(m.rect.center, GOLD)
                                 sound_mgr.play("hit")
                             else:
                                 sound_mgr.play("hit")
@@ -7948,7 +7961,7 @@ while True:
                                     for _ in range(2):
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(4, 6)
-                                        Particle(m.rect.center, LIME, lifetime=15)
+                                        Particle(m.rect.center, LIME)
                                 # 屏幕轻微震动 - 减弱
                                 screen_shake_offset = apply_screen_shake(1)
                                 sound_mgr.play("explosion")
@@ -8041,7 +8054,7 @@ while True:
                                     for _ in range(2):
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(2, 3)
-                                        Particle(player.rect.center, CYAN, lifetime=12)
+                                        Particle(player.rect.center, CYAN)
                             else:
                                 player.hp -= dmg
                                 FloatingText(player.rect.centerx, player.rect.top, f"-{dmg}", RED)
@@ -8050,7 +8063,7 @@ while True:
                                     for _ in range(2):
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(2, 4)
-                                        Particle(player.rect.center, RED, lifetime=12)
+                                        Particle(player.rect.center, RED)
                                 sound_mgr.play("hit")
                                 if player.hp <= 0:
                                     game_state = "gameover"
@@ -8128,7 +8141,7 @@ while True:
                                 for _ in range(2):
                                     angle = random.uniform(0, math.pi * 2)
                                     speed = random.uniform(3, 5)
-                                    Particle(boss.rect.center, (255, 150, 0), lifetime=15)
+                                    Particle(boss.rect.center, (255, 150, 0))
                             
                             # 音效反馈
                             sound_mgr.play("hit")
@@ -8149,7 +8162,7 @@ while True:
                                     for _ in range(4):
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(4, 7)
-                                        Particle(boss.rect.center, GOLD, lifetime=25)
+                                        Particle(boss.rect.center, GOLD)
                                 
                                 # 音效
                                 sound_mgr.play("nuke")
