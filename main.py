@@ -4659,12 +4659,13 @@ def draw_codex_ui():
 
 def draw_gallery_ui():
     draw_text(screen, "战术图鉴", 40, WIDTH//2, 30, MAGENTA, glow=True)
-    
-    tab_labels = ["全部", "普通", "稀有", "史诗", "传说"]
-    tab_colors = [WHITE, RARITY_COMMON, RARITY_RARE, RARITY_EPIC, RARITY_LEGEND]
-    tab_w = 100
-    start_tx = (WIDTH - (5 * tab_w + 40)) // 2
     mx, my = pygame.mouse.get_pos()
+    
+    # 按1-4星品质分类
+    tab_labels = ["全部", "1★普通", "2★稀有", "3★史诗", "4★传说"]
+    tab_colors = [WHITE, (150, 150, 150), (100, 200, 255), (200, 100, 255), (255, 200, 50)]
+    tab_w = 110
+    start_tx = (WIDTH - (5 * tab_w + 40)) // 2
     
     for i, lbl in enumerate(tab_labels):
         rect = pygame.Rect(start_tx + i*(tab_w+10), 80, tab_w, 40)
@@ -4672,19 +4673,38 @@ def draw_gallery_ui():
         c = tab_colors[i]
         draw_cyber_rect(screen, rect, (30,30,40), fill=True)
         if is_sel: draw_cyber_rect(screen, rect, c, border_width=2, fill=False)
-        draw_text(screen, lbl, 18, rect.centerx, rect.centery-10, c if is_sel else GRAY)
+        draw_text(screen, lbl, 16, rect.centerx, rect.centery-10, c if is_sel else GRAY)
 
-    if gallery_tab == 0: items = UPGRADE_ITEMS
-    else: items = [it for it in UPGRADE_ITEMS if it['rarity'] == gallery_tab - 1]
+    # 加载肉鸽卡牌数据
+    from roguelite import BASE_CARDS, MODIFIER_CARDS, SYNERGY_RULES
+    all_cards = []
+    # 基础卡牌
+    for key, card in BASE_CARDS.items():
+        all_cards.append({"id": key, "name": card["name"], "rarity": card["rarity"], 
+                        "desc": card.get("desc", ""), "type": "base", "data": card})
+    # 参数卡牌
+    for key, card in MODIFIER_CARDS.items():
+        all_cards.append({"id": key, "name": card["name"], "rarity": card["rarity"],
+                        "desc": card.get("desc", ""), "type": "modifier", "data": card})
+    # 协同规则
+    for key, synergy in SYNERGY_RULES.items():
+        all_cards.append({"id": key, "name": synergy["name"], "rarity": synergy["rarity"],
+                        "desc": synergy.get("desc", ""), "type": "synergy", "data": synergy})
     
-    start_y = 150
-    cols = 4
-    card_w = 240
-    card_h = 140
-    gap = 20
+    # 按品质筛选 (tab 0=全部, 1=1星, 2=2星, 3=3星, 4=4星)
+    if gallery_tab == 0: 
+        items = all_cards
+    else: 
+        items = [it for it in all_cards if it['rarity'] == gallery_tab]
+    
+    start_y = 140
+    cols = 3  # 改为3列,让每个卡片更宽
+    card_w = 360  # 增大卡片宽度
+    card_h = 180  # 增大卡片高度
+    gap = 30  # 增大间距
     start_gx = (WIDTH - (cols*card_w + (cols-1)*gap)) // 2
     
-    items_per_page = 8
+    items_per_page = 6  # 每页6个(2行×3列)
     start_idx = gallery_page * items_per_page
     end_idx = min(start_idx + items_per_page, len(items))
     
@@ -4699,14 +4719,148 @@ def draw_gallery_ui():
         y = start_y + r * (card_h + gap)
         rect = pygame.Rect(x, y, card_w, card_h)
         rc = RARITY_COLORS[item['rarity']]
-        draw_cyber_rect(screen, rect, (30,30,40), fill=True)
-        draw_cyber_rect(screen, rect, rc, border_width=1, fill=False)
-        pygame.draw.rect(screen, (*rc, 80), (x, y, card_w, 30))
-        draw_text(screen, item['name'], 18, rect.centerx, y+5, WHITE)
-        desc = item['desc']
-        lines = [desc[k:k+14] for k in range(0, len(desc), 14)]
-        for k, line in enumerate(lines):
-            draw_text(screen, line, 16, rect.centerx, y+50+k*20, GRAY)
+        # 渐变背景
+        card_surf = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
+        for i in range(card_h):
+            alpha = int(220 - i / card_h * 40)
+            pygame.draw.rect(card_surf, (30, 30, 50, alpha), (0, i, card_w, 1))
+        screen.blit(card_surf, (x, y))
+        
+        # 边框
+        draw_cyber_rect(screen, rect, rc, border_width=2, fill=False)
+        
+        # 顶部标题栏
+        pygame.draw.rect(screen, (*rc, 120), (x+2, y+2, card_w-4, 40))
+        
+        # 显示卡牌名称和品质星级
+        stars = "★" * item['rarity']
+        draw_text(screen, item['name'], 22, x+15, y+12, WHITE, align="left", glow=True)
+        draw_text(screen, stars, 20, x+card_w-15, y+12, rc, align="right")
+        
+        # 显示卡牌类型标签
+        if "data" in item:
+            type_label = {"base": "基础", "modifier": "参数", "synergy": "协同"}.get(item["type"], "")
+            draw_text(screen, f"[{type_label}]", 15, x+15, y+48, rc, align="left")
+            
+            # 显示类别和流派
+            card_data = item["data"]
+            info_parts = []
+            
+            # 类别汉化
+            if "category" in card_data:
+                category_names = {
+                    "attack": "攻击", "defense": "防御", 
+                    "special": "特殊", "system": "系统"
+                }
+                cat_cn = category_names.get(card_data["category"], card_data["category"])
+                info_parts.append(cat_cn)
+            
+            # 流派汉化
+            if "archetype" in card_data:
+                archetype_names = {
+                    "barrage": "弹幕流", "sniper": "狙击流",
+                    "control": "控制流", "summon": "召唤流"
+                }
+                arch_cn = archetype_names.get(card_data["archetype"], card_data["archetype"])
+                info_parts.append(arch_cn)
+            
+            # 类型标签（参数卡）
+            if "type" in card_data and item["type"] == "modifier":
+                type_names = {"numeric": "数值", "trait": "特性"}
+                type_cn = type_names.get(card_data["type"], card_data["type"])
+                info_parts.append(type_cn)
+            
+            if info_parts:
+                info_text = " · ".join(info_parts)
+                draw_text(screen, info_text, 14, x+120, y+48, (180, 180, 200))
+            
+            # 显示效果 - 属性名全面汉化
+            attr_names = {
+                "bullet_count": "弹幕", "damage_mult": "伤害", "speed_mult": "速度",
+                "split_count": "分裂", "split_damage": "分裂伤", "pierce": "穿透",
+                "fire_rate": "射速", "explosion_radius": "爆炸范围", "explosion_mult": "爆炸伤害",
+                "slow_duration": "减速时长", "freeze_chance": "冻结率", "hp_mult": "生命",
+                "shield": "护盾", "armor": "护甲", "dodge_chance": "闪避率",
+                "regen_rate": "回复", "drone_count": "无人机", "drone_damage": "无人机伤害",
+                "crit_chance": "暴击率", "crit_mult": "暴击伤害", "lifesteal": "吸血",
+                "projectile_speed": "弹速", "range_mult": "射程", "cooldown_reduction": "冷却",
+                "shield_amount": "护盾值", "shield_regen": "护盾回复", "damage_reduction": "减伤",
+                "max_hp_bonus": "最大生命", "regen_interval": "回复间隔", "slow_mult": "减速",
+                "pull_strength": "吸引", "radius": "范围", "slow_area": "减速区域",
+                "time_factor": "时间因子", "chain_count": "连锁数", "chain_damage": "连锁伤害",
+                "freeze_duration": "冻结时长", "freeze_radius": "冻结范围", "chaos_chance": "混沌率",
+                "chaos_mult": "混沌倍率", "turret_count": "炮塔数", "turret_damage": "炮塔伤害",
+                "magnet_range": "吸引范围", "xp_mult": "经验倍率", "homing": "追踪",
+                "homing_strength": "追踪强度", "explosion": "爆炸", "chain": "连锁",
+                "chain_targets": "连锁目标", "pierce_bonus": "穿透加成", "duration_mult": "持续时长",
+                "control_range_mult": "控制范围", "spread_angle": "散射角度", 
+                "summon_count": "召唤数", "summon_damage_mult": "召唤伤害", 
+                "summon_count_mult": "召唤数量倍率", "summon_ai": "AI模式",
+                "bullet_count_mult": "弹幕倍率", "all_bullets_explode": "全弹爆炸",
+                "infinite_pierce": "无限穿透", "slow_on_hit": "击中减速", "global_slow": "全局减速",
+                "split_level": "分裂层数"
+            }
+            
+            # 解析效果
+            desc_lines = []
+            if "base_effect" in card_data:
+                effect = card_data["base_effect"]
+                for k, v in list(effect.items())[:3]:
+                    if isinstance(v, (int, float)):
+                        cn_name = attr_names.get(k, k)
+                        if "mult" in k or "chance" in k or k.endswith("_mult"):
+                            if v >= 1:
+                                desc_lines.append(f"{cn_name}+{int((v-1)*100)}%")
+                            else:
+                                desc_lines.append(f"{cn_name}×{v:.1f}")
+                        elif isinstance(v, bool):
+                            if v:
+                                desc_lines.append(cn_name)
+                        else:
+                            desc_lines.append(f"{cn_name}+{v}")
+            elif "effect" in card_data:
+                effect = card_data["effect"]
+                if isinstance(effect, dict):
+                    for k, v in list(effect.items())[:3]:
+                        cn_name = attr_names.get(k, k)
+                        if isinstance(v, bool):
+                            if v:
+                                desc_lines.append(cn_name)
+                        elif isinstance(v, (int, float)):
+                            if "mult" in k or "chance" in k:
+                                desc_lines.append(f"{cn_name}×{v:.1f}")
+                            else:
+                                desc_lines.append(f"{cn_name}+{v}")
+            
+            # 卡牌描述 - 更大更清晰
+            desc = item.get('desc', '')
+            if desc:
+                # 分行显示描述
+                lines = [desc[k:k+22] for k in range(0, len(desc), 22)][:2]
+                for k, line in enumerate(lines):
+                    draw_text(screen, line, 16, x+15, y+75+k*22, (200, 200, 220), align="left")
+            
+            # 显示效果信息
+            if desc_lines:
+                effect_y = y+120 if desc else y+85
+                effect_text = " ".join(desc_lines[:3])  # 最多显示3个效果
+                lines = [effect_text[k:k+24] for k in range(0, len(effect_text), 24)][:2]
+                for k, line in enumerate(lines):
+                    draw_text(screen, line, 15, x+15, effect_y+k*20, (150, 220, 255), align="left")
+            
+            # 显示升级信息（基础卡）
+            if item["type"] == "base" and "upgrades" in card_data and card_data["upgrades"]:
+                upgrade_info = f"可升级至Lv.{len(card_data['upgrades']) + 1}"
+                draw_text(screen, upgrade_info, 13, x+15, y+card_h-25, (100, 255, 150), align="left")
+            
+            # 显示协同触发条件（协同卡）
+            if item["type"] == "synergy" and "trigger" in card_data:
+                trigger = card_data["trigger"]
+                if "archetype" in trigger and "count" in trigger:
+                    arch_names = {"barrage": "弹幕", "sniper": "狙击", "control": "控制", "summon": "召唤"}
+                    arch = arch_names.get(trigger["archetype"], trigger["archetype"])
+                    trigger_text = f"需要{trigger['count']}张{arch}卡"
+                    draw_text(screen, trigger_text, 13, x+15, y+card_h-25, (255, 220, 100), align="left")
 
     back_btn = pygame.Rect(WIDTH//2 - 50, HEIGHT - 60, 100, 40)
     h = back_btn.collidepoint(mx, my)
@@ -4717,11 +4871,11 @@ def draw_gallery_ui():
     max_p = max(1, (len(items) + items_per_page - 1) // items_per_page)
     if max_p > 1:
         if gallery_page > 0:
-            prev_btn = pygame.Rect(50, HEIGHT//2, 50, 50)
+            prev_btn = pygame.Rect(20, HEIGHT//2 - 25, 50, 50)
             draw_cyber_rect(screen, prev_btn, WHITE if prev_btn.collidepoint(mx,my) else GRAY, border_width=2, fill=False)
             draw_text(screen, "<", 30, prev_btn.centerx, prev_btn.centery-15, WHITE)
         if gallery_page < max_p - 1:
-            next_btn = pygame.Rect(WIDTH-100, HEIGHT//2, 50, 50)
+            next_btn = pygame.Rect(WIDTH-70, HEIGHT//2 - 25, 50, 50)
             draw_cyber_rect(screen, next_btn, WHITE if next_btn.collidepoint(mx,my) else GRAY, border_width=2, fill=False)
             draw_text(screen, ">", 30, next_btn.centerx, next_btn.centery-15, WHITE)
         draw_text(screen, f"页码 {gallery_page+1}/{max_p}", 18, WIDTH//2, HEIGHT - 100, GRAY)
@@ -6387,13 +6541,18 @@ def draw_top_hud():
     label_x = bar_x + bar_w + 16
     hp_label_x = bar_x + bar_w + 80  # 血量文字更靠右，避免被血量条覆盖
     
-    # 护盾条 (青色/CYAN) - 百分比基于max_hp计算
-    # 护盾条 (青色/CYAN) - 百分比基于护盾上限计算
-    shield_pct = (player.shield / max(1, player.max_shield) * 100) if player.max_shield > 0 else 0
+    # 护盾条 (青色/CYAN) - 百分比基于护盾上限计算,若无上限则以max_hp为上限
+    shield_max = player.max_shield if player.max_shield > 0 else player.max_hp
+    shield_pct = (player.shield / max(1, shield_max) * 100) if shield_max > 0 else 0
     draw_slanted_bar(screen, bar_x, bar_y, bar_w, bar_h_base, shield_pct, CYBER_CYAN_BRIGHT, 
                      bg_color=(0, 40, 50), tilt=tilt, border_color=CYAN, border_width=1)
     draw_text(screen, "护盾", 16, label_x, bar_y - 1, CYBER_CYAN_BRIGHT, glow=True, align='left')
-    draw_text(screen, f"{int(player.shield)}/{int(player.max_shield)}", 14, label_x + 45, bar_y + 1, WHITE, align='left')
+    # 只在有护盾或有max_shield时显示数值
+    if player.shield > 0 or player.max_shield > 0:
+        display_max = player.max_shield if player.max_shield > 0 else player.max_hp
+        draw_text(screen, f"{int(player.shield)}/{int(display_max)}", 14, label_x + 45, bar_y + 1, WHITE, align='left')
+    else:
+        draw_text(screen, "--/--", 14, label_x + 45, bar_y + 1, (100, 100, 100), align='left')
     
     # 血量条 (红色，更长更粗)
     hp_pct = (player.hp / player.max_hp * 100) if player.max_hp > 0 else 0
@@ -7101,7 +7260,7 @@ def draw_player_stats_panel():
     y_offset += 60
     hp_ratio = player.hp / max(1, player.max_hp)
     
-    draw_emoji_text(screen, "❤ 生命值", 16, left_x + 5, y_offset - 2, (255, 100, 100), align="left", glow=True)
+    draw_text(screen, "生命值", 16, left_x + 5, y_offset - 2, (255, 100, 100), align="left", glow=True)
     draw_text(screen, f"{int(player.hp)}/{int(player.max_hp)}", 11, left_x + 360, y_offset - 2, GRAY, align="right")
     
     hp_bar_bg = pygame.Rect(left_x + 5, y_offset + 18, 405, 20)
@@ -7139,7 +7298,7 @@ def draw_player_stats_panel():
     y_offset += 60
     shield_ratio = player.shield / max(1, player.max_hp)
     
-    draw_emoji_text(screen, "🛡 护盾值", 16, left_x + 5, y_offset - 2, CYBER_AMBER, align="left", glow=True)
+    draw_text(screen, "护盾值", 16, left_x + 5, y_offset - 2, CYBER_AMBER, align="left", glow=True)
     draw_text(screen, f"{int(player.shield)}/{int(player.max_hp)}", 11, left_x + 360, y_offset - 2, GRAY, align="right")
     
     shield_bar_bg = pygame.Rect(left_x + 5, y_offset + 18, 405, 20)
@@ -7196,13 +7355,13 @@ def draw_player_stats_panel():
         glow_val = int(150 + 50 * math.sin(t / 600 + i * 0.8))
         pygame.draw.rect(screen, (*color[:3], glow_val), mini_card, 2, border_radius=8)
         
-        # 名称
-        draw_text(screen, name, 16, card_x + 10, card_y + 4, (200, 200, 200), align="left")
+        # 名称 - 左对齐
+        draw_text(screen, name, 16, card_x + 5, card_y + 3, (200, 200, 200), align="left")
         
-        # 数值
-        draw_text(screen, value, 20, card_x + 10, card_y + 22, color, glow=True, align="left")
+        # 数值 - 右对齐
+        draw_text(screen, value, 20, card_x + 175, card_y + 4, color, glow=True, align="right")
 
-    # 【右侧】增益卡片 - 玻璃态射质感
+    # 【右侧】卡牌系统 - 玻璃态射质感
     right_x = panel_x + 540
     right_y = top_y
     
@@ -7221,99 +7380,173 @@ def draw_player_stats_panel():
                     (right_card.x + 20, right_card.y + 5), 
                     (right_card.x + right_card.width - 20, right_card.y + 5), 2)
     
-    draw_text(screen, "战术增益列表", 22, right_x, right_y, MAGENTA, glow=True, align="left")
+    draw_text(screen, "战术卡牌系统", 22, right_x, right_y, MAGENTA, glow=True, align="left")
     
-    buffs = getattr(player, 'buffs', []) or getattr(player, 'active_buffs', []) or []
+    # 获取卡牌数据
+    upgrade_manager = getattr(player, 'upgrade_manager', None)
+    owned_cards = upgrade_manager.owned_cards if upgrade_manager else {}
+    active_synergies = upgrade_manager.active_synergies if upgrade_manager else []
+    archetype_counts = upgrade_manager.archetype_counts if upgrade_manager else {}
+    
     buff_start_y = right_y + 50
     
-    if not buffs:
-        # 无增益提示 - 更有设计感
+    if not owned_cards:
+        # 无卡牌提示 - 更有设计感
         no_buff_y = buff_start_y + 150
         draw_text(screen, "╳", 48, right_x + 240, no_buff_y - 20, (80, 80, 80), align="center")
-        draw_text(screen, "暂无战术增益", 18, right_x + 240, no_buff_y + 30, GRAY, align="center")
-        draw_text(screen, "击败敌人升级获取", 14, right_x + 240, no_buff_y + 55, (100, 100, 100), align="center")
+        draw_text(screen, "暂无战术卡牌", 18, right_x + 240, no_buff_y + 30, GRAY, align="center")
+        draw_text(screen, "升级获取卡牌", 14, right_x + 240, no_buff_y + 55, (100, 100, 100), align="center")
     else:
-        # 增益列表 - 卡片式显示
-        effect_data = []
+        # ===== 第一区：协同效果显示 =====
+        if active_synergies:
+            synergy_section_y = buff_start_y
+            draw_text(screen, "▶ 激活协同", 16, right_x, synergy_section_y, CYBER_AMBER, glow=True, align="left")
+            
+            from roguelite import SYNERGY_RULES
+            for i, synergy_id in enumerate(active_synergies[:2]):  # 最多显示2个
+                synergy = SYNERGY_RULES.get(synergy_id, {})
+                synergy_name = synergy.get("name", synergy_id)
+                synergy_desc = synergy.get("desc", "")
+                synergy_color = synergy.get("visual", {}).get("color", CYBER_LIME)
+                
+                syn_y = synergy_section_y + 25 + i * 42
+                
+                # 协同卡片背景
+                syn_rect = pygame.Rect(right_x - 5, syn_y - 5, 510, 38)
+                syn_surf = pygame.Surface((syn_rect.width, syn_rect.height), pygame.SRCALPHA)
+                pygame.draw.rect(syn_surf, (60, 40, 80, 180), syn_surf.get_rect(), border_radius=8)
+                safe_blit(screen, syn_surf, (syn_rect.x, syn_rect.y))
+                
+                # 边框 - 金色发光
+                glow_val = int(200 + 55 * math.sin(t / 400 + i * 0.8))
+                pygame.draw.rect(screen, (*synergy_color, glow_val), syn_rect, 2, border_radius=8)
+                
+                # 协同名称
+                draw_text(screen, f"⚡ {synergy_name}", 14, right_x + 5, syn_y + 2, synergy_color, glow=True, align="left")
+                
+                # 协同描述
+                draw_text(screen, synergy_desc, 10, right_x + 5, syn_y + 20, (200, 200, 200), align="left")
+            
+            # 更新卡牌列表起始位置
+            buff_start_y = synergy_section_y + 25 + len(active_synergies[:2]) * 42 + 20
         
-        # 根据卡牌ID生成实际效果文本
-        for buff_id in buffs[:8]:
-            if buff_id == "homing":
-                effect_data.append(("🎯 追踪等级", f"★{player.homing_level}", CYBER_LIME, "智能锁定系统"))
-            elif buff_id == "pierce":
-                effect_data.append(("⚡ 穿透次数", f"+{player.piercing}", CYBER_AMBER, "贯穿装甲弹药"))
-            elif buff_id == "multi":
-                effect_data.append(("✦ 子弹数量", f"×{player.bullet_count}", MAGENTA, "多管齐射模式"))
-            elif buff_id == "dmg":
-                dmg_boost = (player.damage / PLANES.get(player.plane_id, {}).get('damage', 1)) - 1
-                effect_data.append(("⚔ 伤害提升", f"+{dmg_boost*100:.0f}%", RED, "火力强化协议"))
-            elif buff_id == "crit":
-                effect_data.append(("💥 暴击率", f"{player.crit_chance*100:.1f}%", CYBER_RED_ALERT, "致命打击系统"))
-            elif buff_id == "spd":
-                effect_data.append(("⏱ 射速提升", "✓", CYAN, "急速冷却装置"))
-            elif buff_id == "hp_max":
-                effect_data.append(("❤ 生命上限", f"+{int(player.max_hp - PLANES.get(player.plane_id, {}).get('hp', 100))}", CYBER_LIME, "结构强化改造"))
-            elif buff_id == "bounce":
-                effect_data.append(("↗ 弹跳次数", f"+{player.bounce_level}", MAGENTA, "反弹弹道系统"))
-            elif buff_id == "drone":
-                wingman_count = len(player.wingman_squadron.wingmen) if hasattr(player, 'wingman_squadron') and player.wingman_squadron else 0
-                effect_data.append(("🛸 僚机数量", f"×{wingman_count}", CYAN, "无人机编队"))
-            else:
-                effect_data.append(("✓ 已获得", buff_id, GRAY, "未知增益"))
+        # ===== 第二区：原型统计 =====
+        archetype_y = buff_start_y
+        draw_text(screen, "▶ 构筑类型", 16, right_x, archetype_y, CYAN, glow=True, align="left")
         
-        # 显示增益卡片 - 2列布局
-        for i, (effect_name, effect_value, color, desc) in enumerate(effect_data):
+        # 原型翻译
+        archetype_names = {
+            "barrage": "弹幕流",
+            "sniper": "狙击流",
+            "control": "控制流",
+            "summon": "召唤流"
+        }
+        
+        # 显示原型数量 - 4个并排小卡片
+        archetype_items = [
+            (archetype, archetype_names.get(archetype, archetype), count)
+            for archetype, count in archetype_counts.items()
+        ]
+        
+        for i, (archetype, name, count) in enumerate(archetype_items[:4]):
+            col = i % 4
+            arch_x = right_x + col * 125
+            arch_y = archetype_y + 25
+            
+            # 小卡片
+            arch_rect = pygame.Rect(arch_x - 5, arch_y - 5, 115, 30)
+            arch_surf = pygame.Surface((arch_rect.width, arch_rect.height), pygame.SRCALPHA)
+            pygame.draw.rect(arch_surf, (40, 50, 60, 160), arch_surf.get_rect(), border_radius=6)
+            safe_blit(screen, arch_surf, (arch_rect.x, arch_rect.y))
+            pygame.draw.rect(screen, CYAN, arch_rect, 1, border_radius=6)
+            
+            # 显示名称和数量
+            draw_text(screen, name, 11, arch_x + 2, arch_y + 2, (200, 200, 200), align="left")
+            draw_text(screen, f"×{count}", 14, arch_x + 95, arch_y + 4, CYAN, glow=True, align="right")
+        
+        # ===== 第三区：拥有卡牌列表 =====
+        card_list_y = archetype_y + 70
+        draw_text(screen, "▶ 拥有卡牌", 16, right_x, card_list_y, MAGENTA, glow=True, align="left")
+        
+        from roguelite import BASE_CARDS, MODIFIER_CARDS
+        
+        # 获取卡牌数据并排序（按等级降序）
+        card_display_list = []
+        for card_id, card_obj in owned_cards.items():
+            card_data = BASE_CARDS.get(card_id) or MODIFIER_CARDS.get(card_id)
+            if card_data:
+                card_name = card_data.get("name", card_id)
+                card_level = card_obj.level
+                card_category = card_data.get("category", "modifier")
+                
+                # 分类颜色
+                category_colors = {
+                    "attack": (255, 100, 100),
+                    "defense": (100, 200, 255),
+                    "special": (200, 100, 255),
+                    "system": (100, 255, 150),
+                    "modifier": CYBER_AMBER
+                }
+                card_color = category_colors.get(card_category, GRAY)
+                
+                card_display_list.append((card_name, card_level, card_color))
+        
+        # 按等级排序
+        card_display_list.sort(key=lambda x: x[1], reverse=True)
+        
+        # 显示卡牌 - 2列布局
+        for i, (card_name, card_level, card_color) in enumerate(card_display_list[:8]):  # 最多显示8张
             col = i % 2
             row = i // 2
             
-            buff_x = right_x + col * 250
-            buff_y = buff_start_y + row * 52
+            card_x = right_x + col * 255
+            card_y = card_list_y + 25 + row * 38
             
             # 超出面板就停止
-            if buff_y > right_y + 360:
-                remaining = len(buffs) - i
+            if card_y > right_y + 360:
+                remaining = len(card_display_list) - i
                 if remaining > 0:
-                    more_rect = pygame.Rect(right_x + 160, buff_y - 5, 140, 30)
+                    more_rect = pygame.Rect(right_x + 180, card_y - 5, 140, 30)
                     pygame.draw.rect(screen, (40, 40, 50, 200), more_rect, border_radius=8)
                     pygame.draw.rect(screen, GRAY, more_rect, 1, border_radius=8)
-                    draw_text(screen, f"▼ 还有 {remaining} 项增益", 13, right_x + 230, buff_y + 5, GRAY, align="center")
+                    draw_text(screen, f"▼ 还有 {remaining} 张卡牌", 12, right_x + 250, card_y + 5, GRAY, align="center")
                 break
             
             # 卡片背景 - 玻璃质感
-            bar_rect = pygame.Rect(buff_x - 8, buff_y - 18, 230, 44)
+            bar_rect = pygame.Rect(card_x - 8, card_y - 8, 245, 34)
             card_surf = pygame.Surface((bar_rect.width, bar_rect.height), pygame.SRCALPHA)
             
             # 渐变背景
             for dy in range(bar_rect.height):
-                grad_alpha = int(120 + 80 * (1 - dy / bar_rect.height))
-                base_color = color[:3] if len(color) == 3 else color[:3]
-                pygame.draw.line(card_surf, (base_color[0], base_color[1], base_color[2], grad_alpha // 3), 
+                grad_alpha = int(100 + 60 * (1 - dy / bar_rect.height))
+                base_color = card_color[:3] if len(card_color) == 3 else card_color[:3]
+                pygame.draw.line(card_surf, (base_color[0], base_color[1], base_color[2], grad_alpha // 4), 
                                (0, dy), (bar_rect.width, dy))
             safe_blit(screen, card_surf, (bar_rect.x, bar_rect.y))
             
             # 边框 - 发光
-            glow_intensity = int(200 + 55 * math.sin(t / 500 + i * 0.5))
-            glow_color = tuple(min(255, c) for c in color[:3]) if len(color) == 3 else color[:3]
+            glow_intensity = int(180 + 75 * math.sin(t / 600 + i * 0.6))
+            glow_color = tuple(min(255, c) for c in card_color[:3]) if len(card_color) == 3 else card_color[:3]
             pygame.draw.rect(screen, (*glow_color, glow_intensity), bar_rect, 2, border_radius=8)
             
             # 高光
-            pygame.draw.line(screen, (255, 255, 255, 80), 
+            pygame.draw.line(screen, (255, 255, 255, 60), 
                            (bar_rect.x + 10, bar_rect.y + 3), 
                            (bar_rect.x + bar_rect.width - 10, bar_rect.y + 3), 1)
             
-            # 图标光晕
-            icon_x = buff_x - 2
-            icon_y = buff_y - 8
-            pygame.draw.circle(screen, (*color[:3], 50), (icon_x, icon_y), 18)
+            # 等级标签 - 左侧圆形
+            level_circle_x = card_x - 2
+            level_circle_y = card_y + 5
+            pygame.draw.circle(screen, (*card_color[:3], 100), (level_circle_x, level_circle_y), 14)
+            pygame.draw.circle(screen, card_color, (level_circle_x, level_circle_y), 14, 2)
+            draw_text(screen, f"{card_level}", 14, level_circle_x, level_circle_y - 7, WHITE, glow=True, align="center")
             
-            # 效果名称
-            draw_text(screen, effect_name, 14, buff_x, buff_y - 10, WHITE, align="left", glow=True)
+            # 卡牌名称
+            draw_text(screen, card_name, 13, card_x + 22, card_y, WHITE, align="left", glow=True)
             
-            # 描述文字
-            draw_text(screen, desc, 10, buff_x, buff_y + 8, (180, 180, 180), align="left")
-            
-            # 数值 - 发光强调
-            draw_text(screen, effect_value, 16, buff_x + 160, buff_y - 2, color, glow=True, align="right")
+            # 等级星星
+            star_text = "★" * min(card_level, 3)
+            draw_text(screen, star_text, 11, card_x + 22, card_y + 16, card_color, align="left")
 
     # 底部提示条 - 动态背景
     hint_y = panel_y + panel_h - 45
@@ -7350,75 +7583,209 @@ def draw_player_stats_panel():
     draw_text(screen, "释放 [TAB] 恢复战斗", 16, panel_rect.centerx + 100, hint_y + 2, hint_color, glow=True)
 
 def draw_levelup_ui():
-    """绘制升级选择 UI"""
+    """绘制升级选择 UI (美化版)"""
     if not upgrade_options or len(upgrade_options) < 3:
         return
     if player is None:
         log_debug("draw_levelup_ui: player is None, skip")
         return
     
-    # 半透明遮罩
+    t = pygame.time.get_ticks()
+    
+    # 渐变遮罩背景
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 200))
+    for y in range(HEIGHT):
+        alpha = int(150 + 50 * (y / HEIGHT))
+        overlay.fill((0, 0, 10, alpha), (0, y, WIDTH, 1))
     safe_blit(screen, overlay, (0, 0))
     
-    # 标题
-    draw_text(screen, "选择升级增益", 48, WIDTH//2, 100, CYBER_AMBER, glow=True)
+    # 动态粒子背景
+    for _ in range(15):
+        px = random.randint(0, WIDTH)
+        py = random.randint(0, HEIGHT)
+        pr = random.randint(1, 3)
+        particle_alpha = int(50 + 50 * abs(math.sin(t / 1000 + px + py)))
+        pygame.draw.circle(screen, (*CYAN[:3], particle_alpha), (px, py), pr)
+    
+    # 标题 - 发光脉冲效果
+    title_scale = 1.0 + 0.1 * abs(math.sin(t / 400))
+    title_alpha = int(200 + 55 * abs(math.sin(t / 500)))
+    title_color = (*CYBER_AMBER[:3], title_alpha)
+    draw_text(screen, "▂▃▅ 选择升级卡牌 ▅▃▂", int(48 * title_scale), WIDTH//2, 100, title_color, glow=True)
+    
+    # 副标题
+    subtitle_alpha = int(150 + 50 * abs(math.sin(t / 300)))
+    draw_text(screen, f"等级 {player.level} → {player.level + 1}", 20, WIDTH//2, 145, (*LIME[:3], subtitle_alpha))
     
     # 3 个升级卡牌
-    card_width = 280
-    card_height = 400
-    gap = 40
+    card_width = 300
+    card_height = 440
+    gap = 50
     total_width = 3 * card_width + 2 * gap
     start_x = (WIDTH - total_width) // 2
-    start_y = 200
+    start_y = 190
     
     try:
-        from roguelite import BUFF_LIBRARY
+        from roguelite import BASE_CARDS, MODIFIER_CARDS
         
-        for i, buff_id in enumerate(upgrade_options):
-            buff = BUFF_LIBRARY.get(buff_id)
-            if not buff:
+        for i, card_id in enumerate(upgrade_options):
+            # 查找卡牌 (可能在基础卡或修饰符卡中)
+            card_data = BASE_CARDS.get(card_id) or MODIFIER_CARDS.get(card_id)
+            if not card_data:
                 continue
             
             card_x = start_x + i * (card_width + gap)
-            card_rect = pygame.Rect(card_x, start_y, card_width, card_height)
             
-            # 卡牌背景
-            bg_color = (30, 30, 50)
-            border_color = RARITY_COLORS[buff["rarity"]]
-            draw_cyber_rect(screen, card_rect, bg_color, fill=True)
-            border_width = 4 if i == upgrade_selected else 2
-            draw_cyber_rect(screen, card_rect, border_color, border_width=border_width, fill=False)
-            
-            # 选中效果 - 高亮边框 + 闪光
+            # 卡牌浮动动画
+            hover_offset = 0
             if i == upgrade_selected:
-                glow_rect = pygame.Rect(card_x - 5, start_y - 5, card_width + 10, card_height + 10)
-                draw_cyber_rect(screen, glow_rect, border_color, border_width=1, fill=False)
+                hover_offset = int(-10 + 5 * math.sin(t / 200))
             
-            # 稀有度标签
-            rarity_text = RARITY_NAMES[buff["rarity"] + 1]
-            draw_text(screen, rarity_text, 16, card_rect.centerx, card_rect.top + 20, border_color, glow=True)
+            card_y = start_y + hover_offset
+            card_rect = pygame.Rect(card_x, card_y, card_width, card_height)
             
-            # 增益名称
-            draw_text(screen, buff["name"], 24, card_rect.centerx, card_rect.top + 60, WHITE, glow=True)
+            # 稀有度颜色
+            border_color = RARITY_COLORS[card_data["rarity"]]
             
-            # 描述
-            desc_lines = [buff["desc"][k:k+18] for k in range(0, len(buff["desc"]), 18)]
-            desc_y = card_rect.top + 120
-            for line in desc_lines:
-                draw_text(screen, line, 16, card_rect.centerx, desc_y, GRAY)
-                desc_y += 30
-            
-            # 选择提示
+            # 选中时的外发光
             if i == upgrade_selected:
-                draw_text(screen, "◄ 已选择 ►", 18, card_rect.centerx, card_rect.bottom - 30, LIME, glow=True)
+                glow_radius = int(10 + 5 * abs(math.sin(t / 150)))
+                for r in range(glow_radius, 0, -2):
+                    alpha = int(80 * (1 - r / glow_radius))
+                    glow_surf = pygame.Surface((card_width + r*2, card_height + r*2), pygame.SRCALPHA)
+                    pygame.draw.rect(glow_surf, (*border_color[:3], alpha), (0, 0, card_width + r*2, card_height + r*2), border_radius=15)
+                    safe_blit(screen, glow_surf, (card_x - r, card_y - r))
+            
+            # 卡牌主体 - 渐变背景
+            card_surf = pygame.Surface((card_width, card_height), pygame.SRCALPHA)
+            for cy in range(card_height):
+                grad_ratio = cy / card_height
+                bg_r = int(20 + 30 * grad_ratio)
+                bg_g = int(20 + 20 * grad_ratio)
+                bg_b = int(40 + 30 * grad_ratio)
+                pygame.draw.rect(card_surf, (bg_r, bg_g, bg_b, 240), (0, cy, card_width, 1))
+            safe_blit(screen, card_surf, (card_x, card_y))
+            
+            # 边框 - 多层效果
+            border_width = 5 if i == upgrade_selected else 3
+            pygame.draw.rect(screen, border_color, card_rect, border_width, border_radius=12)
+            
+            # 内边框
+            inner_rect = card_rect.inflate(-8, -8)
+            inner_alpha = int(100 + 50 * abs(math.sin(t / 400 + i)))
+            pygame.draw.rect(screen, (*border_color[:3], inner_alpha), inner_rect, 1, border_radius=10)
+            
+            # 顶部装饰条
+            top_bar = pygame.Rect(card_x, card_y, card_width, 50)
+            top_overlay = pygame.Surface((card_width, 50), pygame.SRCALPHA)
+            top_overlay.fill((*border_color[:3], 80))
+            safe_blit(screen, top_overlay, (card_x, card_y))
+            
+            # 稀有度标签 - 六边形背景
+            rarity_text = RARITY_NAMES[card_data["rarity"] + 1]
+            rarity_bg = pygame.Surface((140, 35), pygame.SRCALPHA)
+            pygame.draw.polygon(rarity_bg, (*border_color[:3], 200), [
+                (10, 0), (130, 0), (140, 17.5), (130, 35), (10, 35), (0, 17.5)
+            ])
+            safe_blit(screen, rarity_bg, (card_rect.centerx - 70, card_y + 10))
+            draw_text(screen, f"★ {rarity_text} ★", 18, card_rect.centerx, card_y + 22, WHITE, glow=True)
+            
+            # 卡牌图标/装饰
+            icon_y = card_y + 70
+            icon_size = 60
+            icon_color = (*border_color[:3], 150)
+            
+            # 根据卡牌类型绘制不同图标
+            if "attack" in card_data.get("category", ""):
+                # 攻击图标 - 剑
+                pygame.draw.polygon(screen, icon_color, [
+                    (card_rect.centerx, icon_y - icon_size//2),
+                    (card_rect.centerx - icon_size//3, icon_y + icon_size//2),
+                    (card_rect.centerx + icon_size//3, icon_y + icon_size//2)
+                ])
+            elif "defense" in card_data.get("category", ""):
+                # 防御图标 - 盾
+                pygame.draw.ellipse(screen, icon_color, 
+                    (card_rect.centerx - icon_size//2, icon_y - icon_size//2, icon_size, icon_size))
+            elif "special" in card_data.get("category", ""):
+                # 特殊图标 - 星星
+                points = []
+                for angle in range(0, 360, 72):
+                    rad = math.radians(angle - 90)
+                    px = card_rect.centerx + math.cos(rad) * icon_size // 2
+                    py = icon_y + math.sin(rad) * icon_size // 2
+                    points.append((px, py))
+                pygame.draw.polygon(screen, icon_color, points)
+            else:
+                # 默认图标 - 齿轮
+                pygame.draw.circle(screen, icon_color, (card_rect.centerx, icon_y), icon_size // 2, 3)
+                for angle in range(0, 360, 45):
+                    rad = math.radians(angle)
+                    px = card_rect.centerx + math.cos(rad) * icon_size // 2
+                    py = icon_y + math.sin(rad) * icon_size // 2
+                    pygame.draw.circle(screen, icon_color, (int(px), int(py)), 5)
+            
+            # 卡牌名称 - 加粗效果
+            name_y = card_y + 150
+            draw_text(screen, card_data["name"], 26, card_rect.centerx, name_y, WHITE, glow=True)
+            draw_text(screen, card_data["name"], 26, card_rect.centerx + 1, name_y + 1, (*WHITE[:3], 100))
+            
+            # 分隔线
+            line_y = name_y + 30
+            pygame.draw.line(screen, (*border_color[:3], 150), 
+                (card_x + 30, line_y), (card_x + card_width - 30, line_y), 2)
+            
+            # 描述 - 更好的排版
+            desc_lines = [card_data["desc"][k:k+16] for k in range(0, len(card_data["desc"]), 16)]
+            desc_y = line_y + 25
+            for line in desc_lines[:3]:  # 最多3行
+                draw_text(screen, line, 18, card_rect.centerx, desc_y, (200, 200, 220))
+                desc_y += 28
+            
+            # 效果预览
+            effect_y = card_rect.bottom - 90
+            effect_text = "效果："
+            if "base_effect" in card_data:
+                effects = []
+                for k, v in list(card_data["base_effect"].items())[:2]:
+                    if "mult" in k:
+                        effects.append(f"+{int((v-1)*100)}%")
+                    elif isinstance(v, (int, float)) and v > 0:
+                        effects.append(f"+{v}")
+                if effects:
+                    effect_text += " ".join(effects)
+            draw_text(screen, effect_text, 16, card_rect.centerx, effect_y, CYBER_AMBER)
+            
+            # 选择提示 - 动态箭头
+            if i == upgrade_selected:
+                arrow_offset = int(3 * math.sin(t / 150))
+                select_y = card_rect.bottom - 40
+                draw_text(screen, "◄", 24, card_rect.centerx - 60 + arrow_offset, select_y, LIME, glow=True)
+                draw_text(screen, "已选中", 22, card_rect.centerx, select_y, LIME, glow=True)
+                draw_text(screen, "►", 24, card_rect.centerx + 60 - arrow_offset, select_y, LIME, glow=True)
+                
+                # 选中闪光
+                if t % 1000 < 100:
+                    flash_surf = pygame.Surface((card_width, card_height), pygame.SRCALPHA)
+                    flash_alpha = int(50 * (1 - (t % 1000) / 100))
+                    flash_surf.fill((*WHITE[:3], flash_alpha))
+                    safe_blit(screen, flash_surf, (card_x, card_y))
+            
+            # 悬停时的数字序号
+            number_color = border_color if i == upgrade_selected else (100, 100, 120)
+            draw_text(screen, str(i + 1), 32, card_x + 25, card_y + card_height - 25, number_color, glow=True)
     
-    except ImportError:
-        draw_text(screen, "ERROR: 无法加载增益库", 24, WIDTH//2, HEIGHT//2, RED)
+    except ImportError as e:
+        draw_text(screen, f"ERROR: 无法加载卡牌库 {e}", 24, WIDTH//2, HEIGHT//2, RED)
     
-    # 底部提示
-    draw_text(screen, "上下键切换    ENTER确认", 16, WIDTH//2, HEIGHT - 60, CYAN)
+    # 底部提示 - 分段颜色
+    hint_y = HEIGHT - 60
+    draw_text(screen, "◄ ►", 20, WIDTH//2 - 200, hint_y, CYAN, glow=True)
+    draw_text(screen, "切换", 18, WIDTH//2 - 170, hint_y, WHITE)
+    draw_text(screen, "ENTER", 20, WIDTH//2 - 60, hint_y, LIME, glow=True)
+    draw_text(screen, "确认", 18, WIDTH//2 - 20, hint_y, WHITE)
+    draw_text(screen, "鼠标", 20, WIDTH//2 + 80, hint_y, CYBER_AMBER, glow=True)
+    draw_text(screen, "点击选择", 18, WIDTH//2 + 130, hint_y, WHITE)
 
 
 
@@ -7644,25 +8011,20 @@ while True:
                         upgrade_selected = (upgrade_selected + 1) % len(upgrade_options)
                         sound_mgr.play("select")
                     elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
-                        # 玩家选择一个增益
-                        if 0 <= upgrade_selected < len(upgrade_options):
-                            buff_id = upgrade_options[upgrade_selected]
-                            print(f"[DEBUG] 准备应用增益: {buff_id}")
+                        # 玩家选择一个卡牌
+                        if player and hasattr(player, 'upgrade_manager'):
                             try:
-                                result = player.apply_buff(buff_id)
-                                print(f"[DEBUG] 增益应用结果: {result}")
+                                player.upgrade_manager.select_upgrade(upgrade_selected)
+                                sound_mgr.play("levelup")
                             except Exception as e:
-                                print(f"[DEBUG] 增益应用异常: {e}")
-                                import traceback
-                                traceback.print_exc()
-                            sound_mgr.play("levelup")
-                            # 重置升级状态并恢复游戏
-                            upgrade_options = []
-                            upgrade_selected = 0
-                            levelup_ready = False
-                            is_paused = False
-                            levelup_paused = False
-                            frozen_screen = None
+                                log_error(f"Failed to select upgrade: {e}")
+                        # 重置升级状态并恢复游戏
+                        upgrade_options = []
+                        upgrade_selected = 0
+                        levelup_ready = False
+                        is_paused = False
+                        levelup_paused = False
+                        frozen_screen = None
                     continue
 
                 # 输入名字状态键盘控制
@@ -8033,11 +8395,28 @@ while True:
 
                 elif game_state == "gallery":
                     sound_mgr.play("select")
-                    tb_w = 100; stx = (WIDTH-(5*tb_w+40))//2
+                    # 5个稀有度标签点击检测: 全部/1星/2星/3星/4星
+                    tab_width = 110
+                    tab_gap = 10
+                    total_tab_width = 5 * tab_width + 4 * tab_gap  # 5个标签,4个间隙
+                    start_tab_x = (WIDTH - total_tab_width) // 2
+                    
+                    # 检测5个标签的点击
                     for i in range(5):
-                        if pygame.Rect(stx+i*(tb_w+10), 80, tb_w, 40).collidepoint(mx, my): gallery_tab=i; gallery_page=0
-                    if pygame.Rect(50, HEIGHT//2, 50, 50).collidepoint(mx, my) and gallery_page > 0: gallery_page -= 1
-                    if pygame.Rect(WIDTH-100, HEIGHT//2, 50, 50).collidepoint(mx, my): gallery_page += 1
+                        tab_x = start_tab_x + i * (tab_width + tab_gap)
+                        tab_rect = pygame.Rect(tab_x, 80, tab_width, 40)
+                        if tab_rect.collidepoint(mx, my):
+                            gallery_tab = i  # 0=全部, 1=1星, 2=2星, 3=3星, 4=4星
+                            gallery_page = 0
+                            break
+                    
+                    # 翻页按钮
+                    if pygame.Rect(20, HEIGHT//2 - 25, 50, 50).collidepoint(mx, my) and gallery_page > 0: 
+                        gallery_page -= 1
+                    if pygame.Rect(WIDTH-70, HEIGHT//2 - 25, 50, 50).collidepoint(mx, my): 
+                        gallery_page += 1
+                    
+                    # 返回按钮
                     if pygame.Rect(WIDTH//2-50, HEIGHT-60, 100, 40).collidepoint(mx, my):
                         if player and hasattr(player, 'achievement_manager'):
                             player.achievement_manager.save_to_file()
@@ -8373,6 +8752,53 @@ while True:
                     for eb in enemy_bullets:
                         eb.frozen = True
                     player.update()
+                    
+                    # 【新】冰霜新星：周期性范围冻结
+                    if hasattr(player, 'card_effect_processor'):
+                        frost_result = player.card_effect_processor.update(1)
+                        if frost_result and frost_result.get("frost_nova"):
+                            freeze_duration = getattr(player, 'freeze_duration', 120)
+                            freeze_radius = getattr(player, 'freeze_radius', 100)
+                            
+                            # 冻结范围内所有敌人
+                            frozen_count = 0
+                            for enemy in mobs:
+                                dist = math.hypot(
+                                    enemy.rect.centerx - player.rect.centerx,
+                                    enemy.rect.centery - player.rect.centery
+                                )
+                                if dist <= freeze_radius:
+                                    enemy.frozen_timer = freeze_duration
+                                    frozen_count += 1
+                            
+                            if frozen_count > 0:
+                                # 冰霜新星视觉效果 - 增强版
+                                # 1. 多层冰霜冲击波(扩散动画效果)
+                                for r in range(3):
+                                    radius = int(freeze_radius * (0.3 + r * 0.35))
+                                    thickness = 4 - r
+                                    alpha_color = (100 + r * 50, 200 + r * 20, 255)
+                                    pygame.draw.circle(screen, alpha_color, player.rect.center, radius, thickness)
+                                
+                                # 2. 大量冰晶粒子(密集效果)
+                                for _ in range(50):
+                                    angle = random.uniform(0, math.pi * 2)
+                                    dist = random.uniform(freeze_radius * 0.3, freeze_radius)
+                                    px = player.rect.centerx + math.cos(angle) * dist
+                                    py = player.rect.centery + math.sin(angle) * dist
+                                    Particle((int(px), int(py)), CYAN)
+                                
+                                # 3. 冻结敌人上方显示冰晶标记
+                                for enemy in mobs:
+                                    if enemy.frozen_timer > 0:
+                                        FloatingText(enemy.rect.centerx, enemy.rect.top - 20, "❄", CYAN)
+                                
+                                # 4. 中心爆发特效
+                                for _ in range(15):
+                                    Particle(player.rect.center, (200, 230, 255))
+                                
+                                sound_mgr.play("powerup")
+                    
                     for s in all_sprites:
                         if isinstance(s, (Particle, FloatingText, FinalBeam, TimeSlash, NukeExplosion, AuroraCurtain, DeathScythe, BlackHole)): s.update()
                 else:
@@ -8388,10 +8814,21 @@ while True:
                                 except Exception:
                                     pass
                     else:
+                        # 应用时间膨胀效果到敌人
+                        time_factor = getattr(player, 'time_factor', 1.0)
+                        for enemy in mobs:
+                            # 应用时间减速：timer 增速会被减缓，导致攻击/移动更慢
+                            # 现在敌人会在 timer % X == 0 时攻击，time_factor < 1 时会延长间隔
+                            enemy.time_slow_factor = time_factor
+                        
                         all_sprites.update()
                         # 更新僚机编队
                         if player.wingman_squadron:
                             player.wingman_squadron.update(mobs)
+                        # 更新固定炮塔
+                        if hasattr(player, 'turrets') and player.turrets:
+                            for turret in player.turrets:
+                                turret.update()
                     # Boss spawn logic: handled by boss_manager
                     warning_active, spawn_now = boss_manager.update(score, player.level, boss_exists=bool(boss))
                     if warning_active and not boss:
@@ -8563,6 +9000,101 @@ while True:
                             player.ult2_charge = min(player.max_ult2_charge, player.ult2_charge + ult_charge_gain * 0.8)
                             # 【新】同时充能第三大招（C键）
                             player.ult3_charge = min(player.max_ult3_charge, player.ult3_charge + ult_charge_gain * 0.6)
+                            
+                            # 【新】分裂射击：子弹击中敌人时生成分裂子弹
+                            if hasattr(player, 'split_count') and player.split_count > 0:
+                                split_damage = player.damage * player.split_damage if hasattr(player, 'split_damage') else player.damage * 0.5
+                                for i in range(int(player.split_count)):
+                                    angle = random.uniform(0, math.pi * 2)
+                                    dx = math.cos(angle) * player.bullet_speed
+                                    dy = math.sin(angle) * player.bullet_speed
+                                    Bullet(b.rect.centerx, b.rect.centery, dx, dy, split_damage, 0)  # 分裂子弹无穿透
+                            
+                            # 【新】连锁闪电：子弹击中敌人后跳跃到附近其他敌人
+                            if hasattr(player, 'has_chain_lightning') and player.has_chain_lightning:
+                                chain_count = getattr(player, 'chain_count', 3)
+                                chain_damage_mult = getattr(player, 'chain_damage', 0.6)
+                                chain_range = 200  # 连锁跳跃范围
+                                
+                                current_target = m
+                                chain_damage = dmg * chain_damage_mult
+                                chained_enemies = {m}  # 记录已连锁的敌人,避免重复
+                                
+                                for jump in range(int(chain_count)):
+                                    # 查找范围内最近的未连锁敌人
+                                    nearest_enemy = None
+                                    min_dist = chain_range
+                                    
+                                    for enemy in mobs:
+                                        if enemy not in chained_enemies and enemy.hp > 0:
+                                            dist = math.hypot(
+                                                enemy.rect.centerx - current_target.rect.centerx,
+                                                enemy.rect.centery - current_target.rect.centery
+                                            )
+                                            if dist < min_dist:
+                                                min_dist = dist
+                                                nearest_enemy = enemy
+                                    
+                                    if nearest_enemy:
+                                        # 绘制闪电连线特效
+                                        pygame.draw.line(screen, YELLOW, 
+                                                       current_target.rect.center, 
+                                                       nearest_enemy.rect.center, 2)
+                                        
+                                        # 造成连锁伤害
+                                        nearest_enemy.hp -= chain_damage
+                                        FloatingText(nearest_enemy.rect.centerx, nearest_enemy.rect.top - 10, 
+                                                   f"-{int(chain_damage)}", YELLOW)
+                                        
+                                        # 闪电特效
+                                        for _ in range(3):
+                                            Particle(nearest_enemy.rect.center, YELLOW)
+                                        
+                                        chained_enemies.add(nearest_enemy)
+                                        current_target = nearest_enemy
+                                        chain_damage *= chain_damage_mult  # 每次跳跃衰减
+                                    else:
+                                        break  # 没有可跳跃的目标,结束连锁
+                            
+                            # 【新】爆炸模块：子弹击中时产生范围爆炸伤害
+                            if hasattr(player, 'has_area_dmg') and player.has_area_dmg:
+                                explosion_radius = getattr(player, 'explosion_radius', 60)
+                                explosion_mult = getattr(player, 'explosion_mult', 0.6)
+                                explosion_damage = dmg * explosion_mult
+                                
+                                # 爆炸视觉效果
+                                # 1. 爆炸圆环
+                                for i in range(3):
+                                    radius = int(explosion_radius * (0.5 + i * 0.25))
+                                    color_intensity = 255 - i * 50
+                                    pygame.draw.circle(screen, (255, color_intensity, 0), 
+                                                     b.rect.center, radius, 2)
+                                
+                                # 2. 爆炸粒子
+                                for _ in range(15):
+                                    angle = random.uniform(0, math.pi * 2)
+                                    dist = random.uniform(0, explosion_radius * 0.8)
+                                    px = b.rect.centerx + math.cos(angle) * dist
+                                    py = b.rect.centery + math.sin(angle) * dist
+                                    Particle((int(px), int(py)), (255, 150, 0))
+                                
+                                # 3. 对范围内敌人造成爆炸伤害
+                                explosion_hits = 0
+                                for enemy in mobs:
+                                    if enemy != m:  # 不重复伤害已被击中的敌人
+                                        dist = math.hypot(
+                                            enemy.rect.centerx - b.rect.centerx,
+                                            enemy.rect.centery - b.rect.centery
+                                        )
+                                        if dist <= explosion_radius:
+                                            enemy.hp -= explosion_damage
+                                            FloatingText(enemy.rect.centerx, enemy.rect.top - 15, 
+                                                       f"-{int(explosion_damage)}", (255, 150, 0))
+                                            explosion_hits += 1
+                                
+                                if explosion_hits > 0:
+                                    sound_mgr.play("hit")
+                            
                             if b.piercing <= 0: b.kill()
                             else: b.piercing -= 1
                             if m.hp <= 0:
@@ -8654,6 +9186,17 @@ while True:
                         hits = pygame.sprite.spritecollide(player, mobs, False, pygame.sprite.collide_circle)
                         hits.extend(pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle))
                         if hits:
+                            # 【新】相位闪避：概率完全闪避伤害
+                            dodge_chance = getattr(player, 'dodge_chance', 0)
+                            if dodge_chance > 0 and random.random() < dodge_chance:
+                                FloatingText(player.rect.centerx, player.rect.top, "DODGE!", CYAN)
+                                sound_mgr.play("powerup")
+                                # 闪避特效
+                                for _ in range(5):
+                                    angle = random.uniform(0, math.pi * 2)
+                                    Particle(player.rect.center, CYAN)
+                                continue  # 完全闪避,不受伤
+                            
                             dmg = 20
                             # ===== 增强受伤打击感 =====
                             # 屏幕震动反馈 - 减弱
@@ -8727,7 +9270,8 @@ while True:
                                     
                                     if player.upgrade_manager.level_up_ready and player.upgrade_manager.upgrade_choice:
                                         levelup_ready = True
-                                        upgrade_options = player.upgrade_manager.upgrade_choice.copy() if player.upgrade_manager.upgrade_choice else []
+                                        # 提取卡牌ID作为upgrade_options
+                                        upgrade_options = [choice["id"] for choice in player.upgrade_manager.upgrade_choice]
                                         upgrade_selected = 0
                                         sound_mgr.play("levelup")
                                         # Pause the game and show frozen screen during level up
@@ -8838,6 +9382,11 @@ while True:
                             pygame.draw.circle(screen, (50, 150, 150), player.rect.center, 100, 1)
                         # 绘制僚机
                         safe_call_draw(player.wingman_squadron.draw, screen)
+                    
+                    # 绘制固定位置防御炮塔
+                    if hasattr(player, 'turrets') and player.turrets:
+                        for turret in player.turrets:
+                            turret.draw(screen)
                 else:
                     log_debug("Main loop: player is None; skipping player draws")
                 
@@ -9107,15 +9656,20 @@ while True:
                     tmp = screen.copy()
                     screen.fill(CYBER_DEEP_BLACK)
                     screen.blit(tmp, (off_x, off_y))
+                
                 # Draw HUD and warning indicator after shake so they stay fixed on screen
-                safe_call_draw(draw_top_hud)
-                # Boss挑战模式进度显示
-                if boss_challenge_active and (game_state == "game" or game_state == "boss_challenge_play"):
-                    challenge_font = pygame.font.SysFont("SimHei", 28)
-                    progress_text = challenge_font.render(f"挑战进度: {boss_challenge_current}/{len(boss_challenge_order)}", True, CYAN)
-                    screen.blit(progress_text, (20, HEIGHT - 80))
-                safe_call_draw(draw_warning_indicator)  # BOSS警告闪烁边框
-                safe_call_draw(draw_achievement_notifications)  # 成就通知
+                # 只在非升级UI时显示HUD
+                if not levelup_ready:
+                    safe_call_draw(draw_top_hud)
+                    # Boss挑战模式进度显示
+                    if boss_challenge_active and (game_state == "game" or game_state == "boss_challenge_play"):
+                        challenge_font = pygame.font.SysFont("SimHei", 28)
+                        progress_text = challenge_font.render(f"挑战进度: {boss_challenge_current}/{len(boss_challenge_order)}", True, CYAN)
+                        screen.blit(progress_text, (20, HEIGHT - 80))
+                    safe_call_draw(draw_warning_indicator)  # BOSS警告闪烁边框
+                
+                # 成就通知始终显示
+                safe_call_draw(draw_achievement_notifications)
                 
                 # 显示FPS（中间上方）- 根据设置决定是否显示
                 if game_settings.get("show_fps", True):

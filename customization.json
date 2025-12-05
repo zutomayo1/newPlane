@@ -267,8 +267,8 @@
     "necro_necrotic_burst": true
   },
   "equipped_bullet_themes": {
-    "striker": "striker_stealth_bullet",
-    "crimson": "crimson_demon_bullet",
+    "striker": "striker_holy_bullet",
+    "crimson": "crimson_samurai_bullet",
     "titan": "titan_nuclear_bullet",
     "thunderbird": "thunderbird_tesla_bullet",
     "viper": "viper_serpent_god_bullet",

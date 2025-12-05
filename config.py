@@ -73,12 +73,20 @@ DARK_RED = (100, 0, 0)
 DARK_PURPLE = (30, 0, 40)
 PURPLE = (150, 50, 255)
 
-RARITY_COMMON = (200, 200, 200)
-RARITY_RARE = (60, 150, 255)
-RARITY_EPIC = (200, 50, 255)
-RARITY_LEGEND = (255, 215, 0)
-RARITY_NAMES = ["全部", "普通", "稀有", "史诗", "传说"]
-RARITY_COLORS = [WHITE, RARITY_COMMON, RARITY_RARE, RARITY_EPIC, RARITY_LEGEND]
+# 品质颜色 (1-4星)
+RARITY_1_STAR = (150, 150, 150)    # 1星-普通 (灰色)
+RARITY_2_STAR = (100, 200, 255)    # 2星-稀有 (蓝色)
+RARITY_3_STAR = (200, 100, 255)    # 3星-史诗 (紫色)
+RARITY_4_STAR = (255, 200, 50)     # 4星-传说 (金色)
+
+# 保持兼容旧名称
+RARITY_COMMON = RARITY_1_STAR
+RARITY_RARE = RARITY_2_STAR
+RARITY_EPIC = RARITY_3_STAR
+RARITY_LEGEND = RARITY_4_STAR
+
+RARITY_NAMES = ["全部", "1星普通", "2星稀有", "3星史诗", "4星传说"]
+RARITY_COLORS = [WHITE, RARITY_1_STAR, RARITY_2_STAR, RARITY_3_STAR, RARITY_4_STAR]
 
 # ==============================================================================
 #   精灵组 (全局单例，防止循环引用)
@@ -94,47 +102,6 @@ supplies = pygame.sprite.Group()
 # ==============================================================================
 #   游戏数据 (机体、物品、BOSS)
 # ==============================================================================
-
-UPGRADE_ITEMS = [
-    # --- 基础属性 ---
-    {"id": "dmg", "name": "火力强化", "desc": "伤害 +30%", "rarity": 0},
-    {"id": "spd", "name": "极速装填", "desc": "射速 +15%", "rarity": 0},
-    {"id": "hp", "name": "纳米修复", "desc": "回复 50 生命", "rarity": 0},
-    {"id": "magnet", "name": "强力磁场", "desc": "拾取范围 +50%", "rarity": 0},
-    {"id": "execute", "name": "斩杀协议", "desc": "斩杀血线 +10%", "rarity": 0},
-    {"id": "titanium", "name": "钛金装甲", "desc": "生命上限 +100", "rarity": 0},
-    # --- 进阶机制 ---
-    {"id": "multi", "name": "散射模块", "desc": "子弹数量 +1", "rarity": 1},
-    {"id": "pierce", "name": "钨芯弹头", "desc": "子弹穿透 +1", "rarity": 1},
-    {"id": "shield", "name": "偏导护盾", "desc": "获得/修复 20点护盾", "rarity": 1},
-    {"id": "armor", "name": "活性装甲", "desc": "受到伤害 -15%", "rarity": 1},
-    {"id": "regen", "name": "纳米再生", "desc": "每5秒回复 5HP", "rarity": 1},
-    {"id": "overload", "name": "反应堆过载", "desc": "射速+25% 生命-10%", "rarity": 1},
-    # --- 高级特效 ---
-    {"id": "frost", "name": "冰霜新星", "desc": "攻击有概率冻结敌人", "rarity": 2},
-    {"id": "lightning", "name": "雷神之锤", "desc": "攻击触发连锁闪电", "rarity": 2},
-    {"id": "dodge", "name": "幻影引擎", "desc": "闪避率 +15%", "rarity": 2},
-    {"id": "crit_dmg", "name": "弱点分析", "desc": "暴击伤害 +50%", "rarity": 2},
-    {"id": "bounce", "name": "量子反射", "desc": "子弹反弹 +1次", "rarity": 2},
-    # --- 传说级 ---
-    {"id": "blackhole", "name": "奇点发生器", "desc": "攻击概率生成黑洞", "rarity": 3},
-    {"id": "corpse", "name": "裂变反应", "desc": "敌人死亡爆炸", "rarity": 3},
-    {"id": "vampire", "name": "鲜血渴望", "desc": "击杀概率回血", "rarity": 3},
-    {"id": "area_dmg", "name": "聚能爆破", "desc": "所有攻击附带爆炸", "rarity": 3},
-    {"id": "homing", "name": "智能弹道", "desc": "所有子弹自动追踪", "rarity": 3},
-    {"id": "drone", "name": "浮游炮组", "desc": "获得2个僚机", "rarity": 3},
-    # --- 全新扩充 ---
-    {"id": "giant_slayer", "name": "巨人杀手", "desc": "对BOSS/精英伤害+50%", "rarity": 2},
-    {"id": "glass_cannon", "name": "玻璃大炮", "desc": "伤害+100% 生命-50%", "rarity": 3},
-    {"id": "bullet_storm", "name": "弹幕风暴", "desc": "子弹数量+2 精度降低", "rarity": 3},
-    {"id": "energy_siphon", "name": "能量虹吸", "desc": "击杀敌人回复大招能量", "rarity": 2},
-    {"id": "freeze_burn", "name": "寒冰灼烧", "desc": "冻结敌人受到持续伤害", "rarity": 2},
-    {"id": "cluster_bomb", "name": "集束炸弹", "desc": "爆炸范围扩大50%", "rarity": 1},
-    {"id": "sniper_scope", "name": "鹰眼瞄准", "desc": "射程与飞行速度+30%", "rarity": 1},
-    {"id": "blood_pact", "name": "鲜血契约", "desc": "每秒扣1血 伤害+2%", "rarity": 3},
-    {"id": "time_warp", "name": "时间扭曲", "desc": "所有冷却缩减 20%", "rarity": 3},
-    {"id": "lucky_star", "name": "幸运星", "desc": "暴击率 +20%", "rarity": 1}
-]
 
 PLANES = {
     "striker": { "name": "霓虹突击者", "desc": "均衡型战机，擅长持续输出", "hp": 60, "speed": 4.0, "damage": 18, "delay": 210, "color": CYAN, "ult_name": "毁灭光束", "ult_color": CYAN, "bullet_type": "beam", "visual": {"neon_color": CYBER_CYAN_BRIGHT, "accent_color": CYBER_AMBER, "trail_color": CYAN, "ability": "overdrive"} },

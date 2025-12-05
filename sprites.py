@@ -3940,6 +3940,101 @@ class SoulReap(pygame.sprite.Sprite):
 
 
 # ==============================================================================
+#   防御炮塔系统
+# ==============================================================================
+class DefenseTurret:
+    """固定位置的自动防御炮塔"""
+    def __init__(self, x, y, damage, bullet_theme=None):
+        self.x = x
+        self.y = y
+        self.damage = damage
+        self.bullet_theme = bullet_theme
+        self.shoot_cooldown = 0
+        self.shoot_delay = 40  # 射击间隔(约0.67秒)
+        self.range = 350  # 射程
+        self.rotation = 0  # 炮塔旋转角度
+    
+    def update(self):
+        """更新炮塔,自动射击范围内的敌人"""
+        if self.shoot_cooldown > 0:
+            self.shoot_cooldown -= 1
+            return
+        
+        # 寻找最近的敌人
+        closest_enemy = None
+        min_dist = self.range
+        
+        for mob in mobs:
+            dx = mob.rect.centerx - self.x
+            dy = mob.rect.centery - self.y
+            dist = math.sqrt(dx*dx + dy*dy)
+            if dist < min_dist:
+                min_dist = dist
+                closest_enemy = mob
+        
+        # 如果找到敌人,射击
+        if closest_enemy:
+            # 计算射击角度
+            dx = closest_enemy.rect.centerx - self.x
+            dy = closest_enemy.rect.centery - self.y
+            self.rotation = math.degrees(math.atan2(dy, dx)) + 90  # +90因为默认向上
+            
+            # 发射炮塔子弹 - 增强视觉效果
+            turret_bullet = Bullet(self.x, self.y, angle=self.rotation - 90,  # -90校正回来
+                                  color=(255, 150, 0), b_type="basic", piercing=0,
+                                  bullet_theme=self.bullet_theme)
+            turret_bullet.damage = self.damage
+            turret_bullet.speed = -15
+            
+            # 重新绘制更大更明显的炮塔子弹
+            if hasattr(turret_bullet, 'image'):
+                # 创建发光子弹
+                bullet_size = 16
+                new_img = pygame.Surface((bullet_size, bullet_size), pygame.SRCALPHA)
+                
+                # 外层光晕
+                for r in range(bullet_size//2, 0, -1):
+                    alpha = int(200 * (r / (bullet_size//2)))
+                    color_val = int(255 * (r / (bullet_size//2)))
+                    pygame.draw.circle(new_img, (255, color_val, 0, alpha), 
+                                     (bullet_size//2, bullet_size//2), r)
+                
+                # 核心亮点
+                pygame.draw.circle(new_img, (255, 255, 255), (bullet_size//2, bullet_size//2), 4)
+                pygame.draw.circle(new_img, (255, 200, 0), (bullet_size//2, bullet_size//2), 6, 2)
+                
+                turret_bullet.image = new_img
+                turret_bullet.rect = turret_bullet.image.get_rect(center=(self.x, self.y))
+            
+            self.shoot_cooldown = self.shoot_delay
+            sound_mgr.play("shoot")
+    
+    def draw(self, screen):
+        """绘制炮塔"""
+        # 炮塔底座(大圆)
+        pygame.draw.circle(screen, (80, 80, 80), (int(self.x), int(self.y)), 20, 0)
+        pygame.draw.circle(screen, (120, 120, 120), (int(self.x), int(self.y)), 20, 2)
+        
+        # 炮塔主体(八边形)
+        pygame.draw.circle(screen, ORANGE, (int(self.x), int(self.y)), 12, 0)
+        pygame.draw.circle(screen, YELLOW, (int(self.x), int(self.y)), 10, 0)
+        
+        # 炮管(根据rotation旋转)
+        if self.shoot_cooldown == self.shoot_delay:  # 刚射击时闪烁
+            barrel_color = WHITE
+        else:
+            barrel_color = RED
+        
+        barrel_length = 18
+        end_x = self.x + barrel_length * math.cos(math.radians(self.rotation - 90))
+        end_y = self.y + barrel_length * math.sin(math.radians(self.rotation - 90))
+        pygame.draw.line(screen, barrel_color, (self.x, self.y), (end_x, end_y), 4)
+        
+        # 射程指示圈(半透明)
+        if self.shoot_cooldown <= 0:
+            pygame.draw.circle(screen, (255, 100, 0, 50), (int(self.x), int(self.y)), int(self.range), 1)
+
+# ==============================================================================
 #   核心实体：Bullet, Player, Enemy, Boss
 # ==============================================================================
 class Bullet(pygame.sprite.Sprite):
@@ -7592,6 +7687,7 @@ class Enemy(pygame.sprite.Sprite):
         self.type = type_name
         self.frozen_timer = 0
         self.base_speed = 0
+        self.time_slow_factor = 1.0  # 时间膨胀因子：1.0=正常，0.5=减速50%
         self.is_elite = False
         self.state = "move"
         self.timer = 0
@@ -7931,9 +8027,14 @@ class Enemy(pygame.sprite.Sprite):
         if self.frozen_timer > 0:
             self.frozen_timer -= 1
             return # 冻结不移动
-            
+        
+        # 应用时间膨胀效果：减缓敌人的移动和攻击
+        time_slow = getattr(self, 'time_slow_factor', 1.0)
+        self.speed = self.base_speed * time_slow
+        
         t = pygame.time.get_ticks() / 1000.0
-        self.timer += 1
+        # timer 按时间膨胀因子增加，导致攻击间隔被延长
+        self.timer += time_slow
         
         # 更新移动和攻击
         if self.type == "drone":
@@ -8473,6 +8574,14 @@ class Player(pygame.sprite.Sprite):
         self.last_shot = 0
         self.damage_reduction = 0.0
         
+        # 时间膨胀相关属性
+        self.time_factor = 1.0  # 敌人速度/攻击因子：1.0=正常，0.5=减速50%
+        
+        # 混沌注入相关属性
+        self.has_chaos = False  # 是否具有混沌效果
+        self.chaos_chance = 0.0  # 混沌触发概率
+        self.chaos_mult = 1.0  # 混沌伤害倍率
+        
         self.weapon_slots = []
         for w_data in arsenal_save_data["loadout"]:
             if w_data: self.weapon_slots.append(WeaponSystem(w_data))
@@ -8520,6 +8629,12 @@ class Player(pygame.sprite.Sprite):
         self.has_freeze_burn = False  # 寒冰灼烧
         self.has_energy_siphon = False  # 能量虹吸
         self.has_blood_pact = False  # 鲜血契约
+        
+        # 炮塔系统(固定位置防御塔)
+        self.has_turrets = False
+        self.turret_count = 0
+        self.turret_damage = 0.6
+        self.turrets = []  # 存储炮塔对象
 
     def update(self):
         # 更新动态飞机模型
@@ -8616,6 +8731,9 @@ class Player(pygame.sprite.Sprite):
         b_type = self.plane_data["bullet_type"]
         cnt = self.bullet_count
         
+        # 计算追踪强度（如果有追踪卡牌）
+        homing_value = getattr(self, 'homing_strength', 0) if getattr(self, 'has_homing', False) else 0
+        
         # ========== 1. 霓虹突击者 - 直线扇形射击 ==========
         if pid == "striker":
             # 中间直射 + 两侧略微散开
@@ -8623,7 +8741,7 @@ class Player(pygame.sprite.Sprite):
                 offset_x = (i - (cnt-1)/2) * 15
                 angle = -5 + i * 5 if cnt > 1 else 0
                 Bullet(self.rect.centerx + offset_x, self.rect.top, angle=angle, 
-                       color=color, b_type=b_type, piercing=self.piercing, homing=self.homing_level, bullet_theme=self.bullet_theme)
+                       color=color, b_type=b_type, piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 2. 虚空幻影 - 快速多枚散射 ==========
         elif pid == "phantom":
@@ -8632,7 +8750,7 @@ class Player(pygame.sprite.Sprite):
                 spread = (i - cnt + 0.5) * 8
                 angle = random.uniform(-15, 15)
                 Bullet(self.rect.centerx + spread, self.rect.top, angle=angle,
-                       color=color, b_type=b_type, piercing=self.piercing//2 if self.piercing else 0, bullet_theme=self.bullet_theme)
+                       color=color, b_type=b_type, piercing=self.piercing//2 if self.piercing else 0, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 3. 钢铁泰坦 - 慢速但强力的集中炮火 ==========
         elif pid == "titan":
@@ -8640,7 +8758,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * 25
                 Bullet(self.rect.centerx + offset_x, self.rect.top, 
-                       color=color, b_type=b_type, piercing=self.piercing + 2, homing=self.homing_level, bullet_theme=self.bullet_theme)
+                       color=color, b_type=b_type, piercing=self.piercing + 2, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 4. 极光女神 - 范围电浆波 ==========
         elif pid == "aurora":
@@ -8648,14 +8766,14 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt + 2):
                 angle = -30 + i * (60 / (cnt + 1))
                 Bullet(self.rect.centerx, self.rect.top, angle=angle,
-                       color=color, b_type=b_type, piercing=self.piercing, bullet_theme=self.bullet_theme)
+                       color=color, b_type=b_type, piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 5. 幽灵收割者 - 单发极高伤害 ==========
         elif pid == "specter":
             # 射速极慢但单发超高伤害
             if cnt > 0:  # 应该是1
                 Bullet(self.rect.centerx, self.rect.top,
-                       color=color, b_type=b_type, piercing=self.piercing + 5, homing=self.homing_level, bullet_theme=self.bullet_theme)
+                       color=color, b_type=b_type, piercing=self.piercing + 5, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 6. 雷霆战鹰 - 多段连锁闪电 ==========
         elif pid == "thunderbird":
@@ -8664,7 +8782,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * spacing
                 Bullet(self.rect.centerx + offset_x, self.rect.top,
-                       color=color, b_type="lightning", piercing=self.piercing, bullet_theme=self.bullet_theme)
+                       color=color, b_type="lightning", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 7. 剧毒蝰蛇 - 持续毒液喷射 ==========
         elif pid == "viper":
@@ -8673,7 +8791,7 @@ class Player(pygame.sprite.Sprite):
                 spread = (i - cnt/2) * 12
                 angle = random.uniform(-20, 20)
                 Bullet(self.rect.centerx + spread, self.rect.top, angle=angle,
-                       color=color, b_type="acid", piercing=self.piercing, bullet_theme=self.bullet_theme)
+                       color=color, b_type="acid", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 8. 绯红之刃 - 高频旋转飞刃 ==========
         elif pid == "crimson":
@@ -8682,7 +8800,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt * 2):
                 angle = (time_factor + i * (360 / (cnt * 2))) % 360
                 Bullet(self.rect.centerx, self.rect.top, angle=angle,
-                       color=color, b_type="blade", piercing=self.piercing, bullet_theme=self.bullet_theme)
+                       color=color, b_type="blade", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 9. 星界潜行者 - 追踪星镖 ==========
         elif pid == "stalker":
@@ -8691,7 +8809,7 @@ class Player(pygame.sprite.Sprite):
                 offset_x = (i - (cnt-1)/2) * 20
                 Bullet(self.rect.centerx + offset_x, self.rect.top,
                        color=color, b_type="star", piercing=self.piercing, 
-                       homing=self.homing_level + 1, bullet_theme=self.bullet_theme)  # 加强追踪
+                       homing=max(homing_value, 0.2), bullet_theme=self.bullet_theme)  # 自带追踪+卡牌追踪
         
         # ========== 10. 大地守护者 - 散射荆棘 ==========
         elif pid == "gaia":
@@ -8699,7 +8817,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt + 3):
                 angle = -40 + i * (80 / (cnt + 2))
                 Bullet(self.rect.centerx, self.rect.top, angle=angle,
-                       color=color, b_type="thorn", piercing=self.piercing, bullet_theme=self.bullet_theme)
+                       color=color, b_type="thorn", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 11. 虚空编织者 - 蛛网束缚 ==========
         elif pid == "weaver":
@@ -8708,7 +8826,7 @@ class Player(pygame.sprite.Sprite):
                 offset_x = (i - (cnt-1)/2) * 20
                 # 蛛网子弹速度较慢
                 bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
-                       color=color, b_type="web", piercing=self.piercing, bullet_theme=self.bullet_theme)
+                       color=color, b_type="web", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
                 bullet.speed = -8  # 减速
         
         # ========== 12. 日冕耀斑 - 高频火焰喷流 ==========
@@ -8726,7 +8844,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * 18
                 Bullet(self.rect.centerx + offset_x, self.rect.top,
-                       color=color, b_type="quant", piercing=self.piercing, bullet_theme=self.bullet_theme)
+                       color=color, b_type="quant", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 14. 日食幽灵 - 双核心双线射击 ==========
         elif pid == "eclipse":
@@ -8737,10 +8855,10 @@ class Player(pygame.sprite.Sprite):
                 offset = (i - (cnt-1)/2) * 10
                 # 左核心
                 Bullet(left_x + offset, self.rect.top, 
-                       color=color, b_type="shadow", piercing=self.piercing, angle=-5, bullet_theme=self.bullet_theme)
+                       color=color, b_type="shadow", piercing=self.piercing, angle=-5, homing=homing_value, bullet_theme=self.bullet_theme)
                 # 右核心
                 Bullet(right_x + offset, self.rect.top,
-                       color=color, b_type="shadow", piercing=self.piercing, angle=5, bullet_theme=self.bullet_theme)
+                       color=color, b_type="shadow", piercing=self.piercing, angle=5, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 15. 棱镜分光 - 一发三道分裂 ==========
         elif pid == "prism":
@@ -8749,13 +8867,13 @@ class Player(pygame.sprite.Sprite):
                 offset_x = (i - (cnt-1)/2) * 16
                 # 中间直射
                 Bullet(self.rect.centerx + offset_x, self.rect.top, angle=0,
-                       color=(100, 180, 255), b_type="refract", piercing=self.piercing, bullet_theme=self.bullet_theme)
+                       color=(100, 180, 255), b_type="refract", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
                 # 左侧散射
                 Bullet(self.rect.centerx + offset_x, self.rect.top, angle=-25,
-                       color=(255, 100, 100), b_type="refract", piercing=self.piercing//2, bullet_theme=self.bullet_theme)
+                       color=(255, 100, 100), b_type="refract", piercing=self.piercing//2, homing=homing_value, bullet_theme=self.bullet_theme)
                 # 右侧散射
                 Bullet(self.rect.centerx + offset_x, self.rect.top, angle=25,
-                       color=(100, 255, 100), b_type="refract", piercing=self.piercing//2, bullet_theme=self.bullet_theme)
+                       color=(100, 255, 100), b_type="refract", piercing=self.piercing//2, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # ========== 16. 死灵骑士 - 吸血射击 ==========
         elif pid == "necro":
@@ -8763,7 +8881,7 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * 18
                 Bullet(self.rect.centerx + offset_x, self.rect.top,
-                       color=color, b_type="spectral", piercing=self.piercing, bullet_theme=self.bullet_theme)
+                       color=color, b_type="spectral", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
         
         # 默认情况
         else:
@@ -8771,7 +8889,39 @@ class Player(pygame.sprite.Sprite):
             start_x = self.rect.centerx - (cnt-1)*10
             for i in range(cnt):
                 Bullet(start_x + i*20, self.rect.top, color=color, b_type=b_type, 
-                       piercing=self.piercing, homing=self.homing_level)
+                       piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+
+    def spawn_turrets(self):
+        """生成固定位置的防御炮塔"""
+        if not hasattr(self, 'has_turrets') or not self.has_turrets:
+            return
+        
+        # 清空现有炮塔
+        self.turrets = []
+        
+        # 根据炮塔数量在屏幕固定位置生成
+        turret_positions = []
+        if self.turret_count == 2:
+            # 2个炮塔: 左上和右上
+            turret_positions = [(150, 150), (WIDTH - 150, 150)]
+        elif self.turret_count == 4:
+            # 4个炮塔: 四个角落
+            turret_positions = [
+                (150, 150), (WIDTH - 150, 150),
+                (150, HEIGHT - 200), (WIDTH - 150, HEIGHT - 200)
+            ]
+        elif self.turret_count == 6:
+            # 6个炮塔: 上中下各2个
+            turret_positions = [
+                (150, 150), (WIDTH - 150, 150),
+                (150, HEIGHT // 2), (WIDTH - 150, HEIGHT // 2),
+                (150, HEIGHT - 200), (WIDTH - 150, HEIGHT - 200)
+            ]
+        
+        # 创建炮塔对象
+        for pos in turret_positions:
+            turret = DefenseTurret(pos[0], pos[1], self.damage * self.turret_damage, self.bullet_theme)
+            self.turrets.append(turret)
 
     def use_ultimate(self):
         # 【新】冷却检查
@@ -9217,18 +9367,26 @@ class Player(pygame.sprite.Sprite):
     def init_roguelite_systems(self):
         """初始化肉鸽系统（在 main.py 中调用）"""
         try:
-            from roguelite import UpgradeManager, ExperienceSystem, BuffProcessor, ItemManager, AchievementManager
+            from roguelite import UpgradeManager, ExperienceSystem, ItemManager, AchievementManager, CardEffectProcessor
             from systems import EffectManager
             
             self.upgrade_manager = UpgradeManager()
             self.exp_system = ExperienceSystem(self)
-            self.buff_processor = BuffProcessor(self)
             self.item_manager = ItemManager()
             self.achievement_manager = AchievementManager()
             self.effect_manager = EffectManager()
-        except ImportError as e:
-            log_error(f"Failed to import roguelite module: {e}")
-            # In case of import error, still try to recover gracefully
+            self.card_effect_processor = CardEffectProcessor(self)  # 卡牌效果处理器
+            
+            # 同步经验系统的初始值到Player属性
+            if self.exp_system:
+                self.xp = self.exp_system.xp_collected
+                self.next_level_xp = self.exp_system.next_level_xp
+                self.level = self.exp_system.level
+        except Exception as e:
+            log_error(f"Failed to initialize roguelite systems: {e}")
+            import traceback
+            traceback.print_exc()
+            # In case of error, still try to recover gracefully
             return
         # Always set player reference in the upgrade manager
         try:
