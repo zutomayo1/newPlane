@@ -136,6 +136,46 @@ class Enemy(pygame.sprite.Sprite):
                                'nestlord_livestarport', 'weaver_dimensionspindle', 'judge_dualpolar',
                                'annihilator_soleye', 'chaos_discordantprism', 'phantom_voidstrider']:
                 self._draw_advanced_enemy(size, center, color, enemy_type)
+            # ========== 新增敌人绘制 ==========
+            elif enemy_type == 'helix_drone':
+                self._draw_helix_drone(size, center, color)
+            elif enemy_type == 'mirage_twin':
+                self._draw_mirage_twin(size, center, color)
+            elif enemy_type == 'pulse_mine':
+                self._draw_pulse_mine(size, center, color)
+            elif enemy_type == 'laser_turret':
+                self._draw_laser_turret(size, center, color)
+            elif enemy_type == 'swarm_carrier':
+                self._draw_swarm_carrier(size, center, color)
+            elif enemy_type == 'gravity_anchor':
+                self._draw_gravity_anchor(size, center, color)
+            elif enemy_type == 'tesla_coil':
+                self._draw_tesla_coil(size, center, color)
+            elif enemy_type == 'void_leech':
+                self._draw_void_leech(size, center, color)
+            elif enemy_type == 'omega_sentinel':
+                self._draw_omega_sentinel(size, center, color)
+            elif enemy_type == 'quantum_ghost':
+                self._draw_quantum_ghost(size, center, color)
+            elif enemy_type == 'nova_core':
+                self._draw_nova_core(size, center, color)
+            # ========== 新增8种敌人绘制 ==========
+            elif enemy_type == 'plasma_storm':
+                self._draw_plasma_storm(size, center, color)
+            elif enemy_type == 'meteor_crusher':
+                self._draw_meteor_crusher(size, center, color)
+            elif enemy_type == 'swarm_mother':
+                self._draw_swarm_mother(size, center, color)
+            elif enemy_type == 'pulse_bomber':
+                self._draw_pulse_bomber(size, center, color)
+            elif enemy_type == 'laser_sentinel':
+                self._draw_laser_sentinel(size, center, color)
+            elif enemy_type == 'shadow_assassin':
+                self._draw_shadow_assassin(size, center, color)
+            elif enemy_type == 'minelayer_drone':
+                self._draw_minelayer_drone(size, center, color)
+            elif enemy_type == 'gatling_fortress':
+                self._draw_gatling_fortress(size, center, color)
             else:
                 self._draw_default_enemy(size, center, color)
         
@@ -618,10 +658,424 @@ class Enemy(pygame.sprite.Sprite):
         pygame.draw.line(self.image, (100, 200, 255), (center-1, center+10), (center-2, center+14), 1)
         pygame.draw.line(self.image, (100, 200, 255), (center+1, center+10), (center+2, center+14), 1)
     
+    # ========== 新增敌人绘制方法 ==========
+    
+    def _draw_helix_drone(self, size, center, color):
+        """螺旋无人机：四旋翼设计"""
+        # 中心机身
+        pygame.draw.circle(self.image, color, (center, center), 8)
+        pygame.draw.circle(self.image, (120, 120, 130), (center, center), 8, 2)
+        
+        # 四个旋翼
+        rotor_positions = [(center-12, center-12), (center+12, center-12),
+                          (center-12, center+12), (center+12, center+12)]
+        for rx, ry in rotor_positions:
+            pygame.draw.circle(self.image, (60, 60, 70), (rx, ry), 6)
+            pygame.draw.circle(self.image, (100, 100, 110), (rx, ry), 6, 1)
+            # 旋翼叶片
+            pygame.draw.line(self.image, (150, 150, 160), (rx-4, ry), (rx+4, ry), 1)
+            pygame.draw.line(self.image, (150, 150, 160), (rx, ry-4), (rx, ry+4), 1)
+        
+        # 连接臂
+        for rx, ry in rotor_positions:
+            pygame.draw.line(self.image, (80, 80, 90), (center, center), (rx, ry), 2)
+        
+        # 中心传感器
+        pygame.draw.circle(self.image, (200, 200, 255), (center, center), 3)
+    
+    def _draw_mirage_twin(self, size, center, color):
+        """幻影双子：对称镜像设计"""
+        # 双核心
+        offset = 8
+        for dx in [-offset, offset]:
+            pygame.draw.circle(self.image, color, (center + dx, center), 7)
+            pygame.draw.circle(self.image, (200, 200, 240), (center + dx, center), 7, 1)
+            # 内核
+            pygame.draw.circle(self.image, (150, 200, 255), (center + dx, center), 3)
+        
+        # 连接能量桥
+        pygame.draw.line(self.image, (150, 180, 220), (center - offset + 7, center), 
+                        (center + offset - 7, center), 2)
+        
+        # 外层能量环
+        pygame.draw.ellipse(self.image, (180, 180, 220), 
+                          (center - 18, center - 10, 36, 20), 1)
+    
+    def _draw_pulse_mine(self, size, center, color):
+        """脉冲地雷：球形能量核心"""
+        # 外层警告环
+        pygame.draw.circle(self.image, (255, 50, 0), (center, center), 14, 2)
+        pygame.draw.circle(self.image, (255, 100, 50), (center, center), 12, 1)
+        
+        # 内核
+        pygame.draw.circle(self.image, color, (center, center), 10)
+        pygame.draw.circle(self.image, (255, 150, 100), (center, center), 6)
+        pygame.draw.circle(self.image, (255, 200, 150), (center, center), 3)
+        
+        # 能量脉冲线
+        for i in range(8):
+            angle = i * 45
+            rad = math.radians(angle)
+            x1 = center + int(6 * math.cos(rad))
+            y1 = center + int(6 * math.sin(rad))
+            x2 = center + int(12 * math.cos(rad))
+            y2 = center + int(12 * math.sin(rad))
+            pygame.draw.line(self.image, (255, 180, 100), (x1, y1), (x2, y2), 1)
+    
+    def _draw_laser_turret(self, size, center, color):
+        """激光炮塔：固定炮台设计"""
+        # 底座
+        pygame.draw.rect(self.image, (80, 80, 90), (center-12, center+5, 24, 10))
+        pygame.draw.rect(self.image, color, (center-12, center+5, 24, 10), 1)
+        
+        # 炮塔主体
+        pygame.draw.circle(self.image, color, (center, center), 10)
+        pygame.draw.circle(self.image, (120, 120, 140), (center, center), 10, 2)
+        
+        # 炮管
+        pygame.draw.rect(self.image, (60, 60, 70), (center-2, center-15, 4, 15))
+        pygame.draw.rect(self.image, (255, 50, 50), (center-1, center-15, 2, 3))
+        
+        # 瞄准器
+        pygame.draw.circle(self.image, (255, 0, 0), (center, center-3), 2)
+    
+    def _draw_swarm_carrier(self, size, center, color):
+        """蜂群航母：蜂巢母舰设计"""
+        # 主体：六边形
+        hex_points = [(center + int(14 * math.cos(math.radians(i * 60))),
+                      center + int(14 * math.sin(math.radians(i * 60)))) for i in range(6)]
+        pygame.draw.polygon(self.image, color, hex_points)
+        pygame.draw.polygon(self.image, (180, 150, 80), hex_points, 2)
+        
+        # 蜂巢孔洞
+        for i in range(6):
+            hx = center + int(7 * math.cos(math.radians(i * 60 + 30)))
+            hy = center + int(7 * math.sin(math.radians(i * 60 + 30)))
+            pygame.draw.circle(self.image, (100, 80, 30), (hx, hy), 3)
+            pygame.draw.circle(self.image, (80, 60, 20), (hx, hy), 2)
+        
+        # 中心孵化核心
+        pygame.draw.circle(self.image, (255, 200, 50), (center, center), 5)
+        pygame.draw.circle(self.image, (255, 220, 100), (center, center), 3)
+    
+    def _draw_gravity_anchor(self, size, center, color):
+        """重力锚：暗物质核心"""
+        # 外层扭曲环
+        pygame.draw.circle(self.image, (80, 40, 120), (center, center), 14, 2)
+        pygame.draw.circle(self.image, (100, 50, 150), (center, center), 12, 1)
+        
+        # 暗物质核心
+        pygame.draw.circle(self.image, color, (center, center), 10)
+        pygame.draw.circle(self.image, (30, 10, 50), (center, center), 7)
+        pygame.draw.circle(self.image, (180, 100, 255), (center, center), 3)
+        
+        # 引力线
+        for i in range(6):
+            angle = i * 60
+            rad = math.radians(angle)
+            x = center + int(16 * math.cos(rad))
+            y = center + int(16 * math.sin(rad))
+            pygame.draw.line(self.image, (120, 60, 180), (center, center), (x, y), 1)
+    
+    def _draw_tesla_coil(self, size, center, color):
+        """特斯拉线圈：电弧塔"""
+        # 底座
+        pygame.draw.rect(self.image, (80, 80, 100), (center-8, center+8, 16, 8))
+        
+        # 线圈主体
+        pygame.draw.ellipse(self.image, color, (center-6, center-10, 12, 20))
+        pygame.draw.ellipse(self.image, (150, 200, 255), (center-6, center-10, 12, 20), 1)
+        
+        # 电弧顶部
+        pygame.draw.circle(self.image, (200, 255, 255), (center, center-12), 5)
+        pygame.draw.circle(self.image, (150, 220, 255), (center, center-12), 3)
+        
+        # 电弧线
+        for i in range(4):
+            angle = i * 90 + 45
+            rad = math.radians(angle)
+            x = center + int(10 * math.cos(rad))
+            y = center - 12 + int(10 * math.sin(rad))
+            pygame.draw.line(self.image, (200, 255, 255), (center, center-12), (x, y), 1)
+    
+    def _draw_void_leech(self, size, center, color):
+        """虚空水蛭：吸能体"""
+        # 主体：蠕虫形
+        pygame.draw.ellipse(self.image, color, (center-8, center-14, 16, 28))
+        pygame.draw.ellipse(self.image, (50, 0, 80), (center-8, center-14, 16, 28), 2)
+        
+        # 吸能口
+        pygame.draw.circle(self.image, (100, 0, 150), (center, center-10), 5)
+        pygame.draw.circle(self.image, (200, 50, 255), (center, center-10), 3)
+        pygame.draw.circle(self.image, (255, 100, 255), (center, center-10), 1)
+        
+        # 能量纹路
+        for i in range(3):
+            y = center - 5 + i * 8
+            pygame.draw.line(self.image, (150, 50, 200), (center-5, y), (center+5, y), 1)
+    
+    def _draw_omega_sentinel(self, size, center, color):
+        """欧米茄哨兵：终极守卫"""
+        # 主装甲
+        pygame.draw.circle(self.image, color, (center, center), 14)
+        pygame.draw.circle(self.image, (255, 200, 50), (center, center), 14, 3)
+        
+        # 希腊字母Ω
+        pygame.draw.arc(self.image, (255, 255, 200), (center-8, center-8, 16, 14), 
+                       0.5, 2.6, 2)
+        pygame.draw.line(self.image, (255, 255, 200), (center-8, center+3), (center-8, center+8), 2)
+        pygame.draw.line(self.image, (255, 255, 200), (center+8, center+3), (center+8, center+8), 2)
+        
+        # 多个武器挂点
+        for angle in [0, 90, 180, 270]:
+            rad = math.radians(angle)
+            wx = center + int(12 * math.cos(rad))
+            wy = center + int(12 * math.sin(rad))
+            pygame.draw.circle(self.image, (200, 150, 0), (wx, wy), 3)
+    
+    def _draw_quantum_ghost(self, size, center, color):
+        """量子幽灵：概率云"""
+        # 半透明主体
+        for r in range(12, 4, -2):
+            alpha = int(150 * (1 - r / 12))
+            temp = pygame.Surface((size, size), pygame.SRCALPHA)
+            pygame.draw.circle(temp, (*color, alpha), (center, center), r)
+            self.image.blit(temp, (0, 0))
+        
+        # 量子闪烁点
+        for i in range(6):
+            angle = i * 60
+            rad = math.radians(angle)
+            px = center + int(8 * math.cos(rad))
+            py = center + int(8 * math.sin(rad))
+            pygame.draw.circle(self.image, (200, 255, 220), (px, py), 2)
+        
+        # 核心
+        pygame.draw.circle(self.image, (100, 255, 180), (center, center), 4)
+    
+    def _draw_nova_core(self, size, center, color):
+        """新星核心：超新星"""
+        # 外层光晕
+        pygame.draw.circle(self.image, (255, 220, 150), (center, center), 14, 2)
+        pygame.draw.circle(self.image, (255, 200, 100), (center, center), 12, 1)
+        
+        # 恒星核心
+        pygame.draw.circle(self.image, color, (center, center), 10)
+        pygame.draw.circle(self.image, (255, 240, 180), (center, center), 7)
+        pygame.draw.circle(self.image, (255, 255, 220), (center, center), 4)
+        
+        # 耀斑
+        for i in range(8):
+            angle = i * 45
+            rad = math.radians(angle)
+            x1 = center + int(10 * math.cos(rad))
+            y1 = center + int(10 * math.sin(rad))
+            x2 = center + int(16 * math.cos(rad))
+            y2 = center + int(16 * math.sin(rad))
+            pygame.draw.line(self.image, (255, 200, 100), (x1, y1), (x2, y2), 2)
+    
     def _draw_default_enemy(self, size, center, color):
         """默认敌人：渐变圆形"""
         pygame.draw.circle(self.image, color, (center, center), center-5)
         pygame.draw.circle(self.image, tuple(min(c+50, 255) for c in color), (center, center), center-5, 2)
+
+    # ========== 新增8种敌人绘制方法 ==========
+
+    def _draw_plasma_storm(self, size, center, color):
+        """等离子风暴：电弧能量球"""
+        # 外层电弧光晕
+        pygame.draw.circle(self.image, (50, 150, 200), (center, center), center - 2, 2)
+        # 中层能量球
+        pygame.draw.circle(self.image, color, (center, center), center - 5)
+        pygame.draw.circle(self.image, (150, 230, 255), (center, center), center - 8)
+        # 内核
+        pygame.draw.circle(self.image, (200, 240, 255), (center, center), 5)
+        pygame.draw.circle(self.image, (255, 255, 255), (center, center), 3)
+        # 电弧线条
+        pygame.draw.line(self.image, (100, 200, 255), (center - 10, center - 8), (center - 5, center), 1)
+        pygame.draw.line(self.image, (100, 200, 255), (center + 5, center), (center + 10, center + 8), 1)
+        pygame.draw.line(self.image, (100, 200, 255), (center, center - 10), (center + 3, center - 5), 1)
+
+    def _draw_meteor_crusher(self, size, center, color):
+        """陨星粉碎者：重装甲岩石战舰"""
+        # 不规则岩石主体
+        rock_points = [
+            (center, center - 14),
+            (center + 10, center - 8),
+            (center + 14, center + 2),
+            (center + 8, center + 12),
+            (center - 2, center + 14),
+            (center - 10, center + 10),
+            (center - 14, center),
+            (center - 8, center - 10),
+        ]
+        pygame.draw.polygon(self.image, color, rock_points)
+        pygame.draw.polygon(self.image, (80, 60, 50), rock_points, 2)
+        
+        # 岩石裂纹
+        pygame.draw.line(self.image, (60, 40, 30), (center - 6, center - 8), (center + 4, center + 6), 1)
+        pygame.draw.line(self.image, (60, 40, 30), (center + 2, center - 4), (center - 4, center + 8), 1)
+        
+        # 发光核心
+        pygame.draw.circle(self.image, (255, 120, 80), (center, center), 5)
+        pygame.draw.circle(self.image, (255, 180, 120), (center, center), 3)
+        
+        # 四个炮口
+        for angle in [45, 135, 225, 315]:
+            rad = math.radians(angle)
+            px = center + int(10 * math.cos(rad))
+            py = center + int(10 * math.sin(rad))
+            pygame.draw.circle(self.image, (255, 100, 50), (px, py), 3)
+
+    def _draw_swarm_mother(self, size, center, color):
+        """蜂群母舰：生物蜂巢母舰"""
+        # 主体：有机椭圆形
+        pygame.draw.ellipse(self.image, color, (center - 16, center - 10, 32, 20))
+        pygame.draw.ellipse(self.image, (180, 160, 40), (center - 16, center - 10, 32, 20), 2)
+        
+        # 蜂巢结构
+        hex_positions = [(center-8, center-3), (center, center-5), (center+8, center-3),
+                        (center-8, center+3), (center, center+5), (center+8, center+3)]
+        for hx, hy in hex_positions:
+            pygame.draw.circle(self.image, (100, 80, 20), (hx, hy), 4)
+            pygame.draw.circle(self.image, (60, 50, 10), (hx, hy), 2)
+        
+        # 触角/传感器
+        pygame.draw.line(self.image, (150, 130, 40), (center - 12, center - 8), (center - 16, center - 14), 2)
+        pygame.draw.line(self.image, (150, 130, 40), (center + 12, center - 8), (center + 16, center - 14), 2)
+        
+        # 尾部产卵器
+        pygame.draw.ellipse(self.image, (220, 200, 80), (center - 4, center + 8, 8, 6))
+
+    def _draw_pulse_bomber(self, size, center, color):
+        """脉冲轰炸者：能量球体轰炸机"""
+        # 主体球形
+        pygame.draw.circle(self.image, color, (center, center), 12)
+        pygame.draw.circle(self.image, (130, 220, 255), (center, center), 12, 2)
+        
+        # 能量脉冲环
+        pygame.draw.circle(self.image, (180, 240, 255), (center, center), 16, 1)
+        pygame.draw.circle(self.image, (150, 230, 255), (center, center), 18, 1)
+        
+        # 内部能量核
+        pygame.draw.circle(self.image, (200, 255, 255), (center, center), 6)
+        pygame.draw.circle(self.image, (255, 255, 255), (center, center), 3)
+        
+        # 脉冲射线
+        for i in range(8):
+            angle = i * 45
+            rad = math.radians(angle)
+            x1 = center + int(8 * math.cos(rad))
+            y1 = center + int(8 * math.sin(rad))
+            x2 = center + int(14 * math.cos(rad))
+            y2 = center + int(14 * math.sin(rad))
+            pygame.draw.line(self.image, (100, 200, 255), (x1, y1), (x2, y2), 1)
+
+    def _draw_laser_sentinel(self, size, center, color):
+        """激光哨兵：红色激光眼球"""
+        # 外壳 - 机械眼眶
+        pygame.draw.circle(self.image, (80, 80, 90), (center, center), 14)
+        pygame.draw.circle(self.image, (100, 100, 110), (center, center), 14, 2)
+        
+        # 眼球主体
+        pygame.draw.circle(self.image, (200, 30, 30), (center, center), 10)
+        pygame.draw.circle(self.image, color, (center, center), 10, 1)
+        
+        # 虹膜
+        pygame.draw.circle(self.image, (150, 20, 20), (center, center), 7)
+        
+        # 瞳孔 - 发光
+        pygame.draw.circle(self.image, (255, 100, 100), (center, center), 4)
+        pygame.draw.circle(self.image, (255, 200, 200), (center, center), 2)
+        
+        # 激光瞄准十字
+        pygame.draw.line(self.image, (255, 50, 50), (center - 16, center), (center - 10, center), 1)
+        pygame.draw.line(self.image, (255, 50, 50), (center + 10, center), (center + 16, center), 1)
+        pygame.draw.line(self.image, (255, 50, 50), (center, center - 16), (center, center - 10), 1)
+        pygame.draw.line(self.image, (255, 50, 50), (center, center + 10), (center, center + 16), 1)
+
+    def _draw_shadow_assassin(self, size, center, color):
+        """暗影刺客：隐匿三角飞镖"""
+        # 主体 - 尖锐三角
+        points = [
+            (center, center - 18),  # 尖端
+            (center - 14, center + 10),
+            (center, center + 4),
+            (center + 14, center + 10),
+        ]
+        pygame.draw.polygon(self.image, color, points)
+        pygame.draw.polygon(self.image, (100, 40, 130), points, 2)
+        
+        # 暗影渐变效果
+        for i in range(3):
+            alpha_surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            offset = i * 2
+            shadow_points = [
+                (center, center - 18 + offset),
+                (center - 14 + offset, center + 10),
+                (center, center + 4),
+                (center + 14 - offset, center + 10),
+            ]
+            pygame.draw.polygon(alpha_surf, (*color[:3], 80 - i * 20), shadow_points)
+            self.image.blit(alpha_surf, (0, 0))
+        
+        # 核心能量
+        pygame.draw.circle(self.image, (150, 80, 180), (center, center), 4)
+        pygame.draw.circle(self.image, (200, 150, 220), (center, center), 2)
+
+    def _draw_minelayer_drone(self, size, center, color):
+        """布雷无人机：工业风格布雷机"""
+        # 机身 - 矩形工业风
+        pygame.draw.rect(self.image, color, (center - 10, center - 8, 20, 16))
+        pygame.draw.rect(self.image, (120, 120, 40), (center - 10, center - 8, 20, 16), 2)
+        
+        # 布雷舱门
+        pygame.draw.rect(self.image, (100, 100, 30), (center - 6, center + 4, 12, 6))
+        pygame.draw.line(self.image, (80, 80, 20), (center, center + 4), (center, center + 10), 1)
+        
+        # 推进器
+        pygame.draw.rect(self.image, (80, 80, 90), (center - 14, center - 4, 4, 8))
+        pygame.draw.rect(self.image, (80, 80, 90), (center + 10, center - 4, 4, 8))
+        
+        # 推进火焰
+        pygame.draw.polygon(self.image, (255, 150, 50), 
+                          [(center - 14, center + 4), (center - 18, center), (center - 14, center - 4)])
+        pygame.draw.polygon(self.image, (255, 150, 50), 
+                          [(center + 14, center + 4), (center + 18, center), (center + 14, center - 4)])
+        
+        # 警示灯
+        pygame.draw.circle(self.image, (255, 200, 0), (center, center - 6), 3)
+        pygame.draw.circle(self.image, (255, 255, 150), (center, center - 6), 1)
+
+    def _draw_gatling_fortress(self, size, center, color):
+        """加特林堡垒：重型多管火炮堡垒"""
+        # 主装甲体 - 六边形堡垒
+        hex_points = [(center + int(16 * math.cos(math.radians(i * 60 - 90))),
+                      center + int(16 * math.sin(math.radians(i * 60 - 90)))) for i in range(6)]
+        pygame.draw.polygon(self.image, color, hex_points)
+        pygame.draw.polygon(self.image, (80, 80, 100), hex_points, 3)
+        
+        # 多层装甲
+        inner_hex = [(center + int(10 * math.cos(math.radians(i * 60 - 90))),
+                     center + int(10 * math.sin(math.radians(i * 60 - 90)))) for i in range(6)]
+        pygame.draw.polygon(self.image, (120, 120, 140), inner_hex, 2)
+        
+        # 加特林炮管组 - 6根炮管
+        for i in range(6):
+            angle = i * 60
+            rad = math.radians(angle)
+            bx = center + int(6 * math.cos(rad))
+            by = center - 10 + int(3 * math.sin(rad))
+            pygame.draw.rect(self.image, (60, 60, 70), (bx - 1, center - 18, 3, 12))
+            pygame.draw.circle(self.image, (255, 200, 50), (bx, center - 18), 2)  # 炮口火焰
+        
+        # 中心旋转机构
+        pygame.draw.circle(self.image, (150, 150, 160), (center, center - 6), 5)
+        pygame.draw.circle(self.image, (100, 100, 110), (center, center - 6), 3)
+        
+        # 弹药指示灯
+        pygame.draw.circle(self.image, (255, 50, 50), (center - 5, center + 8), 2)
+        pygame.draw.circle(self.image, (50, 255, 50), (center + 5, center + 8), 2)
         pygame.draw.circle(self.image, tuple(min(c+100, 255) for c in color), (center, center), center-10, 1)
     
     def _draw_advanced_enemy(self, size, center, color, enemy_type):
@@ -962,6 +1416,46 @@ class Enemy(pygame.sprite.Sprite):
                     self._draw_dual_judge(size, center, color)
                 elif enemy_type == 'phantom_voidstrider':
                     self._draw_phantom_strider(size, center, color)
+                # ========== 新增敌人绘制（中间批次） ==========
+                elif enemy_type == 'helix_drone':
+                    self._draw_helix_drone(size, center, color)
+                elif enemy_type == 'mirage_twin':
+                    self._draw_mirage_twin(size, center, color)
+                elif enemy_type == 'pulse_mine':
+                    self._draw_pulse_mine(size, center, color)
+                elif enemy_type == 'laser_turret':
+                    self._draw_laser_turret(size, center, color)
+                elif enemy_type == 'swarm_carrier':
+                    self._draw_swarm_carrier(size, center, color)
+                elif enemy_type == 'gravity_anchor':
+                    self._draw_gravity_anchor(size, center, color)
+                elif enemy_type == 'tesla_coil':
+                    self._draw_tesla_coil(size, center, color)
+                elif enemy_type == 'void_leech':
+                    self._draw_void_leech(size, center, color)
+                elif enemy_type == 'omega_sentinel':
+                    self._draw_omega_sentinel(size, center, color)
+                elif enemy_type == 'quantum_ghost':
+                    self._draw_quantum_ghost(size, center, color)
+                elif enemy_type == 'nova_core':
+                    self._draw_nova_core(size, center, color)
+                # ========== 新增8种敌人绘制 ==========
+                elif enemy_type == 'plasma_storm':
+                    self._draw_plasma_storm(size, center, color)
+                elif enemy_type == 'meteor_crusher':
+                    self._draw_meteor_crusher(size, center, color)
+                elif enemy_type == 'swarm_mother':
+                    self._draw_swarm_mother(size, center, color)
+                elif enemy_type == 'pulse_bomber':
+                    self._draw_pulse_bomber(size, center, color)
+                elif enemy_type == 'laser_sentinel':
+                    self._draw_laser_sentinel(size, center, color)
+                elif enemy_type == 'shadow_assassin':
+                    self._draw_shadow_assassin(size, center, color)
+                elif enemy_type == 'minelayer_drone':
+                    self._draw_minelayer_drone(size, center, color)
+                elif enemy_type == 'gatling_fortress':
+                    self._draw_gatling_fortress(size, center, color)
                 else:
                     self._draw_default_enemy(size, center, color)
     
@@ -1226,6 +1720,164 @@ class Enemy(pygame.sprite.Sprite):
             self.rect.y = self.movement_data['center_y'] + math.sin(angle) * radius
             self.movement_data['center_y'] += self.speed * 0.5
         
+        # ========== 新增AI行为模式 ==========
+        
+        elif behavior == 'helix':
+            # 螺旋下降
+            self.rect.y += self.speed
+            if 'start_x' not in self.movement_data:
+                self.movement_data['start_x'] = self.rect.x
+            helix_radius = ai_params.get('helix_radius', 40)
+            helix_speed = ai_params.get('helix_speed', 0.08)
+            self.rect.x = self.movement_data['start_x'] + math.sin(self.timer * helix_speed) * helix_radius
+        
+        elif behavior == 'mirror':
+            # 镜像移动：跟随玩家X轴
+            self.rect.y += self.speed * 0.8
+            # 尝试获取玩家位置（简化处理：左右摆动模拟）
+            target_x = WIDTH // 2 + math.sin(self.timer * 0.05) * 150
+            diff = target_x - self.rect.centerx
+            self.rect.x += max(-3, min(3, diff * 0.05))
+        
+        elif behavior == 'drift':
+            # 漂浮：缓慢随机移动
+            self.rect.y += self.speed * 0.5
+            if 'drift_angle' not in self.movement_data:
+                self.movement_data['drift_angle'] = random.uniform(0, math.pi * 2)
+            if self.timer % 60 == 0:
+                self.movement_data['drift_angle'] += random.uniform(-0.5, 0.5)
+            angle = self.movement_data['drift_angle']
+            self.rect.x += math.cos(angle) * self.speed * 0.3
+        
+        elif behavior == 'stationary':
+            # 固定位置（只下降到一定位置后停止）
+            if self.rect.y < 100:
+                self.rect.y += self.speed
+            # 轻微左右摆动
+            if 'start_x' not in self.movement_data:
+                self.movement_data['start_x'] = self.rect.x
+            self.rect.x = self.movement_data['start_x'] + math.sin(self.timer * 0.02) * 20
+        
+        elif behavior == 'gravity_drift':
+            # 重力漂移：缓慢旋转下降
+            self.rect.y += self.speed * 0.6
+            if 'start_x' not in self.movement_data:
+                self.movement_data['start_x'] = self.rect.x
+            self.rect.x = self.movement_data['start_x'] + math.sin(self.timer * 0.03) * 80
+        
+        elif behavior == 'stalker':
+            # 追踪者：跟踪玩家方向
+            self.rect.y += self.speed * 0.7
+            # 模拟追踪（使用正弦波模拟）
+            target_x = WIDTH // 2 + math.sin(self.timer * 0.03) * 200
+            diff = target_x - self.rect.centerx
+            self.rect.x += max(-2, min(2, diff * 0.03))
+        
+        elif behavior == 'adaptive':
+            # 自适应：根据HP改变行为
+            hp_ratio = self.hp / max(1, self.max_hp)
+            self.rect.y += self.speed * (0.5 + 0.5 * (1 - hp_ratio))
+            if 'start_x' not in self.movement_data:
+                self.movement_data['start_x'] = self.rect.x
+            # HP越低移动越激烈
+            amplitude = 50 + 100 * (1 - hp_ratio)
+            self.rect.x = self.movement_data['start_x'] + math.sin(self.timer * 0.04) * amplitude
+        
+        elif behavior == 'quantum_blink':
+            # 量子闪烁：随机传送
+            self.rect.y += self.speed
+            if self.timer % 90 == 0 and random.random() < 0.4:
+                # 随机传送
+                self.rect.x = random.randint(50, WIDTH - 50)
+                self.rect.y = max(50, self.rect.y - random.randint(20, 60))
+        
+        elif behavior == 'slow_approach':
+            # 缓慢逼近：直线下降但很慢
+            self.rect.y += self.speed * 0.3
+            if 'start_x' not in self.movement_data:
+                self.movement_data['start_x'] = self.rect.x
+            self.rect.x = self.movement_data['start_x'] + math.sin(self.timer * 0.015) * 60
+        
+        # ========== 新增6种AI行为 ==========
+        
+        elif behavior == 'figure8':
+            # 8字形轨迹
+            if 'start_x' not in self.movement_data:
+                self.movement_data['start_x'] = self.rect.x
+                self.movement_data['start_y'] = self.rect.y
+            t = self.timer * 0.04
+            radius = ai_params.get('radius', 50)
+            self.rect.x = self.movement_data['start_x'] + math.sin(t) * radius
+            self.rect.y = self.movement_data['start_y'] + math.sin(t * 2) * radius * 0.5
+            self.movement_data['start_y'] += self.speed * 0.3
+        
+        elif behavior == 'spiral':
+            # 螺旋轨迹
+            if 'start_x' not in self.movement_data:
+                self.movement_data['start_x'] = self.rect.x
+                self.movement_data['radius'] = 10
+            self.movement_data['radius'] += 0.3
+            r = min(self.movement_data['radius'], ai_params.get('max_radius', 80))
+            t = self.timer * 0.06
+            self.rect.x = self.movement_data['start_x'] + math.cos(t) * r
+            self.rect.y += self.speed * 0.5
+        
+        elif behavior == 'retreat':
+            # 后退模式：攻击后后退
+            if 'phase' not in self.movement_data:
+                self.movement_data['phase'] = 'advance'
+                self.movement_data['phase_timer'] = 0
+            self.movement_data['phase_timer'] += 1
+            if self.movement_data['phase'] == 'advance':
+                self.rect.y += self.speed
+                if self.rect.y > 150 or self.movement_data['phase_timer'] > 90:
+                    self.movement_data['phase'] = 'retreat'
+                    self.movement_data['phase_timer'] = 0
+            else:
+                self.rect.y -= self.speed * 0.5
+                if self.movement_data['phase_timer'] > 60:
+                    self.movement_data['phase'] = 'advance'
+                    self.movement_data['phase_timer'] = 0
+        
+        elif behavior == 'dash':
+            # 冲刺模式：快速冲向玩家然后撤退
+            if 'dash_phase' not in self.movement_data:
+                self.movement_data['dash_phase'] = 'wait'
+                self.movement_data['dash_timer'] = 0
+            self.movement_data['dash_timer'] += 1
+            if self.movement_data['dash_phase'] == 'wait':
+                self.rect.y += self.speed * 0.3
+                if self.movement_data['dash_timer'] > 90:
+                    self.movement_data['dash_phase'] = 'dash'
+                    self.movement_data['dash_timer'] = 0
+            elif self.movement_data['dash_phase'] == 'dash':
+                self.rect.y += self.speed * 4
+                if self.movement_data['dash_timer'] > 20:
+                    self.movement_data['dash_phase'] = 'retreat'
+                    self.movement_data['dash_timer'] = 0
+            else:
+                self.rect.y -= self.speed * 2
+                if self.movement_data['dash_timer'] > 30:
+                    self.movement_data['dash_phase'] = 'wait'
+                    self.movement_data['dash_timer'] = 0
+        
+        elif behavior == 'orbit_player':
+            # 环绕玩家：在一定距离内环绕
+            if 'orbit_angle' not in self.movement_data:
+                self.movement_data['orbit_angle'] = random.uniform(0, math.pi * 2)
+                self.movement_data['orbit_center_y'] = 200
+            self.movement_data['orbit_angle'] += 0.03
+            orbit_radius = ai_params.get('orbit_radius', 120)
+            self.rect.x = WIDTH // 2 + math.cos(self.movement_data['orbit_angle']) * orbit_radius
+            self.rect.y = self.movement_data['orbit_center_y'] + math.sin(self.movement_data['orbit_angle']) * 40
+        
+        elif behavior == 'teleport':
+            # 传送模式：周期性传送
+            self.rect.y += self.speed * 0.5
+            teleport_interval = ai_params.get('teleport_interval', 120)
+            if self.timer % teleport_interval == 0:
+                self.rect.x = random.randint(50, WIDTH - 50)
+        
         elif behavior == 'custom':
             # 自定义行为（通过回调函数）
             custom_func = self.config.get('custom_movement')
@@ -1244,14 +1896,45 @@ class Enemy(pygame.sprite.Sprite):
         if self.timer % interval != 0:
             return
         
-        # 攻击逻辑在这里实现
-        # 需要访问Bullet类时通过_sprite_groups获取
+        # 基础攻击模式
         if pattern == 'single':
             self._shoot_single()
         elif pattern == 'spread':
             self._shoot_spread(attack_params)
         elif pattern == 'burst':
             self._shoot_burst(attack_params)
+        # 新增攻击模式
+        elif pattern == 'helix':
+            self._shoot_helix(attack_params)
+        elif pattern == 'cross_fire':
+            self._shoot_cross_fire(attack_params)
+        elif pattern == 'pulse_wave':
+            self._shoot_pulse_wave(attack_params)
+        elif pattern == 'laser_sweep':
+            self._shoot_laser_sweep(attack_params)
+        elif pattern == 'swarm_release':
+            self._shoot_swarm_release(attack_params)
+        elif pattern == 'gravity_well':
+            self._shoot_gravity_well(attack_params)
+        elif pattern == 'chain_lightning':
+            self._shoot_chain_lightning(attack_params)
+        elif pattern == 'energy_drain':
+            self._shoot_energy_drain(attack_params)
+        elif pattern == 'multi_mode':
+            self._shoot_multi_mode(attack_params)
+        elif pattern == 'probability_burst':
+            self._shoot_probability_burst(attack_params)
+        elif pattern == 'solar_flare':
+            self._shoot_solar_flare(attack_params)
+        # ========== 新增4种攻击模式 ==========
+        elif pattern == 'homing_missiles':
+            self._shoot_homing_missiles(attack_params)
+        elif pattern == 'teleport_strike':
+            self._shoot_teleport_strike(attack_params)
+        elif pattern == 'minefield':
+            self._shoot_minefield(attack_params)
+        elif pattern == 'gatling':
+            self._shoot_gatling(attack_params)
         elif pattern == 'custom':
             custom_func = self.config.get('custom_attack')
             if custom_func:
@@ -1291,6 +1974,225 @@ class Enemy(pygame.sprite.Sprite):
                        is_enemy=True, color=self.config.get('bullet_color', (255, 100, 100)),
                        b_type="needle")
     
+    # ========== 新增攻击模式 ==========
+    
+    def _shoot_helix(self, params=None):
+        """螺旋弹道：子弹呈螺旋形飞行"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (200, 200, 255))
+        # 发射两颗对称螺旋的子弹
+        for offset in [-1, 1]:
+            angle = (self.timer * 0.15) * offset
+            b = Bullet(self.rect.centerx, self.rect.bottom, 
+                      is_enemy=True, color=color, b_type="orb")
+            # 存储螺旋参数
+            b.helix_offset = offset
+            b.helix_phase = self.timer * 0.1
+    
+    def _shoot_cross_fire(self, params):
+        """交叉火力：X形弹幕"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (150, 200, 255))
+        cross_count = params.get('cross_count', 4)
+        # 发射X形4个方向
+        angles = [45, 135, 225, 315]
+        for angle in angles[:cross_count]:
+            rad = math.radians(angle)
+            Bullet(self.rect.centerx, self.rect.centery, angle=angle,
+                  is_enemy=True, color=color, b_type="needle")
+    
+    def _shoot_pulse_wave(self, params):
+        """脉冲波：环形扩散弹幕"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (255, 200, 100))
+        pulse_count = params.get('pulse_count', 8)
+        for i in range(pulse_count):
+            angle = i * (360 / pulse_count)
+            Bullet(self.rect.centerx, self.rect.centery, angle=angle,
+                  is_enemy=True, color=color, b_type="orb")
+    
+    def _shoot_laser_sweep(self, params):
+        """激光扫射：快速连续激光"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (255, 50, 50))
+        sweep_angle = params.get('sweep_angle', 60)
+        # 根据计时器计算当前扫射角度
+        sweep_progress = (self.timer % 60) / 60.0
+        current_angle = -sweep_angle/2 + sweep_angle * sweep_progress
+        Bullet(self.rect.centerx, self.rect.bottom, angle=current_angle,
+              is_enemy=True, color=color, b_type="laser_beam")
+    
+    def _shoot_swarm_release(self, params):
+        """蜂群释放：多个追踪小子弹"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (255, 220, 100))
+        swarm_count = params.get('swarm_count', 5)
+        for i in range(swarm_count):
+            angle = random.randint(-45, 45)
+            b = Bullet(self.rect.centerx + random.randint(-10, 10), 
+                      self.rect.bottom, angle=angle,
+                      is_enemy=True, color=color, b_type="orb", homing=1)
+    
+    def _shoot_gravity_well(self, params):
+        """重力井：缓慢移动的大型引力弹"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (180, 100, 255))
+        Bullet(self.rect.centerx, self.rect.bottom,
+              is_enemy=True, color=color, b_type="plasma")
+    
+    def _shoot_chain_lightning(self, params):
+        """连锁闪电：快速多段闪电"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (200, 255, 255))
+        chain_count = params.get('chain_count', 3)
+        # 发射多道闪电，略微偏移
+        for i in range(chain_count):
+            offset_angle = (i - chain_count//2) * 15
+            Bullet(self.rect.centerx, self.rect.bottom, angle=offset_angle,
+                  is_enemy=True, color=color, b_type="lightning")
+    
+    def _shoot_energy_drain(self, params):
+        """能量吸收：向四周发射吸能波"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (200, 50, 255))
+        # 随机方向发射
+        for _ in range(4):
+            angle = random.randint(0, 360)
+            Bullet(self.rect.centerx, self.rect.centery, angle=angle,
+                  is_enemy=True, color=color, b_type="wave")
+    
+    def _shoot_multi_mode(self, params):
+        """多模式攻击：根据阶段切换攻击方式"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (255, 255, 200))
+        modes = params.get('modes', ['scatter'])
+        # 根据HP百分比选择模式
+        hp_ratio = self.hp / max(1, self.max_hp)
+        if hp_ratio > 0.66:
+            mode = modes[0] if len(modes) > 0 else 'scatter'
+        elif hp_ratio > 0.33:
+            mode = modes[1] if len(modes) > 1 else 'scatter'
+        else:
+            mode = modes[2] if len(modes) > 2 else 'scatter'
+        
+        if mode == 'scatter':
+            for angle in range(0, 360, 30):
+                Bullet(self.rect.centerx, self.rect.centery, angle=angle,
+                      is_enemy=True, color=color, b_type="orb")
+        elif mode == 'beam':
+            Bullet(self.rect.centerx, self.rect.bottom,
+                  is_enemy=True, color=color, b_type="laser_beam")
+        elif mode == 'missile':
+            for i in range(-1, 2):
+                Bullet(self.rect.centerx + i*15, self.rect.bottom, angle=i*10,
+                      is_enemy=True, color=color, b_type="plasma", homing=1)
+    
+    def _shoot_probability_burst(self, params):
+        """概率爆发：随机位置爆发弹幕"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (100, 255, 180))
+        burst_positions = params.get('burst_positions', 3)
+        burst_count = params.get('burst_count', 5)
+        # 在随机位置生成爆发
+        for _ in range(burst_positions):
+            spawn_x = self.rect.centerx + random.randint(-50, 50)
+            spawn_y = self.rect.centery + random.randint(-30, 30)
+            for i in range(burst_count):
+                angle = i * (360 / burst_count) + random.randint(-10, 10)
+                Bullet(spawn_x, spawn_y, angle=angle,
+                      is_enemy=True, color=color, b_type="needle")
+    
+    def _shoot_solar_flare(self, params):
+        """太阳耀斑：多波次环形弹幕"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (255, 255, 150))
+        flare_count = params.get('flare_count', 12)
+        flare_waves = params.get('flare_waves', 2)
+        wave = (self.timer // 20) % flare_waves
+        offset = wave * (180 / flare_count)  # 每波偏移
+        for i in range(flare_count):
+            angle = i * (360 / flare_count) + offset
+            Bullet(self.rect.centerx, self.rect.centery, angle=angle,
+                  is_enemy=True, color=color, b_type="flame_burst")
+
+    # ========== 新增4种攻击模式 ==========
+
+    def _shoot_homing_missiles(self, params):
+        """追踪导弹：发射多枚追踪弹"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (255, 220, 100))
+        missile_count = params.get('missile_count', 3)
+        # 发射多枚导弹，向下方展开
+        for i in range(missile_count):
+            angle = 90 + (i - missile_count // 2) * 25  # 以90度为中心展开
+            Bullet(self.rect.centerx, self.rect.bottom, angle=angle,
+                  is_enemy=True, color=color, b_type="missile", speed=2.5)
+
+    def _shoot_teleport_strike(self, params):
+        """传送突袭：在当前位置爆发弹幕"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (120, 50, 150))
+        strike_count = params.get('strike_count', 6)
+        strike_spread = params.get('strike_spread', 60)
+        # 向下方扇形爆发
+        start_angle = 90 - strike_spread // 2
+        for i in range(strike_count):
+            angle = start_angle + i * (strike_spread / max(1, strike_count - 1))
+            Bullet(self.rect.centerx, self.rect.centery, angle=angle,
+                  is_enemy=True, color=color, b_type="energy", speed=4.5)
+
+    def _shoot_minefield(self, params):
+        """布雷：在当前位置投放缓慢下落的地雷"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (200, 200, 100))
+        mine_count = params.get('mine_count', 3)
+        # 地雷缓慢下落
+        for i in range(mine_count):
+            offset_x = (i - mine_count // 2) * 25
+            Bullet(self.rect.centerx + offset_x, self.rect.centery, angle=90,
+                  is_enemy=True, color=color, b_type="mine", speed=0.8)
+
+    def _shoot_gatling(self, params):
+        """加特林连射：高速单发带随机散布"""
+        Bullet = _get_bullet_class()
+        if not Bullet:
+            return
+        color = self.config.get('bullet_color', (255, 200, 50))
+        gatling_spread = params.get('gatling_spread', 10)
+        # 随机小角度偏移
+        angle = 90 + random.randint(-gatling_spread, gatling_spread)
+        speed = self.config.get('bullet_speed', 6.0)
+        Bullet(self.rect.centerx, self.rect.bottom, angle=angle,
+              is_enemy=True, color=color, b_type="bullet", speed=speed)
+
     def take_damage(self, damage):
         """
         受到伤害
