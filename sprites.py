@@ -924,13 +924,26 @@ class BloodMoonSlash(pygame.sprite.Sprite):
         
         cx, cy = self.owner.rect.center
         
+        stack_ratio = self.owner.blood_stacks / max(1, getattr(self.owner, 'max_blood_stacks', 1)) if hasattr(self.owner, 'blood_stacks') else 0
+        blade_color = (
+            int(140 + 90 * stack_ratio),
+            int(5 + 80 * stack_ratio),
+            int(20 + 140 * stack_ratio)
+        )
+        highlight_color = (
+            min(255, int(200 + 40 * stack_ratio)),
+            int(60 + 120 * stack_ratio),
+            int(80 + 150 * stack_ratio)
+        )
+        blade_length = 260 + 120 * stack_ratio
+        width_base = 6 + int(3 * stack_ratio)
+
         # 绘制旋转的6把血刃
         for i in range(6):
             blade_angle = self.angle + i * 60
             rad = math.radians(blade_angle)
             
             # 刀刃轨迹
-            blade_length = 300
             tip_x = cx + math.cos(rad) * blade_length
             tip_y = cy + math.sin(rad) * blade_length
             
@@ -945,12 +958,11 @@ class BloodMoonSlash(pygame.sprite.Sprite):
                 points.append((px, py))
             
             if len(points) > 2:
-                # 血红刀刃
-                pygame.draw.lines(self.image, CRIMSON, False, points, 6)
-                pygame.draw.lines(self.image, (255, 100, 100), False, points, 2)
+                pygame.draw.lines(self.image, blade_color, False, points, width_base)
+                pygame.draw.lines(self.image, highlight_color, False, points, max(2, width_base - 3))
             
             # 刀尖光效
-            pygame.draw.circle(self.image, (255, 200, 200), (int(tip_x), int(tip_y)), 8)
+            pygame.draw.circle(self.image, (255, 200, 200), (int(tip_x), int(tip_y)), 8 + int(4 * stack_ratio))
             
             # 伤害检测
             for m in list(mobs):
@@ -960,13 +972,19 @@ class BloodMoonSlash(pygame.sprite.Sprite):
                     angle_diff = abs((angle_to_enemy - blade_angle + 180) % 360 - 180)
                     if angle_diff < 15:
                         if m not in self.hit_enemies:
-                            m.hp -= 320
+                            damage = 320 + 40 * stack_ratio
+                            m.hp -= damage
                             self.hit_enemies.add(m)
                             FloatingText(m.rect.centerx, m.rect.top - 30, "🌙CRESCENT!", CRIMSON)
                             # 添加刀痕
                             self.slashes.append({'pos': m.rect.center, 'life': 20, 'angle': blade_angle})
+                            if hasattr(self.owner, 'apply_crimson_blood'):
+                                self.owner.apply_crimson_blood(m, damage, m.rect.center)
                         else:
-                            m.hp -= 50
+                            chip_damage = 50 + 15 * stack_ratio
+                            m.hp -= chip_damage
+                            if hasattr(self.owner, 'apply_crimson_blood'):
+                                self.owner.apply_crimson_blood(m, chip_damage, m.rect.center)
                         for _ in range(2):
                             Particle(m.rect.center, CRIMSON)
         
@@ -986,8 +1004,9 @@ class BloodMoonSlash(pygame.sprite.Sprite):
         
         # 中心血月
         moon_surf = pygame.Surface((100, 100), pygame.SRCALPHA)
-        pygame.draw.circle(moon_surf, (150, 0, 0, 150), (50, 50), 40)
-        pygame.draw.circle(moon_surf, CRIMSON, (50, 50), 35, 3)
+        glow_alpha = int(150 + 80 * stack_ratio)
+        pygame.draw.circle(moon_surf, (150, 0, 0, glow_alpha), (50, 50), 40)
+        pygame.draw.circle(moon_surf, blade_color, (50, 50), 35, 3)
         self.image.blit(moon_surf, (cx - 50, cy - 50))
 
 
@@ -4038,7 +4057,7 @@ class DefenseTurret:
 #   核心实体：Bullet, Player, Enemy, Boss
 # ==============================================================================
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, x, y, angle=0, is_enemy=False, piercing=0, color=YELLOW, homing=0, bounce=0, b_type="beam", bullet_theme=None):
+    def __init__(self, x, y, angle=0, is_enemy=False, piercing=0, color=YELLOW, homing=0, bounce=0, b_type="beam", bullet_theme=None, is_split=False):
         super().__init__()
         self.is_enemy = is_enemy
         self.piercing = piercing
@@ -4049,6 +4068,7 @@ class Bullet(pygame.sprite.Sprite):
         self.timer = 0
         self.frozen = False  # 【新】时间冻结标记
         self.bullet_theme = bullet_theme  # 【新】子弹涂装主题
+        self.is_split = is_split  # 【优化】分裂子弹标记，防止递归分裂
         
         if not is_enemy and homing > 0: 
             self.color = HOMING_COLOR
@@ -4305,15 +4325,22 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.circle(self.image, INDIGO, (12,12), 2)
                 self.speed = -21
                 
-            elif b_type == "thorn":  # 10. Gaia - 大地守护者（绿色荆棘箭）
-                self.image = pygame.Surface((16, 32), pygame.SRCALPHA)
-                pygame.draw.polygon(self.image, FOREST, [(8,0), (16,14), (8,32), (0,14)])
-                pygame.draw.polygon(self.image, CYBER_LIME, [(8,0), (16,14), (8,32), (0,14)], 3)
-                pygame.draw.polygon(self.image, (120, 220, 100), [(8,5), (12,14), (8,28), (4,14)])
-                for i in [10, 18, 26]:
-                    pygame.draw.line(self.image, CYBER_LIME, (8, i), (2, i-4), 2)
-                    pygame.draw.line(self.image, CYBER_LIME, (8, i), (14, i-4), 2)
-                self.speed = -16
+            elif b_type == "thorn":  # 10. Gaia - 大地守护者（岩石荆棘弹）
+                # 基础尺寸，可被fury_scale放大
+                base_size = 20
+                self.image = pygame.Surface((base_size, base_size + 16), pygame.SRCALPHA)
+                # 岩石主体
+                pygame.draw.polygon(self.image, FOREST, [(base_size//2, 0), (base_size, base_size//2 + 4), (base_size//2, base_size + 12), (0, base_size//2 + 4)])
+                pygame.draw.polygon(self.image, (100, 160, 80), [(base_size//2, 0), (base_size, base_size//2 + 4), (base_size//2, base_size + 12), (0, base_size//2 + 4)], 3)
+                # 内部纹理
+                pygame.draw.polygon(self.image, (80, 140, 60), [(base_size//2, 4), (base_size - 4, base_size//2 + 2), (base_size//2, base_size + 6), (4, base_size//2 + 2)])
+                # 荆棘尖刺
+                for i in [base_size//3, base_size//2 + 4, base_size - 4]:
+                    pygame.draw.line(self.image, CYBER_LIME, (base_size//2, i), (2, i - 5), 2)
+                    pygame.draw.line(self.image, CYBER_LIME, (base_size//2, i), (base_size - 2, i - 5), 2)
+                # 发光点
+                pygame.draw.circle(self.image, (150, 220, 120), (base_size//2, base_size//2 + 2), 3)
+                self.speed = -14  # 较慢但更有威力
                 
             elif b_type == "web":  # 11. Weaver - 虚空编织者（灰色蛛网十字）
                 self.image = pygame.Surface((26, 26), pygame.SRCALPHA)
@@ -4374,6 +4401,23 @@ class Bullet(pygame.sprite.Sprite):
                     y = 20 + int(6 * math.sin(rad))
                     pygame.draw.line(self.image, (200, 255, 255), (11, 20), (x, y), 2)
                 self.speed = -22
+            elif b_type == "aurora_prism":  # 极光女神专属棱镜弹幕
+                self.image = pygame.Surface((16, 16), pygame.SRCALPHA)
+                center = 8
+                prism_points = [(center, 2), (14, center), (center, 14), (2, center)]
+                inner_points = [(center, 4), (12, center), (center, 12), (4, center)]
+                pygame.draw.polygon(self.image, TEAL, prism_points)
+                pygame.draw.polygon(self.image, (180, 255, 255), inner_points)
+                pygame.draw.polygon(self.image, WHITE, prism_points, 2)
+                # 旋转光束装饰
+                for a in [0, 90, 180, 270]:
+                    rad = math.radians(a)
+                    x = center + int(6 * math.cos(rad))
+                    y = center + int(6 * math.sin(rad))
+                    pygame.draw.line(self.image, CYBER_CYAN_BRIGHT, (center, center), (x, y), 1)
+                self.speed = -10
+                self.wave_amplitude = 15
+                self.wave_frequency = 0.2
                 
             else:  # 16. Necro + 默认（紫红幽能，与Specter共用）
                 self.image = pygame.Surface((18, 42), pygame.SRCALPHA)
@@ -6737,8 +6781,8 @@ class Bullet(pygame.sprite.Sprite):
         # 【新增】通用子弹动态效果（不依赖effects属性）
         self._apply_bullet_dynamics()
         
-        # 【优化】速度因子降低子弹移动速度,提升性能和视觉清晰度
-        speed_factor = 0.25
+        # 【优化】速度因子 - 玩家子弹更快，敌人子弹正常
+        speed_factor = 0.6 if not self.is_enemy else 0.4
         
         # 特殊移动逻辑
         if not self.is_enemy and self.b_type == "flame":
@@ -6747,20 +6791,28 @@ class Bullet(pygame.sprite.Sprite):
         else: 
             self.pos += self.vel * speed_factor
             
-        # 追踪逻辑
+        # 追踪逻辑（优化：增强追踪效果）
         if not self.is_enemy and self.homing > 0:
             target = None
             min_dist = 9999
             for m in mobs:
                 dist = self.pos.distance_to(pygame.math.Vector2(m.rect.center))
-                if dist < min_dist and dist < 500: # 增加索敌范围
+                if dist < min_dist and dist < 600:  # 增加索敌范围到600
                     min_dist = dist
                     target = m
             if target:
                 target_vec = pygame.math.Vector2(target.rect.center) - self.pos
                 if target_vec.length() > 0: 
                     target_vec = target_vec.normalize() * abs(self.speed)
-                    self.vel = self.vel.lerp(target_vec, 0.15) # 平滑转向
+                    # 追踪强度增强：基础强度*3，使追踪更明显
+                    lerp_strength = min(self.homing * 3, 0.95)
+                    self.vel = self.vel.lerp(target_vec, lerp_strength)
+        
+        # 极光棱镜波浪弹道
+        if not self.is_enemy and self.b_type == "aurora_prism":
+            wave_freq = getattr(self, 'wave_frequency', 0.2)
+            wave_amp = getattr(self, 'wave_amplitude', 15)
+            self.pos.x = self.start_x + math.sin(self.timer * wave_freq) * wave_amp
                     
         self.rect.center = self.pos
     
@@ -7716,7 +7768,7 @@ class Enemy(pygame.sprite.Sprite):
                 pygame.draw.circle(self.image, (0, 255, 255), (int(x1), int(y1)), 3)
             # 驾驶舱（前端发光点）
             pygame.draw.circle(self.image, (255, 255, 100), (center, center), 4)
-            self.base_speed = 3; self.hp = 25 + lvl * 10
+            self.base_speed = 3; self.hp = 75 + lvl * 10
             self.neon_color = (255, 100, 150)
             
         elif type_name == "chaser":
@@ -7733,7 +7785,7 @@ class Enemy(pygame.sprite.Sprite):
             pygame.draw.circle(self.image, (255, 200, 0), (29, 45), 3)
             # 驾驶舱
             pygame.draw.circle(self.image, (100, 255, 255), (22, 15), 3)
-            self.base_speed = 4; self.hp = 40 + lvl * 15
+            self.base_speed = 4; self.hp = 90 + lvl * 15
             self.neon_color = (100, 150, 255)
             
         elif type_name == "tank":
@@ -7754,7 +7806,7 @@ class Enemy(pygame.sprite.Sprite):
             # 车轮（4个）
             for x in [12, 22, 32, 42]:
                 pygame.draw.circle(self.image, (150, 100, 50), (x, 48), 3)
-            self.base_speed = 1.5; self.hp = 65 + lvl * 18; self.radius = 25
+            self.base_speed = 1.5; self.hp = 115 + lvl * 18; self.radius = 25
             self.neon_color = (255, 150, 0)
             
         elif type_name == "wasp":
@@ -7771,7 +7823,7 @@ class Enemy(pygame.sprite.Sprite):
             pygame.draw.rect(self.image, (200, 100, 200), (14, 35, 6, 8))
             # 驾驶舱
             pygame.draw.circle(self.image, (255, 255, 150), (17, 12), 2)
-            self.base_speed = 3.5; self.hp = 35 + lvl * 11; self.radius = 17
+            self.base_speed = 3.5; self.hp = 85 + lvl * 11; self.radius = 17
             self.neon_color = (255, 200, 0)
             self.start_x = random.randint(0, WIDTH)
             
@@ -7789,7 +7841,7 @@ class Enemy(pygame.sprite.Sprite):
             pygame.draw.circle(self.image, (255, 200, 0), (16, 10), 6, 2)
             pygame.draw.line(self.image, (0, 200, 255), (16, 4), (16, 16), 1)
             pygame.draw.line(self.image, (0, 200, 255), (10, 10), (22, 10), 1)
-            self.base_speed = 3; self.hp = 45 + lvl * 11
+            self.base_speed = 3; self.hp = 95 + lvl * 11
             self.neon_color = (100, 200, 255)
             
         elif type_name == "glitch":
@@ -7814,7 +7866,7 @@ class Enemy(pygame.sprite.Sprite):
             for i in range(3):
                 eye_x = 18 + i * 7
                 pygame.draw.circle(self.image, (100, 255, 200), (eye_x, 20), 2)
-            self.base_speed = 2; self.hp = 28 + lvl * 7
+            self.base_speed = 2; self.hp = 78 + lvl * 7
             self.neon_color = (200, 100, 200)
         
         elif type_name == "sentinel":
@@ -7833,7 +7885,7 @@ class Enemy(pygame.sprite.Sprite):
             # 侧炮孔
             pygame.draw.circle(self.image, (200, 100, 50), (12, 30), 2)
             pygame.draw.circle(self.image, (200, 100, 50), (32, 30), 2)
-            self.base_speed = 1.2; self.hp = 55 + lvl * 14; self.radius = 20
+            self.base_speed = 1.2; self.hp = 105 + lvl * 14; self.radius = 20
             self.neon_color = (255, 100, 100)
             self.state = "aim"
             self.timer = 0
@@ -7854,7 +7906,7 @@ class Enemy(pygame.sprite.Sprite):
                 x = 22 + math.cos(rad) * 18
                 y = 25 + math.sin(rad) * 18
                 pygame.draw.circle(self.image, (100, 255, 200), (int(x), int(y)), 2)
-            self.base_speed = 3.8; self.hp = 35 + lvl * 10; self.radius = 16
+            self.base_speed = 3.8; self.hp = 85 + lvl * 10; self.radius = 16
             self.neon_color = (200, 100, 255)
         
         elif type_name == "spike":
@@ -7878,7 +7930,7 @@ class Enemy(pygame.sprite.Sprite):
             # 眼睛
             pygame.draw.circle(self.image, (255, 255, 150), (20, 22), 2)
             pygame.draw.circle(self.image, (255, 255, 150), (30, 22), 2)
-            self.base_speed = 2.5; self.hp = 45 + lvl * 12; self.radius = 18
+            self.base_speed = 2.5; self.hp = 95 + lvl * 12; self.radius = 18
             self.neon_color = (255, 150, 50)
         
         elif type_name == "orbiter":
@@ -7898,7 +7950,7 @@ class Enemy(pygame.sprite.Sprite):
                 x = center + math.cos(rad) * 24
                 y = center + math.sin(rad) * 24
                 pygame.draw.circle(self.image, (100, 255, 200), (int(x), int(y)), 2)
-            self.base_speed = 3.2; self.hp = 38 + lvl * 10; self.radius = 17
+            self.base_speed = 3.2; self.hp = 88 + lvl * 10; self.radius = 17
             self.neon_color = (100, 200, 255)
         
         elif type_name == "vortex":
@@ -7921,7 +7973,7 @@ class Enemy(pygame.sprite.Sprite):
                 pygame.draw.circle(self.image, (200, 100, 255), (int(x), int(y)), 1)
             # 中心吸收孔
             pygame.draw.circle(self.image, (100, 100, 100), (center, center), 3)
-            self.base_speed = 2.2; self.hp = 25 + lvl * 8; self.radius = 15
+            self.base_speed = 2.2; self.hp = 75 + lvl * 8; self.radius = 15
             self.neon_color = (100, 255, 100)
         
         # Add subtle neon glow aura for enemies
@@ -8261,15 +8313,15 @@ class Boss(pygame.sprite.Sprite):
                         
                 elif self.type == "fortress":  # 不朽级·钢铁堡垒
                     if self.phase_index == 0:  # 阶段1：激光扫射
-                        for i in range(2, WIDTH-50, 150):
+                        for i in range(2, WIDTH-50, 200):
                             Bullet(i, self.rect.bottom-20, angle=0, is_enemy=True, b_type="laser_barrage")
                     elif self.phase_index == 1:  # 阶段2：混合激光+等离子
-                        for i in range(0, WIDTH, 120):
+                        for i in range(0, WIDTH, 180):
                             Bullet(i, self.rect.bottom, angle=-10 if i % 2 == 0 else 10, is_enemy=True, b_type="plasma")
-                        for i in range(50, WIDTH, 180):
+                        for i in range(50, WIDTH, 250):
                             Bullet(i, self.rect.bottom-30, angle=0, is_enemy=True, b_type="laser_barrage")
-                    else:  # 阶段3：全屏地毯式轰炸
-                        for i in range(0, WIDTH, 80):
+                    else:  # 阶段3：全屏地毯式轰炸（优化：减少弹幕密度）
+                        for i in range(0, WIDTH, 120):
                             Bullet(i, self.rect.bottom, angle=random.randint(-20, 20), is_enemy=True, b_type="plasma")
                             
                 elif self.type == "assassin":  # 幻影级·虚空刺客 - 快速移动 + 幻影攻击
@@ -8277,10 +8329,10 @@ class Boss(pygame.sprite.Sprite):
                         for i in range(-2, 3):
                             Bullet(self.rect.centerx + i*40, self.rect.centery, angle=i*15, is_enemy=True, b_type="phantom")
                     elif self.phase_index == 1:  # 阶段2：密集扇形
-                        for i in range(-4, 5):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*10, is_enemy=True, b_type="phantom")
-                    else:  # 阶段3：环形幻影弹幕
-                        for i in range(0, 360, 30):
+                        for i in range(-3, 4):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i*12, is_enemy=True, b_type="phantom")
+                    else:  # 阶段3：环形幻影弹幕（优化）
+                        for i in range(0, 360, 45):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="phantom")
                             
                 elif self.type == "seraphim":  # 审判级·炽天使 - 圣光轰炸
@@ -8290,53 +8342,53 @@ class Boss(pygame.sprite.Sprite):
                     elif self.phase_index == 1:  # 阶段2：连续圣光射线
                         for i in range(-3, 4):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i*12, is_enemy=True, b_type="holy_light")
-                    else:  # 阶段3：神圣审判轰炸
-                        for i in range(0, 360, 25):
+                    else:  # 阶段3：神圣审判轰炸（优化）
+                        for i in range(0, 360, 40):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="holy_light")
                             
                 elif self.type == "leviathan":  # 深渊巨兽·利维坦 - 触手+虚空尖刺
                     if self.phase_index == 0:  # 阶段1：触手挥击
-                        for i in range(-3, 4):
+                        for i in range(-2, 3):
                             Bullet(self.rect.centerx + i*35, self.rect.bottom, angle=i*15, is_enemy=True, b_type="tentacle")
                     elif self.phase_index == 1:  # 阶段2：深渊尖刺
                         for i in range(-2, 3):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i*18, is_enemy=True, b_type="void_spike")
-                    else:  # 阶段3：混合全屏弹幕
-                        for i in range(0, 360, 22):
+                    else:  # 阶段3：混合全屏弹幕（优化）
+                        for i in range(0, 360, 40):
                             b_type = "tentacle" if i % 2 == 0 else "void_spike"
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type=b_type)
                             
                 elif self.type == "overlord":  # 蜂群主宰·奥伯龙 - 蜂群弹幕
                     if self.phase_index == 0:  # 阶段1：散射群弹
-                        for i in range(-3, 4):
+                        for i in range(-2, 3):
                             Bullet(self.rect.centerx + i*30, self.rect.bottom, angle=i*12, is_enemy=True, b_type="glitch")
                     elif self.phase_index == 1:  # 阶段2：密集环形
-                        for i in range(0, 360, 30):
+                        for i in range(0, 360, 45):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="glitch")
-                    else:  # 阶段3：超密集环形
-                        for i in range(0, 360, 15):
+                    else:  # 阶段3：超密集环形（优化）
+                        for i in range(0, 360, 30):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="glitch")
                             
                 elif self.type == "ragnarok":  # 终焉机神·诸神黄昏 - 火焰毁灭
                     if self.phase_index == 0:  # 阶段1：火焰喷射
-                        for i in range(-4, 5):
-                            Bullet(self.rect.centerx, self.rect.bottom, angle=i*10, is_enemy=True, b_type="flame_burst")
+                        for i in range(-3, 4):
+                            Bullet(self.rect.centerx, self.rect.bottom, angle=i*12, is_enemy=True, b_type="flame_burst")
                     elif self.phase_index == 1:  # 阶段2：混合环形
-                        for i in range(0, 360, 40):
+                        for i in range(0, 360, 45):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="flame_burst")
-                    else:  # 阶段3：全屏火焰地狱
-                        for i in range(0, 360, 18):
+                    else:  # 阶段3：全屏火焰地狱（优化）
+                        for i in range(0, 360, 36):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="flame_burst")
                             
                 elif self.type == "hydra":  # 九头蛇·剧毒领主 - 毒液喷射
                     if self.phase_index == 0:  # 阶段1：散射毒液
-                        for i in range(-3, 4):
+                        for i in range(-2, 3):
                             Bullet(self.rect.centerx + i*40, self.rect.bottom, angle=i*12, is_enemy=True, b_type="glitch")
                     elif self.phase_index == 1:  # 阶段2：多向毒液弹幕
-                        for i in range(-4, 5):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*10, is_enemy=True, b_type="glitch")
-                    else:  # 阶段3：九头混合弹幕
-                        for i in range(0, 360, 20):
+                        for i in range(-3, 4):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i*12, is_enemy=True, b_type="glitch")
+                    else:  # 阶段3：九头混合弹幕（优化）
+                        for i in range(0, 360, 40):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="glitch")
                             
                 elif self.type == "chronos":  # 时之主·克洛诺斯 - 冰冷时间
@@ -8344,10 +8396,10 @@ class Boss(pygame.sprite.Sprite):
                         for i in range(-2, 3):
                             Bullet(self.rect.centerx + i*50, self.rect.bottom, angle=i*15, is_enemy=True, b_type="ice_shard")
                     elif self.phase_index == 1:  # 阶段2：环形冰晶
-                        for i in range(0, 360, 36):
+                        for i in range(0, 360, 45):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="ice_shard")
-                    else:  # 阶段3：密集冰晶地狱
-                        for i in range(0, 360, 16):
+                    else:  # 阶段3：密集冰晶地狱（优化）
+                        for i in range(0, 360, 30):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="ice_shard")
                             
                 elif self.type == "gazer":  # 深渊凝视者 - 盯视射线
@@ -8357,59 +8409,53 @@ class Boss(pygame.sprite.Sprite):
                     elif self.phase_index == 1:  # 阶段2：聚焦扇形
                         for i in range(-3, 4):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i*15, is_enemy=True, b_type="laser_barrage")
-                    else:  # 阶段3：环形激光地狱
-                        for i in range(0, 360, 22):
+                    else:  # 阶段3：环形激光地狱（优化）
+                        for i in range(0, 360, 36):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="laser_barrage")
                             
                 elif self.type == "lich":  # 赛博巫妖 - 诅咒能量
                     if self.phase_index == 0:  # 阶段1：散射诅咒球
-                        for i in range(-3, 4):
+                        for i in range(-2, 3):
                             Bullet(self.rect.centerx + i*35, self.rect.bottom, angle=i*12, is_enemy=True, b_type="glitch")
                     elif self.phase_index == 1:  # 阶段2：混合环形诅咒
-                        for i in range(0, 360, 30):
+                        for i in range(0, 360, 45):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="glitch")
-                    else:  # 阶段3：诅咒风暴
-                        for i in range(0, 360, 18):
+                    else:  # 阶段3：诅咒风暴（优化）
+                        for i in range(0, 360, 36):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="glitch")
                             
                 elif self.type == "tempest":  # 风暴引擎 - 风刃切割
                     if self.phase_index == 0:  # 阶段1：散射风刃
-                        for i in range(-3, 4):
+                        for i in range(-2, 3):
                             Bullet(self.rect.centerx + i*40, self.rect.bottom, angle=i*12, is_enemy=True, b_type="blade_wind")
                     elif self.phase_index == 1:  # 阶段2：扇形风刃
-                        for i in range(-4, 5):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*10, is_enemy=True, b_type="blade_wind")
-                    else:  # 阶段3：暴风切割
-                        for i in range(0, 360, 20):
+                        for i in range(-3, 4):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i*12, is_enemy=True, b_type="blade_wind")
+                    else:  # 阶段3：暴风切割（优化）
+                        for i in range(0, 360, 36):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="blade_wind")
                             
                 elif self.type == "void_golem":  # 虚空魔像 - 齿轮机械
                     if self.phase_index == 0:  # 阶段1：环形齿轮弹
-                        for i in range(0, 360, 30):
+                        for i in range(0, 360, 45):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="gear")
-                        Particle((self.rect.centerx, self.rect.centery), (120,0,180), mode="gear_spin")
                     elif self.phase_index == 1:  # 阶段2：能量波+追踪弹
-                        for i in range(-3, 4):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*15, is_enemy=True, b_type="energy")
-                        Particle((self.rect.centerx, self.rect.centery), (180,20,220), mode="energy_wave")
-                    else:  # 阶段3：多向核心冲击
-                        for i in range(0, 360, 18):
+                        for i in range(-2, 3):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i*18, is_enemy=True, b_type="energy")
+                    else:  # 阶段3：多向核心冲击（优化）
+                        for i in range(0, 360, 36):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="core")
-                        Particle((self.rect.centerx, self.rect.centery), (255,80,180), mode="core_burst")
                         
                 elif self.type == "abyss_queen":  # 星渊女王 - 星系弹幕
                     if self.phase_index == 0:  # 阶段1：星尘弹+召唤星体
-                        for i in range(0, 360, 40):
+                        for i in range(0, 360, 45):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="star")
-                        Particle((self.rect.centerx, self.rect.centery), (180,80,255), mode="star_dust")
                     elif self.phase_index == 1:  # 阶段2：星卫弹幕
                         for i in range(-2, 3):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i*25, is_enemy=True, b_type="star_guard")
-                        Particle((self.rect.centerx, self.rect.centery), (120,60,200), mode="queen_invis")
-                    else:  # 阶段3：星爆全屏弹幕
-                        for i in range(0, 360, 15):
+                    else:  # 阶段3：星爆全屏弹幕（优化）
+                        for i in range(0, 360, 30):
                             Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="star_burst")
-                        Particle((self.rect.centerx, self.rect.centery), (255,180,255), mode="star_burst")
                             
                 else:
                     # 默认环形弹幕
@@ -8630,6 +8676,64 @@ class Player(pygame.sprite.Sprite):
         self.has_energy_siphon = False  # 能量虹吸
         self.has_blood_pact = False  # 鲜血契约
         
+        # 【绯红之刃】鲜血狂热状态（其余机体保持空值即可）
+        self.blood_stacks = 0
+        self.max_blood_stacks = 25
+        self.blood_grace_timer = 0
+        self._blood_decay_tick = 0
+        
+        # 【星界潜行者】暗影标记状态
+        self.shadow_marks = 0        # 当前标记的敌人数
+        self.max_shadow_marks = 8    # 最大同时标记数
+        self.shadow_mark_dmg_bonus = 0.0  # 根据标记数累积的伤害加成
+        
+        # 【大地守护者】大地之力状态
+        self.earth_fury = 0          # 大地怒气
+        self.max_earth_fury = 100    # 最大怒气
+        self.earth_fury_decay_timer = 0
+        self.earth_armor_bonus = 0.0 # 护甲加成
+        self.earth_dmg_bonus = 0.0   # 伤害加成
+        
+        # 【钢铁泰坦】重装过载状态
+        self.titan_overload = 0       # 过载能量
+        self.max_titan_overload = 100 # 最大过载
+        self.titan_next_shot_empowered = False  # 下一发是否强化
+        self.titan_armor_stacks = 0   # 装甲层数
+        self.max_armor_stacks = 5     # 最大装甲层数
+        
+        # 【虚空编织者】维度织网状态
+        self.weaver_webbed_count = 0  # 当前被网住的敌人数
+        self.weaver_web_damage_bonus = 0.0  # 网伤害加成
+        
+        # 【日冕耀斑】灼热核心状态
+        self.solar_heat = 0           # 当前热量
+        self.max_solar_heat = 100     # 最大热量
+        self.solar_overheat = False   # 是否过热
+        self.solar_overheat_timer = 0 # 过热冷却计时器
+        self.solar_aura_damage = 0    # 灸烧光环伤害
+        
+        # 【量子裁决者】量子叠加态状态
+        self.arbiter_quantum = 0      # 量子能量
+        self.max_arbiter_quantum = 100 # 最大量子能量
+        self.arbiter_collapse_ready = False  # 坡缩就绪
+        
+        # 【日食幽灵】光暗交替状态
+        self.eclipse_phase = "light"  # 当前形态: light/dark
+        self.eclipse_phase_timer = 0  # 形态切换计时器
+        self.eclipse_shield = 0       # 暗影护盾
+        self.max_eclipse_shield = 50  # 最大护盾
+        self.eclipse_light_bonus = 0.0 # 光态伤害加成
+        
+        # 【棱镜分光】折射风暴状态
+        self.prism_chain_count = 0    # 当前折射链计数
+        self.prism_max_chain = 0      # 本局最长折射链
+        self.prism_chain_damage = 0.0 # 折射链伤害加成
+        
+        # 【死灵骑士】亡灵军团状态
+        self.necro_ghosts = []        # 亡灵列表
+        self.max_necro_ghosts = 6     # 最大亡灵数
+        self.necro_ghost_damage = 0   # 亡灵总伤害统计
+
         # 炮塔系统(固定位置防御塔)
         self.has_turrets = False
         self.turret_count = 0
@@ -8701,6 +8805,27 @@ class Player(pygame.sprite.Sprite):
         # 边界限制
         self.rect.clamp_ip(screen_rect)
 
+        # 【绯红之刃】鲜血狂热状态维护
+        self._update_crimson_state()
+        # 【星界潜行者】暗影标记状态维护
+        self._update_stalker_state()
+        # 【大地守护者】大地之力状态维护
+        self._update_gaia_state()
+        # 【钢铁泰坦】重装过载状态维护
+        self._update_titan_state()
+        # 【虚空编织者】维度织网状态维护
+        self._update_weaver_state()
+        # 【日冕耀斑】灼热核心状态维护
+        self._update_solar_state()
+        # 【量子裁决者】量子叠加态状态维护
+        self._update_arbiter_state()
+        # 【日食幽灵】光暗交替状态维护
+        self._update_eclipse_state()
+        # 【棱镜分光】光谱共振状态维护
+        self._update_prism_state()
+        # 【死灵骑士】亡魂收割状态维护
+        self._update_necro_state()
+
         # 切换武器
         if self.switch_cooldown <= 0:
             if keys[pygame.K_q]:
@@ -8752,13 +8877,35 @@ class Player(pygame.sprite.Sprite):
                 Bullet(self.rect.centerx + spread, self.rect.top, angle=angle,
                        color=color, b_type=b_type, piercing=self.piercing//2 if self.piercing else 0, homing=homing_value, bullet_theme=self.bullet_theme)
         
-        # ========== 3. 钢铁泰坦 - 慢速但强力的集中炮火 ==========
+        # ========== 3. 钢铁泰坦 - 重装过载火箭 ==========
         elif pid == "titan":
             # 低射速、高威力：发射强力火箭
-            for i in range(cnt):
-                offset_x = (i - (cnt-1)/2) * 25
-                Bullet(self.rect.centerx + offset_x, self.rect.top, 
-                       color=color, b_type=b_type, piercing=self.piercing + 2, homing=homing_value, bullet_theme=self.bullet_theme)
+            is_empowered = getattr(self, 'titan_next_shot_empowered', False)
+            
+            if is_empowered:
+                # 过载弹：发射巨型爆裂火箭
+                self.titan_next_shot_empowered = False
+                self.titan_overload = 0
+                # 发射强化弹（标记为过载弹）
+                for i in range(cnt + 1):  # 额外+1发
+                    offset_x = (i - cnt/2) * 30
+                    bullet = Bullet(self.rect.centerx + offset_x, self.rect.top, 
+                           color=(255, 100, 0), b_type=b_type, piercing=self.piercing + 5, homing=homing_value, bullet_theme=self.bullet_theme)
+                    bullet.is_titan_empowered = True  # 标记为过载弹
+                    bullet.speed = bullet.speed * 0.8  # 稍慢但更强
+                # 过载发射视觉
+                FloatingText(self.rect.centerx, self.rect.top - 30, "💥重炮齐射!", ORANGE)
+                for _ in range(8):
+                    Particle(self.rect.center, ORANGE)
+            else:
+                # 普通射击 + 积蓄过载
+                for i in range(cnt):
+                    offset_x = (i - (cnt-1)/2) * 25
+                    Bullet(self.rect.centerx + offset_x, self.rect.top, 
+                           color=color, b_type=b_type, piercing=self.piercing + 2, homing=homing_value, bullet_theme=self.bullet_theme)
+                # 每次射击积蓄过载
+                if hasattr(self, 'gain_titan_overload'):
+                    self.gain_titan_overload(18)  # 约5-6发满过载
         
         # ========== 4. 极光女神 - 范围电浆波 ==========
         elif pid == "aurora":
@@ -8777,7 +8924,7 @@ class Player(pygame.sprite.Sprite):
         
         # ========== 6. 雷霆战鹰 - 多段连锁闪电 ==========
         elif pid == "thunderbird":
-            # 发射闪电链：多个连接的闪电
+            # 发射闪电链：正常数量的闪电，自带连锁效果
             spacing = 20
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * spacing
@@ -8811,77 +8958,124 @@ class Player(pygame.sprite.Sprite):
                        color=color, b_type="star", piercing=self.piercing, 
                        homing=max(homing_value, 0.2), bullet_theme=self.bullet_theme)  # 自带追踪+卡牌追踪
         
-        # ========== 10. 大地守护者 - 散射荆棘 ==========
+        # ========== 10. 大地守护者 - 岩石冲击 ==========
         elif pid == "gaia":
-            # 散射特性：发射向下散开的荆棘
-            for i in range(cnt + 3):
-                angle = -40 + i * (80 / (cnt + 2))
-                Bullet(self.rect.centerx, self.rect.top, angle=angle,
-                       color=color, b_type="thorn", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+            # 防御型特性：发射较少但更强的岩石弹，怒气越高子弹越大
+            fury_ratio = getattr(self, 'earth_fury', 0) / max(1, getattr(self, 'max_earth_fury', 100))
+            base_count = max(1, cnt)
+            # 怒气高时散射角度收窄，更精准
+            spread_angle = 35 - 15 * fury_ratio  # 35°→20°
+            for i in range(base_count):
+                if base_count == 1:
+                    angle = 0
+                else:
+                    angle = -spread_angle + i * (spread_angle * 2 / (base_count - 1))
+                # 传递怒气比例给子弹（通过自定义属性）
+                bullet = Bullet(self.rect.centerx, self.rect.top, angle=angle,
+                       color=color, b_type="thorn", piercing=self.piercing + 1, homing=homing_value, bullet_theme=self.bullet_theme)
+                # 怒气加成：子弹更大更慢但更强
+                bullet.fury_scale = 1 + fury_ratio * 0.5  # 最大1.5倍大小
         
-        # ========== 11. 虚空编织者 - 蛛网束缚 ==========
+        # ========== 11. 虚空编织者 - 维度蛛网 ==========
         elif pid == "weaver":
-            # 控制特性：发射粘稠的蛛网
-            for i in range(cnt):
-                offset_x = (i - (cnt-1)/2) * 20
-                # 蛛网子弹速度较慢
-                bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+            # 控制特性：发射粘稠的蛛网，根据被网敌人数量增强
+            webbed = getattr(self, 'weaver_webbed_count', 0)
+            extra_shots = min(2, webbed // 2)  # 每2个被网敌人额外+1发
+            total_shots = cnt + extra_shots
+            for i in range(total_shots):
+                offset_x = (i - (total_shots-1)/2) * 18
+                angle = random.uniform(-8, 8)  # 轻微散布
+                bullet = Bullet(self.rect.centerx + offset_x, self.rect.top, angle=angle,
                        color=color, b_type="web", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
-                bullet.speed = -8  # 减速
+                bullet.speed = -10  # 稍快一点
         
-        # ========== 12. 日冕耀斑 - 高频火焰喷流 ==========
+        # ========== 12. 日冕耀斑 - 灼热火焰喷流 ==========
         elif pid == "solar":
+            # 检查过热
+            if getattr(self, 'solar_overheat', False):
+                # 过热时不能射击，显示冷却中
+                if random.random() < 0.1:
+                    FloatingText(self.rect.centerx, self.rect.top - 10, "冷却中...", (150, 150, 150))
+                return  # 不发射
             # 极高射速：发射连续的火焰
-            for i in range(cnt * 3):  # 射速高意味着更多子弹
-                spread = (i - cnt + 0.5) * 6
-                angle = random.uniform(-12, 12)
-                Bullet(self.rect.centerx + spread, self.rect.top, angle=angle,
-                       color=color, b_type="flame", piercing=self.piercing//2 if self.piercing else 0, bullet_theme=self.bullet_theme)
+            heat_ratio = getattr(self, 'solar_heat', 0) / max(1, getattr(self, 'max_solar_heat', 100))
+            flame_count = cnt * 3 + int(heat_ratio * 2)  # 热量高时火焰更密集
+            for i in range(flame_count):
+                spread = (i - flame_count/2 + 0.5) * 5
+                angle = random.uniform(-10 - heat_ratio * 5, 10 + heat_ratio * 5)  # 热量高时扩散更大
+                bullet = Bullet(self.rect.centerx + spread, self.rect.top, angle=angle,
+                       color=color, b_type="flame", piercing=self.piercing//2 if self.piercing else 0, homing=homing_value, bullet_theme=self.bullet_theme)
+                bullet.is_solar_flame = True
+            # 每次射击积累热量
+            if hasattr(self, 'gain_solar_heat'):
+                self.gain_solar_heat(2)  # 约50次射击过热（约3秒持续射击）
         
         # ========== 13. 量子裁决者 - 分裂量子块 ==========
         elif pid == "arbiter":
             # 分裂特性：发射会分裂的量子块
+            is_collapse = getattr(self, 'arbiter_collapse_ready', False)
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * 18
-                Bullet(self.rect.centerx + offset_x, self.rect.top,
-                       color=color, b_type="quant", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                       color=NEON_PURPLE if is_collapse else color, b_type="quant", 
+                       piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                bullet.is_collapse_shot = is_collapse  # 标记坑缩弹
+                if is_collapse:
+                    bullet.damage_mult = 1.5  # 坑缩弹基础伤害+50%
         
         # ========== 14. 日食幽灵 - 双核心双线射击 ==========
         elif pid == "eclipse":
             # 双核心特性：同时从两个点发射
             left_x = self.rect.centerx - 15
             right_x = self.rect.centerx + 15
+            is_light = getattr(self, 'eclipse_phase', 'light') == "light"
+            bullet_color = (255, 220, 100) if is_light else (80, 40, 120)
             for i in range(cnt):
                 offset = (i - (cnt-1)/2) * 10
                 # 左核心
-                Bullet(left_x + offset, self.rect.top, 
-                       color=color, b_type="shadow", piercing=self.piercing, angle=-5, homing=homing_value, bullet_theme=self.bullet_theme)
+                b1 = Bullet(left_x + offset, self.rect.top, 
+                       color=bullet_color, b_type="shadow", piercing=self.piercing, angle=-5, homing=homing_value, bullet_theme=self.bullet_theme)
+                b1.is_eclipse_light = is_light
                 # 右核心
-                Bullet(right_x + offset, self.rect.top,
-                       color=color, b_type="shadow", piercing=self.piercing, angle=5, homing=homing_value, bullet_theme=self.bullet_theme)
+                b2 = Bullet(right_x + offset, self.rect.top,
+                       color=bullet_color, b_type="shadow", piercing=self.piercing, angle=5, homing=homing_value, bullet_theme=self.bullet_theme)
+                b2.is_eclipse_light = is_light
         
         # ========== 15. 棱镜分光 - 一发三道分裂 ==========
         elif pid == "prism":
-            # 分裂特性：每发子弹发射后会分裂成三道
+            # 分裂特性：每发子弹发射后会分裂成三道，命中后折射
+            chain_bonus = getattr(self, 'prism_chain_damage', 0)
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * 16
-                # 中间直射
-                Bullet(self.rect.centerx + offset_x, self.rect.top, angle=0,
+                # 中间直射 - 蓝色
+                b1 = Bullet(self.rect.centerx + offset_x, self.rect.top, angle=0,
                        color=(100, 180, 255), b_type="refract", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
-                # 左侧散射
-                Bullet(self.rect.centerx + offset_x, self.rect.top, angle=-25,
-                       color=(255, 100, 100), b_type="refract", piercing=self.piercing//2, homing=homing_value, bullet_theme=self.bullet_theme)
-                # 右侧散射
-                Bullet(self.rect.centerx + offset_x, self.rect.top, angle=25,
-                       color=(100, 255, 100), b_type="refract", piercing=self.piercing//2, homing=homing_value, bullet_theme=self.bullet_theme)
+                b1.refract_count = 0
+                b1.damage_mult = 1 + chain_bonus
+                # 左侧散射 - 紫色
+                b2 = Bullet(self.rect.centerx + offset_x, self.rect.top, angle=-25,
+                       color=(180, 100, 255), b_type="refract", piercing=self.piercing//2, homing=homing_value, bullet_theme=self.bullet_theme)
+                b2.refract_count = 0
+                b2.damage_mult = 1 + chain_bonus
+                # 右侧散射 - 青色
+                b3 = Bullet(self.rect.centerx + offset_x, self.rect.top, angle=25,
+                       color=(100, 255, 180), b_type="refract", piercing=self.piercing//2, homing=homing_value, bullet_theme=self.bullet_theme)
+                b3.refract_count = 0
+                b3.damage_mult = 1 + chain_bonus
         
-        # ========== 16. 死灵骑士 - 吸血射击 ==========
+        # ========== 16. 死灵骑士 - 亡灵射击 ==========
         elif pid == "necro":
-            # 吸血特性：普通伤害转化为吸收
+            # 亡灵特性：子弹带有亡灵气息
+            ghost_count = len(getattr(self, 'necro_ghosts', []))
             for i in range(cnt):
                 offset_x = (i - (cnt-1)/2) * 18
-                Bullet(self.rect.centerx + offset_x, self.rect.top,
+                bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
                        color=color, b_type="spectral", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                bullet.is_necro_bullet = True
+                # 亡灵越多子弹越亮
+                if ghost_count > 0:
+                    brightness = min(255, 150 + ghost_count * 20)
+                    bullet.color = (brightness, 50, int(100 + ghost_count * 15))
         
         # 默认情况
         else:
@@ -9036,6 +9230,838 @@ class Player(pygame.sprite.Sprite):
                 elif ability == 'area_field':
                     for angle in range(0, 360, 60):
                         Particle(self.rect.center, TEAL, mode='shockwave')
+
+    def apply_crimson_blood(self, enemy, damage, hit_pos=None):
+        """绯红之刃固有：命中后吸血并引爆血浪"""
+        if self.plane_id != "crimson" or enemy is None:
+            return
+        hit_pos = hit_pos or enemy.rect.center
+        self.blood_stacks = min(self.max_blood_stacks, self.blood_stacks + 1)
+        self.blood_grace_timer = 240  # 4秒宽限
+        self._blood_decay_tick = 0
+        stack_ratio = self.blood_stacks / max(1, self.max_blood_stacks)
+        lifesteal_ratio = 0.04 + 0.12 * stack_ratio
+        heal_amount = damage * lifesteal_ratio
+        if heal_amount > 0:
+            prev_hp = self.hp
+            self.hp = min(self.max_hp, self.hp + heal_amount)
+            heal_delta = self.hp - prev_hp
+            if heal_delta > 0:
+                FloatingText(int(hit_pos[0]), int(hit_pos[1]) - 18, f"+{int(heal_delta)}", CRIMSON)
+        splash_radius = 80 + 90 * stack_ratio
+        splash_damage = max(8, damage * (0.12 + 0.28 * stack_ratio))
+        for mob in list(mobs):
+            if mob == enemy or mob.hp <= 0:
+                continue
+            dist = math.hypot(mob.rect.centerx - hit_pos[0], mob.rect.centery - hit_pos[1])
+            if dist <= splash_radius:
+                mob.hp -= splash_damage
+                FloatingText(mob.rect.centerx, mob.rect.top - 10, f"-{int(splash_damage)}", CRIMSON)
+                Particle(mob.rect.center, CRIMSON)
+        # 中心血雾
+        for _ in range(4):
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(5, 40)
+            px = hit_pos[0] + math.cos(angle) * dist
+            py = hit_pos[1] + math.sin(angle) * dist
+            Particle((int(px), int(py)), (200, 30, 60))
+
+    def apply_stalker_mark(self, enemy, damage, hit_pos=None):
+        """星界潜行者固有：命中敌人施加暗影标记，标记目标受伤增加并吸引星镖"""
+        if self.plane_id != "stalker" or enemy is None:
+            return
+        hit_pos = hit_pos or enemy.rect.center
+        # 施加/刷新标记
+        if not hasattr(enemy, 'shadow_mark'):
+            enemy.shadow_mark = 0
+            enemy.shadow_mark_timer = 0
+        if enemy.shadow_mark == 0:
+            # 新标记
+            self.shadow_marks = min(self.max_shadow_marks, self.shadow_marks + 1)
+        enemy.shadow_mark = min(5, enemy.shadow_mark + 1)  # 标记层数上限5
+        enemy.shadow_mark_timer = 300  # 5秒持续
+        # 标记视觉
+        for _ in range(3):
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(8, 20)
+            px = hit_pos[0] + math.cos(angle) * dist
+            py = hit_pos[1] + math.sin(angle) * dist
+            Particle((int(px), int(py)), INDIGO)
+        # 计算伤害加成
+        self.shadow_mark_dmg_bonus = self.shadow_marks * 0.04  # 每个标记+4%伤害
+
+    def _update_stalker_state(self):
+        """每帧更新标记计数"""
+        if self.plane_id != "stalker":
+            return
+        active_marks = 0
+        for enemy in list(mobs):
+            if hasattr(enemy, 'shadow_mark') and enemy.shadow_mark > 0:
+                enemy.shadow_mark_timer -= 1
+                if enemy.shadow_mark_timer <= 0:
+                    enemy.shadow_mark = 0
+                else:
+                    active_marks += 1
+                    # 标记敌人周围偶尔出现星尘粒子
+                    if random.random() < 0.08:
+                        Particle(enemy.rect.center, INDIGO)
+        self.shadow_marks = active_marks
+        self.shadow_mark_dmg_bonus = active_marks * 0.04
+
+    def gain_earth_fury(self, amount):
+        """大地守护者受伤时积蓄怒气"""
+        if self.plane_id != "gaia":
+            return
+        self.earth_fury = min(self.max_earth_fury, self.earth_fury + amount)
+        self.earth_fury_decay_timer = 360  # 6秒不受伤后开始衰减
+        fury_ratio = self.earth_fury / self.max_earth_fury
+        self.earth_armor_bonus = fury_ratio * 0.50  # 最高50%减伤
+        self.earth_dmg_bonus = fury_ratio * 0.80    # 最高80%伤害加成
+        # 怒气加速攻击：最高30%减少射击间隔
+        self.shoot_delay = int(self.plane_data["delay"] * (1 - fury_ratio * 0.30))
+        # 怒气视觉：绿色岩石粒子
+        if self.earth_fury > 30 and random.random() < 0.4:
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(15, 30)
+            px = self.rect.centerx + math.cos(angle) * dist
+            py = self.rect.centery + math.sin(angle) * dist
+            Particle((int(px), int(py)), FOREST)
+
+    def apply_gaia_entangle(self, enemy, damage, hit_pos=None):
+        """大地守护者固有：命中敌人有几率缠绕"""
+        if self.plane_id != "gaia" or enemy is None:
+            return
+        hit_pos = hit_pos or enemy.rect.center
+        fury_ratio = self.earth_fury / max(1, self.max_earth_fury)
+        entangle_chance = 0.12 + 0.18 * fury_ratio  # 12%-30%几率
+        if random.random() < entangle_chance:
+            if not hasattr(enemy, 'entangle_timer'):
+                enemy.entangle_timer = 0
+                enemy.entangle_damage = 0
+            enemy.entangle_timer = 240  # 4秒定身
+            enemy.entangle_damage = max(12, damage * 0.15)  # 持续伤害增强
+            # 缠绕视觉
+            FloatingText(int(hit_pos[0]), int(hit_pos[1]) - 15, "🌿缠绕!", FOREST)
+            for _ in range(5):
+                angle = random.uniform(0, math.pi * 2)
+                dist = random.uniform(10, 25)
+                px = hit_pos[0] + math.cos(angle) * dist
+                py = hit_pos[1] + math.sin(angle) * dist
+                Particle((int(px), int(py)), FOREST)
+
+    def _update_gaia_state(self):
+        """每帧更新大地怒气"""
+        if self.plane_id != "gaia":
+            return
+        # 衰减计时
+        if self.earth_fury > 0:
+            if self.earth_fury_decay_timer > 0:
+                self.earth_fury_decay_timer -= 1
+            else:
+                # 缓慢衰减
+                self.earth_fury = max(0, self.earth_fury - 0.2)
+                fury_ratio = self.earth_fury / self.max_earth_fury
+                self.earth_armor_bonus = fury_ratio * 0.50
+                self.earth_dmg_bonus = fury_ratio * 0.80
+                self.shoot_delay = int(self.plane_data["delay"] * (1 - fury_ratio * 0.30))
+        # 高怒气时持续粒子（更明显）
+        if self.earth_fury > 50 and random.random() < 0.15:
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(20, 35)
+            px = self.rect.centerx + math.cos(angle) * dist
+            py = self.rect.centery + math.sin(angle) * dist
+            Particle((int(px), int(py)), (80, 140, 60))
+
+    def gain_titan_overload(self, amount):
+        """钢铁泰坦射击时积蓄过载能量"""
+        if self.plane_id != "titan":
+            return
+        self.titan_overload = min(self.max_titan_overload, self.titan_overload + amount)
+        # 过载满时触发强化
+        if self.titan_overload >= self.max_titan_overload:
+            self.titan_next_shot_empowered = True
+            # 过载满视觉
+            for _ in range(5):
+                angle = random.uniform(0, math.pi * 2)
+                dist = random.uniform(15, 35)
+                px = self.rect.centerx + math.cos(angle) * dist
+                py = self.rect.centery + math.sin(angle) * dist
+                Particle((int(px), int(py)), ORANGE)
+            FloatingText(self.rect.centerx, self.rect.top - 20, "⚡过载!", ORANGE)
+
+    def gain_titan_armor(self):
+        """钢铁泰坦受伤时获得装甲层数"""
+        if self.plane_id != "titan":
+            return
+        self.titan_armor_stacks = min(self.max_armor_stacks, self.titan_armor_stacks + 1)
+        # 装甲视觉
+        if self.titan_armor_stacks >= 3:
+            for _ in range(3):
+                angle = random.uniform(0, math.pi * 2)
+                dist = random.uniform(20, 30)
+                px = self.rect.centerx + math.cos(angle) * dist
+                py = self.rect.centery + math.sin(angle) * dist
+                Particle((int(px), int(py)), CYBER_AMBER)
+
+    def _update_titan_state(self):
+        """每帧更新泰坦状态"""
+        if self.plane_id != "titan":
+            return
+        # 过载缓慢衰减（如果没满）
+        if self.titan_overload > 0 and not self.titan_next_shot_empowered:
+            self.titan_overload = max(0, self.titan_overload - 0.15)
+        # 装甲层数缓慢衰减（每3秒减1层）
+        if self.titan_armor_stacks > 0:
+            if not hasattr(self, '_armor_decay_timer'):
+                self._armor_decay_timer = 0
+            self._armor_decay_timer += 1
+            if self._armor_decay_timer >= 180:  # 3秒
+                self._armor_decay_timer = 0
+                self.titan_armor_stacks = max(0, self.titan_armor_stacks - 1)
+        # 高过载粒子
+        if self.titan_overload > 60 and random.random() < 0.12:
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(18, 30)
+            px = self.rect.centerx + math.cos(angle) * dist
+            py = self.rect.centery + math.sin(angle) * dist
+            Particle((int(px), int(py)), (255, 150, 50))
+
+    def apply_weaver_web(self, enemy, damage, hit_pos=None):
+        """虚空编织者固有：命中敌人施加维度网"""
+        if self.plane_id != "weaver" or enemy is None:
+            return
+        hit_pos = hit_pos or enemy.rect.center
+        # 施加网缚效果
+        if not hasattr(enemy, 'weaver_web_timer'):
+            enemy.weaver_web_timer = 0
+            enemy.weaver_web_slow = 0.5
+        enemy.weaver_web_timer = 180  # 3秒网缚
+        enemy.weaver_web_slow = 0.3   # 70%减速
+        enemy.weaver_web_dot = max(5, damage * 0.08)  # 持续伤害
+        # 网缚视觉
+        for _ in range(4):
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(8, 18)
+            px = hit_pos[0] + math.cos(angle) * dist
+            py = hit_pos[1] + math.sin(angle) * dist
+            Particle((int(px), int(py)), WEB_GRAY)
+
+    def _update_weaver_state(self):
+        """每帧更新编织者状态"""
+        if self.plane_id != "weaver":
+            return
+        webbed_enemies = []
+        for enemy in list(mobs):
+            if hasattr(enemy, 'weaver_web_timer') and enemy.weaver_web_timer > 0:
+                webbed_enemies.append(enemy)
+                enemy.weaver_web_timer -= 1
+                # 减速效果
+                enemy.time_slow_factor = min(getattr(enemy, 'time_slow_factor', 1.0), 
+                                            getattr(enemy, 'weaver_web_slow', 0.5))
+                # 网缚视觉
+                if random.random() < 0.1:
+                    Particle(enemy.rect.center, (180, 180, 180))
+        self.weaver_webbed_count = len(webbed_enemies)
+        # 根据被网敌人数量计算伤害加成
+        self.weaver_web_damage_bonus = self.weaver_webbed_count * 0.06  # 每个被网敌人+6%伤害
+        # 维度连线：被网敌人之间产生伤害连线
+        if len(webbed_enemies) >= 2:
+            # 每30帧触发一次连线伤害
+            if not hasattr(self, '_web_link_timer'):
+                self._web_link_timer = 0
+            self._web_link_timer += 1
+            if self._web_link_timer >= 30:
+                self._web_link_timer = 0
+                link_damage = self.damage * 0.3 * len(webbed_enemies)
+                for enemy in webbed_enemies:
+                    enemy.hp -= link_damage
+                    FloatingText(enemy.rect.centerx, enemy.rect.top - 10, 
+                               f"-{int(link_damage)}", WEB_GRAY)
+
+    def gain_solar_heat(self, amount):
+        """日冕耀斑射击时积累热量"""
+        if self.plane_id != "solar" or self.solar_overheat:
+            return
+        self.solar_heat = min(self.max_solar_heat, self.solar_heat + amount)
+        self._solar_shoot_timer = 30  # 标记正在射击，30帧内不衰减
+        heat_ratio = self.solar_heat / self.max_solar_heat
+        # 热量加成伤害
+        self.solar_aura_damage = self.damage * heat_ratio * 0.5
+        # 过热检测
+        if self.solar_heat >= self.max_solar_heat:
+            self.solar_overheat = True
+            self.solar_overheat_timer = 60  # 1秒冷却
+            FloatingText(self.rect.centerx, self.rect.top - 20, "🔥过热!", (255, 100, 0))
+            for _ in range(8):
+                Particle(self.rect.center, (255, 80, 0))
+        # 热量视觉
+        if self.solar_heat > 50 and random.random() < 0.2:
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(12, 25)
+            px = self.rect.centerx + math.cos(angle) * dist
+            py = self.rect.centery + math.sin(angle) * dist
+            Particle((int(px), int(py)), BRIGHT_ORANGE)
+
+    def _update_solar_state(self):
+        """每帧更新日冕状态"""
+        if self.plane_id != "solar":
+            return
+        # 更新射击计时器
+        if hasattr(self, '_solar_shoot_timer') and self._solar_shoot_timer > 0:
+            self._solar_shoot_timer -= 1
+        if self.solar_overheat:
+            # 过热冷却中
+            self.solar_overheat_timer -= 1
+            if self.solar_overheat_timer <= 0:
+                self.solar_overheat = False
+                self.solar_heat = 0
+                FloatingText(self.rect.centerx, self.rect.top - 20, "✔冷却完成", BRIGHT_ORANGE)
+        else:
+            # 热量自然衰减（只有停止射击后才衰减）
+            shoot_timer = getattr(self, '_solar_shoot_timer', 0)
+            if self.solar_heat > 0 and shoot_timer <= 0:
+                self.solar_heat = max(0, self.solar_heat - 0.5)
+                heat_ratio = self.solar_heat / self.max_solar_heat
+                self.solar_aura_damage = self.damage * heat_ratio * 0.5
+        # 灸烧光环：对近距离敌人造成伤害
+        if self.solar_heat > 30 and not self.solar_overheat:
+            aura_radius = 80 + 40 * (self.solar_heat / self.max_solar_heat)
+            for enemy in list(mobs):
+                dist = math.hypot(enemy.rect.centerx - self.rect.centerx,
+                                enemy.rect.centery - self.rect.centery)
+                if dist <= aura_radius:
+                    # 每15帧造成一次灸烧伤害
+                    if not hasattr(self, '_aura_tick'):
+                        self._aura_tick = 0
+                    self._aura_tick += 1
+                    if self._aura_tick >= 15:
+                        self._aura_tick = 0
+                        aura_dmg = self.solar_aura_damage
+                        if aura_dmg > 0:
+                            enemy.hp -= aura_dmg
+                            if random.random() < 0.3:
+                                FloatingText(enemy.rect.centerx, enemy.rect.top - 8, 
+                                           f"-{int(aura_dmg)}", (255, 150, 50))
+                            Particle(enemy.rect.center, (255, 120, 30))
+
+    def gain_arbiter_quantum(self, amount):
+        """量子裁决者命中时积累量子能量"""
+        if self.plane_id != "arbiter":
+            return
+        self.arbiter_quantum = min(self.max_arbiter_quantum, self.arbiter_quantum + amount)
+        # 量子满载时准备坡缩
+        if self.arbiter_quantum >= self.max_arbiter_quantum and not self.arbiter_collapse_ready:
+            self.arbiter_collapse_ready = True
+            FloatingText(self.rect.centerx, self.rect.top - 20, "⚡量子坑缩就绪!", NEON_PURPLE)
+            for _ in range(6):
+                Particle(self.rect.center, NEON_PURPLE)
+
+    def trigger_quantum_collapse(self, target, hit_pos):
+        """触发量子坑缩爆发"""
+        if self.plane_id != "arbiter" or not self.arbiter_collapse_ready:
+            return 0
+        self.arbiter_collapse_ready = False
+        self.arbiter_quantum = 0
+        # 坑缩爆发伤害
+        collapse_damage = self.damage * 3.0
+        collapse_radius = 100
+        FloatingText(hit_pos[0], hit_pos[1] - 20, f"☢坑缩!-{int(collapse_damage)}", NEON_PURPLE)
+        # 爆炸视觉
+        for _ in range(12):
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(20, 50)
+            px = hit_pos[0] + math.cos(angle) * dist
+            py = hit_pos[1] + math.sin(angle) * dist
+            Particle((int(px), int(py)), NEON_PURPLE)
+        # 对范围内敌人造成伤害
+        for enemy in list(mobs):
+            dist = math.hypot(enemy.rect.centerx - hit_pos[0], enemy.rect.centery - hit_pos[1])
+            if dist <= collapse_radius and enemy != target:
+                aoe_dmg = collapse_damage * (1 - dist / collapse_radius) * 0.6
+                enemy.hp -= aoe_dmg
+                FloatingText(enemy.rect.centerx, enemy.rect.top - 10, f"-{int(aoe_dmg)}", (180, 100, 255))
+        return collapse_damage
+
+    def _update_arbiter_state(self):
+        """每帧更新量子裁决者状态"""
+        if self.plane_id != "arbiter":
+            return
+        # 量子能量缓慢衰减
+        if self.arbiter_quantum > 0 and not self.arbiter_collapse_ready:
+            self.arbiter_quantum = max(0, self.arbiter_quantum - 0.1)
+        # 量子粒子效果
+        if self.arbiter_quantum > 50 and random.random() < 0.15:
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(15, 28)
+            px = self.rect.centerx + math.cos(angle) * dist
+            py = self.rect.centery + math.sin(angle) * dist
+            Particle((int(px), int(py)), NEON_PURPLE)
+
+    def toggle_eclipse_phase(self):
+        """切换日食幽灵的光/暗形态"""
+        if self.plane_id != "eclipse":
+            return
+        if self.eclipse_phase == "light":
+            self.eclipse_phase = "dark"
+            self.eclipse_light_bonus = 0
+            FloatingText(self.rect.centerx, self.rect.top - 20, "🌑暗影形态", (80, 50, 120))
+        else:
+            self.eclipse_phase = "light"
+            FloatingText(self.rect.centerx, self.rect.top - 20, "☀️光耀形态", (255, 220, 100))
+        for _ in range(6):
+            Particle(self.rect.center, (100, 50, 180) if self.eclipse_phase == "dark" else (255, 200, 100))
+
+    def gain_eclipse_shield(self, amount):
+        """暗影形态下吸收伤害转化为护盾"""
+        if self.plane_id != "eclipse" or self.eclipse_phase != "dark":
+            return
+        old_shield = self.eclipse_shield
+        self.eclipse_shield = min(self.max_eclipse_shield, self.eclipse_shield + amount)
+        if self.eclipse_shield > old_shield:
+            Particle(self.rect.center, (100, 50, 180))
+
+    def _update_eclipse_state(self):
+        """每帧更新日食幽灵状态"""
+        if self.plane_id != "eclipse":
+            return
+        # 自动切换形态计时器
+        self.eclipse_phase_timer += 1
+        if self.eclipse_phase_timer >= 300:  # 每5秒自动切换
+            self.eclipse_phase_timer = 0
+            self.toggle_eclipse_phase()
+        # 光态：持续时间越长伤害越高
+        if self.eclipse_phase == "light":
+            phase_progress = self.eclipse_phase_timer / 300
+            self.eclipse_light_bonus = phase_progress * 0.5  # 最高+50%伤害
+            # 光态时护盾缓慢衰减
+            if self.eclipse_shield > 0:
+                self.eclipse_shield = max(0, self.eclipse_shield - 0.1)
+            # 光态粒子
+            if random.random() < 0.1:
+                Particle(self.rect.center, (255, 220, 100))
+        else:
+            # 暗态：护盾不衰减，可以积累
+            # 暗态粒子
+            if random.random() < 0.08:
+                Particle(self.rect.center, (80, 40, 120))
+
+    def apply_prism_hit(self, enemy, bullet, hit_pos):
+        """棱镜分光固有：子弹命中后折射到附近敌人"""
+        if self.plane_id != "prism" or enemy is None:
+            return
+        # 获取子弹的折射次数
+        refract_count = getattr(bullet, 'refract_count', 0)
+        if refract_count >= 5:  # 最多折射5次
+            return
+        # 更新折射链计数
+        self.prism_chain_count = refract_count + 1
+        if self.prism_chain_count > self.prism_max_chain:
+            self.prism_max_chain = self.prism_chain_count
+        # 折射伤害加成: 每次折射+15%
+        self.prism_chain_damage = self.prism_chain_count * 0.15
+        # 寻找附近可折射的敌人
+        refract_range = 150
+        candidates = []
+        for m in mobs:
+            if m != enemy and m.hp > 0:
+                dist = math.hypot(m.rect.centerx - hit_pos[0], m.rect.centery - hit_pos[1])
+                if dist <= refract_range:
+                    candidates.append((m, dist))
+        if candidates:
+            # 折射到最近的敌人
+            candidates.sort(key=lambda x: x[1])
+            target = candidates[0][0]
+            # 创建折射子弹
+            angle = math.degrees(math.atan2(target.rect.centery - hit_pos[1], 
+                                           target.rect.centerx - hit_pos[0])) - 90
+            # 折射子弹颜色随次数变化
+            colors = [(100, 180, 255), (180, 100, 255), (255, 100, 180), (255, 180, 100), (100, 255, 180)]
+            ref_color = colors[min(refract_count, len(colors)-1)]
+            ref_bullet = Bullet(hit_pos[0], hit_pos[1], angle=angle, color=ref_color,
+                               b_type="refract", piercing=0, homing=0, bullet_theme=self.bullet_theme)
+            ref_bullet.refract_count = refract_count + 1
+            ref_bullet.is_refracted = True
+            ref_bullet.damage_mult = 1 + self.prism_chain_damage  # 折射伤害加成
+            # 折射视觉 - 光线连接
+            Particle(hit_pos, ref_color)
+            # 完美折射链(5次)触发棱镜爆发
+            if refract_count + 1 >= 5:
+                FloatingText(hit_pos[0], hit_pos[1] - 25, "*棱镜爆发*", (200, 255, 255))
+                # 对范围内敌人造成爆发伤害
+                burst_damage = self.damage * 2.5
+                for m in mobs:
+                    dist = math.hypot(m.rect.centerx - hit_pos[0], m.rect.centery - hit_pos[1])
+                    if dist <= 120:
+                        m.hp -= burst_damage
+                        FloatingText(m.rect.centerx, m.rect.top - 10, f"-{int(burst_damage)}", (150, 255, 255))
+                        Particle(m.rect.center, (200, 255, 255))
+                for _ in range(8):
+                    Particle(hit_pos, random.choice(colors))
+
+    def _update_prism_state(self):
+        """每帧更新棱镜分光状态"""
+        if self.plane_id != "prism":
+            return
+        # 折射链计数缓慢衰减
+        if self.prism_chain_count > 0:
+            if not hasattr(self, '_chain_decay_timer'):
+                self._chain_decay_timer = 0
+            self._chain_decay_timer += 1
+            if self._chain_decay_timer >= 60:  # 1秒后重置
+                self._chain_decay_timer = 0
+                self.prism_chain_count = 0
+                self.prism_chain_damage = 0
+        # 折射粒子效果
+        if self.prism_chain_count > 0 and random.random() < 0.1:
+            colors = [(100, 180, 255), (180, 100, 255), (255, 100, 180)]
+            Particle(self.rect.center, random.choice(colors))
+
+    def gain_necro_soul(self, enemy_pos):
+        """死灵骑士击杀时召唤亡灵"""
+        if self.plane_id != "necro":
+            return
+        if len(self.necro_ghosts) < self.max_necro_ghosts:
+            # 创建亡灵数据
+            ghost = {
+                'x': enemy_pos[0],
+                'y': enemy_pos[1],
+                'target': None,
+                'attack_cd': 0,
+                'lifetime': 600,  # 10秒存活
+                'damage': self.damage * 0.4,  # 40%基础伤害
+            }
+            self.necro_ghosts.append(ghost)
+            FloatingText(enemy_pos[0], enemy_pos[1] - 20, "+亡灵", (200, 50, 150))
+            for _ in range(4):
+                Particle(enemy_pos, (150, 50, 100))
+
+    def _update_necro_state(self):
+        """每帧更新死灵骑士状态 - 亡灵AI"""
+        if self.plane_id != "necro":
+            return
+        ghosts_to_remove = []
+        for ghost in self.necro_ghosts:
+            # 生命周期
+            ghost['lifetime'] -= 1
+            if ghost['lifetime'] <= 0:
+                ghosts_to_remove.append(ghost)
+                continue
+            # 寻找目标
+            if ghost['target'] is None or ghost['target'] not in mobs or ghost['target'].hp <= 0:
+                # 找最近的敌人
+                min_dist = 300
+                ghost['target'] = None
+                for m in mobs:
+                    dist = math.hypot(m.rect.centerx - ghost['x'], m.rect.centery - ghost['y'])
+                    if dist < min_dist:
+                        min_dist = dist
+                        ghost['target'] = m
+            # 移动向目标
+            if ghost['target']:
+                target = ghost['target']
+                dx = target.rect.centerx - ghost['x']
+                dy = target.rect.centery - ghost['y']
+                dist = math.hypot(dx, dy)
+                if dist > 30:
+                    speed = 3.5
+                    ghost['x'] += (dx / dist) * speed
+                    ghost['y'] += (dy / dist) * speed
+                # 攻击
+                ghost['attack_cd'] -= 1
+                if ghost['attack_cd'] <= 0 and dist < 50:
+                    ghost['attack_cd'] = 45  # 0.75秒攻击间隔
+                    target.hp -= ghost['damage']
+                    self.necro_ghost_damage += ghost['damage']
+                    FloatingText(target.rect.centerx, target.rect.top - 8, 
+                               f"-{int(ghost['damage'])}", (180, 80, 130))
+                    Particle((int(ghost['x']), int(ghost['y'])), (200, 50, 150))
+            else:
+                # 没有目标时围绕玩家
+                angle = math.atan2(self.rect.centery - ghost['y'], self.rect.centerx - ghost['x'])
+                target_x = self.rect.centerx + math.cos(angle + len(self.necro_ghosts) * 0.5) * 60
+                target_y = self.rect.centery + math.sin(angle + len(self.necro_ghosts) * 0.5) * 60
+                ghost['x'] += (target_x - ghost['x']) * 0.05
+                ghost['y'] += (target_y - ghost['y']) * 0.05
+            # 亡灵粒子效果
+            if random.random() < 0.08:
+                Particle((int(ghost['x']), int(ghost['y'])), (150, 50, 100))
+        # 移除过期亡灵
+        for ghost in ghosts_to_remove:
+            self.necro_ghosts.remove(ghost)
+            Particle((int(ghost['x']), int(ghost['y'])), (100, 30, 60))
+
+    # ========== 霓虹突击者 - 超载引擎 ==========
+    def gain_striker_charge(self, amount):
+        """霓虹突击者命中时积累超载"""
+        if self.plane_id != "striker":
+            return
+        if self.striker_overdrive:
+            return  # 超载中不积累
+        self.striker_charge = min(self.max_striker_charge, self.striker_charge + amount)
+        if self.striker_charge >= self.max_striker_charge:
+            self.striker_overdrive = True
+            self.striker_overdrive_timer = 300  # 5秒超载
+            self.striker_charge = self.max_striker_charge
+            FloatingText(self.rect.centerx, self.rect.top - 20, "超载启动!", CYAN)
+            for _ in range(8):
+                Particle(self.rect.center, CYAN)
+
+    def _update_striker_state(self):
+        """每帧更新霓虹突击者状态"""
+        if self.plane_id != "striker":
+            return
+        if self.striker_overdrive:
+            self.striker_overdrive_timer -= 1
+            if self.striker_overdrive_timer <= 0:
+                self.striker_overdrive = False
+                self.striker_charge = 0
+                FloatingText(self.rect.centerx, self.rect.top - 20, "超载结束", (100, 150, 150))
+            elif random.random() < 0.15:
+                Particle(self.rect.center, CYAN)
+        else:
+            # 超载能量缓慢衰减
+            if self.striker_charge > 0:
+                self.striker_charge = max(0, self.striker_charge - 0.2)
+
+    # ========== 虚空幻影 - 相位漂移 ==========
+    def gain_phantom_phase(self, amount):
+        """虚空幻影移动时积累相位"""
+        if self.plane_id != "phantom":
+            return
+        if self.phantom_intangible:
+            return
+        self.phantom_phase = min(self.max_phantom_phase, self.phantom_phase + amount)
+
+    def activate_phantom_intangible(self):
+        """激活相位无敌"""
+        if self.plane_id != "phantom" or self.phantom_phase < 50:
+            return False
+        self.phantom_intangible = True
+        self.phantom_intangible_timer = 45  # 0.75秒无敌
+        self.phantom_phase = 0
+        FloatingText(self.rect.centerx, self.rect.top - 20, "相位!", MAGENTA)
+        for _ in range(6):
+            Particle(self.rect.center, MAGENTA)
+        return True
+
+    def _update_phantom_state(self):
+        """每帧更新虚空幻影状态"""
+        if self.plane_id != "phantom":
+            return
+        if self.phantom_intangible:
+            self.phantom_intangible_timer -= 1
+            if self.phantom_intangible_timer <= 0:
+                self.phantom_intangible = False
+            elif random.random() < 0.2:
+                Particle(self.rect.center, (200, 100, 255))
+        else:
+            # 相位能量缓慢衰减
+            if self.phantom_phase > 0:
+                self.phantom_phase = max(0, self.phantom_phase - 0.15)
+
+    # ========== 雷霆战鹰 - 雷暴连锁 ==========
+    def gain_thunder_charge(self, amount):
+        """雷霆战鹰命中时积累电荷"""
+        if self.plane_id != "thunderbird":
+            return
+        self.thunder_charge = min(self.max_thunder_charge, self.thunder_charge + amount)
+
+    def trigger_chain_lightning(self, hit_pos):
+        """触发连锁闪电"""
+        if self.plane_id != "thunderbird" or self.thunder_charge < self.max_thunder_charge:
+            return
+        self.thunder_charge = 0
+        FloatingText(hit_pos[0], hit_pos[1] - 20, "雷暴!", YELLOW)
+        # 连锁闪电伤害
+        chain_damage = self.damage * 1.5
+        hit_enemies = []
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - hit_pos[0], m.rect.centery - hit_pos[1])
+            if dist <= 200:
+                hit_enemies.append(m)
+                m.hp -= chain_damage
+                FloatingText(m.rect.centerx, m.rect.top - 10, f"-{int(chain_damage)}", YELLOW)
+                Particle(m.rect.center, YELLOW)
+        for _ in range(10):
+            Particle(hit_pos, YELLOW)
+
+    def _update_thunder_state(self):
+        """每帧更新雷霆战鹰状态"""
+        if self.plane_id != "thunderbird":
+            return
+        # 电荷缓慢衰减
+        if self.thunder_charge > 0:
+            self.thunder_charge = max(0, self.thunder_charge - 0.1)
+        # 高电荷粒子
+        if self.thunder_charge > 70 and random.random() < 0.12:
+            Particle(self.rect.center, YELLOW)
+
+    # ========== 剧毒蝰蛇 - 剧毒累积 ==========
+    def apply_viper_poison(self, enemy, damage):
+        """蝰蛇命中时施加毒素"""
+        if self.plane_id != "viper" or enemy is None:
+            return
+        enemy_id = id(enemy)
+        if enemy_id not in self.viper_venom_stacks:
+            self.viper_venom_stacks[enemy_id] = 0
+        self.viper_venom_stacks[enemy_id] = min(10, self.viper_venom_stacks[enemy_id] + 1)
+        # 标记敌人
+        if not hasattr(enemy, 'viper_poison'):
+            enemy.viper_poison = 0
+        enemy.viper_poison = self.viper_venom_stacks[enemy_id]
+        enemy.viper_poison_timer = 180  # 3秒持续
+        enemy.viper_poison_dmg = damage * 0.1  # 每层10%伤害/秒
+
+    def _update_viper_state(self):
+        """每帧更新蝰蛇状态"""
+        if self.plane_id != "viper":
+            return
+        # 计算总中毒层数
+        self.viper_total_poison = 0
+        alive_ids = set()
+        for m in mobs:
+            alive_ids.add(id(m))
+            if hasattr(m, 'viper_poison') and m.viper_poison > 0:
+                self.viper_total_poison += m.viper_poison
+                # 持续毒伤
+                if hasattr(m, 'viper_poison_timer'):
+                    m.viper_poison_timer -= 1
+                    if m.viper_poison_timer <= 0:
+                        m.viper_poison = 0
+                    elif random.random() < 0.1:
+                        poison_dmg = getattr(m, 'viper_poison_dmg', 1) * m.viper_poison
+                        m.hp -= poison_dmg
+                        if random.random() < 0.3:
+                            FloatingText(m.rect.centerx, m.rect.top - 8, f"-{int(poison_dmg)}", LIME)
+                        Particle(m.rect.center, LIME)
+        # 清理死亡敌人
+        self.viper_venom_stacks = {k: v for k, v in self.viper_venom_stacks.items() if k in alive_ids}
+
+    # ========== 幽灵收割者 - 死神印记 ==========
+    def update_specter_focus(self, target):
+        """更新幽灵收割者的瞄准目标"""
+        if self.plane_id != "specter":
+            return
+        if target == self.specter_focus:
+            self.specter_focus_time = min(180, self.specter_focus_time + 1)  # 最多3秒
+        else:
+            self.specter_focus = target
+            self.specter_focus_time = 0
+
+    def get_specter_damage_mult(self, target):
+        """获取幽灵收割者对目标的伤害倍率"""
+        if self.plane_id != "specter":
+            return 1.0
+        if target == self.specter_focus and self.specter_focus_time > 0:
+            return 1.0 + (self.specter_focus_time / 180) * 1.0  # 最高+100%
+        return 1.0
+
+    def trigger_specter_stealth(self):
+        """击杀后触发隐身"""
+        if self.plane_id != "specter":
+            return
+        self.specter_stealth = 90  # 1.5秒隐身
+        FloatingText(self.rect.centerx, self.rect.top - 15, "隐身", (150, 100, 255))
+
+    def _update_specter_state(self):
+        """每帧更新幽灵收割者状态"""
+        if self.plane_id != "specter":
+            return
+        # 隐身衰减
+        if self.specter_stealth > 0:
+            self.specter_stealth -= 1
+            if random.random() < 0.1:
+                Particle(self.rect.center, (150, 100, 255))
+        # 无目标时瞄准时间衰减
+        if self.specter_focus is None or self.specter_focus not in mobs:
+            self.specter_focus = None
+            self.specter_focus_time = max(0, self.specter_focus_time - 2)
+
+    # ========== 极光女神 - 极光共鸣 ==========
+    def spawn_aurora_orb(self, pos):
+        """极光女神命中时生成极光球"""
+        if self.plane_id != "aurora":
+            return
+        if len(self.aurora_orbs) >= self.max_aurora_orbs:
+            return
+        if random.random() > 0.25:  # 25%几率生成
+            return
+        orb = {
+            'x': pos[0],
+            'y': pos[1],
+            'target': None,
+            'attack_cd': 0,
+            'lifetime': 300,  # 5秒存活
+            'damage': self.damage * 0.3,
+        }
+        self.aurora_orbs.append(orb)
+        for _ in range(3):
+            Particle(pos, TEAL)
+
+    def _update_aurora_state(self):
+        """每帧更新极光女神状态"""
+        if self.plane_id != "aurora":
+            return
+        orbs_to_remove = []
+        for orb in self.aurora_orbs:
+            orb['lifetime'] -= 1
+            if orb['lifetime'] <= 0:
+                orbs_to_remove.append(orb)
+                continue
+            # 寻找目标
+            if orb['target'] is None or orb['target'] not in mobs or orb['target'].hp <= 0:
+                min_dist = 200
+                orb['target'] = None
+                for m in mobs:
+                    dist = math.hypot(m.rect.centerx - orb['x'], m.rect.centery - orb['y'])
+                    if dist < min_dist:
+                        min_dist = dist
+                        orb['target'] = m
+            # 攻击
+            if orb['target']:
+                target = orb['target']
+                orb['attack_cd'] -= 1
+                if orb['attack_cd'] <= 0:
+                    orb['attack_cd'] = 30  # 0.5秒攻击间隔
+                    target.hp -= orb['damage']
+                    self.aurora_orb_damage += orb['damage']
+                    Particle((int(orb['x']), int(orb['y'])), TEAL)
+                    Particle(target.rect.center, (100, 255, 200))
+            # 围绕玩家缓慢移动
+            angle = math.atan2(self.rect.centery - orb['y'], self.rect.centerx - orb['x'])
+            idx = self.aurora_orbs.index(orb)
+            target_angle = angle + idx * (math.pi * 2 / max(1, len(self.aurora_orbs)))
+            target_x = self.rect.centerx + math.cos(target_angle) * 70
+            target_y = self.rect.centery + math.sin(target_angle) * 70
+            orb['x'] += (target_x - orb['x']) * 0.08
+            orb['y'] += (target_y - orb['y']) * 0.08
+            # 粒子效果
+            if random.random() < 0.1:
+                Particle((int(orb['x']), int(orb['y'])), (0, 200, 180))
+        for orb in orbs_to_remove:
+            self.aurora_orbs.remove(orb)
+
+    def _update_crimson_state(self):
+        if self.plane_id != "crimson":
+            return
+        if self.blood_stacks <= 0:
+            self.blood_grace_timer = 0
+            self._blood_decay_tick = 0
+            return
+        if self.blood_grace_timer > 0:
+            self.blood_grace_timer -= 1
+        else:
+            self._blood_decay_tick += 1
+            if self._blood_decay_tick >= 30:
+                self._blood_decay_tick = 0
+                self.blood_stacks = max(0, self.blood_stacks - 1)
+        # 小幅血光粒子
+        if random.random() < min(0.25, 0.08 + self.blood_stacks / (self.max_blood_stacks * 2)):
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(10, 24)
+            px = self.rect.centerx + math.cos(angle) * dist
+            py = self.rect.centery + math.sin(angle) * dist
+            Particle((int(px), int(py)), CRIMSON)
 
     def use_secondary_ultimate(self):
         """第二大招（G键释放）"""
@@ -9455,11 +10481,16 @@ class Player(pygame.sprite.Sprite):
             self.buff_processor.update(dt=1)
     
     def on_kill_enemy(self, enemy):
-        """击杀敌人时触发肉鸽效果"""
-        if self.buff_processor:
+        """击杀敌人时触发肉鸽效果（吸血、裂变等）"""
+        # 优先使用卡牌效果处理器
+        if hasattr(self, 'card_effect_processor') and self.card_effect_processor:
+            corpse_effect = self.card_effect_processor.on_kill_enemy(enemy)
+            if corpse_effect and corpse_effect.get("type") == "corpse_explosion":
+                return corpse_effect
+        # 备用：使用buff处理器
+        elif self.buff_processor:
             corpse_effect = self.buff_processor.on_kill_enemy(enemy)
-            if corpse_effect and corpse_effect["type"] == "corpse_explosion":
-                # 返回爆炸信息，由 main.py 处理
+            if corpse_effect and corpse_effect.get("type") == "corpse_explosion":
                 return corpse_effect
         return None
     

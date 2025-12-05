@@ -141,8 +141,8 @@
     "weaver": "weaver_web",
     "solar": "common_red",
     "eclipse": "eclipse_cosmos",
-    "prism": "prism_laser",
-    "necro": "necro_reaper"
+    "prism": "prism_aurora",
+    "necro": "necro_vampire"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -273,15 +273,15 @@
     "thunderbird": "thunderbird_tesla_bullet",
     "viper": "viper_serpent_god_bullet",
     "specter": "specter_wraith_bullet",
-    "aurora": "aurora_goddess_bullet",
-    "stalker": "stalker_xenomorph_bullet",
-    "gaia": "gaia_flower_bullet",
+    "aurora": "aurora_rainbow_bullet",
+    "stalker": "stalker_void_bullet",
+    "gaia": "gaia_vine_bullet",
     "weaver": "weaver_quantum_bullet",
     "solar": "solar_photon_bullet",
     "arbiter": "arbiter_collapse_star",
     "eclipse": "eclipse_black_sun",
-    "prism": "prism_lens_flare",
-    "necro": "necro_ghost_chain"
+    "prism": "prism_aurora_split",
+    "necro": "necro_blood_curse"
   },
   "equipped_wingman_themes": {
     "slot_0": "striker_holy",

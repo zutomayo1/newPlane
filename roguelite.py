@@ -698,13 +698,13 @@ BASE_CARDS = {
         "category": "defense",
         "archetype": "control",
         "desc": "吸收伤害的护盾",
-        "base_effect": {"shield_amount": 30, "shield_regen": 1},
+        "base_effect": {"shield_amount": 50, "shield_regen": 2},
         "visual_seed": 2001,
         "pattern": "wave",
         "rarity": 1,
         "upgrades": [
-            {"level": 2, "effect": {"shield_amount": 20}, "desc": "护盾值 +20"},
-            {"level": 3, "effect": {"shield_regen": 1}, "desc": "回复速度 ×2"}
+            {"level": 2, "effect": {"shield_amount": 30}, "desc": "护盾值 +30"},
+            {"level": 3, "effect": {"shield_regen": 2}, "desc": "回复速度 +2"}
         ]
     },
     "phase_dodge": {
@@ -909,8 +909,8 @@ MODIFIER_CARDS = {
     "homing_addon": {
         "name": "追踪模块",
         "type": "trait",
-        "desc": "添加自动追踪",
-        "effect": {"homing": True, "homing_strength": 0.3},
+        "desc": "子弹自动追踪敌人",
+        "effect": {"homing": True, "homing_strength": 0.5},
         "rarity": 2,
         "visual_seed": 5101
     },
@@ -1749,6 +1749,7 @@ class CardEffectProcessor:
         self.player = player
         self.regen_timer = 0
         self.chaos_timer = 0
+        self.shield_regen_timer = 0
         
     def update(self, dt=1):
         """每帧更新，处理持续性效果"""
@@ -1760,6 +1761,17 @@ class CardEffectProcessor:
                 heal_amount = getattr(self.player, "regen_rate", 5)
                 self.player.heal(heal_amount)
                 self.regen_timer = 0
+        
+        # 【修复】护盾恢复
+        if getattr(self.player, "has_shield_regen", False):
+            self.shield_regen_timer += dt
+            shield_regen_interval = 120  # 2秒恢复一次
+            if self.shield_regen_timer >= shield_regen_interval:
+                shield_regen = getattr(self.player, "shield_regen", 1)
+                max_shield = getattr(self.player, "max_shield", 0)
+                if max_shield > 0 and self.player.shield < max_shield:
+                    self.player.shield = min(max_shield, self.player.shield + shield_regen)
+                self.shield_regen_timer = 0
         
         # 冰霜新星：周期性范围冻结
         if getattr(self.player, "has_frost", False):
