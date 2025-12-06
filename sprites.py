@@ -8,14 +8,25 @@ from systems import arsenal_save_data, create_weapon, WeaponSystem
 # ==============================================================================
 #   特效与辅助实体
 # ==============================================================================
+# 【性能优化】粒子系统计数器
+_particle_count = 0
+MAX_PARTICLES = 300  # 最大粒子数量限制
+
 class Particle(pygame.sprite.Sprite):
     def __init__(self, pos, color, mode="spark"):
+        global _particle_count
+        # 【性能优化】超过限制时随机丢弃部分粒子
+        if _particle_count >= MAX_PARTICLES:
+            if random.random() < 0.7:  # 70%概率丢弃
+                return
+        
         super().__init__()
         all_sprites.add(self)
+        _particle_count += 1
         self.mode = mode
         self.color = color
         # allow optional parameters for size/speed/life
-        self.life = random.randint(20, 40)
+        self.life = random.randint(15, 30)  # 减少生命周期
         self.size = 4
         self.vx = 0
         self.vy = 0
@@ -73,7 +84,16 @@ class Particle(pygame.sprite.Sprite):
         if self.life <= 0:
             self.kill()
             return
-            
+        self._update_visuals()
+    
+    def kill(self):
+        """【性能优化】覆盖kill方法以减少粒子计数"""
+        global _particle_count
+        _particle_count = max(0, _particle_count - 1)
+        super().kill()
+    
+    def _update_visuals(self):
+        """【性能优化】将视觉更新分离到单独方法"""
         if self.mode == "shockwave":
             self.radius += 3
             width = int((self.life / 40) * 5)
@@ -8801,6 +8821,19 @@ class Player(pygame.sprite.Sprite):
         self.striker_decay_delay = 90  # 约1.5秒无命中后开始衰减
         self.striker_decay_rate = 0.6  # 衰减速度（每帧）
         
+        # 【新增】游戏统计数据
+        self.stats = {
+            'kills': 0,              # 总击杀数
+            'damage_dealt': 0,       # 总造成伤害
+            'shots_fired': 0,        # 发射子弹数
+            'hits': 0,               # 命中次数
+            'crits': 0,              # 暴击次数
+            'time_played': 0,        # 游戏时间（帧数）
+            'max_combo': 0,          # 最高连击
+            'current_combo': 0,      # 当前连击
+            'combo_timer': 0,        # 连击计时器（180帧=3秒内需再次击杀）
+        }
+        
         # 【虚空幻影】相位漂移状态
         self.phantom_phase = 0
         self.max_phantom_phase = 100
@@ -8960,6 +8993,8 @@ class Player(pygame.sprite.Sprite):
             self.last_shot = now
             self._fire_main_gun()
             sound_mgr.play("shoot")
+            # 【统计】记录射击次数
+            self.stats['shots_fired'] += 1
             
         # 【改动】副武器现在由僚机使用，玩家只使用主武器
         # 副武器逻辑已转移到 wingman.py 中的 Wingman 类

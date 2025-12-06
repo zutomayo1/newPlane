@@ -2558,6 +2558,15 @@ class UpgradeManager:
         # 播放协同触发音效
         sound_mgr.play("achievement")
         
+        # 【新】添加协同combo提示
+        try:
+            import main
+            if hasattr(main, 'synergy_combo_hints'):
+                hint_text = f"💫 协同激活: {synergy_data['name']}"
+                main.synergy_combo_hints.append((hint_text, 240, synergy_data.get('visual', {}).get('color', (255, 200, 0))))
+        except Exception:
+            pass
+        
         # 应用协同效果
         if self._player_ref:
             effect = synergy_data["effect"]
