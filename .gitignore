@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# 调试文件
+debug*.py
+debug*.log
+console_output.txt
+result.txt
+
+# 测试文件
+test_*.py
+diagnose_*.py
+verify_*.py
+check_*.py
+
+# 临时和备份文件
+*.backup
+*_backup.py
+*.bak
+*.tmp
+*.swp
+*~
+
+# 更新脚本
+update_*.py
+fix_*.py
+find_*.py
+quick_test.py
+
+# 文档和报告(开发用)
+*_SUMMARY.md
+*_REPORT.md
+*_GUIDE.md
+*_SYSTEM.md
+*_DESIGN.md
+*_QUICKREF.md
+*_ANALYSIS.md
+*_FIX.md
+*_CHECK.md
+*_COMPLETED.md
+*_ENHANCEMENT.md
+*_IMPROVEMENT.md
+*_NOTIFICATION.md
+
+# 调试图片
+debug_*/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 游戏数据(可选,根据需要调整)
+# achievements_test.json
