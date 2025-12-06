@@ -1676,8 +1676,10 @@ class Enemy(pygame.sprite.Sprite):
         if self.animation_time % 5 == 0:
             self._update_animation()
         
-        # 边界检查
-        if self.rect.top > HEIGHT:
+        # 边界检查：飞出屏幕则删除（传统飞机大战风格）
+        # 但给左右和下方一些缓冲空间
+        if (self.rect.right < -50 or self.rect.left > WIDTH + 50 or 
+            self.rect.top > HEIGHT + 50):
             self.kill()
     
     def _execute_ai(self):

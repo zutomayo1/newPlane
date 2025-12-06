@@ -11,6 +11,7 @@ from sprites import *
 from customization import customization_manager, PAINT_THEMES, BULLET_THEMES, EnhancedTrailEffect
 from enemies import enemy_factory, init_enemy_system
 from roguelite import ItemManager
+from room_system import RoomManager, RoomType, RoomState
 
 # ==============================================================================
 #   全局初始化
@@ -93,6 +94,7 @@ boss = None
 from systems import BossManager
 boss_manager = BossManager()
 item_manager = None  # 物品掉落管理器
+room_manager = None  # 房间系统管理器
 
 # 数值
 score = 0
@@ -131,6 +133,12 @@ achievement_page = 0
 # 成就通知队列
 achievement_notifications = []  # [(achievement_obj, timer), ...]
 
+# 【新】协同提示队列
+synergy_notifications = []  # [(synergy_data, timer, triggered_time), ...]
+
+# 【新】协同combo提示队列
+synergy_combo_hints = []  # [(hint_text, timer, color), ...]
+
 # 图鉴
 gallery_page = 0
 gallery_tab = 0 # 0:All, 1-6:Rarity (1★-6★)
@@ -159,6 +167,10 @@ background_settings_selected = 0  # 当前选中的背景索引
 # 暂停菜单状态
 pause_menu_selected = 0  # 0: 继续, 1: 重新开始, 2: 退出战斗
 
+# 房间系统状态
+show_full_map = False  # 是否显示完整地图
+map_paused = False  # 标记是否是M键地图暂停
+
 # ==============================================================================
 # 主菜单选择
 main_menu_selected = 0  # 用于键盘导航
@@ -184,7 +196,13 @@ frozen_screen = None  # 升级时冻结的游戏画面
 #   Boss挑战模式相关全局变量
 # ==============================================================================
 # ===============================================================================
-#   Boss挑战模式相关全局变量
+#   游戏模式相关全局变量
+# ===============================================================================
+# 游戏模式: "normal" = 普通模式（波次敌人）, "roguelike" = 房间模式
+game_mode = "normal"  
+mode_select_selected = 0  # 模式选择界面的键盘选中索引 (0=普通, 1=房间, 2=Boss挑战)
+
+# Boss挑战模式相关全局变量
 # ===============================================================================
 boss_challenge_selected = 0
 boss_challenge_order = []
@@ -3283,7 +3301,7 @@ def draw_bullet_preview(surface, theme, x, y, size=60):
         pygame.draw.circle(surface, (100, 100, 100), (x + size//2, y + size//2), size//4)
 
 def reset_game():
-    global player, boss, score, item_manager
+    global player, boss, score, item_manager, room_manager
     global global_time_freeze, is_paused
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave, tab_paused
@@ -3306,6 +3324,13 @@ def reset_game():
     
     # 初始化物品掉落系统
     item_manager = ItemManager()
+    
+    # 初始化房间系统（仅房间模式）
+    if game_mode == "roguelike":
+        room_manager = RoomManager()
+        room_manager.generate_map()
+    else:
+        room_manager = None
     
     score = 0
     boss = None
@@ -3352,7 +3377,6 @@ def get_menu_buttons():
     buttons = []
     data = [
         ("开始游戏", YELLOW, "select_plane"),
-        ("Boss挑战模式", CYAN, "boss_challenge"),
         ("武器库", ORANGE, "arsenal"),
         ("涂装", MAGENTA, "customization"),
         ("背景设置", (100, 200, 255), "background_settings"),
@@ -3405,6 +3429,124 @@ def draw_menu_ui():
         
         draw_cyber_rect(screen, r, border_col, border_width=border_w, fill=False)
         draw_text(screen, f"[ {txt} ]" if is_active else txt, 18, r.centerx, r.centery-8, WHITE if is_active else GRAY, glow=is_active)
+
+def draw_mode_select_ui():
+    """绘制游戏模式选择UI"""
+    # 标题
+    t = pygame.time.get_ticks()
+    scale = 1.0 + 0.05 * math.sin(t * 0.003)
+    draw_text(screen, "选择游戏模式", int(54 * scale), WIDTH//2, 80, CYAN, glow=True)
+    
+    mx, my = pygame.mouse.get_pos()
+    
+    # 三个模式卡片
+    card_width = 380
+    card_height = 480
+    gap = 40
+    start_x = (WIDTH - (card_width * 3 + gap * 2)) // 2
+    card_y = 180
+    
+    modes = [
+        {
+            "id": "normal",
+            "name": "普通模式",
+            "title_color": YELLOW,
+            "icon": "⚔",
+            "features": [
+                "经典波次战斗",
+                "无尽敌人来袭", 
+                "分数决定强度",
+                "传统射击体验",
+                "适合新手入门"
+            ],
+            "difficulty": "★★☆☆☆"
+        },
+        {
+            "id": "roguelike",
+            "name": "房间模式",
+            "title_color": MAGENTA,
+            "icon": "🗺",
+            "features": [
+                "Roguelike房间",
+                "地图随机生成",
+                "策略路线选择",
+                "房间奖励系统",
+                "高难度挑战"
+            ],
+            "difficulty": "★★★★☆"
+        },
+        {
+            "id": "boss_challenge",
+            "name": "Boss挑战",
+            "title_color": CYAN,
+            "icon": "👑",
+            "features": [
+                "连续Boss战斗",
+                "自定义Boss顺序",
+                "极限生存考验",
+                "测试战斗技巧",
+                "终极挑战模式"
+            ],
+            "difficulty": "★★★★★"
+        }
+    ]
+    
+    for i, mode in enumerate(modes):
+        card_x = start_x + i * (card_width + gap)
+        card_rect = pygame.Rect(card_x, card_y, card_width, card_height)
+        
+        # 检测悬停和键盘选中
+        is_hover = card_rect.collidepoint(mx, my)
+        is_keyboard_selected = (i == mode_select_selected)
+        is_current_mode = False  # 不显示"当前模式"标记，避免默认高亮
+        
+        # 卡片背景
+        if is_hover or is_keyboard_selected:
+            bg_color = (35, 45, 55)
+            border_color = mode["title_color"]
+            border_width = 3
+        else:
+            bg_color = (25, 30, 40)
+            # 默认状态下也使用各自的主题色作为边框
+            border_color = mode["title_color"]
+            border_width = 2
+        
+        draw_cyber_rect(screen, card_rect, bg_color, alpha=230, fill=True)
+        draw_cyber_rect(screen, card_rect, border_color, border_width=border_width, fill=False)
+        
+        # 图标
+        icon_y = card_y + 50
+        draw_text(screen, mode["icon"], 70, card_rect.centerx, icon_y, mode["title_color"])
+        
+        # 模式名称 (选中时发光)
+        name_y = icon_y + 80
+        draw_text(screen, mode["name"], 32, card_rect.centerx, name_y, mode["title_color"], glow=(is_hover or is_keyboard_selected))
+        
+        # 难度
+        difficulty_y = name_y + 45
+        draw_text(screen, f"难度: {mode['difficulty']}", 18, card_rect.centerx, difficulty_y, GRAY)
+        
+        # 特性列表
+        features_start_y = difficulty_y + 45
+        for j, feature in enumerate(mode["features"]):
+            feature_y = features_start_y + j * 32
+            draw_text(screen, f"• {feature}", 18, card_rect.centerx, feature_y, WHITE)
+        
+        # 选中标记（仅鼠标悬停时显示提示）
+        if is_hover:
+            hint_y = card_y + card_height - 50
+            pulse = int(150 + 105 * abs(math.sin(t / 300)))
+            draw_text(screen, "点击选择", 24, card_rect.centerx, hint_y, (*WHITE[:3], pulse))
+    
+    # 操作提示
+    draw_text(screen, "← → 切换模式  |  Enter 确认  |  ESC 返回", 18, WIDTH//2, HEIGHT - 110, GRAY)
+    
+    # 返回按钮
+    back_btn_rect = pygame.Rect(WIDTH//2 - 100, HEIGHT - 60, 200, 50)
+    is_back_hover = back_btn_rect.collidepoint(mx, my)
+    draw_cyber_rect(screen, back_btn_rect, (50, 20, 20) if is_back_hover else (30, 30, 40), alpha=200, fill=True)
+    draw_cyber_rect(screen, back_btn_rect, RED if is_back_hover else GRAY, border_width=2, fill=False)
+    draw_text(screen, "返回主菜单 [ESC]", 20, back_btn_rect.centerx, back_btn_rect.centery, WHITE if is_back_hover else GRAY)
 
 def draw_settings_ui():
     """绘制系统设置界面"""
@@ -5571,6 +5713,65 @@ def draw_achievement_notifications():
     # 移除已过期的通知
     achievement_notifications[:] = [(a, t) for a, t in achievement_notifications if t > 0]
 
+def draw_synergy_notifications():
+    """【新】绘制协同触发通知 - 屏幕中心爆发式提示"""
+    global synergy_notifications
+    
+    for i, (synergy_data, timer, _) in enumerate(synergy_notifications[:2]):  # 最多显示2个
+        total_time = 150.0  # 2.5秒
+        progress = (total_time - timer) / total_time  # 0 -> 1
+        
+        # 三阶段动画：爆发(30帧) + 停留(90帧) + 淡出(30帧)
+        if timer > 120:  # 爆发阶段
+            scale = 0.3 + progress * 7.0  # 快速放大
+            alpha = int(255 * min(1, progress * 10))
+        elif timer > 30:  # 停留阶段
+            scale = 1.0
+            alpha = 255
+        else:  # 淡出阶段
+            scale = 1.0 + (1 - timer / 30.0) * 0.2  # 轻微放大
+            alpha = int(255 * (timer / 30.0))
+        
+        # 位置 - 屏幕中心偏上，多个协同错开显示
+        y_offset = HEIGHT // 3 + i * 80
+        center_x = WIDTH // 2
+        center_y = y_offset
+        
+        # 背景光晕效果
+        if timer > 120:
+            glow_radius = int(150 * progress * 3)
+            glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+            glow_color = synergy_data.get('visual', {}).get('color', (255, 200, 0))
+            pygame.draw.circle(glow_surf, (*glow_color, min(80, int(alpha * 0.3))), 
+                             (glow_radius, glow_radius), glow_radius)
+            screen.blit(glow_surf, (center_x - glow_radius, center_y - glow_radius))
+        
+        # 协同名称 - 大字
+        name_size = int(32 * scale)
+        name_color = synergy_data.get('visual', {}).get('color', (255, 200, 0))
+        draw_text(screen, synergy_data['name'], name_size, center_x, center_y - 20, 
+                 (*name_color, alpha), glow=True)
+        
+        # 协同描述 - 小字
+        desc_size = int(16 * min(1, scale))
+        draw_text(screen, synergy_data.get('desc', ''), desc_size, center_x, center_y + 25, 
+                 (255, 255, 255, alpha))
+        
+        # 装饰粒子效果
+        if timer > 120 and random.random() < 0.3:
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(50, 150)
+            px = center_x + math.cos(angle) * dist
+            py = center_y + math.sin(angle) * dist
+            Particle((int(px), int(py)), name_color)
+        
+        # 递减计时器
+        idx = synergy_notifications.index((synergy_data, timer, _))
+        synergy_notifications[idx] = (synergy_data, timer - 1, _)
+    
+    # 移除已过期的通知
+    synergy_notifications[:] = [(s, t, time) for s, t, time in synergy_notifications if t > 0]
+
 def draw_achievements_ui():
     """绘制成就菜单"""
     global player, achievement_page
@@ -6829,6 +7030,110 @@ def draw_warning_indicator():
     pygame.draw.line(screen, border_color, (0, 0), (0, HEIGHT), border_width)  # 左
     pygame.draw.line(screen, border_color, (WIDTH-border_width, 0), (WIDTH-border_width, HEIGHT), border_width)  # 右
 
+def draw_game_stats():
+    """【新】绘制游戏内实时统计面板（右上角小面板）"""
+    if player is None or not hasattr(player, 'stats'):
+        return
+    
+    # 面板位置和大小
+    panel_w, panel_h = 200, 160
+    panel_x = WIDTH - panel_w - 10
+    panel_y = 120  # 在得分和时间面板下方
+    
+    # 半透明背景（更透明）
+    panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+    pygame.draw.rect(panel_surf, (10, 15, 25, 160), (0, 0, panel_w, panel_h), border_radius=8)
+    screen.blit(panel_surf, (panel_x, panel_y))
+    
+    # 边框
+    panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
+    pygame.draw.rect(screen, (0, 150, 200), panel_rect, 2, border_radius=8)
+    
+    # 标题
+    draw_text(screen, "战况统计", 16, panel_x + panel_w//2, panel_y + 8, CYAN, glow=True)
+    
+    # 统计数据
+    stats = player.stats
+    y_offset = panel_y + 32
+    line_height = 18
+    
+    # 击杀数
+    kills = stats.get('kills', 0)
+    draw_text(screen, f"击杀: {kills}", 13, panel_x + 10, y_offset, WHITE, align="left")
+    y_offset += line_height
+    
+    # 命中率
+    shots = stats.get('shots_fired', 0)
+    hits = stats.get('hits', 0)
+    accuracy = (hits / shots * 100) if shots > 0 else 0
+    acc_color = LIME if accuracy >= 70 else (YELLOW if accuracy >= 40 else GRAY)
+    draw_text(screen, f"命中: {accuracy:.1f}%", 13, panel_x + 10, y_offset, acc_color, align="left")
+    y_offset += line_height
+    
+    # 暴击率
+    crits = stats.get('crits', 0)
+    crit_rate = (crits / hits * 100) if hits > 0 else 0
+    crit_color = RED if crit_rate >= 30 else (ORANGE if crit_rate >= 15 else GRAY)
+    draw_text(screen, f"暴击: {crit_rate:.1f}%", 13, panel_x + 10, y_offset, crit_color, align="left")
+    y_offset += line_height
+    
+    # 当前连击
+    combo = stats.get('current_combo', 0)
+    max_combo = stats.get('max_combo', 0)
+    if combo > 0:
+        combo_color = (255, 100 + int(combo * 5), 100) if combo >= 10 else YELLOW
+        draw_text(screen, f"连击: {combo}x", 13, panel_x + 10, y_offset, combo_color, align="left", glow=(combo >= 10))
+    else:
+        draw_text(screen, f"最高: {max_combo}x", 13, panel_x + 10, y_offset, GRAY, align="left")
+    y_offset += line_height
+    
+    # DPS（基于最近的伤害）
+    if stats.get('time_played', 0) > 0:
+        time_sec = stats['time_played'] / 60  # 转换为秒
+        dps = stats.get('damage_dealt', 0) / max(1, time_sec)
+        draw_text(screen, f"DPS: {int(dps)}", 13, panel_x + 10, y_offset, ORANGE, align="left")
+    else:
+        draw_text(screen, f"DPS: 0", 13, panel_x + 10, y_offset, GRAY, align="left")
+    y_offset += line_height
+    
+    # 存活时间
+    time_sec = stats.get('time_played', 0) / 60
+    minutes = int(time_sec // 60)
+    seconds = int(time_sec % 60)
+    draw_text(screen, f"时间: {minutes:02d}:{seconds:02d}", 13, panel_x + 10, y_offset, CYAN, align="left")
+    
+    # 提示文字
+    draw_text(screen, "实时统计", 10, panel_x + panel_w//2, panel_y + panel_h - 12, (150, 150, 150))
+
+def draw_synergy_combo_hints():
+    """【新】绘制协同combo提示"""
+    global synergy_combo_hints
+    
+    for i, (text, timer, color) in enumerate(synergy_combo_hints[:3]):
+        alpha = min(255, int(255 * (timer / 240.0)))
+        y_pos = 250 + i * 40
+        
+        # 背景框
+        text_surf = pygame.font.SysFont("SimHei", 16).render(text, True, color)
+        text_rect = text_surf.get_rect(center=(WIDTH // 2, y_pos))
+        
+        bg_rect = text_rect.inflate(30, 20)
+        bg_surf = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(bg_surf, (20, 30, 40, min(200, alpha)), (0, 0, bg_rect.width, bg_rect.height), border_radius=8)
+        pygame.draw.rect(bg_surf, (*color, alpha), (0, 0, bg_rect.width, bg_rect.height), 2, border_radius=8)
+        screen.blit(bg_surf, bg_rect.topleft)
+        
+        # 文字
+        text_surf.set_alpha(alpha)
+        screen.blit(text_surf, text_rect)
+        
+        # 更新计时器
+        idx = synergy_combo_hints.index((text, timer, color))
+        synergy_combo_hints[idx] = (text, timer - 1, color)
+    
+    # 移除过期提示
+    synergy_combo_hints[:] = [(t, tm, c) for t, tm, c in synergy_combo_hints if tm > 0]
+
 def draw_top_hud():
     """绘制四角布局HUD: 顶左(倾斜条+数值) + 顶右(积分/时间) + 底左(主炮/飞机/核心) + 底右(武器/大招) + 底部(经验条)"""
     if player is None:
@@ -7994,7 +8299,9 @@ def draw_player_stats_panel():
     draw_text(screen, f"{shield_ratio*100:.0f}%", 13, left_x + 210, y_offset + 24, WHITE, glow=True)
     
     # 底部属性组 - 紧凑卡片式（扩展到8个属性）
-    stats_y = y_offset + 70
+    # 确保不会超出面板底部 - 限制最大Y位置
+    max_bottom_y = panel_y + panel_h - 30  # 面板底部留30像素边距
+    stats_y = min(y_offset + 55, max_bottom_y - 200)  # 减少间距从70到55，确保至少200像素显示属性
     
     # 新增属性检测
     wingmen_count = len(getattr(player, 'wingmen', []))
@@ -8017,7 +8324,7 @@ def draw_player_stats_panel():
         row = i // 2
         
         card_x = left_x + col * 210
-        card_y = stats_y + row * 48
+        card_y = stats_y + row * 43  # 减少行高从48到43
         
         # 小卡片背景
         mini_card = pygame.Rect(card_x - 5, card_y - 5, 200, 44)
@@ -8793,7 +9100,42 @@ while True:
 
                 # 游戏内键盘：P 暂停 (在 game 中), ESC 在 game 中不做任何事
                 if game_state == "game" or game_state == "boss_challenge_play":
-                    if is_paused:
+                    # 房间选择UI输入处理（最高优先级）
+                    if room_manager and room_manager.show_completion_ui:
+                        if event.key == pygame.K_LEFT:
+                            room_manager.selected_next_room = max(0, room_manager.selected_next_room - 1)
+                            sound_mgr.play("select")
+                        elif event.key == pygame.K_RIGHT:
+                            room_manager.selected_next_room = min(len(room_manager.available_next_rooms) - 1, room_manager.selected_next_room + 1)
+                            sound_mgr.play("select")
+                        elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                            # 确认选择房间
+                            if room_manager.available_next_rooms:
+                                selected_room = room_manager.available_next_rooms[room_manager.selected_next_room]
+                                room_manager.enter_room(selected_room.room_id)
+                                room_manager.show_completion_ui = False
+                                room_manager.selected_next_room = 0
+                                room_manager.available_next_rooms = []
+                                # 恢复游戏状态
+                                is_paused = False
+                                frozen_screen = None
+                                sound_mgr.play("levelup")
+                    # M键地图切换（仅房间模式，优先处理，无论是否暂停）
+                    elif event.key == pygame.K_m and room_manager and game_mode == "roguelike":
+                        show_full_map = not show_full_map
+                        if show_full_map:
+                            # 打开地图时暂停游戏并冻结画面
+                            map_paused = True
+                            is_paused = True
+                            if frozen_screen is None:
+                                frozen_screen = screen.copy()
+                        else:
+                            # 关闭地图时恢复游戏
+                            map_paused = False
+                            is_paused = False
+                            frozen_screen = None
+                        sound_mgr.play("select")
+                    elif is_paused:
                         if event.key == pygame.K_UP:
                             pause_menu_selected = (pause_menu_selected - 1) % 3
                             sound_mgr.play("select")
@@ -8838,6 +9180,32 @@ while True:
                                         m.hp -= 200
                                         Particle(m.rect.center, CYAN)
 
+                # 模式选择界面
+                elif game_state == "mode_select":
+                    if event.key == pygame.K_ESCAPE:
+                        game_state = "menu"
+                        sound_mgr.play("select")
+                    elif event.key == pygame.K_LEFT:
+                        mode_select_selected = (mode_select_selected - 1) % 3
+                        sound_mgr.play("select")
+                    elif event.key == pygame.K_RIGHT:
+                        mode_select_selected = (mode_select_selected + 1) % 3
+                        sound_mgr.play("select")
+                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        modes = ["normal", "roguelike", "boss_challenge"]
+                        selected_mode = modes[mode_select_selected]
+                        sound_mgr.play("select")
+                        if selected_mode == "boss_challenge":
+                            game_state = "boss_challenge"
+                            boss_challenge_selected = 0
+                            boss_challenge_order = list(BOSS_DB.keys())
+                            log_info(f"进入Boss挑战模式")
+                        else:
+                            game_mode = selected_mode
+                            game_state = "select_plane"
+                            current_plane_idx = 0
+                            log_info(f"游戏模式选择: {selected_mode}")
+                
                 # 主菜单导航：上下键 + Enter 确认
                 elif game_state == "menu":
                     if event.key == pygame.K_UP:
@@ -8853,8 +9221,7 @@ while True:
                                 if player and hasattr(player, 'achievement_manager'):
                                     player.achievement_manager.save_to_file()
                                 pygame.quit(); sys.exit()
-                            elif act == "select_plane": game_state = "select_plane"; current_plane_idx = 0
-                            elif act == "boss_challenge": game_state = "boss_challenge"; boss_challenge_selected = 0; boss_challenge_order = list(BOSS_DB.keys())
+                            elif act == "select_plane": game_state = "mode_select"
                             elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization", "background_settings", "settings"]:
                                 game_state = act
                                 if act == "gallery": gallery_page = 0; gallery_tab = 0
@@ -8919,7 +9286,43 @@ while True:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 print(f"鼠标点击事件，当前状态: {game_state}, 位置: ({mx}, {my})")
                 
-                if game_state == "menu":
+                # 模式选择界面点击
+                if game_state == "mode_select":
+                    card_width = 380
+                    card_height = 480
+                    gap = 40
+                    start_x = (WIDTH - (card_width * 3 + gap * 2)) // 2
+                    card_y = 180
+                    
+                    # 检测模式卡片点击
+                    modes = ["normal", "roguelike", "boss_challenge"]
+                    for i, mode_id in enumerate(modes):
+                        card_x = start_x + i * (card_width + gap)
+                        card_rect = pygame.Rect(card_x, card_y, card_width, card_height)
+                        if card_rect.collidepoint(mx, my):
+                            mode_select_selected = i  # 更新键盘选中索引
+                            sound_mgr.play("select")
+                            if mode_id == "boss_challenge":
+                                # Boss挑战模式：进入Boss选择界面
+                                game_state = "boss_challenge"
+                                boss_challenge_selected = 0
+                                boss_challenge_order = list(BOSS_DB.keys())
+                                log_info(f"进入Boss挑战模式")
+                            else:
+                                # 普通模式和房间模式：选择飞机
+                                game_mode = mode_id
+                                game_state = "select_plane"
+                                current_plane_idx = 0
+                                log_info(f"游戏模式选择: {mode_id}")
+                            break
+                    
+                    # 返回按钮
+                    back_btn_rect = pygame.Rect(WIDTH//2 - 100, HEIGHT - 60, 200, 50)
+                    if back_btn_rect.collidepoint(mx, my):
+                        game_state = "menu"
+                        sound_mgr.play("select")
+                
+                elif game_state == "menu":
                     buttons = get_menu_buttons()
                     for idx, (r, txt, col, act) in enumerate(buttons):
                         if r.collidepoint(mx, my):
@@ -8931,13 +9334,7 @@ while True:
                                     player.achievement_manager.save_to_file()
                                 pygame.quit(); sys.exit()
                             elif act == "select_plane":
-                                game_state = "select_plane"
-                                current_plane_idx = 0
-                                log_info(f"Game state changed to: {game_state}")
-                            elif act == "boss_challenge":
-                                game_state = "boss_challenge"
-                                boss_challenge_selected = 0
-                                boss_challenge_order = list(BOSS_DB.keys())
+                                game_state = "mode_select"  # 先选择模式
                                 log_info(f"Game state changed to: {game_state}")
                             elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization", "background_settings", "settings"]: 
                                 game_state = act
@@ -9323,7 +9720,30 @@ while True:
                 
                 # --- 游戏中的点击逻辑 (彻底修复输入冲突) ---
                 elif game_state == "game" or game_state == "boss_challenge_play":
-                    if levelup_paused and levelup_ready and upgrade_options:
+                    # 房间选择UI点击处理
+                    if room_manager and room_manager.show_completion_ui and room_manager.available_next_rooms:
+                        card_width = 280
+                        card_height = 350
+                        gap = 40
+                        total_width = len(room_manager.available_next_rooms) * card_width + (len(room_manager.available_next_rooms) - 1) * gap
+                        start_x = (WIDTH - total_width) // 2
+                        card_y = 220
+                        
+                        for i, room in enumerate(room_manager.available_next_rooms):
+                            card_x = start_x + i * (card_width + gap)
+                            card_rect = pygame.Rect(card_x, card_y, card_width, card_height)
+                            if card_rect.collidepoint(mx, my):
+                                # 选择房间
+                                room_manager.enter_room(room.room_id)
+                                room_manager.show_completion_ui = False
+                                room_manager.selected_next_room = 0
+                                room_manager.available_next_rooms = []
+                                # 恢复游戏状态
+                                is_paused = False
+                                frozen_screen = None
+                                sound_mgr.play("levelup")
+                                break
+                    elif levelup_paused and levelup_ready and upgrade_options:
                         # Handle click on upgrade cards
                         sound_mgr.play("select")
                         card_width = 280
@@ -9406,6 +9826,8 @@ while True:
 
         if game_state == "menu": 
             draw_menu_ui()
+        elif game_state == "mode_select":
+            draw_mode_select_ui()
         elif game_state == "select_plane": 
             draw_select_plane_ui()
             # drawing select plane page
@@ -9483,8 +9905,16 @@ while True:
         elif game_state == "game" or game_state == "boss_challenge_play":
             # drawing game view
             if is_paused:
+                # M键地图暂停：显示地图界面
+                if map_paused:
+                    # 显示冻结的游戏画面作为背景
+                    if frozen_screen:
+                        screen.blit(frozen_screen, (0, 0))
+                    # 显示地图
+                    if show_full_map and room_manager:
+                        safe_call_draw(lambda: room_manager.draw_fullmap(screen))
                 # TAB 发起的暂停使用专门的处理：按住 TAB 显示属性面板，释放恢复
-                if tab_paused:
+                elif tab_paused:
                     keys = pygame.key.get_pressed()
                     if keys[pygame.K_TAB]:
                         # 如果存在冻结屏幕，用它作为背景
@@ -9544,6 +9974,12 @@ while True:
                     for eb in enemy_bullets:
                         eb.frozen = True
                     player.update()
+                    # 【统计】时间计数和连击衰减
+                    player.stats['time_played'] += 1
+                    if player.stats['combo_timer'] > 0:
+                        player.stats['combo_timer'] -= 1
+                        if player.stats['combo_timer'] == 0:
+                            player.stats['current_combo'] = 0
                     
                     # === 新卡牌系统：持续效果更新 ===
                     
@@ -10119,10 +10555,33 @@ while True:
                         
                         all_sprites.update()
                         
+                        # 【统计】时间计数和连击衰减
+                        player.stats['time_played'] += 1
+                        if player.stats['combo_timer'] > 0:
+                            player.stats['combo_timer'] -= 1
+                            if player.stats['combo_timer'] == 0:
+                                player.stats['current_combo'] = 0
+                        
                         # 更新物品掉落系统
                         if item_manager:
                             item_manager.update(player)
                             item_manager.update_buffs(player)
+                        
+                        # 更新房间系统（仅房间模式）
+                        if room_manager and game_mode == "roguelike":
+                            room_manager.update()
+                            
+                            # 生成房间敌人
+                            if not boss_challenge_active:  # Boss挑战模式不使用房间系统
+                                room_manager.spawn_room_enemies(enemy_factory, mobs, all_sprites)
+                            
+                            # 检测房间完成（如果完成，暂停游戏显示选择UI）
+                            if not boss_challenge_active:
+                                if room_manager.check_room_completion(mobs, boss):
+                                    # 房间完成，暂停游戏
+                                    is_paused = True
+                                    if frozen_screen is None:
+                                        frozen_screen = screen.copy()
                         
                         # 【剧毒蝰蛇】处理敌人的中毒效果
                         for enemy in mobs:
@@ -10220,8 +10679,9 @@ while True:
                             all_sprites.add(boss)
                             sound_mgr.play_music("funk")
                     
-                    if len(mobs) < (12 if not boss else 4):
-                        # ========== 全新敌人生成系统 v2.0 ==========
+                    # 敌人生成：普通模式和Boss挑战模式使用波次生成，房间模式由房间系统控制
+                    if (game_mode == "normal" or boss_challenge_active) and len(mobs) < (12 if not boss else 4):
+                        # ========== 全新敌人生成系统 v2.0 (仅Boss挑战模式) ==========
                         # 支持全部37种敌人，分6个阶段逐步解锁
                         
                         # 基础生成率：2.5% ~ 8%
@@ -10447,7 +10907,15 @@ while True:
                                             dmg = m.hp + 1000  # 确保击杀
                             
                             # 应用暴击
-                            if random.random() < crit_chance: dmg *= crit_mult
+                            is_crit = random.random() < crit_chance
+                            if is_crit:
+                                dmg *= crit_mult
+                                # 【统计】记录暴击
+                                player.stats['crits'] += 1
+                            
+                            # 【统计】记录命中和伤害
+                            player.stats['hits'] += 1
+                            player.stats['damage_dealt'] += int(dmg)
                             
                             # 应用伤害
                             m.hp -= dmg
@@ -10717,6 +11185,17 @@ while True:
                             else: b.piercing -= 1
                             if m.hp <= 0:
                                 score += 100 if m.is_elite else 20
+                                # 【统计】记录击杀和更新连击
+                                player.stats['kills'] += 1
+                                player.stats['current_combo'] += 1
+                                player.stats['combo_timer'] = 180  # 3秒连击窗口
+                                if player.stats['current_combo'] > player.stats['max_combo']:
+                                    player.stats['max_combo'] = player.stats['current_combo']
+                                # 【音效增强】连击音效反馈
+                                if player.stats['current_combo'] >= 10:
+                                    sound_mgr.play("powerup")
+                                elif player.stats['current_combo'] >= 5:
+                                    sound_mgr.play("select")
                                 # 击杀特效（简化版）
                                 create_explosion(m.rect.center, CYAN, 5)  # 优化粒子数
                                 # 仅在精英敌人死亡时显示额外粒子
@@ -11472,15 +11951,30 @@ while True:
                 # 只在非升级UI时显示HUD
                 if not levelup_ready:
                     safe_call_draw(draw_top_hud)
+                    # 【新】显示实时统计面板
+                    safe_call_draw(draw_game_stats)
                     # Boss挑战模式进度显示
                     if boss_challenge_active and (game_state == "game" or game_state == "boss_challenge_play"):
                         challenge_font = pygame.font.SysFont("SimHei", 28)
                         progress_text = challenge_font.render(f"挑战进度: {boss_challenge_current}/{len(boss_challenge_order)}", True, CYAN)
                         screen.blit(progress_text, (20, HEIGHT - 80))
                     safe_call_draw(draw_warning_indicator)  # BOSS警告闪烁边框
+                    # 【新】房间系统小地图（仅房间模式显示）
+                    if room_manager and game_mode == "roguelike" and not boss_challenge_active:
+                        safe_call_draw(lambda: room_manager.draw_minimap(screen, 10, 200, 200, 160))
                 
                 # 成就通知始终显示
                 safe_call_draw(draw_achievement_notifications)
+                
+                # 【新】协同触发通知 - 屏幕中心爆发提示
+                safe_call_draw(draw_synergy_notifications)
+                
+                # 【新】协同combo提示
+                safe_call_draw(draw_synergy_combo_hints)
+                
+                # 【新】房间选择UI（仅房间模式显示）
+                if room_manager and game_mode == "roguelike" and room_manager.show_completion_ui:
+                    safe_call_draw(lambda: room_manager.draw_room_selection_ui(screen))
                 
                 # 显示FPS（中间上方）- 根据设置决定是否显示
                 if game_settings.get("show_fps", True):
