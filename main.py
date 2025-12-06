@@ -134,6 +134,7 @@ achievement_notifications = []  # [(achievement_obj, timer), ...]
 # 图鉴
 gallery_page = 0
 gallery_tab = 0 # 0:All, 1-6:Rarity (1★-6★)
+gallery_hover_card = None  # 悬停的卡牌ID，用于显示详细Tooltip
 
 # 档案
 codex_tab = 0 # 0:Plane, 1:Boss, 2:Enemy
@@ -4760,7 +4761,8 @@ def draw_gallery_ui():
             if "category" in card_data:
                 category_names = {
                     "attack": "攻击", "defense": "防御", 
-                    "special": "特殊", "system": "系统"
+                    "special": "特殊", "system": "系统",
+                    "control": "控制", "summon": "召唤", "utility": "辅助"
                 }
                 cat_cn = category_names.get(card_data["category"], card_data["category"])
                 info_parts.append(cat_cn)
@@ -4916,6 +4918,8 @@ def draw_gallery_ui():
                 for k, line in enumerate(lines):
                     draw_text(screen, line, 16, x+15, y+95+k*22, (200, 200, 220), align="left")
             
+            # 【修改】不再自动悬停，由点击触发
+            
             # 显示升级信息（基础卡）
             if item["type"] == "base" and "upgrades" in card_data and card_data["upgrades"]:
                 upgrade_info = f"可升级至Lv.{len(card_data['upgrades']) + 1}"
@@ -4929,6 +4933,237 @@ def draw_gallery_ui():
                     arch = arch_names.get(trigger["archetype"], trigger["archetype"])
                     trigger_text = f"需要{trigger['count']}张{arch}卡"
                     draw_text(screen, trigger_text, 13, x+15, y+card_h-25, (255, 220, 100), align="left")
+
+    # 【新】Tooltip详细信息面板 - 大字体优化版
+    if gallery_hover_card:
+        # 预先导入，避免在循环中重复导入
+        from roguelite import BASE_CARDS, MODIFIER_CARDS
+        
+        tooltip_h = 420  # 更高以容纳大字体
+        tooltip_rect = pygame.Rect(20, HEIGHT - tooltip_h - 60, WIDTH - 40, tooltip_h)
+        # 半透明背景
+        tooltip_surf = pygame.Surface((tooltip_rect.width, tooltip_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(tooltip_surf, (5, 10, 20, 250), (0, 0, tooltip_rect.width, tooltip_rect.height), border_radius=15)
+        screen.blit(tooltip_surf, (tooltip_rect.x, tooltip_rect.y))
+        
+        # 边框颜色根据稀有度 - 加粗
+        rarity_idx = gallery_hover_card['rarity']
+        # RARITY_COLORS: [WHITE(0全部), 1星, 2星, 3星, 4星, 5星, 6星]
+        # rarity 值 1-6 直接对应索引 1-6
+        if 0 <= rarity_idx < len(RARITY_COLORS):
+            rarity_color = RARITY_COLORS[rarity_idx]
+        else:
+            rarity_color = CYAN
+        pygame.draw.rect(screen, rarity_color, tooltip_rect, 4, border_radius=15)
+        
+        # 标题区域 - 带背景条
+        title_bg = pygame.Rect(tooltip_rect.x + 10, tooltip_rect.y + 10, tooltip_rect.width - 20, 50)
+        pygame.draw.rect(screen, (*rarity_color[:3], 60), title_bg, border_radius=10)
+        pygame.draw.rect(screen, rarity_color, title_bg, 2, border_radius=10)
+        
+        # 标题行 - 更大更醒目
+        title_y = tooltip_rect.y + 28
+        card_name = gallery_hover_card['name']
+        # RARITY_NAMES: ["全部", "1星普通", "2星稀有", "3星史诗", "4星传说", "5星神话", "6星至高"]
+        # rarity 值 1-6 需要加 0（因为索引 0 是"全部"，索引 1-6 是 1-6 星）
+        # 实际上 rarity=1 应该用索引 1，所以直接用 rarity 值即可
+        rarity_idx = gallery_hover_card['rarity']
+        if 0 < rarity_idx < len(RARITY_NAMES):
+            card_rarity = RARITY_NAMES[rarity_idx]
+        else:
+            card_rarity = f"{rarity_idx}星"
+        card_type = {"base": "基础", "modifier": "参数", "synergy": "协同"}.get(gallery_hover_card['type'], "")
+        draw_text(screen, card_name, 28, tooltip_rect.centerx - 150, title_y, WHITE, glow=True, align="left")
+        draw_text(screen, f"[{card_rarity}]", 20, tooltip_rect.centerx + 80, title_y, rarity_color, align="left")
+        draw_text(screen, f"<{card_type}>", 18, tooltip_rect.centerx + 200, title_y, (180, 180, 200), align="left")
+        
+        # 完整描述 - 更大字体
+        desc = gallery_hover_card.get('desc', '')
+        desc_y = tooltip_rect.y + 75
+        desc_lines = [desc[k:k+70] for k in range(0, len(desc), 70)][:2]
+        for line in desc_lines:
+            draw_text(screen, line, 18, tooltip_rect.x + 25, desc_y, (230, 230, 250), align="left")
+            desc_y += 26
+        
+        # 分隔线
+        line_y = desc_y + 8
+        pygame.draw.line(screen, rarity_color, (tooltip_rect.x + 20, line_y), (tooltip_rect.right - 20, line_y), 2)
+        
+        # 三栏布局
+        col_width = (tooltip_rect.width - 80) // 3
+        left_x = tooltip_rect.x + 30
+        mid_x = left_x + col_width + 20
+        right_x = mid_x + col_width + 20
+        content_y = line_y + 15
+        
+        # === 左栏：基础属性 ===
+        if 'data' in gallery_hover_card:
+            card_data = gallery_hover_card['data']
+            
+            # 左栏标题
+            draw_text(screen, "▌基础属性", 19, left_x, content_y, CYAN, align="left", glow=True)
+            attr_y = content_y + 30
+            
+            # 显示所有属性 - 大字体清晰显示
+            effect = card_data.get('base_effect') or card_data.get('effect', {})
+            if isinstance(effect, dict):
+                attr_count = 0
+                for k, v in effect.items():
+                    if attr_y > tooltip_rect.y + tooltip_rect.height - 25:  # 防止溢出
+                        break
+                    cn_name = attr_names.get(k, k)
+                    if isinstance(v, bool):
+                        if v:
+                            draw_text(screen, f"✓ {cn_name}", 16, left_x, attr_y, (150, 255, 150), align="left")
+                            attr_y += 24
+                            attr_count += 1
+                    elif isinstance(v, (int, float)):
+                        if 'mult' in k or 'chance' in k:
+                            val_text = f"+{int((v-1)*100)}%" if v >= 1 else f"×{v:.1f}"
+                        else:
+                            val_text = f"+{v}"
+                        draw_text(screen, f"{cn_name}", 15, left_x, attr_y, (180, 180, 200), align="left")
+                        draw_text(screen, val_text, 16, left_x + 120, attr_y, (100, 220, 255), align="left", glow=True)
+                        attr_y += 24
+                        attr_count += 1
+                    elif isinstance(v, str):
+                        draw_text(screen, f"{cn_name}: {v}", 15, left_x, attr_y, (255, 220, 150), align="left")
+                        attr_y += 24
+                        attr_count += 1
+                
+                if attr_count == 0:
+                    draw_text(screen, "（无数值效果）", 15, left_x, attr_y, GRAY, align="left")
+            
+            # === 中栏：升级路径/触发条件 ===
+            if gallery_hover_card['type'] == 'base':
+                draw_text(screen, "▌升级路径", 19, mid_x, content_y, (255, 200, 100), align="left", glow=True)
+            elif gallery_hover_card['type'] == 'synergy':
+                draw_text(screen, "▌触发条件", 19, mid_x, content_y, (255, 150, 255), align="left", glow=True)
+            else:
+                draw_text(screen, "▌使用说明", 19, mid_x, content_y, (150, 200, 255), align="left", glow=True)
+            
+            upgrade_y = content_y + 30
+            
+            # 基础卡：显示升级路径
+            if gallery_hover_card['type'] == 'base' and 'upgrades' in card_data:
+                upgrades = card_data['upgrades']
+                for i, upgrade in enumerate(upgrades[:10]):  # 显示所有升级
+                    if upgrade_y > tooltip_rect.y + tooltip_rect.height - 25:
+                        break
+                    level = i + 2  # 从Lv.2开始
+                    upgrade_desc = upgrade.get('desc', '')
+                    
+                    # 等级标签 - 更大更醒目
+                    level_color = (80 + i * 25, 180, 255 - i * 15)
+                    draw_text(screen, f"Lv{level}", 15, mid_x, upgrade_y, level_color, align="left", glow=True)
+                    
+                    # 升级效果 - 大字体
+                    effect_text = upgrade_desc[:28]
+                    draw_text(screen, effect_text, 14, mid_x + 42, upgrade_y, (220, 230, 245), align="left")
+                    upgrade_y += 24
+            
+            # 协同卡：显示触发条件
+            elif gallery_hover_card['type'] == 'synergy' and 'trigger' in card_data:
+                trigger = card_data['trigger']
+                
+                # 流派要求
+                if 'archetype' in trigger:
+                    arch_names = {"barrage": "弹幕流", "sniper": "狙击流", "control": "控制流", "summon": "召唤流", "all": "全流派"}
+                    arch = arch_names.get(trigger['archetype'], trigger['archetype'])
+                    
+                    # 兼容 count 和 archetypes_count 两种格式
+                    if 'archetypes_count' in trigger:
+                        # 需要多个不同流派
+                        count = trigger['archetypes_count']
+                        draw_text(screen, f"需要拥有 {count} 个", 16, mid_x, upgrade_y, (200, 200, 220), align="left")
+                        upgrade_y += 24
+                        draw_text(screen, "不同流派的卡牌", 16, mid_x, upgrade_y, (255, 220, 100), align="left", glow=True)
+                        upgrade_y += 28
+                    elif 'count' in trigger:
+                        # 需要指定数量的某流派卡牌
+                        count = trigger['count']
+                        draw_text(screen, f"需要 {count} 张", 16, mid_x, upgrade_y, (200, 200, 220), align="left")
+                        draw_text(screen, arch, 17, mid_x + 90, upgrade_y, (255, 220, 100), align="left", glow=True)
+                        upgrade_y += 28
+                
+                # 特定卡牌要求
+                if 'cards' in trigger and trigger['cards']:
+                    draw_text(screen, "需要特定卡牌:", 15, mid_x, upgrade_y, (255, 180, 100), align="left")
+                    upgrade_y += 24
+                    for card_id in trigger['cards'][:6]:
+                        if upgrade_y > tooltip_rect.y + tooltip_rect.height - 25:
+                            break
+                        card_name = BASE_CARDS.get(card_id, {}).get('name', card_id)
+                        draw_text(screen, f"· {card_name}", 14, mid_x + 10, upgrade_y, (210, 210, 230), align="left")
+                        upgrade_y += 22
+                
+                # 修饰符要求
+                if 'modifiers' in trigger and trigger['modifiers']:
+                    draw_text(screen, "需要修饰符:", 15, mid_x, upgrade_y, (255, 180, 100), align="left")
+                    upgrade_y += 24
+                    for mod_id in trigger['modifiers'][:4]:
+                        if upgrade_y > tooltip_rect.y + tooltip_rect.height - 25:
+                            break
+                        mod_name = MODIFIER_CARDS.get(mod_id, {}).get('name', mod_id)
+                        draw_text(screen, f"· {mod_name}", 14, mid_x + 10, upgrade_y, (210, 210, 230), align="left")
+                        upgrade_y += 22
+            
+            # 参数卡：显示类型和效果说明
+            elif gallery_hover_card['type'] == 'modifier':
+                mod_type = card_data.get('type', '')
+                type_names = {"numeric": "数值型", "trait": "特性型"}
+                type_name = type_names.get(mod_type, mod_type)
+                draw_text(screen, f"类型: {type_name}", 16, mid_x, upgrade_y, (200, 220, 255), align="left")
+                upgrade_y += 28
+                
+                draw_text(screen, "可修饰基础卡牌", 15, mid_x, upgrade_y, (200, 200, 220), align="left")
+                upgrade_y += 24
+                draw_text(screen, "改变数值或添加特性", 14, mid_x, upgrade_y, GRAY, align="left")
+            
+            # === 右栏：流派与分类信息 ===
+            draw_text(screen, "▌卡牌信息", 19, right_x, content_y, (150, 255, 200), align="left", glow=True)
+            info_y = content_y + 30
+            
+            # 流派标签
+            if 'archetype' in card_data:
+                arch_names = {"barrage": "弹幕流", "sniper": "狙击流", "control": "控制流", "summon": "召唤流"}
+                arch_colors = {"barrage": (255, 100, 100), "sniper": (100, 200, 255), "control": (150, 100, 255), "summon": (100, 255, 150)}
+                arch = card_data['archetype']
+                arch_name = arch_names.get(arch, arch)
+                arch_color = arch_colors.get(arch, WHITE)
+                
+                draw_text(screen, "流派:", 15, right_x, info_y, (180, 180, 200), align="left")
+                draw_text(screen, arch_name, 18, right_x + 55, info_y, arch_color, align="left", glow=True)
+                info_y += 28
+            
+            # 类别标签
+            if 'category' in card_data:
+                cat_names = {
+                    "attack": "攻击", "defense": "防御", 
+                    "special": "特殊", "system": "系统",
+                    "control": "控制", "summon": "召唤", 
+                    "utility": "辅助", "support": "支援"
+                }
+                category = cat_names.get(card_data['category'], card_data['category'])
+                draw_text(screen, "类别:", 15, right_x, info_y, (180, 180, 200), align="left")
+                draw_text(screen, category, 18, right_x + 55, info_y, (255, 220, 100), align="left", glow=True)
+                info_y += 28
+            
+            # 视觉种子（用于生成独特图案）
+            if 'visual_seed' in card_data:
+                draw_text(screen, f"ID: #{card_data['visual_seed']}", 13, right_x, info_y, GRAY, align="left")
+                info_y += 24
+            
+            # 已拥有提示
+            if player and hasattr(player, 'upgrade_manager') and player.upgrade_manager:
+                card_id = gallery_hover_card.get('id')
+                if card_id in player.upgrade_manager.owned_cards:
+                    owned_card = player.upgrade_manager.owned_cards[card_id]
+                    level = owned_card.level if hasattr(owned_card, 'level') else 1
+                    info_y += 10
+                    draw_text(screen, "✓ 已拥有", 17, right_x, info_y, (100, 255, 100), align="left", glow=True)
+                    info_y += 26
+                    draw_text(screen, f"当前等级: Lv.{level}", 15, right_x, info_y, (150, 255, 150), align="left")
 
     back_btn = pygame.Rect(WIDTH//2 - 50, HEIGHT - 60, 100, 40)
     h = back_btn.collidepoint(mx, my)
@@ -8058,11 +8293,54 @@ def draw_levelup_ui():
     title_scale = 1.0 + 0.1 * abs(math.sin(t / 400))
     title_alpha = int(200 + 55 * abs(math.sin(t / 500)))
     title_color = (*CYBER_AMBER[:3], title_alpha)
-    draw_text(screen, "▂▃▅ 选择升级卡牌 ▅▃▂", int(48 * title_scale), WIDTH//2, 100, title_color, glow=True)
+    draw_text(screen, "▂▃▅ 选择升级卡牌 ▅▃▂", int(48 * title_scale), WIDTH//2, 70, title_color, glow=True)
     
     # 副标题
     subtitle_alpha = int(150 + 50 * abs(math.sin(t / 300)))
-    draw_text(screen, f"等级 {player.level} → {player.level + 1}", 20, WIDTH//2, 145, (*LIME[:3], subtitle_alpha))
+    draw_text(screen, f"等级 {player.level} → {player.level + 1}", 20, WIDTH//2, 120, (*LIME[:3], subtitle_alpha))
+    
+    # 【新】流派统计信息
+    if hasattr(player, 'upgrade_manager') and player.upgrade_manager:
+        archetype_counts = {"barrage": 0, "sniper": 0, "control": 0, "summon": 0}
+        for card_id, card in player.upgrade_manager.owned_cards.items():
+            if hasattr(card, 'archetype'):
+                arch = card.archetype
+                if arch in archetype_counts:
+                    archetype_counts[arch] += 1
+        
+        # 流派统计条
+        stats_y = 145
+        stats_bg = pygame.Rect(WIDTH // 2 - 350, stats_y, 700, 35)
+        pygame.draw.rect(screen, (20, 25, 35, 200), stats_bg, border_radius=10)
+        pygame.draw.rect(screen, CYAN, stats_bg, 2, border_radius=10)
+        
+        arch_colors = {
+            "barrage": (255, 100, 100),
+            "sniper": (100, 200, 255),
+            "control": (150, 100, 255),
+            "summon": (100, 255, 150)
+        }
+        arch_names = {
+            "barrage": "弹幕",
+            "sniper": "狙击",
+            "control": "控制",
+            "summon": "召唤"
+        }
+        
+        x_offset = stats_bg.x + 30
+        for arch, count in archetype_counts.items():
+            if count > 0:
+                color = arch_colors[arch]
+                name = arch_names[arch]
+                draw_text(screen, f"{name}×{count}", 16, x_offset, stats_bg.centery, color, glow=True)
+                x_offset += 130
+        
+        # 推荐提示
+        max_arch = max(archetype_counts, key=archetype_counts.get)
+        if archetype_counts[max_arch] >= 3:
+            recommend_y = stats_y + 40
+            rec_text = f"主流派: {arch_names[max_arch]}流 - 建议选择同流派卡牌获得协同效果"
+            draw_text(screen, rec_text, 14, WIDTH // 2, recommend_y, (255, 200, 100))
     
     # 3 个升级卡牌
     card_width = 300
@@ -8070,7 +8348,7 @@ def draw_levelup_ui():
     gap = 50
     total_width = 3 * card_width + 2 * gap
     start_x = (WIDTH - total_width) // 2
-    start_y = 190
+    start_y = 230  # 【调整】向下移动40像素为流派统计腾出空间
     
     try:
         from roguelite import BASE_CARDS, MODIFIER_CARDS
@@ -8375,6 +8653,14 @@ while True:
 
             # --- 键盘事件 ---
             if event.type == pygame.KEYDOWN:
+                # 【新】游戏结束时按R快速重开
+                if game_state == "gameover" and event.key == pygame.K_r:
+                    reset_game()
+                    game_state = "game"
+                    sound_mgr.play_music("battle")
+                    sound_mgr.play("select")
+                    continue
+                
                 # 菜单子页：ESC 返回主菜单
                 if event.key == pygame.K_ESCAPE and game_state in ["arsenal", "gallery", "codex", "leaderboard", "select_plane", "background_settings", "settings", "achievements", "customization"]:
                     game_state = "menu"
@@ -8844,13 +9130,67 @@ while True:
                     start_tab_x = (WIDTH - total_tab_width) // 2
                     
                     # 检测7个标签的点击
+                    tab_clicked = False
                     for i in range(7):
                         tab_x = start_tab_x + i * (tab_width + tab_gap)
                         tab_rect = pygame.Rect(tab_x, 80, tab_width, 40)
                         if tab_rect.collidepoint(mx, my):
                             gallery_tab = i  # 0=全部, 1=1星, 2=2星, 3=3星, 4=4星, 5=5星, 6=6星
                             gallery_page = 0
+                            gallery_hover_card = None  # 切换标签时清除选中
+                            tab_clicked = True
                             break
+                    
+                    # 【新】检测卡牌点击 - 点击卡牌显示/隐藏Tooltip
+                    if not tab_clicked:
+                        # 获取当前页的卡牌列表（复制draw_gallery_ui的逻辑）
+                        from roguelite import BASE_CARDS, MODIFIER_CARDS, SYNERGY_RULES
+                        all_cards = []
+                        for key, card in BASE_CARDS.items():
+                            all_cards.append({"id": key, "name": card["name"], "rarity": card["rarity"],
+                                            "desc": card.get("desc", ""), "type": "base", "data": card})
+                        for key, mod in MODIFIER_CARDS.items():
+                            all_cards.append({"id": key, "name": mod["name"], "rarity": mod["rarity"],
+                                            "desc": mod.get("desc", ""), "type": "modifier", "data": mod})
+                        for key, synergy in SYNERGY_RULES.items():
+                            all_cards.append({"id": key, "name": synergy["name"], "rarity": synergy["rarity"],
+                                            "desc": synergy.get("desc", ""), "type": "synergy", "data": synergy})
+                        
+                        # 按品质筛选（与draw_gallery_ui完全一致）
+                        if gallery_tab == 0:
+                            items = all_cards
+                        else:
+                            # gallery_tab 1-6 对应 rarity 1-6
+                            items = [c for c in all_cards if c["rarity"] == gallery_tab]
+                        
+                        # 分页（3列布局，每页6个）
+                        cols = 3
+                        card_w = 360
+                        card_h = 180
+                        gap = 30
+                        start_gx = (WIDTH - (cols * card_w + (cols - 1) * gap)) // 2
+                        start_y = 140
+                        
+                        items_per_page = 6
+                        start_idx = gallery_page * items_per_page
+                        end_idx = min(start_idx + items_per_page, len(items))
+                        
+                        # 检测卡牌点击
+                        for i in range(start_idx, end_idx):
+                            item = items[i]
+                            rel_i = i - start_idx
+                            row = rel_i // cols
+                            col = rel_i % cols
+                            x = start_gx + col * (card_w + gap)
+                            y = start_y + row * (card_h + gap)
+                            
+                            if pygame.Rect(x, y, card_w, card_h).collidepoint(mx, my):
+                                # 点击卡牌：如果已选中则取消，否则选中
+                                if gallery_hover_card and gallery_hover_card.get('id') == item['id']:
+                                    gallery_hover_card = None
+                                else:
+                                    gallery_hover_card = item
+                                break
                     
                     # 翻页按钮
                     if pygame.Rect(20, HEIGHT//2 - 25, 50, 50).collidepoint(mx, my) and gallery_page > 0: 
@@ -9097,6 +9437,11 @@ while True:
             # 文字动画
             draw_text(screen, "MISSION FAILED", 60, WIDTH/2, HEIGHT/2 - 50, RED, glow=True)
             draw_text(screen, "机体信号丢失...", 20, WIDTH/2, HEIGHT/2 + 20, WHITE)
+            
+            # 【新】快速重开提示
+            pulse = int(200 + 55 * abs(math.sin(pygame.time.get_ticks() / 400)))
+            draw_text(screen, "按 [R] 快速重开", 24, WIDTH/2, HEIGHT/2 + 80, (pulse, pulse, 100), glow=True)
+            draw_text(screen, "或等待进入排行榜...", 16, WIDTH/2, HEIGHT/2 + 120, GRAY)
 
             # 自动倒计时跳转
             game_over_timer += 1
@@ -9175,16 +9520,18 @@ while True:
 
                     mx, my = pygame.mouse.get_pos()
 
-                    menu_items = [(btn_resume, "继续行动"), (btn_reset, "重新开始"), (btn_menu, "退出战斗")]
-                    for i, (btn, txt) in enumerate(menu_items):
+                    menu_items = [(btn_resume, "继续行动", "[ESC]"), (btn_reset, "重新开始", "[R]"), (btn_menu, "退出战斗", "[Q]")]
+                    for i, (btn, txt, hotkey) in enumerate(menu_items):
                         h = btn.collidepoint(mx, my) or (i == pause_menu_selected)
                         draw_cyber_rect(screen, btn, (60, 60, 80) if h else (40, 40, 50), fill=True)
                         border_color = CYAN if i == pause_menu_selected else (WHITE if h else GRAY)
                         border_width = 3 if i == pause_menu_selected else 2
                         draw_cyber_rect(screen, btn, border_color, border_width=border_width, fill=False)
-                        draw_text(screen, txt, 24, btn.centerx, btn.centery - 12, WHITE if h else GRAY)
+                        draw_text(screen, txt, 24, btn.centerx - 40, btn.centery - 12, WHITE if h else GRAY)
+                        # 【新】快捷键提示
+                        draw_text(screen, hotkey, 16, btn.centerx + 70, btn.centery - 12, (150, 150, 150))
 
-                    draw_text(screen, "按 P/R 操作或使用方向键+Enter", 18, WIDTH // 2, HEIGHT - 50, GRAY)
+                    draw_text(screen, "按 P 继续 / 方向键+Enter 选择 / TAB 查看面板", 18, WIDTH // 2, HEIGHT - 50, GRAY)
 
             else:
                 # Auto Fire
