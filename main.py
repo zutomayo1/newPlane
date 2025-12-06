@@ -10,6 +10,7 @@ from systems import *
 from sprites import *
 from customization import customization_manager, PAINT_THEMES, BULLET_THEMES, EnhancedTrailEffect
 from enemies import enemy_factory, init_enemy_system
+from roguelite import ItemManager
 
 # ==============================================================================
 #   全局初始化
@@ -91,6 +92,7 @@ player = None
 boss = None
 from systems import BossManager
 boss_manager = BossManager()
+item_manager = None  # 物品掉落管理器
 
 # 数值
 score = 0
@@ -3277,7 +3279,7 @@ def draw_bullet_preview(surface, theme, x, y, size=60):
         pygame.draw.circle(surface, (100, 100, 100), (x + size//2, y + size//2), size//4)
 
 def reset_game():
-    global player, boss, score
+    global player, boss, score, item_manager
     global global_time_freeze, is_paused
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave, tab_paused
@@ -3297,6 +3299,9 @@ def reset_game():
     enemy_bullets.empty()
     powerups.empty()
     supplies.empty()
+    
+    # 初始化物品掉落系统
+    item_manager = ItemManager()
     
     score = 0
     boss = None
@@ -9002,6 +9007,9 @@ while True:
                 else:
                     # 常规由 P / 菜单触发的暂停界面（原有行为）
                     all_sprites.draw(screen)
+                    # 绘制物品
+                    if item_manager:
+                        item_manager.draw(screen)
                     s = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
                     s.fill((0, 0, 0, 150))
                     safe_blit(screen, s, (0, 0))
@@ -9108,6 +9116,11 @@ while True:
                         
                         all_sprites.update()
                         
+                        # 更新物品掉落系统
+                        if item_manager:
+                            item_manager.update(player)
+                            item_manager.update_buffs(player)
+                        
                         # 【剧毒蝰蛇】处理敌人的中毒效果
                         for enemy in mobs:
                             if hasattr(enemy, 'poison_timer') and enemy.poison_timer > 0:
@@ -9130,6 +9143,9 @@ while True:
                                         score += 100 if enemy.is_elite else 20
                                         create_explosion(enemy.rect.center, (0, 255, 100), 5)
                                         sound_mgr.play("explosion")
+                                        # 随机掉落物品
+                                        if item_manager:
+                                            item_manager.try_spawn_drop(enemy.rect.centerx, enemy.rect.centery)
                                         enemy.kill()
                             
                             # 【极光女神】处理极光减速效果
@@ -9705,6 +9721,10 @@ while True:
                                 ExperienceOrb(m.rect.centerx, m.rect.centery, xp_amount)
                                 FloatingText(m.rect.centerx, m.rect.top - 30, f"经验+{xp_amount}", LIME)
                                 
+                                # 物品掉落（普通敌人）
+                                if item_manager:
+                                    item_manager.try_spawn_drop(m.rect.centerx, m.rect.centery)
+                                
                                 # 触发击杀效果 (吸血、能量虹吸、裂变反应等)
                                 corpse_effect = player.on_kill_enemy(m)
                                 if corpse_effect:
@@ -9917,6 +9937,10 @@ while True:
                                 
                                 FloatingText(WIDTH//2, HEIGHT//2, "BOSS DEFEATED", GOLD)
                                 
+                                # ========== Boss击杀奖励：物品掉落 ==========
+                                if item_manager:
+                                    item_manager.spawn_boss_drops(boss.rect.centerx, boss.rect.centery)
+                                
                                 # ========== Boss击杀奖励：大量经验 ==========
                                 boss_xp_reward = 200 + player.level * 50  # 基础200 + 等级*50
                                 for i in range(8):  # 掉落8个大经验球
@@ -9976,6 +10000,10 @@ while True:
                     safe_call_draw(player.draw_trail, screen)
                 
                 safe_call_draw(all_sprites.draw, screen)
+                
+                # 绘制物品掉落
+                if item_manager:
+                    item_manager.draw(screen)
                 
                 if player is not None:
                     safe_call_draw(player.draw_auras, screen)

@@ -8,132 +8,503 @@ from config import *
 from utils import sound_mgr, log_error, log_info, log_debug
 
 # ==============================================================================
-#   物品系统（掉落战利品）
+#   物品掉落系统（精简版 - 与现有ExperienceOrb共存）
 # ==============================================================================
+
+# 物品定义数据（只保留实用物品）
+ITEM_TYPES = {
+    # 恢复类
+    "health": {
+        "name": "医疗包", 
+        "color": (0, 255, 100), 
+        "value": 25,
+        "icon": "+",
+        "desc": "恢复25生命值"
+    },
+    "health_large": {
+        "name": "大型医疗包", 
+        "color": (0, 255, 150), 
+        "value": 50,
+        "icon": "++",
+        "desc": "恢复50生命值"
+    },
+    "shield": {
+        "name": "护盾充能", 
+        "color": (100, 200, 255), 
+        "value": 30,
+        "icon": "S",
+        "desc": "恢复30护盾值"
+    },
+    
+    # 弹药类
+    "ammo": {
+        "name": "弹药箱", 
+        "color": (255, 200, 0), 
+        "value": 50,
+        "icon": "A",
+        "desc": "补充50弹药"
+    },
+    "ammo_large": {
+        "name": "大型弹药箱", 
+        "color": (255, 220, 50), 
+        "value": 150,
+        "icon": "AA",
+        "desc": "大量补充弹药"
+    },
+    
+    # 增益类（临时buff）
+    "power_up": {
+        "name": "火力强化", 
+        "color": (255, 50, 50), 
+        "value": 10,  # 持续时间(秒)
+        "icon": "P",
+        "desc": "攻击力+50%"
+    },
+    "speed_up": {
+        "name": "速度强化", 
+        "color": (50, 255, 255), 
+        "value": 10,
+        "icon": "V",
+        "desc": "移动速度+30%"
+    },
+}
+
 class Item:
-    """游戏中掉落的物品"""
-    def __init__(self, item_type, x, y, rarity=1):
-        self.type = item_type  # "health", "ammo", "core", "chip", "gold"
+    """游戏中掉落的物品（精简版 - 与ExperienceOrb共存）"""
+    def __init__(self, item_type, x, y):
+        self.type = item_type
         self.x = x
         self.y = y
-        self.rarity = rarity  # 1-3星，影响品质和收益
-        self.radius = 8 + rarity * 2
         self.alive = True
+        self.timer = 0
+        self.lifetime = 600  # 10秒后消失
         
-        # 物品属性
-        self.item_data = {
-            "health": {"name": "医疗包", "color": (0, 255, 100), "value": 25},
-            "ammo": {"name": "弹药箱", "color": (255, 200, 0), "value": 3},
-            "core": {"name": "核心片段", "color": (0, 150, 255), "value": 1},
-            "chip": {"name": "芯片", "color": (200, 0, 255), "value": 1},
-            "gold": {"name": "经验值", "color": (255, 215, 0), "value": 50},
-        }
+        # 加载物品数据
+        if item_type in ITEM_TYPES:
+            item_data = ITEM_TYPES[item_type]
+            self.name = item_data["name"]
+            self.color = item_data["color"]
+            self.value = item_data["value"]
+            self.icon = item_data.get("icon", "?")
+            self.desc = item_data.get("desc", "")
+        else:
+            # 默认物品
+            self.name = "未知物品"
+            self.color = (255, 255, 255)
+            self.value = 10
+            self.icon = "?"
+            self.desc = "未知效果"
         
-        if item_type in self.item_data:
-            self.name = self.item_data[item_type]["name"]
-            self.color = self.item_data[item_type]["color"]
-            self.value = self.item_data[item_type]["value"] + rarity * 5
+        # 大小
+        self.radius = 10
+        
+        # 物理属性（轻微弹跳）
+        self.vx = random.uniform(-1, 1)
+        self.vy = random.uniform(-2, 0)
+        self.gravity = 0.15
+        self.bounce = 0.4
     
-    def update(self, target_x=None, target_y=None):
-        """更新物品，实现吸取效果"""
+    def update(self, target_x=None, target_y=None, magnet_range=150):
+        """更新物品，实现吸取效果和物理效果"""
+        self.timer += 1
+        
+        # 生命周期检查
+        if self.timer >= self.lifetime:
+            self.alive = False
+            return
+        
+        # 吸取效果
         if target_x is not None and target_y is not None:
-            # 物品被吸取时向目标移动
             dx = target_x - self.x
             dy = target_y - self.y
             dist = (dx**2 + dy**2) ** 0.5
-            if dist < 2:
+            
+            # 碰撞检测
+            if dist < 30:
                 self.alive = False
                 return
-            if dist > 0:
-                self.x += dx / dist * 6
-                self.y += dy / dist * 6
+            
+            # 磁力吸取
+            if dist < magnet_range:
+                # 根据距离计算吸引速度
+                speed = 8 if dist < magnet_range / 2 else 4
+                if dist > 0:
+                    self.x += dx / dist * speed
+                    self.y += dy / dist * speed
+                return
+        
+        # 物理模拟（未被吸引时）
+        if self.timer < 60:  # 前60帧有物理效果
+            self.vy += self.gravity
+            self.x += self.vx
+            self.y += self.vy
+            
+            # 地面反弹（使用固定值避免依赖HEIGHT）
+            ground_level = 670  # 接近屏幕底部
+            if self.y > ground_level:
+                self.y = ground_level
+                self.vy *= -self.bounce
+                self.vx *= 0.8
+                if abs(self.vy) < 0.5:
+                    self.vy = 0
     
     def draw(self, surface):
-        """绘制物品"""
-        if self.alive:
-            # 绘制物品圆形
-            pygame.draw.circle(surface, self.color, (int(self.x), int(self.y)), self.radius)
-            # 绘制外圆环（闪烁效果）
-            import math as m
-            glow = int(3 + 2 * m.sin(pygame.time.get_ticks() / 100))
-            pygame.draw.circle(surface, self.color, (int(self.x), int(self.y)), self.radius + glow, 1)
+        """绘制物品（根据类型绘制形象图案）"""
+        if not self.alive:
+            return
+        
+        # 闪烁效果（即将消失时）
+        if self.timer > self.lifetime - 120:
+            if (self.timer // 10) % 2 == 0:
+                return
+        
+        # 轻微浮动和旋转
+        float_offset = math.sin(self.timer * 0.08) * 3
+        draw_y = int(self.y + float_offset)
+        draw_x = int(self.x)
+        rotation = (self.timer * 2) % 360
+        pulse = math.sin(self.timer * 0.1) * 0.15 + 0.85
+        
+        # 外层脉冲光环
+        glow_radius = int(self.radius * 2 * pulse)
+        glow_surf = pygame.Surface((glow_radius * 3, glow_radius * 3), pygame.SRCALPHA)
+        for i in range(4, 0, -1):
+            alpha = int(40 * pulse / i)
+            glow_color = (*self.color, alpha)
+            pygame.draw.circle(glow_surf, glow_color, 
+                             (glow_radius * 1.5, glow_radius * 1.5), 
+                             glow_radius + i * 5)
+        surface.blit(glow_surf, (draw_x - glow_radius * 1.5, draw_y - glow_radius * 1.5))
+        
+        # 根据类型绘制不同形状
+        if self.type in ["health", "health_large"]:
+            # 医疗包：红十字
+            size = self.radius if self.type == "health" else self.radius * 1.3
+            # 外框圆角矩形
+            rect_surf = pygame.Surface((size * 2.2, size * 2.2), pygame.SRCALPHA)
+            pygame.draw.rect(rect_surf, (255, 255, 255), (0, 0, size * 2.2, size * 2.2), border_radius=8)
+            pygame.draw.rect(rect_surf, self.color, (3, 3, size * 2.2 - 6, size * 2.2 - 6), border_radius=6)
+            surface.blit(rect_surf, (draw_x - size * 1.1, draw_y - size * 1.1))
+            
+            # 白色十字
+            cross_w = size * 0.6
+            cross_h = size * 0.2
+            # 横
+            pygame.draw.rect(surface, (255, 255, 255), 
+                           (draw_x - cross_w/2, draw_y - cross_h/2, cross_w, cross_h))
+            # 竖
+            pygame.draw.rect(surface, (255, 255, 255), 
+                           (draw_x - cross_h/2, draw_y - cross_w/2, cross_h, cross_w))
+            
+        elif self.type == "shield":
+            # 护盾：盾牌形状
+            # 盾牌轮廓点
+            shield_points = [
+                (draw_x, draw_y - self.radius * 1.2),  # 顶
+                (draw_x + self.radius * 0.9, draw_y - self.radius * 0.6),
+                (draw_x + self.radius * 0.9, draw_y + self.radius * 0.4),
+                (draw_x, draw_y + self.radius * 1.2),  # 底尖
+                (draw_x - self.radius * 0.9, draw_y + self.radius * 0.4),
+                (draw_x - self.radius * 0.9, draw_y - self.radius * 0.6),
+            ]
+            # 阴影
+            shadow_points = [(x + 2, y + 2) for x, y in shield_points]
+            pygame.draw.polygon(surface, (0, 0, 0, 100), shadow_points)
+            # 主体
+            pygame.draw.polygon(surface, self.color, shield_points)
+            pygame.draw.polygon(surface, (200, 230, 255), shield_points, 3)
+            # 中心闪光
+            pygame.draw.circle(surface, (255, 255, 255), (draw_x, draw_y), int(self.radius * 0.3))
+            # 盾纹
+            for i in range(-1, 2):
+                pygame.draw.line(surface, (180, 220, 255), 
+                               (draw_x + i * self.radius * 0.3, draw_y - self.radius * 0.6),
+                               (draw_x + i * self.radius * 0.3, draw_y + self.radius * 0.6), 2)
+            
+        elif self.type in ["ammo", "ammo_large"]:
+            # 弹药箱：子弹形状
+            size = self.radius if self.type == "ammo" else self.radius * 1.3
+            num_bullets = 3 if self.type == "ammo" else 5
+            
+            for i in range(num_bullets):
+                offset = (i - (num_bullets - 1) / 2) * size * 0.5
+                bullet_x = draw_x + offset
+                bullet_y = draw_y
+                
+                # 子弹头（圆锥形）
+                bullet_points = [
+                    (bullet_x, bullet_y - size * 0.6),  # 尖端
+                    (bullet_x - size * 0.2, bullet_y),
+                    (bullet_x - size * 0.2, bullet_y + size * 0.4),
+                    (bullet_x + size * 0.2, bullet_y + size * 0.4),
+                    (bullet_x + size * 0.2, bullet_y),
+                ]
+                pygame.draw.polygon(surface, (255, 200, 0), bullet_points)
+                pygame.draw.polygon(surface, (255, 255, 100), bullet_points, 2)
+                
+                # 弹壳
+                pygame.draw.rect(surface, (180, 140, 0),
+                               (bullet_x - size * 0.15, bullet_y + size * 0.4, size * 0.3, size * 0.4))
+                pygame.draw.rect(surface, (220, 180, 0),
+                               (bullet_x - size * 0.15, bullet_y + size * 0.4, size * 0.3, size * 0.4), 1)
+            
+        elif self.type == "power_up":
+            # 火力强化：火焰/爆炸图标
+            # 旋转光束
+            for angle_offset in [0, 72, 144, 216, 288]:
+                angle = math.radians(rotation + angle_offset)
+                beam_len = self.radius * 1.5 * pulse
+                end_x = draw_x + math.cos(angle) * beam_len
+                end_y = draw_y + math.sin(angle) * beam_len
+                pygame.draw.line(surface, (255, 100, 50), 
+                               (draw_x, draw_y), (int(end_x), int(end_y)), 3)
+            
+            # 火焰形状（多层）
+            for layer in range(3):
+                flame_size = self.radius * (1.0 - layer * 0.25)
+                flame_color = [(255, 50, 50), (255, 150, 0), (255, 255, 100)][layer]
+                
+                # 火焰点
+                flame_points = []
+                for i in range(5):
+                    angle = math.radians(i * 72 - rotation * 2)
+                    if i % 2 == 0:
+                        r = flame_size
+                    else:
+                        r = flame_size * 0.5
+                    px = draw_x + math.cos(angle) * r
+                    py = draw_y + math.sin(angle) * r
+                    flame_points.append((px, py))
+                
+                pygame.draw.polygon(surface, flame_color, flame_points)
+            
+            # 中心高光
+            pygame.draw.circle(surface, (255, 255, 255), (draw_x, draw_y), int(self.radius * 0.3))
+            
+        elif self.type == "speed_up":
+            # 速度强化：闪电/翅膀
+            # 双翼形状
+            wing_points_left = [
+                (draw_x - self.radius * 0.3, draw_y),
+                (draw_x - self.radius * 1.2, draw_y - self.radius * 0.6),
+                (draw_x - self.radius * 1.4, draw_y),
+                (draw_x - self.radius * 1.2, draw_y + self.radius * 0.6),
+            ]
+            wing_points_right = [
+                (draw_x + self.radius * 0.3, draw_y),
+                (draw_x + self.radius * 1.2, draw_y - self.radius * 0.6),
+                (draw_x + self.radius * 1.4, draw_y),
+                (draw_x + self.radius * 1.2, draw_y + self.radius * 0.6),
+            ]
+            
+            # 绘制翅膀
+            pygame.draw.polygon(surface, self.color, wing_points_left)
+            pygame.draw.polygon(surface, (150, 255, 255), wing_points_left, 2)
+            pygame.draw.polygon(surface, self.color, wing_points_right)
+            pygame.draw.polygon(surface, (150, 255, 255), wing_points_right, 2)
+            
+            # 中心圆
+            pygame.draw.circle(surface, (100, 255, 255), (draw_x, draw_y), int(self.radius * 0.8))
+            pygame.draw.circle(surface, (255, 255, 255), (draw_x, draw_y), int(self.radius * 0.5))
+            
+            # 速度线
+            for i in range(3):
+                line_y = draw_y + (i - 1) * self.radius * 0.5
+                pygame.draw.line(surface, (200, 255, 255),
+                               (draw_x - self.radius * 0.4, line_y),
+                               (draw_x + self.radius * 0.4, line_y), 2)
+        
+        # 粒子特效
+        if self.timer % 10 == 0:
+            angle = random.uniform(0, math.pi * 2)
+            particle_x = draw_x + math.cos(angle) * self.radius * 1.2
+            particle_y = draw_y + math.sin(angle) * self.radius * 1.2
+            pygame.draw.circle(surface, (255, 255, 200), 
+                             (int(particle_x), int(particle_y)), 2)
 
 
 class ItemManager:
-    """管理游戏中的物品"""
+    """管理游戏中的物品（精简版 - 只管理特殊物品，不包括经验球）"""
+    
+    # 掉落概率配置
+    DROP_CHANCES = {
+        "health": 0.15,        # 15%掉血包
+        "health_large": 0.05,  # 5%掉大血包
+        "shield": 0.10,        # 10%掉护盾
+        "ammo": 0.20,          # 20%掉弹药
+        "ammo_large": 0.05,    # 5%掉大弹药
+        "power_up": 0.03,      # 3%掉火力buff
+        "speed_up": 0.03,      # 3%掉速度buff
+    }
+    
     def __init__(self):
         self.items = []
-    
-    def spawn_item(self, item_type, x, y, rarity=1):
+        self.total_drops = 0
+        self.pickup_count = {}
+        
+    def spawn_item(self, item_type, x, y):
         """在指定位置生成物品"""
-        item = Item(item_type, x, y, rarity)
+        if item_type not in ITEM_TYPES:
+            return None
+        item = Item(item_type, x, y)
         self.items.append(item)
+        self.total_drops += 1
         return item
     
-    def spawn_random_drop(self, x, y, rarity=1):
-        """生成随机掉落物品"""
-        drop_table = ["health", "ammo", "gold", "gold", "core", "chip"]
-        item_type = random.choice(drop_table)
-        return self.spawn_item(item_type, x, y, rarity)
+    def try_spawn_drop(self, x, y, force_type=None):
+        """尝试掉落物品（概率性）"""
+        if force_type:
+            return self.spawn_item(force_type, x, y)
+        
+        # 随机判断是否掉落
+        for item_type, chance in self.DROP_CHANCES.items():
+            if random.random() < chance:
+                # 添加随机偏移
+                offset_x = random.uniform(-20, 20)
+                offset_y = random.uniform(-20, 20)
+                return self.spawn_item(item_type, x + offset_x, y + offset_y)
+        
+        return None
+    
+    def spawn_boss_drops(self, x, y):
+        """Boss必定掉落好东西"""
+        drops = []
+        # Boss保底掉落
+        drops.append(self.spawn_item("health_large", x - 30, y))
+        drops.append(self.spawn_item("ammo_large", x + 30, y))
+        drops.append(self.spawn_item("power_up", x, y - 30))
+        return drops
     
     def update(self, player=None):
         """更新所有物品，处理吸取"""
-        for item in self.items:
+        magnet_range = 150
+        if player and hasattr(player, 'pickup_range'):
+            magnet_range = player.pickup_range
+        
+        for item in self.items[:]:  # 使用切片避免迭代时修改列表
             if player:
-                # 计算是否在吸取范围内 (200 像素)
-                dx = player.x - item.x
-                dy = player.y - item.y
+                # 计算距离
+                dx = player.rect.centerx - item.x
+                dy = player.rect.centery - item.y
                 dist = (dx**2 + dy**2) ** 0.5
-                
-                if dist < 200:
-                    # 在吸取范围内
-                    item.update(player.x, player.y)
-                else:
-                    item.update()
                 
                 # 碰撞检测
                 if dist < 30:
                     self.pickup_item(item, player)
+                    continue
+                
+                # 更新物品（带吸取效果）
+                item.update(player.rect.centerx, player.rect.centery, magnet_range)
             else:
                 item.update()
         
+        # 清理死亡物品
         self.items = [item for item in self.items if item.alive]
+    
+    def clear_all(self):
+        """清除所有物品"""
+        self.items.clear()
+    
+    def get_item_count(self):
+        """获取当前物品数量"""
+        return len(self.items)
     
     def pickup_item(self, item, player):
         """拾起物品，应用效果"""
         sound_mgr.play("item_pickup")
         
-        if item.type == "health":
-            heal_amount = item.value
+        # 统计拾取
+        self.pickup_count[item.type] = self.pickup_count.get(item.type, 0) + 1
+        
+        # 恢复类物品
+        if item.type in ["health", "health_large"]:
             old_hp = player.hp
-            player.hp = min(player.max_hp, player.hp + heal_amount)
-            log_info(f"玩家获得 {heal_amount} HP，当前: {player.hp}/{player.max_hp}")
+            player.hp = min(player.max_hp, player.hp + item.value)
+            actual_heal = player.hp - old_hp
+            self._show_pickup_text(player, f"+{actual_heal} HP", (0, 255, 100))
+            
+        elif item.type == "shield":
+            if hasattr(player, 'shield') and hasattr(player, 'max_shield'):
+                old_shield = player.shield
+                player.shield = min(player.max_shield, player.shield + item.value)
+                actual_shield = player.shield - old_shield
+                if actual_shield > 0:
+                    self._show_pickup_text(player, f"+{actual_shield} 护盾", (100, 200, 255))
         
-        elif item.type == "ammo":
-            if hasattr(player, 'weapon_slots') and player.weapon_slots[player.current_slot]:
+        # 弹药类物品
+        elif item.type in ["ammo", "ammo_large"]:
+            added = False
+            if hasattr(player, 'weapon_slots') and player.current_slot < len(player.weapon_slots):
                 slot = player.weapon_slots[player.current_slot]
-                if hasattr(slot, 'ammo'):
-                    slot.ammo = min(slot.ammo_max, slot.ammo + item.value)
+                if slot and hasattr(slot, 'ammo') and hasattr(slot, 'max_ammo'):
+                    old_ammo = slot.ammo
+                    slot.ammo = min(slot.max_ammo, slot.ammo + item.value)
+                    actual_ammo = slot.ammo - old_ammo
+                    if actual_ammo > 0:
+                        self._show_pickup_text(player, f"+{actual_ammo} 弹药", (255, 200, 0))
+                        added = True
+            if not added:
+                self._show_pickup_text(player, "弹药箱", (255, 200, 0))
         
-        elif item.type == "core":
-            if hasattr(player, 'upgrade_manager'):
-                player.upgrade_manager.current_upgrades.append("core")
-                log_info(f"玩家获得核心片段，总数: {sum(1 for u in player.upgrade_manager.current_upgrades if u == 'core')}")
-        
-        elif item.type == "chip":
-            if hasattr(player, 'upgrade_manager'):
-                player.upgrade_manager.current_upgrades.append("chip")
-        
-        elif item.type == "gold":
-            # 增加经验值并同步分数
-            if hasattr(player, 'add_xp'):
-                player.add_xp(item.value)
-                log_info(f"获得 {item.value} 经验值，当前等级: {player.level}, XP: {player.xp}/{player.next_level_xp}")
-            else:
-                player.score += item.value
-                log_info(f"获得 {item.value} 分数，总分数: {player.score}")
+        # 增益类物品（临时buff）
+        elif item.type == "power_up":
+            self._apply_buff(player, "power", item.value)
+            self._show_pickup_text(player, "火力强化!", (255, 50, 50))
+            
+        elif item.type == "speed_up":
+            self._apply_buff(player, "speed", item.value)
+            self._show_pickup_text(player, "速度强化!", (50, 255, 255))
         
         item.alive = False
+    
+    def _apply_buff(self, player, buff_type, duration):
+        """应用临时增益效果（简化版）"""
+        if not hasattr(player, 'active_buffs'):
+            player.active_buffs = {}
+        
+        # 设置buff持续时间(帧数)
+        buff_frames = duration * 60  # 秒转帧
+        player.active_buffs[buff_type] = buff_frames
+        
+        # 存储原始值（如果是第一次获得此buff）
+        if buff_type == "power":
+            if not hasattr(player, '_original_damage'):
+                player._original_damage = player.damage
+            player.damage = int(player._original_damage * 1.5)  # +50%
+        elif buff_type == "speed":
+            if not hasattr(player, '_original_speed'):
+                player._original_speed = player.speed
+            player.speed = player._original_speed * 1.3  # +30%
+    
+    def update_buffs(self, player):
+        """更新玩家的buff状态（需要在游戏循环中调用）"""
+        if not hasattr(player, 'active_buffs'):
+            return
+        
+        # 更新所有buff计时
+        expired_buffs = []
+        for buff_type, remaining_frames in list(player.active_buffs.items()):
+            player.active_buffs[buff_type] -= 1
+            
+            if player.active_buffs[buff_type] <= 0:
+                expired_buffs.append(buff_type)
+        
+        # 移除过期buff并恢复属性
+        for buff_type in expired_buffs:
+            del player.active_buffs[buff_type]
+            
+            if buff_type == "power" and hasattr(player, '_original_damage'):
+                player.damage = player._original_damage
+            elif buff_type == "speed" and hasattr(player, '_original_speed'):
+                player.speed = player._original_speed
+    
+    def _show_pickup_text(self, player, text, color):
+        """显示拾取文本"""
+        try:
+            from sprites import FloatingText
+            FloatingText(player.rect.centerx, player.rect.top - 20, text, color)
+        except:
+            pass
     
     def draw(self, surface):
         """绘制所有物品"""

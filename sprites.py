@@ -204,95 +204,133 @@ class ExperienceOrb(pygame.sprite.Sprite):
         self.draw_diamond()
         self.rect = self.image.get_rect(center=(int(self.x), int(self.y)))
         
-    def draw_diamond(self):
-        """绘制经验球 - 复杂多色设计"""
+    def draw_diamond(self, rotation=0, pulse=1.0):
+        """绘制经验球 - 高级动态设计"""
         self.image.fill((0, 0, 0, 0))
         center = self.size * 1.5
         
-        if self.amount >= 10:  # 精英掉落（黄色）
-            # 外层：黄色八边形框架
-            oct_size = self.size
+        if self.amount >= 10:  # 精英掉落（金黄色 - 更炫）
+            # 脉冲外光环（多层渐变）
+            for i in range(5, 0, -1):
+                alpha = int(80 * pulse / i)
+                glow_surf = pygame.Surface((self.size*6, self.size*6), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surf, (255, 200, 0, alpha), 
+                                 (self.size*3, self.size*3), 
+                                 int(self.size * (1.5 + i * 0.2) * pulse))
+                self.image.blit(glow_surf, (center - self.size*3, center - self.size*3))
+            
+            # 旋转八边形（外框）
+            oct_size = self.size * pulse
             oct_points = []
             for i in range(8):
-                angle = i * 45
+                angle = i * 45 + rotation
                 rad = math.radians(angle)
                 x = center + oct_size * math.cos(rad)
                 y = center + oct_size * math.sin(rad)
                 oct_points.append((x, y))
-            pygame.draw.polygon(self.image, (255, 255, 0), oct_points)
-            pygame.draw.polygon(self.image, (255, 200, 0), oct_points, 2)
             
-            # 中层：内菱形（橙色）
-            diamond_inner = [
-                (center, center - self.size * 0.6),
-                (center + self.size * 0.6, center),
-                (center, center + self.size * 0.6),
-                (center - self.size * 0.6, center)
-            ]
-            pygame.draw.polygon(self.image, (255, 150, 0), diamond_inner)
-            pygame.draw.polygon(self.image, (255, 100, 0), diamond_inner, 1)
+            # 渐变填充
+            pygame.draw.polygon(self.image, (255, 220, 0), oct_points)
+            pygame.draw.polygon(self.image, (255, 180, 0), oct_points, 3)
+            pygame.draw.polygon(self.image, (255, 255, 100), oct_points, 1)
             
-            # 内层：中心星形（亮黄）
+            # 旋转菱形（反向旋转制造动感）
+            diamond_points = []
+            for i in range(4):
+                angle = i * 90 - rotation * 1.5
+                rad = math.radians(angle)
+                x = center + self.size * 0.7 * math.cos(rad) * pulse
+                y = center + self.size * 0.7 * math.sin(rad) * pulse
+                diamond_points.append((x, y))
+            pygame.draw.polygon(self.image, (255, 200, 50), diamond_points)
+            pygame.draw.polygon(self.image, (255, 150, 0), diamond_points, 2)
+            
+            # 旋转五角星（快速旋转）
             star_points = []
             for i in range(5):
-                angle = i * 72
-                if i % 2 == 0:
-                    r = self.size * 0.3
-                else:
-                    r = self.size * 0.15
+                angle = i * 72 + rotation * 2
                 rad = math.radians(angle)
+                r = self.size * 0.4 * pulse
                 x = center + r * math.cos(rad)
                 y = center + r * math.sin(rad)
                 star_points.append((x, y))
-            pygame.draw.polygon(self.image, (255, 255, 100), star_points)
+                # 星角间的小点
+                angle2 = angle + 36
+                rad2 = math.radians(angle2)
+                r2 = self.size * 0.2 * pulse
+                x2 = center + r2 * math.cos(rad2)
+                y2 = center + r2 * math.sin(rad2)
+                star_points.append((x2, y2))
+            pygame.draw.polygon(self.image, (255, 255, 150), star_points)
             
-            # 中心核心（金色发光）
-            pygame.draw.circle(self.image, (255, 255, 150), (int(center), int(center)), int(self.size * 0.2))
+            # 中心核心（呼吸发光）
+            core_size = int(self.size * 0.3 * pulse)
+            pygame.draw.circle(self.image, (255, 255, 200), (int(center), int(center)), core_size)
+            pygame.draw.circle(self.image, (255, 255, 255), (int(center), int(center)), max(1, core_size // 2))
             
-            # 背景光晕
-            for i in range(3, 0, -1):
-                pygame.draw.circle(self.image, (255, 200, 0), (int(center), int(center)), int(self.size * 1.3 + i), 1)
+            # 粒子轨道
+            for i in range(4):
+                orbit_angle = rotation * 3 + i * 90
+                rad = math.radians(orbit_angle)
+                px = center + self.size * 0.9 * math.cos(rad)
+                py = center + self.size * 0.9 * math.sin(rad)
+                pygame.draw.circle(self.image, (255, 255, 100), (int(px), int(py)), 2)
         
-        else:  # 普通掉落（绿色）
-            # 外层：绿色六边形框架
-            hex_size = self.size
+        else:  # 普通掉落（翠绿色 - 也要炫）
+            # 脉冲外光环
+            for i in range(4, 0, -1):
+                alpha = int(60 * pulse / i)
+                glow_surf = pygame.Surface((self.size*6, self.size*6), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surf, (100, 255, 150, alpha), 
+                                 (self.size*3, self.size*3), 
+                                 int(self.size * (1.4 + i * 0.15) * pulse))
+                self.image.blit(glow_surf, (center - self.size*3, center - self.size*3))
+            
+            # 旋转六边形
+            hex_size = self.size * pulse
             hex_points = []
             for i in range(6):
-                angle = i * 60
+                angle = i * 60 + rotation
                 rad = math.radians(angle)
                 x = center + hex_size * math.cos(rad)
                 y = center + hex_size * math.sin(rad)
                 hex_points.append((x, y))
-            pygame.draw.polygon(self.image, (0, 255, 100), hex_points)
-            pygame.draw.polygon(self.image, (100, 255, 150), hex_points, 2)
+            pygame.draw.polygon(self.image, (100, 255, 150), hex_points)
+            pygame.draw.polygon(self.image, (50, 255, 100), hex_points, 2)
+            pygame.draw.polygon(self.image, (150, 255, 200), hex_points, 1)
             
-            # 中层：内菱形（青绿）
-            diamond_inner = [
-                (center, center - self.size * 0.6),
-                (center + self.size * 0.6, center),
-                (center, center + self.size * 0.6),
-                (center - self.size * 0.6, center)
-            ]
-            pygame.draw.polygon(self.image, (100, 200, 150), diamond_inner)
-            pygame.draw.polygon(self.image, (0, 255, 100), diamond_inner, 1)
-            
-            # 内层：4个角的小点（彩虹色）
-            corner_colors = [(100, 255, 200), (255, 100, 200), (100, 200, 255), (200, 100, 255)]
-            corner_angles = [45, 135, 225, 315]
-            for angle, col in zip(corner_angles, corner_colors):
+            # 内菱形（反向旋转）
+            diamond_points = []
+            for i in range(4):
+                angle = i * 90 - rotation * 1.5
                 rad = math.radians(angle)
-                x = center + self.size * 0.5 * math.cos(rad)
-                y = center + self.size * 0.5 * math.sin(rad)
-                pygame.draw.circle(self.image, col, (int(x), int(y)), 2)
+                x = center + self.size * 0.65 * math.cos(rad) * pulse
+                y = center + self.size * 0.65 * math.sin(rad) * pulse
+                diamond_points.append((x, y))
+            pygame.draw.polygon(self.image, (150, 255, 180), diamond_points)
+            pygame.draw.polygon(self.image, (100, 255, 150), diamond_points, 2)
             
-            # 中心圆（亮绿色）
-            pygame.draw.circle(self.image, (150, 255, 200), (int(center), int(center)), int(self.size * 0.25))
+            # 四角装饰点（旋转）
+            corner_colors = [(100, 255, 200), (255, 150, 200), (100, 200, 255), (255, 200, 100)]
+            for i, col in enumerate(corner_colors):
+                angle = i * 90 + rotation * 2
+                rad = math.radians(angle)
+                px = center + self.size * 0.5 * math.cos(rad) * pulse
+                py = center + self.size * 0.5 * math.sin(rad) * pulse
+                pygame.draw.circle(self.image, col, (int(px), int(py)), 3)
+                pygame.draw.circle(self.image, (255, 255, 255), (int(px), int(py)), 1)
             
-            # 背景光晕
-            for i in range(3, 0, -1):
-                pygame.draw.circle(self.image, (100, 255, 150), (int(center), int(center)), int(self.size * 1.3 + i), 1)
+            # 中心核心
+            core_size = int(self.size * 0.35 * pulse)
+            pygame.draw.circle(self.image, (200, 255, 220), (int(center), int(center)), core_size)
+            pygame.draw.circle(self.image, (255, 255, 255), (int(center), int(center)), max(1, core_size // 2))
         
     def update(self):
+        # 计算动态旋转和脉冲
+        elapsed = (pygame.time.get_ticks() - self.birth_time) / 1000.0
+        rotation = (elapsed * 60) % 360  # 每秒旋转60度
+        pulse = 0.85 + 0.15 * math.sin(elapsed * 3)  # 呼吸效果
+        
         # 如果正在被吸取，向玩家移动
         if self.being_absorbed:
             self.absorption_frames += 1
@@ -317,14 +355,18 @@ class ExperienceOrb(pygame.sprite.Sprite):
                 self.kill()
                 return
             
-            # 重新绘制缩小的经验球
+            # 重新绘制缩小的经验球（快速旋转）
             old_size = self.size
             self.size = int(old_size * fade_ratio)
-            self.draw_diamond()
+            fast_rotation = (rotation * 3) % 360
+            self.draw_diamond(fast_rotation, fade_ratio)
             self.size = old_size
             
             self.rect.center = (int(self.x), int(self.y))
             return
+        
+        # 正常状态：重新绘制（持续旋转+脉冲）
+        self.draw_diamond(rotation, pulse)
         
         # 正常状态：重力下落
         self.vy += self.gravity
@@ -344,8 +386,7 @@ class ExperienceOrb(pygame.sprite.Sprite):
         
         self.life -= 1
         
-        # 闪烁效果
-        elapsed = (pygame.time.get_ticks() - self.birth_time) / 1000.0
+        # 透明度闪烁效果
         alpha = 220 + int(35 * math.sin(elapsed * 4))
         alpha = max(150, min(255, alpha))
         self.image.set_alpha(alpha)
