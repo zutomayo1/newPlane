@@ -326,15 +326,15 @@ class Item:
 class ItemManager:
     """管理游戏中的物品（精简版 - 只管理特殊物品，不包括经验球）"""
     
-    # 掉落概率配置
+    # 掉落概率配置（降低总体掉落率）
     DROP_CHANCES = {
-        "health": 0.15,        # 15%掉血包
-        "health_large": 0.05,  # 5%掉大血包
-        "shield": 0.10,        # 10%掉护盾
-        "ammo": 0.20,          # 20%掉弹药
-        "ammo_large": 0.05,    # 5%掉大弹药
-        "power_up": 0.03,      # 3%掉火力buff
-        "speed_up": 0.03,      # 3%掉速度buff
+        "health": 0.08,        # 8%掉血包
+        "health_large": 0.02,  # 2%掉大血包
+        "shield": 0.05,        # 5%掉护盾
+        "ammo": 0.10,          # 10%掉弹药
+        "ammo_large": 0.02,    # 2%掉大弹药
+        "power_up": 0.015,     # 1.5%掉火力buff
+        "speed_up": 0.015,     # 1.5%掉速度buff
     }
     
     def __init__(self):
@@ -369,10 +369,9 @@ class ItemManager:
     def spawn_boss_drops(self, x, y):
         """Boss必定掉落好东西"""
         drops = []
-        # Boss保底掉落
-        drops.append(self.spawn_item("health_large", x - 30, y))
-        drops.append(self.spawn_item("ammo_large", x + 30, y))
-        drops.append(self.spawn_item("power_up", x, y - 30))
+        # Boss保底掉落（减少数量避免过多）
+        drops.append(self.spawn_item("health_large", x - 20, y))
+        drops.append(self.spawn_item("power_up", x + 20, y))
         return drops
     
     def update(self, player=None):
@@ -1002,10 +1001,10 @@ def generate_card_pattern(seed, pattern_type="wave"):
         }
 
 # ==============================================================================
-#   第一层：基础卡牌 (16种)
+#   第一层：基础卡牌 (32种 - 每个流派8张)
 # ==============================================================================
 BASE_CARDS = {
-    # ======== 攻击类 (4种) ========
+    # ======== 弹幕流 (8张) - 专注火力覆盖和爆发伤害 ========
     "linear_trajectory": {
         "name": "线性弹道",
         "category": "attack",
@@ -1017,7 +1016,9 @@ BASE_CARDS = {
         "rarity": 1,
         "upgrades": [
             {"level": 2, "effect": {"bullet_count": 1}, "desc": "弹幕 +1"},
-            {"level": 3, "effect": {"damage_mult": 0.3}, "desc": "伤害 +30%"}
+            {"level": 3, "effect": {"damage_mult": 0.3}, "desc": "伤害 +30%"},
+            {"level": 4, "effect": {"bullet_count": 2}, "desc": "弹幕 +2"},
+            {"level": 5, "effect": {"damage_mult": 0.5}, "desc": "伤害 +50%"}
         ]
     },
     "split_shot": {
@@ -1031,21 +1032,9 @@ BASE_CARDS = {
         "rarity": 2,
         "upgrades": [
             {"level": 2, "effect": {"split_count": 1}, "desc": "分裂数 +1"},
-            {"level": 3, "effect": {"split_damage": 0.2}, "desc": "分裂伤害 +20%"}
-        ]
-    },
-    "precision_beam": {
-        "name": "精准光束",
-        "category": "attack",
-        "archetype": "sniper",
-        "desc": "单发高伤穿透光束",
-        "base_effect": {"damage_mult": 2.5, "pierce": 3, "fire_rate": 0.5},
-        "visual_seed": 1003,
-        "pattern": "geometric",
-        "rarity": 2,
-        "upgrades": [
-            {"level": 2, "effect": {"pierce": 2}, "desc": "穿透 +2"},
-            {"level": 3, "effect": {"damage_mult": 1.0}, "desc": "伤害 +40%"}
+            {"level": 3, "effect": {"split_damage": 0.2}, "desc": "分裂伤害 +20%"},
+            {"level": 4, "effect": {"split_count": 2}, "desc": "分裂数 +2"},
+            {"level": 5, "effect": {"split_damage": 0.3}, "desc": "分裂伤害 +30%"}
         ]
     },
     "explosive_round": {
@@ -1054,119 +1043,279 @@ BASE_CARDS = {
         "archetype": "barrage",
         "desc": "爆炸范围伤害",
         "base_effect": {"explosion_radius": 80, "explosion_mult": 0.6},
-        "visual_seed": 1004,
+        "visual_seed": 1003,
         "pattern": "fractal",
         "rarity": 2,
         "upgrades": [
             {"level": 2, "effect": {"explosion_radius": 40}, "desc": "范围 +50%"},
-            {"level": 3, "effect": {"explosion_mult": 0.3}, "desc": "爆炸伤害 +30%"}
+            {"level": 3, "effect": {"explosion_mult": 0.3}, "desc": "爆炸伤害 +30%"},
+            {"level": 4, "effect": {"explosion_radius": 60}, "desc": "范围 +75%"},
+            {"level": 5, "effect": {"explosion_mult": 0.5}, "desc": "爆炸伤害 +50%"}
+        ]
+    },
+    "rapid_fire": {
+        "name": "极速射击",
+        "category": "attack",
+        "archetype": "barrage",
+        "desc": "大幅提升射速，降低伤害",
+        "base_effect": {"fire_rate_mult": 2.0, "damage_mult": -0.3},
+        "visual_seed": 1004,
+        "pattern": "wave",
+        "rarity": 2,
+        "upgrades": [
+            {"level": 2, "effect": {"fire_rate_mult": 0.5}, "desc": "射速 +50%"},
+            {"level": 3, "effect": {"damage_mult": 0.2}, "desc": "减伤惩罚降低"},
+            {"level": 4, "effect": {"fire_rate_mult": 1.0}, "desc": "射速 +100%"},
+            {"level": 5, "effect": {"damage_mult": 0.3}, "desc": "伤害恢复正常"}
+        ]
+    },
+    "scatter_cannon": {
+        "name": "散射炮",
+        "category": "attack",
+        "archetype": "barrage",
+        "desc": "一次发射多发散弹",
+        "base_effect": {"bullet_count": 5, "spread_angle": 30, "damage_mult": -0.2},
+        "visual_seed": 1005,
+        "pattern": "spiral",
+        "rarity": 2,
+        "upgrades": [
+            {"level": 2, "effect": {"bullet_count": 2}, "desc": "散弹 +2"},
+            {"level": 3, "effect": {"damage_mult": 0.1}, "desc": "伤害 +10%"},
+            {"level": 4, "effect": {"bullet_count": 3}, "desc": "散弹 +3"},
+            {"level": 5, "effect": {"spread_angle": -10}, "desc": "散射角度收窄"}
+        ]
+    },
+    "ricochet_round": {
+        "name": "弹跳弹",
+        "category": "attack",
+        "archetype": "barrage",
+        "desc": "子弹碰壁反弹，可多次命中",
+        "base_effect": {"bounce_count": 2, "bounce_damage": 0.8},
+        "visual_seed": 1006,
+        "pattern": "geometric",
+        "rarity": 3,
+        "upgrades": [
+            {"level": 2, "effect": {"bounce_count": 1}, "desc": "反弹 +1"},
+            {"level": 3, "effect": {"bounce_damage": 0.1}, "desc": "反弹伤害 +10%"},
+            {"level": 4, "effect": {"bounce_count": 2}, "desc": "反弹 +2"},
+            {"level": 5, "effect": {"bounce_damage": 0.2}, "desc": "反弹伤害 +20%"}
+        ]
+    },
+    "cluster_bomb": {
+        "name": "集束炸弹",
+        "category": "attack",
+        "archetype": "barrage",
+        "desc": "子弹爆炸后释放小型炸弹",
+        "base_effect": {"cluster_count": 5, "cluster_radius": 40},
+        "visual_seed": 1007,
+        "pattern": "fractal",
+        "rarity": 3,
+        "upgrades": [
+            {"level": 2, "effect": {"cluster_count": 2}, "desc": "子弹药 +2"},
+            {"level": 3, "effect": {"cluster_radius": 20}, "desc": "爆炸范围 +50%"},
+            {"level": 4, "effect": {"cluster_count": 3}, "desc": "子弹药 +3"},
+            {"level": 5, "effect": {"cluster_damage_mult": 0.3}, "desc": "子弹药伤害 +30%"}
+        ]
+    },
+    "barrage_storm": {
+        "name": "弹幕风暴",
+        "category": "attack",
+        "archetype": "barrage",
+        "desc": "持续释放环形弹幕",
+        "base_effect": {"storm_duration": 180, "storm_bullets": 20},
+        "visual_seed": 1008,
+        "pattern": "spiral",
+        "rarity": 4,
+        "upgrades": [
+            {"level": 2, "effect": {"storm_bullets": 10}, "desc": "弹幕数 +50%"},
+            {"level": 3, "effect": {"storm_duration": 120}, "desc": "持续时间 +2秒"},
+            {"level": 4, "effect": {"storm_bullets": 20}, "desc": "弹幕数 +100%"},
+            {"level": 5, "effect": {"storm_damage_mult": 0.5}, "desc": "风暴伤害 +50%"}
         ]
     },
     
-    # ======== 防御类 (4种) ========
+    # ======== 狙击流 (8张) - 专注单体爆发和精准打击 ========
+    "precision_beam": {
+        "name": "精准光束",
+        "category": "attack",
+        "archetype": "sniper",
+        "desc": "单发高伤穿透光束",
+        "base_effect": {"damage_mult": 2.5, "pierce": 3, "fire_rate": 0.5},
+        "visual_seed": 2001,
+        "pattern": "geometric",
+        "rarity": 2,
+        "upgrades": [
+            {"level": 2, "effect": {"pierce": 2}, "desc": "穿透 +2"},
+            {"level": 3, "effect": {"damage_mult": 1.0}, "desc": "伤害 +40%"},
+            {"level": 4, "effect": {"pierce": 3}, "desc": "穿透 +3"},
+            {"level": 5, "effect": {"damage_mult": 1.5}, "desc": "伤害 +60%"}
+        ]
+    },
+    "overcharge_shot": {
+        "name": "超载射击",
+        "category": "attack",
+        "archetype": "sniper",
+        "desc": "周期性发射超高威力子弹",
+        "base_effect": {"overcharge_cooldown": 180, "overcharge_mult": 5.0},
+        "visual_seed": 2002,
+        "pattern": "wave",
+        "rarity": 3,
+        "upgrades": [
+            {"level": 2, "effect": {"overcharge_mult": 2.0}, "desc": "超载倍率 ×7"},
+            {"level": 3, "effect": {"overcharge_cooldown": -30}, "desc": "冷却时间 -17%"},
+            {"level": 4, "effect": {"overcharge_mult": 3.0}, "desc": "超载倍率 ×10"},
+            {"level": 5, "effect": {"overcharge_pierce": 999}, "desc": "超载穿透无限"}
+        ]
+    },
+    "weakpoint_strike": {
+        "name": "弱点打击",
+        "category": "attack",
+        "archetype": "sniper",
+        "desc": "命中弱点造成额外暴击伤害",
+        "base_effect": {"weakpoint_chance": 0.3, "weakpoint_mult": 3.0},
+        "visual_seed": 2003,
+        "pattern": "geometric",
+        "rarity": 2,
+        "upgrades": [
+            {"level": 2, "effect": {"weakpoint_chance": 0.1}, "desc": "弱点率 +10%"},
+            {"level": 3, "effect": {"weakpoint_mult": 1.0}, "desc": "弱点倍率 ×4"},
+            {"level": 4, "effect": {"weakpoint_chance": 0.15}, "desc": "弱点率 +15%"},
+            {"level": 5, "effect": {"weakpoint_mult": 2.0}, "desc": "弱点倍率 ×6"}
+        ]
+    },
+    "armor_penetration": {
+        "name": "破甲弹",
+        "category": "attack",
+        "archetype": "sniper",
+        "desc": "无视敌人护甲造成真实伤害",
+        "base_effect": {"armor_pen": 0.5, "bonus_vs_armor": 1.5},
+        "visual_seed": 2004,
+        "pattern": "fractal",
+        "rarity": 3,
+        "upgrades": [
+            {"level": 2, "effect": {"armor_pen": 0.2}, "desc": "破甲 +20%"},
+            {"level": 3, "effect": {"bonus_vs_armor": 0.5}, "desc": "对装甲 +50%"},
+            {"level": 4, "effect": {"armor_pen": 0.2}, "desc": "破甲 +20%"},
+            {"level": 5, "effect": {"armor_pen": 0.1, "bonus_vs_armor": 1.0}, "desc": "完全破甲"}
+        ]
+    },
+    "railgun": {
+        "name": "轨道炮",
+        "category": "attack",
+        "archetype": "sniper",
+        "desc": "发射贯穿全屏的高速弹",
+        "base_effect": {"pierce": 999, "damage_mult": 3.0, "fire_rate": 0.3},
+        "visual_seed": 2005,
+        "pattern": "geometric",
+        "rarity": 3,
+        "upgrades": [
+            {"level": 2, "effect": {"damage_mult": 1.0}, "desc": "伤害 +33%"},
+            {"level": 3, "effect": {"fire_rate": 0.1}, "desc": "冷却缩短"},
+            {"level": 4, "effect": {"damage_mult": 1.5}, "desc": "伤害 +50%"},
+            {"level": 5, "effect": {"railgun_explosion": 80}, "desc": "穿透时爆炸"}
+        ]
+    },
+    "assassin_mark": {
+        "name": "刺客标记",
+        "category": "attack",
+        "archetype": "sniper",
+        "desc": "标记敌人，下次攻击必定暴击",
+        "base_effect": {"mark_duration": 180, "mark_crit_mult": 4.0},
+        "visual_seed": 2006,
+        "pattern": "spiral",
+        "rarity": 3,
+        "upgrades": [
+            {"level": 2, "effect": {"mark_crit_mult": 1.0}, "desc": "标记倍率 ×5"},
+            {"level": 3, "effect": {"mark_duration": 120}, "desc": "标记持续 +2秒"},
+            {"level": 4, "effect": {"mark_crit_mult": 2.0}, "desc": "标记倍率 ×7"},
+            {"level": 5, "effect": {"mark_chain": 1}, "desc": "标记可传染"}
+        ]
+    },
+    "execution": {
+        "name": "处决",
+        "category": "attack",
+        "archetype": "sniper",
+        "desc": "对低血量敌人造成巨额伤害",
+        "base_effect": {"execute_threshold": 0.25, "execute_mult": 10.0},
+        "visual_seed": 2007,
+        "pattern": "fractal",
+        "rarity": 4,
+        "upgrades": [
+            {"level": 2, "effect": {"execute_threshold": 0.05}, "desc": "阈值提升30%"},
+            {"level": 3, "effect": {"execute_mult": 5.0}, "desc": "处决倍率 ×15"},
+            {"level": 4, "effect": {"execute_threshold": 0.1}, "desc": "阈值提升40%"},
+            {"level": 5, "effect": {"execute_instant_kill": True}, "desc": "低于10%秒杀"}
+        ]
+    },
+    "sniper_focus": {
+        "name": "狙击专注",
+        "category": "attack",
+        "archetype": "sniper",
+        "desc": "静止不动时伤害持续提升",
+        "base_effect": {"focus_per_sec": 0.2, "max_focus": 3.0},
+        "visual_seed": 2008,
+        "pattern": "wave",
+        "rarity": 4,
+        "upgrades": [
+            {"level": 2, "effect": {"focus_per_sec": 0.1}, "desc": "专注速度 +50%"},
+            {"level": 3, "effect": {"max_focus": 1.0}, "desc": "最大专注 ×4"},
+            {"level": 4, "effect": {"focus_per_sec": 0.2}, "desc": "专注速度 +100%"},
+            {"level": 5, "effect": {"max_focus": 2.0, "focus_crit": 0.5}, "desc": "满专注50%暴击"}
+        ]
+    },
+    
+    # ======== 控制流 (8张) - 专注场控和生存能力 ========
     "energy_shield": {
         "name": "能量护盾",
         "category": "defense",
         "archetype": "control",
         "desc": "吸收伤害的护盾",
         "base_effect": {"shield_amount": 50, "shield_regen": 2},
-        "visual_seed": 2001,
+        "visual_seed": 3001,
         "pattern": "wave",
         "rarity": 1,
         "upgrades": [
             {"level": 2, "effect": {"shield_amount": 30}, "desc": "护盾值 +30"},
-            {"level": 3, "effect": {"shield_regen": 2}, "desc": "回复速度 +2"}
+            {"level": 3, "effect": {"shield_regen": 2}, "desc": "回复速度 +2"},
+            {"level": 4, "effect": {"shield_amount": 50}, "desc": "护盾值 +50"},
+            {"level": 5, "effect": {"shield_regen": 3}, "desc": "回复速度 +3"}
         ]
     },
-    "phase_dodge": {
-        "name": "相位闪避",
-        "category": "defense",
-        "archetype": "control",
-        "desc": "概率完全闪避伤害",
-        "base_effect": {"dodge_chance": 0.15},
-        "visual_seed": 2002,
-        "pattern": "spiral",
-        "rarity": 2,
-        "upgrades": [
-            {"level": 2, "effect": {"dodge_chance": 0.10}, "desc": "闪避率 +10%"},
-            {"level": 3, "effect": {"dodge_chance": 0.10}, "desc": "闪避率 +10%"}
-        ]
-    },
-    "armor_plating": {
-        "name": "装甲镀层",
-        "category": "defense",
-        "archetype": "control",
-        "desc": "减少受到的伤害",
-        "base_effect": {"damage_reduction": 0.2, "max_hp_bonus": 50},
-        "visual_seed": 2003,
-        "pattern": "geometric",
-        "rarity": 1,
-        "upgrades": [
-            {"level": 2, "effect": {"damage_reduction": 0.10}, "desc": "减伤 +10%"},
-            {"level": 3, "effect": {"max_hp_bonus": 50}, "desc": "生命 +50"}
-        ]
-    },
-    "regeneration": {
-        "name": "生命再生",
-        "category": "defense",
-        "archetype": "control",
-        "desc": "持续恢复生命",
-        "base_effect": {"regen_rate": 5, "regen_interval": 300},
-        "visual_seed": 2004,
-        "pattern": "fractal",
-        "rarity": 1,
-        "upgrades": [
-            {"level": 2, "effect": {"regen_rate": 3}, "desc": "回复量 +3"},
-            {"level": 3, "effect": {"regen_interval": -100}, "desc": "间隔缩短"}
-        ]
-    },
-    
-    # ======== 特殊类 (4种) ========
     "gravity_field": {
         "name": "引力场",
-        "category": "special",
+        "category": "control",
         "archetype": "control",
         "desc": "减速并吸引敌人",
         "base_effect": {"slow_mult": 0.4, "pull_strength": 2.0, "radius": 150},
-        "visual_seed": 3001,
+        "visual_seed": 3002,
         "pattern": "spiral",
         "rarity": 2,
         "upgrades": [
             {"level": 2, "effect": {"slow_mult": 0.2}, "desc": "减速增强"},
-            {"level": 3, "effect": {"radius": 70}, "desc": "范围 +70"}
+            {"level": 3, "effect": {"radius": 70}, "desc": "范围 +70"},
+            {"level": 4, "effect": {"slow_mult": 0.2}, "desc": "减速 +20%"},
+            {"level": 5, "effect": {"pull_strength": 3.0}, "desc": "吸引力 ×2.5"}
         ]
     },
     "time_dilation": {
         "name": "时间膨胀",
-        "category": "special",
+        "category": "control",
         "archetype": "control",
         "desc": "减缓敌人移动和攻击",
         "base_effect": {"slow_area": 200, "time_factor": 0.5},
-        "visual_seed": 3002,
+        "visual_seed": 3003,
         "pattern": "wave",
         "rarity": 3,
         "upgrades": [
             {"level": 2, "effect": {"time_factor": -0.2}, "desc": "减速更强"},
-            {"level": 3, "effect": {"slow_area": 100}, "desc": "范围增大"}
-        ]
-    },
-    "chain_lightning": {
-        "name": "连锁闪电",
-        "category": "special",
-        "archetype": "barrage",
-        "desc": "攻击跳跃至多个敌人",
-        "base_effect": {"chain_count": 3, "chain_damage": 0.6},
-        "visual_seed": 3003,
-        "pattern": "fractal",
-        "rarity": 2,
-        "upgrades": [
-            {"level": 2, "effect": {"chain_count": 2}, "desc": "跳跃 +2"},
-            {"level": 3, "effect": {"chain_damage": 0.2}, "desc": "链伤 +20%"}
+            {"level": 3, "effect": {"slow_area": 100}, "desc": "范围增大"},
+            {"level": 4, "effect": {"time_factor": -0.2}, "desc": "时间流速 ×0.1"},
+            {"level": 5, "effect": {"time_freeze_chance": 0.1}, "desc": "10%几率冻结"}
         ]
     },
     "frost_nova": {
         "name": "冰霜新星",
-        "category": "special",
+        "category": "control",
         "archetype": "control",
         "desc": "冻结区域内所有敌人",
         "base_effect": {"freeze_duration": 120, "freeze_radius": 100},
@@ -1175,74 +1324,228 @@ BASE_CARDS = {
         "rarity": 2,
         "upgrades": [
             {"level": 2, "effect": {"freeze_duration": 60}, "desc": "冻结时长 +50%"},
-            {"level": 3, "effect": {"freeze_radius": 50}, "desc": "范围 +50"}
+            {"level": 3, "effect": {"freeze_radius": 50}, "desc": "范围 +50"},
+            {"level": 4, "effect": {"freeze_duration": 120}, "desc": "冻结时长 +2秒"},
+            {"level": 5, "effect": {"freeze_shatter": 2.0}, "desc": "碎冰造成伤害"}
         ]
     },
-    
-    # ======== 系统类 (4种) ========
-    "chaos_injection": {
-        "name": "混沌注入",
-        "category": "system",
-        "archetype": "barrage",
-        "desc": "随机触发强力效果",
-        "base_effect": {"chaos_chance": 0.2, "chaos_mult": 2.0},
-        "visual_seed": 4001,
+    "armor_plating": {
+        "name": "装甲镀层",
+        "category": "defense",
+        "archetype": "control",
+        "desc": "减少受到的伤害",
+        "base_effect": {"damage_reduction": 0.2, "max_hp_bonus": 50},
+        "visual_seed": 3005,
+        "pattern": "geometric",
+        "rarity": 1,
+        "upgrades": [
+            {"level": 2, "effect": {"damage_reduction": 0.10}, "desc": "减伤 +10%"},
+            {"level": 3, "effect": {"max_hp_bonus": 50}, "desc": "生命 +50"},
+            {"level": 4, "effect": {"damage_reduction": 0.15}, "desc": "减伤 +15%"},
+            {"level": 5, "effect": {"thorns_damage": 0.3}, "desc": "反伤30%"}
+        ]
+    },
+    "regeneration": {
+        "name": "生命再生",
+        "category": "defense",
+        "archetype": "control",
+        "desc": "持续恢复生命",
+        "base_effect": {"regen_rate": 5, "regen_interval": 300},
+        "visual_seed": 3006,
+        "pattern": "fractal",
+        "rarity": 1,
+        "upgrades": [
+            {"level": 2, "effect": {"regen_rate": 3}, "desc": "回复量 +3"},
+            {"level": 3, "effect": {"regen_interval": -100}, "desc": "间隔缩短"},
+            {"level": 4, "effect": {"regen_rate": 5}, "desc": "回复量 +5"},
+            {"level": 5, "effect": {"regen_combat": True}, "desc": "战斗中也回复"}
+        ]
+    },
+    "phase_dodge": {
+        "name": "相位闪避",
+        "category": "defense",
+        "archetype": "control",
+        "desc": "概率完全闪避伤害",
+        "base_effect": {"dodge_chance": 0.15},
+        "visual_seed": 3007,
+        "pattern": "spiral",
+        "rarity": 2,
+        "upgrades": [
+            {"level": 2, "effect": {"dodge_chance": 0.10}, "desc": "闪避率 +10%"},
+            {"level": 3, "effect": {"dodge_chance": 0.10}, "desc": "闪避率 +10%"},
+            {"level": 4, "effect": {"dodge_invulnerable": 30}, "desc": "闪避后无敌0.5秒"},
+            {"level": 5, "effect": {"dodge_chance": 0.15}, "desc": "闪避率 +15%"}
+        ]
+    },
+    "stasis_field": {
+        "name": "静滞力场",
+        "category": "control",
+        "archetype": "control",
+        "desc": "创造完全静止敌人的力场",
+        "base_effect": {"stasis_duration": 60, "stasis_radius": 120},
+        "visual_seed": 3008,
+        "pattern": "geometric",
+        "rarity": 3,
+        "upgrades": [
+            {"level": 2, "effect": {"stasis_duration": 30}, "desc": "静滞时长 +50%"},
+            {"level": 3, "effect": {"stasis_radius": 60}, "desc": "范围 +50%"},
+            {"level": 4, "effect": {"stasis_damage_amp": 0.5}, "desc": "受伤+50%"},
+            {"level": 5, "effect": {"stasis_duration": 60}, "desc": "静滞时长 +1秒"}
+        ]
+    },
+    "void_barrier": {
+        "name": "虚空屏障",
+        "category": "defense",
+        "archetype": "control",
+        "desc": "生成吸收伤害的虚空壁垒",
+        "base_effect": {"barrier_hp": 200, "barrier_recharge": 600},
+        "visual_seed": 3009,
         "pattern": "fractal",
         "rarity": 3,
         "upgrades": [
-            {"level": 2, "effect": {"chaos_chance": 0.1}, "desc": "触发率 +10%"},
-            {"level": 3, "effect": {"chaos_mult": 1.0}, "desc": "效果倍率 +1.0"}
+            {"level": 2, "effect": {"barrier_hp": 100}, "desc": "屏障HP +100"},
+            {"level": 3, "effect": {"barrier_recharge": -200}, "desc": "充能加速"},
+            {"level": 4, "effect": {"barrier_hp": 200}, "desc": "屏障HP +200"},
+            {"level": 5, "effect": {"barrier_reflect": 0.5}, "desc": "反射50%伤害"}
         ]
     },
+    
+    # ======== 召唤流 (8张) - 专注召唤物和辅助单位 ========
     "auto_turret": {
         "name": "自动炮塔",
-        "category": "system",
+        "category": "summon",
         "archetype": "summon",
         "desc": "在屏幕固定位置部署防御炮塔",
         "base_effect": {"turret_count": 2, "turret_damage": 0.6},
-        "visual_seed": 4002,
+        "visual_seed": 4001,
         "pattern": "geometric",
         "rarity": 2,
         "upgrades": [
             {"level": 2, "effect": {"turret_count": 2}, "desc": "炮塔数 2→4"},
-            {"level": 3, "effect": {"turret_damage": 0.4}, "desc": "炮塔伤害 ×1.0"}
+            {"level": 3, "effect": {"turret_damage": 0.4}, "desc": "炮塔伤害 ×1.0"},
+            {"level": 4, "effect": {"turret_count": 2}, "desc": "炮塔数 4→6"},
+            {"level": 5, "effect": {"turret_laser": True}, "desc": "升级为激光炮"}
         ]
     },
     "drone_swarm": {
         "name": "无人机群",
-        "category": "system",
+        "category": "summon",
         "archetype": "summon",
         "desc": "召唤跟随无人机",
         "base_effect": {"drone_count": 2, "drone_damage": 0.4},
-        "visual_seed": 4003,
+        "visual_seed": 4002,
         "pattern": "spiral",
         "rarity": 2,
         "upgrades": [
             {"level": 2, "effect": {"drone_count": 1}, "desc": "无人机 +1"},
-            {"level": 3, "effect": {"drone_damage": 0.2}, "desc": "伤害 +20%"}
+            {"level": 3, "effect": {"drone_damage": 0.2}, "desc": "伤害 +20%"},
+            {"level": 4, "effect": {"drone_count": 2}, "desc": "无人机 +2"},
+            {"level": 5, "effect": {"drone_kamikaze": True}, "desc": "无人机可自爆"}
         ]
     },
     "resource_magnet": {
         "name": "资源磁场",
-        "category": "system",
+        "category": "utility",
         "archetype": "summon",
         "desc": "自动吸引经验和物品",
         "base_effect": {"magnet_range": 200, "xp_mult": 1.2},
-        "visual_seed": 4004,
+        "visual_seed": 4003,
         "pattern": "wave",
         "rarity": 1,
         "upgrades": [
             {"level": 2, "effect": {"magnet_range": 100}, "desc": "范围 +100"},
-            {"level": 3, "effect": {"xp_mult": 0.3}, "desc": "经验 +30%"}
+            {"level": 3, "effect": {"xp_mult": 0.3}, "desc": "经验 +30%"},
+            {"level": 4, "effect": {"magnet_range": 150}, "desc": "范围 +150"},
+            {"level": 5, "effect": {"magnet_instant": True}, "desc": "全屏瞬吸"}
+        ]
+    },
+    "orbital_strike": {
+        "name": "轨道打击",
+        "category": "summon",
+        "archetype": "summon",
+        "desc": "召唤卫星轨道激光打击",
+        "base_effect": {"strike_damage": 500, "strike_cooldown": 600},
+        "visual_seed": 4004,
+        "pattern": "geometric",
+        "rarity": 3,
+        "upgrades": [
+            {"level": 2, "effect": {"strike_damage": 200}, "desc": "伤害 +200"},
+            {"level": 3, "effect": {"strike_cooldown": -200}, "desc": "冷却 -33%"},
+            {"level": 4, "effect": {"strike_count": 1}, "desc": "双重打击"},
+            {"level": 5, "effect": {"strike_damage": 500}, "desc": "伤害 ×2"}
+        ]
+    },
+    "healing_aura": {
+        "name": "治疗光环",
+        "category": "utility",
+        "archetype": "summon",
+        "desc": "持续恢复自身和僚机生命",
+        "base_effect": {"heal_per_sec": 3, "aura_radius": 200},
+        "visual_seed": 4005,
+        "pattern": "wave",
+        "rarity": 2,
+        "upgrades": [
+            {"level": 2, "effect": {"heal_per_sec": 2}, "desc": "回复 +2/秒"},
+            {"level": 3, "effect": {"aura_radius": 100}, "desc": "范围 +100"},
+            {"level": 4, "effect": {"heal_per_sec": 3}, "desc": "回复 +3/秒"},
+            {"level": 5, "effect": {"heal_damage_boost": 0.2}, "desc": "治疗提供20%伤害"}
+        ]
+    },
+    "guardian_angel": {
+        "name": "守护天使",
+        "category": "summon",
+        "archetype": "summon",
+        "desc": "召唤守护灵，死亡时复活",
+        "base_effect": {"revive_hp": 0.5, "revive_cooldown": 3600},
+        "visual_seed": 4006,
+        "pattern": "spiral",
+        "rarity": 4,
+        "upgrades": [
+            {"level": 2, "effect": {"revive_hp": 0.2}, "desc": "复活HP +20%"},
+            {"level": 3, "effect": {"revive_cooldown": -1200}, "desc": "冷却 -20秒"},
+            {"level": 4, "effect": {"revive_invulnerable": 180}, "desc": "复活后无敌3秒"},
+            {"level": 5, "effect": {"revive_hp": 0.3}, "desc": "复活HP +30%"}
+        ]
+    },
+    "minion_army": {
+        "name": "召唤大军",
+        "category": "summon",
+        "archetype": "summon",
+        "desc": "召唤小型战斗单位群",
+        "base_effect": {"minion_count": 5, "minion_hp": 20, "minion_damage": 10},
+        "visual_seed": 4007,
+        "pattern": "fractal",
+        "rarity": 3,
+        "upgrades": [
+            {"level": 2, "effect": {"minion_count": 2}, "desc": "召唤物 +2"},
+            {"level": 3, "effect": {"minion_hp": 10, "minion_damage": 5}, "desc": "属性 +50%"},
+            {"level": 4, "effect": {"minion_count": 3}, "desc": "召唤物 +3"},
+            {"level": 5, "effect": {"minion_evolve": True}, "desc": "召唤物可进化"}
+        ]
+    },
+    "support_station": {
+        "name": "支援站",
+        "category": "summon",
+        "archetype": "summon",
+        "desc": "部署补给站，提供持续增益",
+        "base_effect": {"station_buff": 0.3, "station_radius": 250},
+        "visual_seed": 4008,
+        "pattern": "geometric",
+        "rarity": 3,
+        "upgrades": [
+            {"level": 2, "effect": {"station_buff": 0.1}, "desc": "增益 +10%"},
+            {"level": 3, "effect": {"station_radius": 100}, "desc": "范围 +100"},
+            {"level": 4, "effect": {"station_buff": 0.2}, "desc": "增益 +20%"},
+            {"level": 5, "effect": {"station_repair": True}, "desc": "额外回复护盾"}
         ]
     }
 }
 
 # ==============================================================================
-#   第二层：参数卡牌（修饰器）
+#   第二层：参数卡牌（修饰器）- 20种
 # ==============================================================================
 MODIFIER_CARDS = {
-    # ======== 数值类修饰器 ========
+    # ======== 数值类修饰器 (8种) ========
     "power_boost": {
         "name": "强度增幅",
         "type": "numeric",
@@ -1275,8 +1578,40 @@ MODIFIER_CARDS = {
         "rarity": 1,
         "visual_seed": 5004
     },
+    "cooldown_reduction": {
+        "name": "冷却缩减",
+        "type": "numeric",
+        "desc": "技能冷却 -30%",
+        "effect": {"cooldown_mult": 0.7},
+        "rarity": 2,
+        "visual_seed": 5005
+    },
+    "efficiency_boost": {
+        "name": "效率提升",
+        "type": "numeric",
+        "desc": "能耗降低25%，效果不变",
+        "effect": {"efficiency_mult": 1.25},
+        "rarity": 2,
+        "visual_seed": 5006
+    },
+    "overcharge": {
+        "name": "超载",
+        "type": "numeric",
+        "desc": "所有数值 +50%，冷却 +30%",
+        "effect": {"all_stats_mult": 1.5, "cooldown_penalty": 1.3},
+        "rarity": 3,
+        "visual_seed": 5007
+    },
+    "miniaturize": {
+        "name": "微型化",
+        "type": "numeric",
+        "desc": "冷却 -50%，伤害 -30%",
+        "effect": {"cooldown_mult": 0.5, "damage_mult": 0.7},
+        "rarity": 2,
+        "visual_seed": 5008
+    },
     
-    # ======== 特性类修饰器 ========
+    # ======== 特性类修饰器 (12种) ========
     "homing_addon": {
         "name": "追踪模块",
         "type": "trait",
@@ -1320,25 +1655,85 @@ MODIFIER_CARDS = {
     "crit_addon": {
         "name": "暴击模块",
         "type": "trait",
-        "desc": "暴击率 +20%",
+        "desc": "暴击率 +20%，暴伤 ×2.5",
         "effect": {"crit_chance": 0.2, "crit_mult": 1.5},
         "rarity": 2,
         "visual_seed": 5106
+    },
+    "freeze_addon": {
+        "name": "冰冻模块",
+        "type": "trait",
+        "desc": "攻击冰冻敌人",
+        "effect": {"freeze": True, "freeze_duration": 60},
+        "rarity": 2,
+        "visual_seed": 5107
+    },
+    "burn_addon": {
+        "name": "燃烧模块",
+        "type": "trait",
+        "desc": "攻击点燃敌人",
+        "effect": {"burn": True, "burn_dps": 10, "burn_duration": 180},
+        "rarity": 2,
+        "visual_seed": 5108
+    },
+    "poison_addon": {
+        "name": "剧毒模块",
+        "type": "trait",
+        "desc": "攻击中毒敌人",
+        "effect": {"poison": True, "poison_dps": 15, "poison_duration": 240},
+        "rarity": 2,
+        "visual_seed": 5109
+    },
+    "knockback_addon": {
+        "name": "击退模块",
+        "type": "trait",
+        "desc": "攻击击退敌人",
+        "effect": {"knockback": True, "knockback_force": 10},
+        "rarity": 1,
+        "visual_seed": 5110
+    },
+    "multishot_addon": {
+        "name": "多重射击",
+        "type": "trait",
+        "desc": "每次攻击额外发射2发",
+        "effect": {"multishot": 2},
+        "rarity": 3,
+        "visual_seed": 5111
+    },
+    "recursive_addon": {
+        "name": "递归模块",
+        "type": "trait",
+        "desc": "效果可叠加触发自身",
+        "effect": {"recursive": True, "recursive_chance": 0.25},
+        "rarity": 4,
+        "visual_seed": 5112
     }
 }
 
 # ==============================================================================
-#   第三层：协同卡牌（组合规则）
+#   第三层：协同卡牌（组合规则）- 24种协同效果
 # ==============================================================================
 SYNERGY_RULES = {
-    # ======== 弹幕流协同 ========
+    # ======== 弹幕流协同 (6种) ========
+    "barrage_initiate": {
+        "name": "弹幕学徒",
+        "desc": "子弹数 +3，散射角度 +20°",
+        "trigger": {
+            "archetype": "barrage",
+            "count": 2,
+            "cards": []
+        },
+        "effect": {"bullet_count_bonus": 3, "spread_angle": 20},
+        "visual": {"color": (255, 150, 150), "particle_effect": "bullet_trail"},
+        "rarity": 2
+    },
     "barrage_master": {
         "name": "弹幕大师",
         "desc": "子弹数量 ×2，分裂次数 +1",
         "trigger": {
             "archetype": "barrage",
             "count": 3,
-            "cards": []  # 任意3张弹幕流卡牌
+            "cards": []
         },
         "effect": {"bullet_count_mult": 2.0, "split_level": 1},
         "visual": {"color": (255, 100, 100), "particle_effect": "barrage_burst"},
@@ -1356,8 +1751,57 @@ SYNERGY_RULES = {
         "visual": {"color": (255, 50, 50), "particle_effect": "bullet_storm"},
         "rarity": 4
     },
+    "explosive_hell": {
+        "name": "爆裂地狱",
+        "desc": "所有子弹爆炸，范围 +100%",
+        "trigger": {
+            "archetype": "barrage",
+            "count": 3,
+            "cards": ["explosive_round"],
+            "modifiers": ["explosive_addon"]
+        },
+        "effect": {"all_bullets_explode": True, "explosion_radius_mult": 2.0},
+        "visual": {"color": (255, 150, 0), "particle_effect": "explosive_trail"},
+        "rarity": 4
+    },
+    "bullet_hell": {
+        "name": "弹幕狂潮",
+        "desc": "射速 ×3，子弹体积 -50%",
+        "trigger": {
+            "archetype": "barrage",
+            "count": 4,
+            "cards": ["rapid_fire", "scatter_cannon"]
+        },
+        "effect": {"fire_rate_mult": 3.0, "bullet_size": 0.5},
+        "visual": {"color": (255, 200, 100), "particle_effect": "rapid_stream"},
+        "rarity": 4
+    },
+    "chain_reaction": {
+        "name": "连锁反应",
+        "desc": "分裂弹也会分裂，最多3层",
+        "trigger": {
+            "archetype": "barrage",
+            "count": 3,
+            "cards": ["split_shot", "cluster_bomb"]
+        },
+        "effect": {"recursive_split": 3, "split_damage_mult": 1.2},
+        "visual": {"color": (255, 100, 150), "particle_effect": "fractal_burst"},
+        "rarity": 4
+    },
     
-    # ======== 狙击流协同 ========
+    # ======== 狙击流协同 (6种) ========
+    "sharpshooter": {
+        "name": "神枪手",
+        "desc": "暴击率 +25%，暴击伤害 ×3",
+        "trigger": {
+            "archetype": "sniper",
+            "count": 2,
+            "cards": []
+        },
+        "effect": {"crit_chance": 0.25, "crit_mult": 2.0},
+        "visual": {"color": (150, 220, 255), "particle_effect": "precision_mark"},
+        "rarity": 2
+    },
     "sniper_elite": {
         "name": "精英狙击",
         "desc": "穿透 +5，伤害 +80%",
@@ -1382,8 +1826,56 @@ SYNERGY_RULES = {
         "visual": {"color": (50, 150, 255), "particle_effect": "critical_strike"},
         "rarity": 4
     },
+    "deadeye": {
+        "name": "死亡之眼",
+        "desc": "100%暴击率，专注层数不再掉落",
+        "trigger": {
+            "archetype": "sniper",
+            "count": 5,
+            "cards": ["sniper_focus", "weakpoint_strike"]
+        },
+        "effect": {"crit_chance": 1.0, "focus_permanent": True},
+        "visual": {"color": (0, 255, 255), "particle_effect": "perfect_aim"},
+        "rarity": 5
+    },
+    "armor_buster": {
+        "name": "装甲克星",
+        "desc": "破甲100%，对Boss额外伤害 ×2",
+        "trigger": {
+            "archetype": "sniper",
+            "count": 3,
+            "cards": ["armor_penetration", "railgun"]
+        },
+        "effect": {"armor_pen": 1.0, "boss_damage_mult": 2.0},
+        "visual": {"color": (255, 200, 0), "particle_effect": "armor_shatter"},
+        "rarity": 4
+    },
+    "execution_master": {
+        "name": "处决大师",
+        "desc": "处决阈值提升至50%，即死",
+        "trigger": {
+            "archetype": "sniper",
+            "count": 4,
+            "cards": ["execution", "charged_shot"]
+        },
+        "effect": {"execute_threshold": 0.5, "execute_instant": True},
+        "visual": {"color": (200, 0, 0), "particle_effect": "death_mark"},
+        "rarity": 5
+    },
     
-    # ======== 控制流协同 ========
+    # ======== 控制流协同 (6种) ========
+    "defensive_master": {
+        "name": "防御专家",
+        "desc": "最大生命 +100，减伤 +20%",
+        "trigger": {
+            "archetype": "control",
+            "count": 2,
+            "cards": []
+        },
+        "effect": {"max_hp_bonus": 100, "damage_reduction": 0.2},
+        "visual": {"color": (200, 150, 255), "particle_effect": "shield_glow"},
+        "rarity": 2
+    },
     "crowd_control": {
         "name": "群体控制",
         "desc": "控制范围 +100%，持续时间 +50%",
@@ -1408,8 +1900,56 @@ SYNERGY_RULES = {
         "visual": {"color": (100, 100, 255), "particle_effect": "time_stop"},
         "rarity": 4
     },
+    "fortress": {
+        "name": "移动堡垒",
+        "desc": "减伤50%，护盾×2，移速-30%",
+        "trigger": {
+            "archetype": "control",
+            "count": 5,
+            "cards": ["armor_plating", "energy_shield", "void_barrier"]
+        },
+        "effect": {"damage_reduction": 0.5, "shield_mult": 2.0, "speed_penalty": 0.7},
+        "visual": {"color": (200, 100, 255), "particle_effect": "fortress_aura"},
+        "rarity": 5
+    },
+    "immortal": {
+        "name": "不朽之躯",
+        "desc": "生命回复×3，死亡自动复活",
+        "trigger": {
+            "archetype": "control",
+            "count": 4,
+            "cards": ["regeneration", "guardian_angel"]
+        },
+        "effect": {"regen_mult": 3.0, "auto_revive": True},
+        "visual": {"color": (255, 200, 255), "particle_effect": "divine_protection"},
+        "rarity": 5
+    },
+    "absolute_zero": {
+        "name": "绝对零度",
+        "desc": "冰冻时长×3，冰碎伤害×5",
+        "trigger": {
+            "archetype": "control",
+            "count": 4,
+            "cards": ["frost_nova", "stasis_field"]
+        },
+        "effect": {"freeze_duration_mult": 3.0, "shatter_mult": 5.0},
+        "visual": {"color": (100, 200, 255), "particle_effect": "ice_age"},
+        "rarity": 4
+    },
     
-    # ======== 召唤流协同 ========
+    # ======== 召唤流协同 (6种) ========
+    "squad_leader": {
+        "name": "编队长",
+        "desc": "僚机 +1，僚机伤害 +30%",
+        "trigger": {
+            "archetype": "summon",
+            "count": 2,
+            "cards": []
+        },
+        "effect": {"drone_count": 1, "drone_damage_mult": 1.3},
+        "visual": {"color": (150, 255, 200), "particle_effect": "formation_link"},
+        "rarity": 2
+    },
     "summoner": {
         "name": "召唤师",
         "desc": "召唤物数量 +2，伤害 +50%",
@@ -1434,8 +1974,44 @@ SYNERGY_RULES = {
         "visual": {"color": (50, 255, 100), "particle_effect": "army_formation"},
         "rarity": 4
     },
+    "orbital_supremacy": {
+        "name": "轨道霸权",
+        "desc": "轨道打击冷却-50%，伤害×3",
+        "trigger": {
+            "archetype": "summon",
+            "count": 3,
+            "cards": ["orbital_strike", "auto_turret"]
+        },
+        "effect": {"strike_cooldown_mult": 0.5, "strike_damage_mult": 3.0},
+        "visual": {"color": (255, 200, 100), "particle_effect": "satellite_network"},
+        "rarity": 4
+    },
+    "necromancer": {
+        "name": "死灵法师",
+        "desc": "击杀敌人复生为己方单位",
+        "trigger": {
+            "archetype": "summon",
+            "count": 4,
+            "cards": ["minion_army", "guardian_angel"]
+        },
+        "effect": {"revive_enemy_chance": 0.25, "revived_hp": 0.5},
+        "visual": {"color": (150, 0, 255), "particle_effect": "necromancy"},
+        "rarity": 5
+    },
+    "swarm_intelligence": {
+        "name": "集群智能",
+        "desc": "每个召唤物使其他召唤物 +10% 伤害",
+        "trigger": {
+            "archetype": "summon",
+            "count": 5,
+            "cards": ["drone_swarm", "minion_army"]
+        },
+        "effect": {"swarm_synergy": 0.1, "max_swarm_bonus": 3.0},
+        "visual": {"color": (0, 255, 200), "particle_effect": "hive_mind"},
+        "rarity": 5
+    },
     
-    # ======== 混合协同 ========
+    # ======== 混合流派协同 (6种) ========
     "explosive_barrage": {
         "name": "爆裂弹幕",
         "desc": "所有子弹附带爆炸",
@@ -1457,6 +2033,51 @@ SYNERGY_RULES = {
         "effect": {"infinite_pierce": True, "slow_on_hit": 0.5},
         "visual": {"color": (0, 255, 255), "particle_effect": "laser_trail"},
         "rarity": 3
+    },
+    "vampire_barrage": {
+        "name": "吸血弹幕",
+        "desc": "所有弹幕吸血，吸血率×2",
+        "trigger": {
+            "archetype": "barrage",
+            "count": 3,
+            "modifiers": ["lifesteal_addon"]
+        },
+        "effect": {"all_lifesteal": True, "lifesteal_mult": 2.0},
+        "visual": {"color": (200, 0, 100), "particle_effect": "blood_feast"},
+        "rarity": 4
+    },
+    "elemental_chaos": {
+        "name": "元素混沌",
+        "desc": "同时触发冰冻、燃烧、剧毒",
+        "trigger": {
+            "modifiers": ["freeze_addon", "burn_addon", "poison_addon"]
+        },
+        "effect": {"all_elements": True, "element_damage_mult": 1.5},
+        "visual": {"color": (255, 150, 255), "particle_effect": "elemental_storm"},
+        "rarity": 5
+    },
+    "glass_cannon": {
+        "name": "玻璃大炮",
+        "desc": "伤害×5，最大生命-50%",
+        "trigger": {
+            "archetype": "barrage",
+            "count": 4,
+            "archetype_exclude": ["control"]
+        },
+        "effect": {"damage_mult": 5.0, "max_hp_mult": 0.5},
+        "visual": {"color": (255, 0, 0), "particle_effect": "glass_shatter"},
+        "rarity": 5
+    },
+    "perfect_balance": {
+        "name": "完美平衡",
+        "desc": "拥有所有流派卡牌时，全属性 +100%",
+        "trigger": {
+            "archetype": "all",
+            "archetypes_count": 4
+        },
+        "effect": {"all_stats_mult": 2.0},
+        "visual": {"color": (255, 255, 255), "particle_effect": "harmony"},
+        "rarity": 6
     }
 }
 
@@ -1545,8 +2166,8 @@ class Card:
         return False
     
     def upgrade(self):
-        """升级卡牌"""
-        if self.type == "base" and self.level < 3:
+        """升级卡牌（最高5级）"""
+        if self.type == "base" and self.level < 5:
             self.level += 1
             self.final_effect = self._calculate_effect()
             return True
@@ -1622,8 +2243,10 @@ class UpgradeManager:
         # 攻击类效果
         if "bullet_count" in effect:
             player.bullet_count = getattr(player, "bullet_count", 1) + effect["bullet_count"]
+            player.bullet_count = min(player.bullet_count, 30)  # 上限30发，避免卡顿
         if "bullet_count_mult" in effect:
             player.bullet_count = int(getattr(player, "bullet_count", 1) * effect["bullet_count_mult"])
+            player.bullet_count = min(player.bullet_count, 30)  # 上限30发，避免卡顿
         if "damage_mult" in effect:
             player.damage *= (1.0 + effect["damage_mult"])
         if "pierce" in effect:
@@ -1760,6 +2383,65 @@ class UpgradeManager:
         if "spread_angle" in effect:
             player.spread_angle = effect["spread_angle"]
         
+        # 弹幕流专属效果
+        if "bounce_count" in effect:
+            player.has_bounce = True
+            player.bounce_count = getattr(player, "bounce_count", 0) + effect["bounce_count"]
+        if "bounce_damage" in effect:
+            player.bounce_damage_mult = getattr(player, "bounce_damage_mult", 1.0) * (1.0 + effect["bounce_damage"])
+        if "cluster_count" in effect:
+            player.has_cluster = True
+            player.cluster_count = effect["cluster_count"]
+            player.cluster_radius = effect.get("cluster_radius", 40)
+        if "cluster_radius" in effect:
+            player.cluster_radius = getattr(player, "cluster_radius", 40) + effect["cluster_radius"]
+        if "storm_duration" in effect:
+            player.has_storm = True
+            player.storm_duration = effect["storm_duration"]
+            player.storm_bullets = effect.get("storm_bullets", 20)
+        
+        # 狙击流专属效果
+        if "overcharge_cooldown" in effect:
+            player.has_overcharge = True
+            player.overcharge_cooldown = getattr(player, "overcharge_cooldown", 180) + effect["overcharge_cooldown"]
+            if "overcharge_mult" in effect:
+                player.overcharge_mult = effect["overcharge_mult"]
+        if "overcharge_mult" in effect:
+            player.overcharge_mult = getattr(player, "overcharge_mult", 1.0) + effect["overcharge_mult"]
+        if "overcharge_pierce" in effect:
+            player.overcharge_pierce = effect["overcharge_pierce"]
+        if "weakpoint_chance" in effect:
+            player.weakpoint_chance = getattr(player, "weakpoint_chance", 0) + effect["weakpoint_chance"]
+        if "weakpoint_mult" in effect:
+            player.weakpoint_mult = getattr(player, "weakpoint_mult", 1.0) + effect["weakpoint_mult"]
+        if "armor_pen" in effect:
+            player.armor_penetration = getattr(player, "armor_penetration", 0) + effect["armor_pen"]
+        if "bonus_vs_armor" in effect:
+            player.bonus_vs_armor = getattr(player, "bonus_vs_armor", 0) + effect["bonus_vs_armor"]
+        if "mark_duration" in effect:
+            player.has_mark = True
+            player.mark_duration = effect["mark_duration"]
+            player.mark_crit_mult = effect.get("mark_crit_mult", 4.0)
+        if "execute_threshold" in effect:
+            player.has_execute = True
+            player.execute_threshold = effect["execute_threshold"]
+            player.execute_mult = effect.get("execute_mult", 10.0)
+        if "focus_per_sec" in effect:
+            player.has_focus = True
+            player.focus_per_sec = effect["focus_per_sec"]
+            player.max_focus = effect.get("max_focus", 3.0)
+        
+        # 控制流专属效果
+        if "stasis_duration" in effect:
+            player.has_stasis = True
+            player.stasis_duration = effect["stasis_duration"]
+            player.stasis_radius = effect.get("stasis_radius", 120)
+        if "barrier_hp" in effect:
+            player.has_barrier = True
+            player.barrier_hp = effect["barrier_hp"]
+            player.barrier_max_hp = effect["barrier_hp"]
+            player.barrier_recharge = effect.get("barrier_recharge", 600)
+        
         # 召唤类效果
         if "drone_count" in effect:
             add_wingmen_to_player(player, effect["drone_count"])
@@ -1781,6 +2463,31 @@ class UpgradeManager:
             add_wingmen_to_player(player, int(current_wingmen * (effect["summon_count_mult"] - 1)))
         if "summon_ai" in effect:
             player.summon_ai_mode = effect["summon_ai"]
+        if "strike_damage" in effect:
+            player.has_orbital_strike = True
+            player.strike_damage = effect["strike_damage"]
+            player.strike_cooldown = effect.get("strike_cooldown", 600)
+            player.strike_timer = 0
+        if "heal_per_sec" in effect:
+            player.has_healing_aura = True
+            player.heal_per_sec = effect["heal_per_sec"]
+            player.aura_radius = effect.get("aura_radius", 200)
+        if "revive_hp" in effect:
+            player.has_revive = True
+            # revive_hp是百分比，转换为实际血量
+            revive_percent = effect["revive_hp"]
+            player.revive_hp = int(player.max_hp * revive_percent)
+            player.revive_cooldown = effect.get("revive_cooldown", 3600)
+            player.revive_cooldown_timer = 3600  # 初始冷却完成
+        if "minion_count" in effect:
+            player.has_minions = True
+            player.minion_count = effect["minion_count"]
+            player.minion_hp = effect.get("minion_hp", 20)
+            player.minion_damage = effect.get("minion_damage", 10)
+        if "station_buff" in effect:
+            player.has_station = True
+            player.station_buff = effect["station_buff"]
+            player.station_radius = effect.get("station_radius", 250)
         
         # 系统类效果
         if "magnet_range" in effect:
@@ -1858,6 +2565,7 @@ class UpgradeManager:
             
             if "bullet_count_mult" in effect:
                 player.bullet_count = int(player.bullet_count * effect["bullet_count_mult"])
+                player.bullet_count = min(player.bullet_count, 30)  # 上限30发，避免卡顿
             if "damage_mult" in effect:
                 player.damage *= effect["damage_mult"]
             if "pierce_bonus" in effect:
@@ -1906,23 +2614,30 @@ class UpgradeManager:
         log_info(f"协同触发！【{synergy_data['name']}】: {synergy_data['desc']}")
     
     def trigger_levelup(self):
-        """触发升级，生成3选1卡牌"""
+        """触发升级，生成3选1卡牌（支持1-6星）"""
         player = getattr(self, '_player_ref', None)
         if not player:
             return
         
         player_level = player.level
         
-        # 根据等级调整稀有度权重
-        rarity_weights = {1: 1.0, 2: 0.3, 3: 0.05}
+        # 根据等级调整稀有度权重（扩展到6星）
+        rarity_weights = {1: 1.0, 2: 0.3, 3: 0.05, 4: 0.01, 5: 0.005, 6: 0.001}
         if player_level <= 5:
-            rarity_weights = {1: 1.0, 2: 0.2, 3: 0.0}
+            # 1-5级：只出普通和稀有
+            rarity_weights = {1: 1.0, 2: 0.2, 3: 0.0, 4: 0.0, 5: 0.0, 6: 0.0}
         elif player_level <= 10:
-            rarity_weights = {1: 0.7, 2: 0.5, 3: 0.1}
+            # 6-10级：开始出现史诗
+            rarity_weights = {1: 0.7, 2: 0.5, 3: 0.1, 4: 0.0, 5: 0.0, 6: 0.0}
         elif player_level <= 15:
-            rarity_weights = {1: 0.5, 2: 0.7, 3: 0.2}
+            # 11-15级：开始出现传说
+            rarity_weights = {1: 0.5, 2: 0.7, 3: 0.2, 4: 0.05, 5: 0.0, 6: 0.0}
+        elif player_level <= 20:
+            # 16-20级：开始出现神话
+            rarity_weights = {1: 0.3, 2: 0.6, 3: 0.5, 4: 0.1, 5: 0.02, 6: 0.0}
         else:
-            rarity_weights = {1: 0.3, 2: 0.6, 3: 0.5}
+            # 21级+：可能出现至高
+            rarity_weights = {1: 0.2, 2: 0.5, 3: 0.6, 4: 0.3, 5: 0.05, 6: 0.01}
         
         # 选择3张卡牌
         selected = []
@@ -1950,10 +2665,10 @@ class UpgradeManager:
                     selected.append({"type": "modifier", "id": card_id})
             
             else:
-                # 升级已有卡
+                # 升级已有卡（最高5级）
                 upgradable = [
                     card_id for card_id, card in self.owned_cards.items()
-                    if card.type == "base" and card.level < 3
+                    if card.type == "base" and card.level < 5
                 ]
                 if upgradable:
                     card_id = random.choice(upgradable)

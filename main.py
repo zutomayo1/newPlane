@@ -133,7 +133,7 @@ achievement_notifications = []  # [(achievement_obj, timer), ...]
 
 # 图鉴
 gallery_page = 0
-gallery_tab = 0 # 0:All, 1-4:Rarity
+gallery_tab = 0 # 0:All, 1-6:Rarity (1★-6★)
 
 # 档案
 codex_tab = 0 # 0:Plane, 1:Boss, 2:Enemy
@@ -193,6 +193,9 @@ boss_challenge_swap_timer = 0  # 换位动画计时器
 boss_challenge_pulse_timer = 0  # 脉冲效果计时器
 boss_challenge_scroll_offset = 0  # 列表滚动偏移
 boss_challenge_key_repeat = {"up": 0, "down": 0, "left": 0, "right": 0}  # 键盘连按计时
+
+# 属性面板卡牌列表滚动
+stats_panel_card_scroll = 0  # 卡牌列表滚动偏移（0表示顶部）
 
 # ==============================================================================
 #   辅助函数
@@ -4668,11 +4671,11 @@ def draw_gallery_ui():
     draw_text(screen, "战术图鉴", 40, WIDTH//2, 30, MAGENTA, glow=True)
     mx, my = pygame.mouse.get_pos()
     
-    # 按1-4星品质分类
-    tab_labels = ["全部", "1★普通", "2★稀有", "3★史诗", "4★传说"]
-    tab_colors = [WHITE, (150, 150, 150), (100, 200, 255), (200, 100, 255), (255, 200, 50)]
-    tab_w = 110
-    start_tx = (WIDTH - (5 * tab_w + 40)) // 2
+    # 按1-6星品质分类（扩展到神话和至高）
+    tab_labels = ["全部", "1★", "2★", "3★", "4★", "5★", "6★"]
+    tab_colors = [WHITE, (150, 150, 150), (100, 200, 255), (200, 100, 255), (255, 200, 50), (255, 100, 200), (255, 255, 255)]
+    tab_w = 90
+    start_tx = (WIDTH - (7 * tab_w + 60)) // 2
     
     for i, lbl in enumerate(tab_labels):
         rect = pygame.Rect(start_tx + i*(tab_w+10), 80, tab_w, 40)
@@ -4698,7 +4701,7 @@ def draw_gallery_ui():
         all_cards.append({"id": key, "name": synergy["name"], "rarity": synergy["rarity"],
                         "desc": synergy.get("desc", ""), "type": "synergy", "data": synergy})
     
-    # 按品质筛选 (tab 0=全部, 1=1星, 2=2星, 3=3星, 4=4星)
+    # 按品质筛选 (tab 0=全部, 1=1星, 2=2星, 3=3星, 4=4星, 5=5星, 6=6星)
     if gallery_tab == 0: 
         items = all_cards
     else: 
@@ -4744,10 +4747,10 @@ def draw_gallery_ui():
         draw_text(screen, item['name'], 22, x+15, y+12, WHITE, align="left", glow=True)
         draw_text(screen, stars, 20, x+card_w-15, y+12, rc, align="right")
         
-        # 显示卡牌类型标签
+        # 显示卡牌类型标签和信息（右侧，避开图案）
         if "data" in item:
             type_label = {"base": "基础", "modifier": "参数", "synergy": "协同"}.get(item["type"], "")
-            draw_text(screen, f"[{type_label}]", 15, x+15, y+48, rc, align="left")
+            draw_text(screen, f"[{type_label}]", 15, x+100, y+52, rc, align="left")
             
             # 显示类别和流派
             card_data = item["data"]
@@ -4779,13 +4782,15 @@ def draw_gallery_ui():
             
             if info_parts:
                 info_text = " · ".join(info_parts)
-                draw_text(screen, info_text, 14, x+120, y+48, (180, 180, 200))
+                draw_text(screen, info_text, 14, x+100, y+72, (180, 180, 200))
             
-            # 显示效果 - 属性名全面汉化
+            # 显示效果 - 属性名全面汉化（包含所有76张卡牌的属性）
             attr_names = {
+                # 基础属性
                 "bullet_count": "弹幕", "damage_mult": "伤害", "speed_mult": "速度",
                 "split_count": "分裂", "split_damage": "分裂伤", "pierce": "穿透",
-                "fire_rate": "射速", "explosion_radius": "爆炸范围", "explosion_mult": "爆炸伤害",
+                "fire_rate": "射速", "fire_rate_mult": "射速倍率",
+                "explosion_radius": "爆炸范围", "explosion_mult": "爆炸伤害",
                 "slow_duration": "减速时长", "freeze_chance": "冻结率", "hp_mult": "生命",
                 "shield": "护盾", "armor": "护甲", "dodge_chance": "闪避率",
                 "regen_rate": "回复", "drone_count": "无人机", "drone_damage": "无人机伤害",
@@ -4802,10 +4807,63 @@ def draw_gallery_ui():
                 "chain_targets": "连锁目标", "pierce_bonus": "穿透加成", "duration_mult": "持续时长",
                 "control_range_mult": "控制范围", "spread_angle": "散射角度", 
                 "summon_count": "召唤数", "summon_damage_mult": "召唤伤害", 
-                "summon_count_mult": "召唤数量倍率", "summon_ai": "AI模式",
+                "summon_count_mult": "召唤倍率", "summon_ai": "AI模式",
                 "bullet_count_mult": "弹幕倍率", "all_bullets_explode": "全弹爆炸",
                 "infinite_pierce": "无限穿透", "slow_on_hit": "击中减速", "global_slow": "全局减速",
-                "split_level": "分裂层数"
+                "split_level": "分裂层数",
+                # 弹幕流专属
+                "bounce_count": "反弹", "bounce_damage": "反弹伤害",
+                "cluster_count": "子弹药", "cluster_radius": "子弹药范围", "cluster_damage_mult": "子弹药伤害",
+                "storm_duration": "风暴时长", "storm_bullets": "风暴弹幕", "storm_damage_mult": "风暴伤害",
+                # 狙击流专属
+                "overcharge_cooldown": "超载冷却", "overcharge_mult": "超载倍率", "overcharge_pierce": "超载穿透",
+                "weakpoint_chance": "弱点率", "weakpoint_mult": "弱点倍率",
+                "armor_pen": "破甲", "bonus_vs_armor": "对装甲加成",
+                "railgun_explosion": "轨道爆炸",
+                "mark_duration": "标记时长", "mark_crit_mult": "标记倍率", "mark_chain": "标记传染",
+                "execute_threshold": "处决阈值", "execute_mult": "处决倍率", "execute_instant_kill": "秒杀",
+                "focus_per_sec": "专注速度", "max_focus": "最大专注", "focus_crit": "专注暴击",
+                # 控制流专属
+                "time_freeze_chance": "冻结几率", "freeze_shatter": "碎冰伤害",
+                "thorns_damage": "反伤",
+                "regen_combat": "战斗回复",
+                "dodge_invulnerable": "闪避无敌",
+                "stasis_duration": "静滞时长", "stasis_radius": "静滞范围", "stasis_damage_amp": "静滞易伤",
+                "barrier_hp": "屏障值", "barrier_recharge": "屏障充能", "barrier_reflect": "屏障反射",
+                # 召唤流专属
+                "turret_laser": "激光炮",
+                "drone_kamikaze": "无人机自爆",
+                "magnet_instant": "瞬吸",
+                "strike_damage": "打击伤害", "strike_cooldown": "打击冷却", "strike_count": "打击次数",
+                "heal_per_sec": "回复/秒", "aura_radius": "光环范围", "heal_damage_boost": "治疗加伤",
+                "revive_hp": "复活生命", "revive_cooldown": "复活冷却", "revive_invulnerable": "复活无敌",
+                "minion_count": "召唤物", "minion_hp": "召唤物生命", "minion_damage": "召唤物伤害", "minion_evolve": "召唤物进化",
+                "station_buff": "支援增益", "station_radius": "支援范围", "station_repair": "支援修复",
+                # 修饰符专属
+                "efficiency_mult": "效率倍率",
+                "all_stats_mult": "全属性", "cooldown_penalty": "冷却惩罚", "cooldown_mult": "冷却倍率",
+                "burn": "燃烧", "burn_dps": "燃烧伤害", "burn_duration": "燃烧时长",
+                "poison": "剧毒", "poison_dps": "中毒伤害", "poison_duration": "中毒时长",
+                "knockback": "击退", "knockback_force": "击退力度",
+                "multishot": "多重射击",
+                "recursive": "递归", "recursive_chance": "递归几率",
+                # 协同效果专属
+                "bullet_count_bonus": "弹幕加成",
+                "bullet_size": "弹幕大小",
+                "recursive_split": "递归分裂", "split_damage_mult": "分裂伤害",
+                "focus_permanent": "永久专注",
+                "boss_damage_mult": "对Boss伤害",
+                "execute_instant": "即死",
+                "shield_mult": "护盾倍率", "speed_penalty": "移速惩罚",
+                "regen_mult": "回复倍率", "auto_revive": "自动复活",
+                "freeze_duration_mult": "冻结倍率", "shatter_mult": "碎冰倍率",
+                "drone_damage_mult": "无人机伤害",
+                "strike_cooldown_mult": "打击冷却", "strike_damage_mult": "打击伤害",
+                "revive_enemy_chance": "复生几率", "revived_hp": "复生生命",
+                "swarm_synergy": "集群协同", "max_swarm_bonus": "最大集群加成",
+                "all_lifesteal": "全体吸血", "lifesteal_mult": "吸血倍率",
+                "all_elements": "全元素", "element_damage_mult": "元素伤害",
+                "max_hp_mult": "最大生命倍率"
             }
             
             # 解析效果
@@ -4813,16 +4871,16 @@ def draw_gallery_ui():
             if "base_effect" in card_data:
                 effect = card_data["base_effect"]
                 for k, v in list(effect.items())[:3]:
-                    if isinstance(v, (int, float)):
-                        cn_name = attr_names.get(k, k)
+                    cn_name = attr_names.get(k, k)
+                    if isinstance(v, bool):
+                        if v:
+                            desc_lines.append(cn_name)
+                    elif isinstance(v, (int, float)):
                         if "mult" in k or "chance" in k or k.endswith("_mult"):
                             if v >= 1:
                                 desc_lines.append(f"{cn_name}+{int((v-1)*100)}%")
                             else:
                                 desc_lines.append(f"{cn_name}×{v:.1f}")
-                        elif isinstance(v, bool):
-                            if v:
-                                desc_lines.append(cn_name)
                         else:
                             desc_lines.append(f"{cn_name}+{v}")
             elif "effect" in card_data:
@@ -4835,9 +4893,20 @@ def draw_gallery_ui():
                                 desc_lines.append(cn_name)
                         elif isinstance(v, (int, float)):
                             if "mult" in k or "chance" in k:
-                                desc_lines.append(f"{cn_name}×{v:.1f}")
+                                if v >= 1:
+                                    desc_lines.append(f"{cn_name}+{int((v-1)*100)}%")
+                                else:
+                                    desc_lines.append(f"{cn_name}×{v:.1f}")
                             else:
                                 desc_lines.append(f"{cn_name}+{v}")
+            
+            # 显示效果信息（弹幕+、伤害+等）
+            if desc_lines:
+                effect_y = y+130
+                effect_text = " ".join(desc_lines[:3])  # 最多显示3个效果
+                lines = [effect_text[k:k+24] for k in range(0, len(effect_text), 24)][:2]
+                for k, line in enumerate(lines):
+                    draw_text(screen, line, 15, x+15, effect_y+k*20, (150, 220, 255), align="left")
             
             # 卡牌描述 - 更大更清晰
             desc = item.get('desc', '')
@@ -4845,15 +4914,7 @@ def draw_gallery_ui():
                 # 分行显示描述
                 lines = [desc[k:k+22] for k in range(0, len(desc), 22)][:2]
                 for k, line in enumerate(lines):
-                    draw_text(screen, line, 16, x+15, y+75+k*22, (200, 200, 220), align="left")
-            
-            # 显示效果信息
-            if desc_lines:
-                effect_y = y+120 if desc else y+85
-                effect_text = " ".join(desc_lines[:3])  # 最多显示3个效果
-                lines = [effect_text[k:k+24] for k in range(0, len(effect_text), 24)][:2]
-                for k, line in enumerate(lines):
-                    draw_text(screen, line, 15, x+15, effect_y+k*20, (150, 220, 255), align="left")
+                    draw_text(screen, line, 16, x+15, y+95+k*22, (200, 200, 220), align="left")
             
             # 显示升级信息（基础卡）
             if item["type"] == "base" and "upgrades" in card_data and card_data["upgrades"]:
@@ -7584,6 +7645,86 @@ def draw_player_stats_panel():
     
     draw_text(screen, f"{hp_ratio*100:.0f}%", 13, left_x + 210, y_offset + 24, WHITE, glow=True)
     
+    # 复活冷却 - 如果有复活能力
+    if hasattr(player, 'revive_hp') and player.revive_hp > 0:
+        y_offset += 60
+        revive_cooldown = getattr(player, 'revive_cooldown', 3600)
+        revive_timer = getattr(player, 'revive_cooldown_timer', 0)
+        revive_ratio = revive_timer / max(1, revive_cooldown)
+        
+        # 冷却完成与未完成的不同显示
+        if revive_ratio >= 1.0:
+            revive_color = (255, 215, 0)  # 金色 - 准备就绪
+            status_text = "就绪"
+        else:
+            revive_color = (120, 120, 120)  # 灰色 - 冷却中
+            status_text = f"{(1-revive_ratio)*100:.0f}%"
+        
+        draw_text(screen, "复活冷却", 16, left_x + 5, y_offset - 2, revive_color, align="left", glow=revive_ratio >= 1.0)
+        draw_text(screen, status_text, 11, left_x + 360, y_offset - 2, revive_color, align="right")
+        
+        revive_bar_bg = pygame.Rect(left_x + 5, y_offset + 18, 405, 20)
+        pygame.draw.rect(screen, (30, 25, 20), revive_bar_bg, border_radius=10)
+        pygame.draw.rect(screen, (80, 70, 40), revive_bar_bg, 2, border_radius=10)
+        
+        if revive_ratio > 0:
+            revive_fill_width = int(401 * min(1.0, revive_ratio))
+            revive_fill = pygame.Rect(left_x + 7, y_offset + 20, revive_fill_width, 16)
+            
+            # 渐变填充
+            for i in range(revive_fill.height):
+                color_factor = i / revive_fill.height
+                if revive_ratio >= 1.0:
+                    # 金色渐变 + 闪烁
+                    glow_intensity = int(255 * (0.8 + 0.2 * abs(math.sin(t / 300))))
+                    color = (glow_intensity, int(215 * (0.7 + 0.3 * color_factor)), 0)
+                else:
+                    # 灰色渐变
+                    color = tuple(int(c * (0.7 + 0.3 * color_factor)) for c in revive_color)
+                pygame.draw.line(screen, color, (revive_fill.x, revive_fill.y + i), (revive_fill.x + revive_fill.width, revive_fill.y + i))
+            
+            # 完成时的光芒效果
+            if revive_ratio >= 1.0:
+                pulse_size = int(8 * abs(math.sin(t / 400)))
+                pygame.draw.line(screen, (255, 255, 255, 150), 
+                                (revive_fill.x + revive_fill.width - pulse_size, revive_fill.y), 
+                                (revive_fill.x + revive_fill.width - pulse_size, revive_fill.y + revive_fill.height), 4)
+        
+        draw_text(screen, f"{min(100, revive_ratio*100):.0f}%", 13, left_x + 210, y_offset + 24, WHITE, glow=True)
+    
+    # 能量护盾 - 如果有
+    if hasattr(player, 'barrier_current_hp') and hasattr(player, 'barrier_hp'):
+        y_offset += 60
+        barrier_max = getattr(player, 'barrier_hp', 50)
+        barrier_current = getattr(player, 'barrier_current_hp', 0)
+        barrier_ratio = barrier_current / max(1, barrier_max)
+        
+        draw_text(screen, "能量护盾", 16, left_x + 5, y_offset - 2, (0, 200, 255), align="left", glow=True)
+        draw_text(screen, f"{int(barrier_current)}/{int(barrier_max)}", 11, left_x + 360, y_offset - 2, GRAY, align="right")
+        
+        barrier_bar_bg = pygame.Rect(left_x + 5, y_offset + 18, 405, 20)
+        pygame.draw.rect(screen, (0, 20, 30), barrier_bar_bg, border_radius=10)
+        pygame.draw.rect(screen, (0, 100, 150), barrier_bar_bg, 2, border_radius=10)
+        
+        if barrier_ratio > 0:
+            barrier_fill_width = int(401 * barrier_ratio)
+            barrier_fill = pygame.Rect(left_x + 7, y_offset + 20, barrier_fill_width, 16)
+            
+            # 科技蓝渐变
+            for i in range(barrier_fill.height):
+                color_factor = i / barrier_fill.height
+                color = (0, int(200 * (0.7 + 0.3 * color_factor)), int(255 * (0.8 + 0.2 * color_factor)))
+                pygame.draw.line(screen, color, (barrier_fill.x, barrier_fill.y + i), 
+                               (barrier_fill.x + barrier_fill.width, barrier_fill.y + i))
+            
+            # 能量流动效果
+            flow_offset = int((t / 10) % barrier_fill.width)
+            pygame.draw.line(screen, (100, 255, 255, 180), 
+                           (barrier_fill.x + flow_offset, barrier_fill.y), 
+                           (barrier_fill.x + flow_offset, barrier_fill.y + barrier_fill.height), 2)
+        
+        draw_text(screen, f"{barrier_ratio*100:.0f}%", 13, left_x + 210, y_offset + 24, WHITE, glow=True)
+    
     # 护盾 - 增强版
     y_offset += 60
     shield_ratio = player.shield / max(1, player.max_hp)
@@ -7617,15 +7758,23 @@ def draw_player_stats_panel():
     
     draw_text(screen, f"{shield_ratio*100:.0f}%", 13, left_x + 210, y_offset + 24, WHITE, glow=True)
     
-    # 底部属性组 - 紧凑卡片式
+    # 底部属性组 - 紧凑卡片式（扩展到8个属性）
     stats_y = y_offset + 70
     
-    # 火力 & 暴击率 - 并排显示
+    # 新增属性检测
+    wingmen_count = len(getattr(player, 'wingmen', []))
+    turret_count = getattr(player, 'turret_count', 0) if hasattr(player, 'has_turrets') and player.has_turrets else 0
+    
+    # 火力 & 暴击率 - 并排显示（4行x2列=8个属性）
     stat_cards = [
         ("火力", f"{player.damage:.1f}", MAGENTA),
         ("暴击", f"{player.crit_chance * 100:.0f}%", (255, 100, 50)),
         ("穿透", f"{player.piercing if hasattr(player, 'piercing') else 0}", CYAN),
-        ("弹数", f"{player.bullet_count if hasattr(player, 'bullet_count') else 1}", CYBER_LIME)
+        ("弹数", f"{player.bullet_count if hasattr(player, 'bullet_count') else 1}", CYBER_LIME),
+        ("闪避", f"{getattr(player, 'dodge_chance', 0) * 100:.0f}%", (150, 255, 200)),
+        ("减伤", f"{getattr(player, 'damage_reduction', 0) * 100:.0f}%", (100, 200, 255)),
+        ("无人机", f"{wingmen_count}", (255, 200, 100)),
+        ("炮塔", f"{turret_count}", (200, 150, 255))
     ]
     
     for i, (name, value, color) in enumerate(stat_cards):
@@ -7633,7 +7782,7 @@ def draw_player_stats_panel():
         row = i // 2
         
         card_x = left_x + col * 210
-        card_y = stats_y + row * 52
+        card_y = stats_y + row * 48
         
         # 小卡片背景
         mini_card = pygame.Rect(card_x - 5, card_y - 5, 200, 44)
@@ -7784,23 +7933,17 @@ def draw_player_stats_panel():
         # 按等级排序
         card_display_list.sort(key=lambda x: x[1], reverse=True)
         
-        # 显示卡牌 - 2列布局
-        for i, (card_name, card_level, card_color) in enumerate(card_display_list[:8]):  # 最多显示8张
+        # 显示卡牌 - 2列布局，支持滚动
+        max_visible_rows = 7  # 最多显示7行（14张卡）
+        start_index = stats_panel_card_scroll
+        end_index = min(start_index + max_visible_rows * 2, len(card_display_list))
+        
+        for i, (card_name, card_level, card_color) in enumerate(card_display_list[start_index:end_index]):
             col = i % 2
             row = i // 2
             
             card_x = right_x + col * 255
             card_y = card_list_y + 25 + row * 38
-            
-            # 超出面板就停止
-            if card_y > right_y + 360:
-                remaining = len(card_display_list) - i
-                if remaining > 0:
-                    more_rect = pygame.Rect(right_x + 180, card_y - 5, 140, 30)
-                    pygame.draw.rect(screen, (40, 40, 50, 200), more_rect, border_radius=8)
-                    pygame.draw.rect(screen, GRAY, more_rect, 1, border_radius=8)
-                    draw_text(screen, f"▼ 还有 {remaining} 张卡牌", 12, right_x + 250, card_y + 5, GRAY, align="center")
-                break
             
             # 卡片背景 - 玻璃质感
             bar_rect = pygame.Rect(card_x - 8, card_y - 8, 245, 34)
@@ -7837,6 +7980,20 @@ def draw_player_stats_panel():
             # 等级星星
             star_text = "★" * min(card_level, 3)
             draw_text(screen, star_text, 11, card_x + 22, card_y + 16, card_color, align="left")
+        
+        # 滚动提示
+        total_cards = len(card_display_list)
+        if total_cards > max_visible_rows * 2:
+            scroll_hint_y = card_list_y + 25 + max_visible_rows * 38 + 5
+            # 上翻提示
+            if stats_panel_card_scroll > 0:
+                draw_text(screen, "▲ 滚轮向上", 11, right_x + 250, card_list_y + 10, (150, 150, 150), align="center")
+            # 下翻提示
+            if stats_panel_card_scroll + max_visible_rows * 2 < total_cards:
+                draw_text(screen, "▼ 滚轮向下", 11, right_x + 250, scroll_hint_y, (150, 150, 150), align="center")
+            # 显示进度
+            progress_text = f"{start_index + 1}-{end_index} / {total_cards}"
+            draw_text(screen, progress_text, 10, right_x + 470, card_list_y + 5, GRAY, align="right")
 
     # 底部提示条 - 动态背景
     hint_y = panel_y + panel_h - 45
@@ -7980,40 +8137,29 @@ def draw_levelup_ui():
             safe_blit(screen, rarity_bg, (card_rect.centerx - 70, card_y + 10))
             draw_text(screen, f"★ {rarity_text} ★", 18, card_rect.centerx, card_y + 22, WHITE, glow=True)
             
-            # 卡牌图标/装饰
-            icon_y = card_y + 70
-            icon_size = 60
-            icon_color = (*border_color[:3], 150)
-            
-            # 根据卡牌类型绘制不同图标
-            if "attack" in card_data.get("category", ""):
-                # 攻击图标 - 剑
-                pygame.draw.polygon(screen, icon_color, [
-                    (card_rect.centerx, icon_y - icon_size//2),
-                    (card_rect.centerx - icon_size//3, icon_y + icon_size//2),
-                    (card_rect.centerx + icon_size//3, icon_y + icon_size//2)
-                ])
-            elif "defense" in card_data.get("category", ""):
-                # 防御图标 - 盾
-                pygame.draw.ellipse(screen, icon_color, 
-                    (card_rect.centerx - icon_size//2, icon_y - icon_size//2, icon_size, icon_size))
-            elif "special" in card_data.get("category", ""):
-                # 特殊图标 - 星星
-                points = []
-                for angle in range(0, 360, 72):
-                    rad = math.radians(angle - 90)
-                    px = card_rect.centerx + math.cos(rad) * icon_size // 2
-                    py = icon_y + math.sin(rad) * icon_size // 2
-                    points.append((px, py))
-                pygame.draw.polygon(screen, icon_color, points)
+            # 顶部装饰图标
+            icon_y = card_y + 80
+            category = card_data.get("category", "")
+            if category == "attack":
+                # 三角形（攻击）
+                pts = [(card_rect.centerx, icon_y - 15), (card_rect.centerx - 15, icon_y + 10), (card_rect.centerx + 15, icon_y + 10)]
+                pygame.draw.polygon(screen, (*border_color[:3], 100), pts)
+            elif category == "defense":
+                # 盾牌形状（防御）
+                pygame.draw.ellipse(screen, (*border_color[:3], 100),
+                                  (card_rect.centerx - 20, icon_y - 10, 40, 30))
+            elif category == "special":
+                # 星形（特殊）
+                for j in range(5):
+                    angle = j * 2 * math.pi / 5 - math.pi / 2
+                    px = card_rect.centerx + 20 * math.cos(angle)
+                    py = icon_y + 20 * math.sin(angle)
+                    pygame.draw.line(screen, (*border_color[:3], 100),
+                                   (card_rect.centerx, icon_y), (px, py), 2)
             else:
-                # 默认图标 - 齿轮
-                pygame.draw.circle(screen, icon_color, (card_rect.centerx, icon_y), icon_size // 2, 3)
-                for angle in range(0, 360, 45):
-                    rad = math.radians(angle)
-                    px = card_rect.centerx + math.cos(rad) * icon_size // 2
-                    py = icon_y + math.sin(rad) * icon_size // 2
-                    pygame.draw.circle(screen, icon_color, (int(px), int(py)), 5)
+                # 圆形（默认）
+                pygame.draw.circle(screen, (*border_color[:3], 100),
+                                 (card_rect.centerx, icon_y), 25)
             
             # 卡牌名称 - 加粗效果
             name_y = card_y + 150
@@ -8179,7 +8325,13 @@ while True:
             
             # --- 滚轮事件 (通用) ---
             if event.type == pygame.MOUSEWHEEL:
-                if game_state == "customization":
+                # 属性面板滚动（TAB暂停时）
+                if tab_paused and game_state in ["game", "boss_challenge_play"]:
+                    if hasattr(player, 'upgrade_manager') and player.upgrade_manager:
+                        owned_cards = player.upgrade_manager.owned_cards
+                        max_scroll = max(0, len(owned_cards) - 14)  # 14张可见
+                        stats_panel_card_scroll = max(0, min(stats_panel_card_scroll - event.y * 2, max_scroll))
+                elif game_state == "customization":
                     mx, my = pygame.mouse.get_pos()
                     if mx < 330:
                         # 飞机列表滚动
@@ -8685,18 +8837,18 @@ while True:
 
                 elif game_state == "gallery":
                     sound_mgr.play("select")
-                    # 5个稀有度标签点击检测: 全部/1星/2星/3星/4星
-                    tab_width = 110
+                    # 7个稀有度标签点击检测: 全部/1星/2星/3星/4星/5星/6星
+                    tab_width = 90
                     tab_gap = 10
-                    total_tab_width = 5 * tab_width + 4 * tab_gap  # 5个标签,4个间隙
+                    total_tab_width = 7 * tab_width + 6 * tab_gap  # 7个标签,6个间隙
                     start_tab_x = (WIDTH - total_tab_width) // 2
                     
-                    # 检测5个标签的点击
-                    for i in range(5):
+                    # 检测7个标签的点击
+                    for i in range(7):
                         tab_x = start_tab_x + i * (tab_width + tab_gap)
                         tab_rect = pygame.Rect(tab_x, 80, tab_width, 40)
                         if tab_rect.collidepoint(mx, my):
-                            gallery_tab = i  # 0=全部, 1=1星, 2=2星, 3=3星, 4=4星
+                            gallery_tab = i  # 0=全部, 1=1星, 2=2星, 3=3星, 4=4星, 5=5星, 6=6星
                             gallery_page = 0
                             break
                     
@@ -9045,6 +9197,510 @@ while True:
                     for eb in enemy_bullets:
                         eb.frozen = True
                     player.update()
+                    
+                    # === 新卡牌系统：持续效果更新 ===
+                    
+                    # 6. 轨道打击 - 定时激光攻击
+                    if hasattr(player, 'has_orbital_strike') and player.has_orbital_strike:
+                        if not hasattr(player, 'strike_timer'):
+                            player.strike_timer = 0
+                        
+                        player.strike_timer += 1
+                        strike_cooldown = getattr(player, 'strike_cooldown', 600)
+                        
+                        if player.strike_timer >= strike_cooldown:
+                            player.strike_timer = 0
+                            # 选择最近的敌人
+                            if mobs:
+                                target = min(mobs, key=lambda e: math.hypot(
+                                    e.rect.centerx - player.rect.centerx,
+                                    e.rect.centery - player.rect.centery
+                                ))
+                                strike_damage = getattr(player, 'strike_damage', 500)
+                                target.hp -= strike_damage
+                                # 视觉效果 - 激光从天而降
+                                pygame.draw.line(screen, (255, 255, 255), 
+                                               (target.rect.centerx, 0), 
+                                               target.rect.center, 8)
+                                pygame.draw.line(screen, (255, 200, 0), 
+                                               (target.rect.centerx, 0), 
+                                               target.rect.center, 4)
+                                pygame.draw.circle(screen, (255, 255, 255), target.rect.center, 80, 4)
+                                FloatingText(target.rect.centerx, target.rect.top - 40, 
+                                           f"轨道打击 -{int(strike_damage)}", (255, 200, 0))
+                                for _ in range(15):
+                                    Particle(target.rect.center, (255, 200, 0))
+                    
+                    # 7. 治疗光环 - 持续回复
+                    if hasattr(player, 'has_healing_aura') and player.has_healing_aura:
+                        if not hasattr(player, 'heal_timer'):
+                            player.heal_timer = 0
+                        
+                        player.heal_timer += 1
+                        if player.heal_timer >= 60:  # 每秒回复
+                            player.heal_timer = 0
+                            heal_amount = getattr(player, 'heal_per_sec', 3)
+                            aura_radius = getattr(player, 'aura_radius', 200)
+                            
+                            # 回复玩家
+                            if player.hp < player.max_hp:
+                                player.hp = min(player.max_hp, player.hp + heal_amount)
+                                FloatingText(player.rect.centerx, player.rect.top - 20, 
+                                           f"+{heal_amount}", (100, 255, 100))
+                            
+                            # 回复僚机
+                            if hasattr(player, 'wingmen'):
+                                for wingman in player.wingmen:
+                                    if hasattr(wingman, 'hp') and hasattr(wingman, 'max_hp'):
+                                        if wingman.hp < wingman.max_hp:
+                                            wingman.hp = min(wingman.max_hp, wingman.hp + heal_amount)
+                            
+                            # 光环视觉效果（增强）
+                            aura_t = pygame.time.get_ticks() / 600
+                            # 持续可见的脉动光环
+                            for i in range(3):
+                                wave_radius = int(aura_radius * (0.6 + i * 0.2 + math.sin(aura_t + i) * 0.1))
+                                wave_alpha = int(60 - i * 15)
+                                wave_surf = pygame.Surface((wave_radius*2, wave_radius*2), pygame.SRCALPHA)
+                                pygame.draw.circle(wave_surf, (100, 255, 150, wave_alpha),
+                                                 (wave_radius, wave_radius), wave_radius, 3)
+                                screen.blit(wave_surf, (player.rect.centerx - wave_radius,
+                                                       player.rect.centery - wave_radius))
+                            # 治疗粒子效果
+                            if random.random() < 0.2:
+                                angle = random.uniform(0, math.pi * 2)
+                                dist = random.uniform(0, aura_radius * 0.8)
+                                px = player.rect.centerx + math.cos(angle) * dist
+                                py = player.rect.centery + math.sin(angle) * dist
+                                Particle((int(px), int(py)), (100, 255, 150))
+                    
+                    # 8. 超载射击 - 周期性高威力子弹
+                    if hasattr(player, 'has_overcharge') and player.has_overcharge:
+                        if not hasattr(player, 'overcharge_timer'):
+                            player.overcharge_timer = 0
+                        
+                        overcharge_cooldown = getattr(player, 'overcharge_cooldown', 180)  # 3秒
+                        overcharge_mult = getattr(player, 'overcharge_mult', 5.0)
+                        overcharge_pierce = getattr(player, 'overcharge_pierce', 0)
+                        
+                        player.overcharge_timer += 1
+                        
+                        # 充能提示（最后1秒）
+                        if player.overcharge_timer >= overcharge_cooldown - 60 and player.overcharge_timer % 10 == 0:
+                            pygame.draw.circle(screen, (255, 200, 0), player.rect.center, 
+                                             30 + (60 - (overcharge_cooldown - player.overcharge_timer)) // 2, 2)
+                        
+                        if player.overcharge_timer >= overcharge_cooldown:
+                            player.overcharge_timer = 0
+                            
+                            # 发射超载子弹
+                            from sprites import Bullet
+                            overcharge_bullet = Bullet(
+                                player.rect.centerx, 
+                                player.rect.top,
+                                color=(255, 215, 0),
+                                b_type="beam",
+                                piercing=overcharge_pierce if overcharge_pierce > 0 else player.piercing,
+                                homing=player.homing_level,
+                                bounce=getattr(player, 'bounce_count', 0),
+                                bounce_damage=getattr(player, 'bounce_damage', 1.0)
+                            )
+                            overcharge_bullet.speed = -30
+                            overcharge_bullet.damage = int(player.damage * overcharge_mult)
+                            
+                            # 超载特效
+                            FloatingText(player.rect.centerx, player.rect.top - 30,
+                                       f"超载 ×{int(overcharge_mult)}", (255, 215, 0), font_size=24)
+                            # 冲击波
+                            for r in range(3):
+                                radius = 30 + r * 15
+                                pygame.draw.circle(screen, (255, 215, 0, 200 - r * 60),
+                                                 player.rect.center, radius, 3)
+                            # 金色粒子
+                            for _ in range(15):
+                                angle = random.uniform(0, math.pi * 2)
+                                distance = random.uniform(20, 50)
+                                px = player.rect.centerx + math.cos(angle) * distance
+                                py = player.rect.centery + math.sin(angle) * distance
+                                Particle((int(px), int(py)), (255, 215, 0))
+                            
+                            sound_mgr.play("powerup")
+                    
+                    # 9. 专注系统 - 静止时累积专注
+                    if hasattr(player, 'has_focus') and player.has_focus:
+                        if not hasattr(player, 'focus_stationary_time'):
+                            player.focus_stationary_time = 0
+                            player.current_focus = 0
+                        
+                        # 检测是否移动
+                        if abs(player.vel.x) < 0.1 and abs(player.vel.y) < 0.1:
+                            player.focus_stationary_time += 1
+                            focus_per_sec = getattr(player, 'focus_per_sec', 0.2)
+                            max_focus = getattr(player, 'max_focus', 3.0)
+                            
+                            if player.focus_stationary_time >= 60:  # 每秒
+                                player.focus_stationary_time = 0
+                                player.current_focus = min(max_focus, 
+                                                          player.current_focus + focus_per_sec)
+                                
+                                # 应用专注伤害加成
+                                if not hasattr(player, 'base_damage'):
+                                    player.base_damage = player.damage
+                                player.damage = player.base_damage * (1 + player.current_focus)
+                                
+                                # 视觉提示
+                                if player.current_focus > 0:
+                                    focus_color = (255, int(255 * (1 - player.current_focus / max_focus)), 0)
+                                    pygame.draw.circle(screen, focus_color, player.rect.center, 
+                                                     30, 2)
+                        else:
+                            # 移动时专注衰减
+                            player.current_focus = max(0, player.current_focus - 0.05)
+                            if hasattr(player, 'base_damage'):
+                                player.damage = player.base_damage * (1 + player.current_focus)
+                    
+                    # 【新】复活冷却计时器
+                    if hasattr(player, 'revive_hp') and player.revive_hp > 0:
+                        if not hasattr(player, 'revive_cooldown_timer'):
+                            player.revive_cooldown_timer = 0
+                        # 每帧递增冷却计时器
+                        revive_cooldown = getattr(player, 'revive_cooldown', 3600)
+                        if player.revive_cooldown_timer < revive_cooldown:
+                            player.revive_cooldown_timer += 1
+                    
+                    # 10. 弹幕风暴 - 持续圆形弹幕
+                    if hasattr(player, 'has_storm') and player.has_storm:
+                        if not hasattr(player, 'storm_active'):
+                            player.storm_active = False
+                            player.storm_timer = 0
+                            player.storm_cooldown_timer = 0
+                            player.storm_angle = 0
+                        
+                        storm_cooldown = 1200  # 20秒CD
+                        
+                        if not player.storm_active:
+                            player.storm_cooldown_timer += 1
+                            if player.storm_cooldown_timer >= storm_cooldown:
+                                player.storm_active = True
+                                player.storm_timer = 0
+                                player.storm_cooldown_timer = 0
+                                FloatingText(player.rect.centerx, player.rect.top - 40, 
+                                           "弹幕风暴!", (255, 150, 0), font_size=28)
+                        else:
+                            storm_duration = getattr(player, 'storm_duration', 240)  # 4秒持续（优化）
+                            storm_bullets = getattr(player, 'storm_bullets', 12)  # 减少数量避免卡顿
+                            
+                            player.storm_timer += 1
+                            
+                            # 每帧发射多发子弹形成环形
+                            if player.storm_timer % 12 == 0:  # 每0.2秒（优化间隔）
+                                angle_step = 360 / storm_bullets
+                                for i in range(storm_bullets):
+                                    angle = player.storm_angle + (i * angle_step)
+                                    from sprites import Bullet
+                                    b = Bullet(player.rect.centerx, player.rect.centery, 
+                                             angle=angle, color=(255, 180, 0), b_type="star",
+                                             bounce=getattr(player, 'bounce_count', 0),
+                                             bounce_damage=getattr(player, 'bounce_damage', 1.0))
+                                    b.speed = -15
+                                    # 风暴子弹伤害为30%
+                                    if hasattr(b, 'damage'):
+                                        b.damage = int(player.damage * 0.3)
+                                
+                                player.storm_angle = (player.storm_angle + 15) % 360
+                                
+                                # 视觉：旋转圆环
+                                for j in range(3):
+                                    radius = 40 + j * 20
+                                    pygame.draw.circle(screen, (255, 200 - j * 50, 0, 150), 
+                                                     player.rect.center, radius, 2)
+                            
+                            if player.storm_timer >= storm_duration:
+                                player.storm_active = False
+                    
+                    # 11. 时空静滞场 - 完全冻结
+                    if hasattr(player, 'has_stasis') and player.has_stasis:
+                        if not hasattr(player, 'stasis_timer'):
+                            player.stasis_timer = 0
+                        
+                        stasis_cooldown = 900  # 15秒CD
+                        player.stasis_timer += 1
+                        
+                        if player.stasis_timer >= stasis_cooldown:
+                            player.stasis_timer = 0
+                            stasis_duration = getattr(player, 'stasis_duration', 180)  # 3秒冻结
+                            stasis_radius = getattr(player, 'stasis_radius', 120)
+                            
+                            frozen_count = 0
+                            for enemy in mobs:
+                                dist = math.hypot(enemy.rect.centerx - player.rect.centerx,
+                                                enemy.rect.centery - player.rect.centery)
+                                if dist <= stasis_radius:
+                                    enemy.frozen_timer = stasis_duration
+                                    frozen_count += 1
+                                    # 紫色冻结粒子
+                                    for _ in range(8):
+                                        Particle(enemy.rect.center, (180, 0, 255))
+                            
+                            if frozen_count > 0:
+                                FloatingText(player.rect.centerx, player.rect.top - 30,
+                                           f"时空静滞 {frozen_count}", (200, 100, 255), font_size=22)
+                                # 时空波纹
+                                for r in range(3):
+                                    radius = stasis_radius + r * 20
+                                    pygame.draw.circle(screen, (180, 0, 255, 180 - r * 50),
+                                                     player.rect.center, radius, 3)
+                    
+                    # 12. 能量护盾系统
+                    if hasattr(player, 'has_barrier') and player.has_barrier:
+                        if not hasattr(player, 'barrier_current_hp'):
+                            player.barrier_current_hp = getattr(player, 'barrier_hp', 50)
+                            player.barrier_recharge_timer = 0
+                        
+                        barrier_max = getattr(player, 'barrier_hp', 50)
+                        barrier_recharge_delay = getattr(player, 'barrier_recharge', 600)  # 10秒
+                        
+                        # 护盾充能
+                        if player.barrier_current_hp < barrier_max:
+                            player.barrier_recharge_timer += 1
+                            if player.barrier_recharge_timer >= barrier_recharge_delay:
+                                recharge_amount = 1
+                                player.barrier_current_hp = min(barrier_max, 
+                                                               player.barrier_current_hp + recharge_amount)
+                                # 充能完成
+                                if player.barrier_current_hp >= barrier_max:
+                                    FloatingText(player.rect.centerx, player.rect.top - 20,
+                                               "护盾充能", (0, 200, 255), font_size=16)
+                                    player.barrier_recharge_timer = 0
+                        
+                        # 护盾视觉
+                        if player.barrier_current_hp > 0:
+                            barrier_ratio = player.barrier_current_hp / barrier_max
+                            barrier_alpha = int(100 * barrier_ratio)
+                            barrier_radius = 35
+                            barrier_surface = pygame.Surface((barrier_radius * 2, barrier_radius * 2), 
+                                                            pygame.SRCALPHA)
+                            pygame.draw.circle(barrier_surface, (0, 200, 255, barrier_alpha),
+                                             (barrier_radius, barrier_radius), barrier_radius)
+                            screen.blit(barrier_surface, 
+                                      (player.rect.centerx - barrier_radius, 
+                                       player.rect.centery - barrier_radius))
+                    
+                    # 13. 召唤仆从
+                    if hasattr(player, 'has_minions') and player.has_minions:
+                        if not hasattr(player, 'minions'):
+                            player.minions = []
+                            player.minion_spawn_timer = 0
+                        
+                        minion_count = getattr(player, 'minion_count', 3)
+                        minion_hp = getattr(player, 'minion_hp', 20)
+                        minion_damage = getattr(player, 'minion_damage', 10)
+                        
+                        # 生成仆从
+                        if len(player.minions) < minion_count:
+                            player.minion_spawn_timer += 1
+                            if player.minion_spawn_timer >= 120:  # 每2秒生成1个
+                                player.minion_spawn_timer = 0
+                                angle = random.uniform(0, 360)
+                                distance = 50
+                                minion_x = player.rect.centerx + math.cos(math.radians(angle)) * distance
+                                minion_y = player.rect.centery + math.sin(math.radians(angle)) * distance
+                                
+                                minion = {
+                                    'x': minion_x,
+                                    'y': minion_y,
+                                    'hp': minion_hp,
+                                    'max_hp': minion_hp,
+                                    'damage': minion_damage,
+                                    'angle': angle,
+                                    'orbit_angle': angle,
+                                    'shoot_timer': 0
+                                }
+                                player.minions.append(minion)
+                                FloatingText(int(minion_x), int(minion_y), 
+                                           "召唤!", (255, 200, 255), font_size=14)
+                        
+                        # 更新仆从
+                        for minion in player.minions[:]:
+                            if minion['hp'] <= 0:
+                                player.minions.remove(minion)
+                                continue
+                            
+                            # 环绕玩家
+                            minion['orbit_angle'] += 2
+                            orbit_radius = 60
+                            target_x = player.rect.centerx + math.cos(math.radians(minion['orbit_angle'])) * orbit_radius
+                            target_y = player.rect.centery + math.sin(math.radians(minion['orbit_angle'])) * orbit_radius
+                            
+                            minion['x'] += (target_x - minion['x']) * 0.1
+                            minion['y'] += (target_y - minion['y']) * 0.1
+                            
+                            # 自动攻击
+                            minion['shoot_timer'] += 1
+                            if minion['shoot_timer'] >= 30:  # 每0.5秒
+                                minion['shoot_timer'] = 0
+                                if mobs:
+                                    nearest = min(mobs, key=lambda m: math.hypot(
+                                        m.rect.centerx - minion['x'],
+                                        m.rect.centery - minion['y']
+                                    ))
+                                    if math.hypot(nearest.rect.centerx - minion['x'],
+                                                nearest.rect.centery - minion['y']) < 300:
+                                        dx = nearest.rect.centerx - minion['x']
+                                        dy = nearest.rect.centery - minion['y']
+                                        angle = math.degrees(math.atan2(dy, dx))
+                                        
+                                        from sprites import Bullet
+                                        b = Bullet(int(minion['x']), int(minion['y']), 
+                                                 angle=angle, color=(255, 150, 255), 
+                                                 b_type="orb", piercing=0)
+                                        b.speed = -12
+                                        b.damage = minion['damage']
+                            
+                            # 绘制仆从（增强视觉）
+                            minion_x_int = int(minion['x'])
+                            minion_y_int = int(minion['y'])
+                            
+                            # 外层发光光晕
+                            glow_t = pygame.time.get_ticks() / 500
+                            for i in range(3):
+                                radius = 12 + i * 4 + abs(math.sin(glow_t)) * 3
+                                alpha = 100 - i * 30
+                                glow_surf = pygame.Surface((radius*2+2, radius*2+2), pygame.SRCALPHA)
+                                pygame.draw.circle(glow_surf, (255, 100, 255, alpha), 
+                                                 (radius+1, radius+1), int(radius))
+                                screen.blit(glow_surf, (minion_x_int - radius - 1, 
+                                                       minion_y_int - radius - 1))
+                            
+                            # 主体 - 渐变核心
+                            for r in range(10, 0, -2):
+                                alpha = 255 - r * 15
+                                pygame.draw.circle(screen, (255, 150 - r * 5, 255, alpha), 
+                                                 (minion_x_int, minion_y_int), r)
+                            
+                            # 能量核心
+                            pygame.draw.circle(screen, (255, 255, 255), 
+                                             (minion_x_int, minion_y_int), 3)
+                            
+                            # 旋转能量环
+                            ring_angle = (pygame.time.get_ticks() / 30 + minion['orbit_angle']) % 360
+                            for i in range(4):
+                                angle_rad = math.radians(ring_angle + i * 90)
+                                px = minion_x_int + math.cos(angle_rad) * 10
+                                py = minion_y_int + math.sin(angle_rad) * 10
+                                pygame.draw.circle(screen, (255, 200, 255), (int(px), int(py)), 2)
+                            
+                            # 外边框
+                            pygame.draw.circle(screen, (255, 200, 255),
+                                             (minion_x_int, minion_y_int), 11, 2)
+                            # HP条
+                            if minion['hp'] < minion['max_hp']:
+                                hp_ratio = minion['hp'] / minion['max_hp']
+                                bar_w = 16
+                                bar_h = 3
+                                bar_x = int(minion['x']) - bar_w // 2
+                                bar_y = int(minion['y']) - 15
+                                pygame.draw.rect(screen, (100, 0, 0), (bar_x, bar_y, bar_w, bar_h))
+                                pygame.draw.rect(screen, (255, 0, 100), 
+                                               (bar_x, bar_y, int(bar_w * hp_ratio), bar_h))
+                    
+                    # 14. 支援站点
+                    if hasattr(player, 'has_station') and player.has_station:
+                        if not hasattr(player, 'station'):
+                            player.station = None
+                            player.station_spawn_timer = 0
+                        
+                        # 生成站点（10秒CD）
+                        if player.station is None:
+                            player.station_spawn_timer += 1
+                            if player.station_spawn_timer >= 600:
+                                player.station = {
+                                    'x': player.rect.centerx,
+                                    'y': player.rect.centery,
+                                    'duration': 1800,  # 30秒持续
+                                    'timer': 0
+                                }
+                                FloatingText(player.rect.centerx, player.rect.centery,
+                                           "支援站点", (0, 255, 200), font_size=20)
+                                player.station_spawn_timer = 0
+                        
+                        # 更新站点
+                        if player.station:
+                            player.station['timer'] += 1
+                            
+                            if player.station['timer'] >= player.station['duration']:
+                                player.station = None
+                            else:
+                                station_x = player.station['x']
+                                station_y = player.station['y']
+                                station_radius = getattr(player, 'station_radius', 250)
+                                station_buff = getattr(player, 'station_buff', 0.5)
+                                
+                                # 检查玩家是否在范围内
+                                dist_to_player = math.hypot(player.rect.centerx - station_x,
+                                                           player.rect.centery - station_y)
+                                if dist_to_player <= station_radius:
+                                    # 应用增益（1.5倍伤害）
+                                    if not hasattr(player, 'station_buffed'):
+                                        player.base_damage_before_station = player.damage
+                                        player.station_buffed = True
+                                    player.damage = player.base_damage_before_station * (1 + station_buff)
+                                else:
+                                    if hasattr(player, 'station_buffed') and player.station_buffed:
+                                        player.damage = player.base_damage_before_station
+                                        player.station_buffed = False
+                                
+                                # 绘制站点（增强视觉）
+                                station_t = pygame.time.get_ticks() / 400
+                                
+                                # 外层光晕（脉动）
+                                for i in range(4):
+                                    glow_radius = 20 + i * 8 + abs(math.sin(station_t)) * 5
+                                    glow_alpha = 80 - i * 20
+                                    glow_surf = pygame.Surface((glow_radius*2+2, glow_radius*2+2), pygame.SRCALPHA)
+                                    pygame.draw.circle(glow_surf, (0, 255, 200, glow_alpha), 
+                                                     (glow_radius+1, glow_radius+1), int(glow_radius))
+                                    screen.blit(glow_surf, (station_x - glow_radius - 1, 
+                                                           station_y - glow_radius - 1))
+                                
+                                # 底座主体 - 渐变
+                                for r in range(15, 0, -3):
+                                    alpha = 255 - r * 10
+                                    pygame.draw.circle(screen, (0, 180 + (15-r)*5, 150 + (15-r)*7, alpha), 
+                                                     (station_x, station_y), r)
+                                
+                                # 能量核心
+                                pygame.draw.circle(screen, (255, 255, 255), 
+                                                 (station_x, station_y), 5)
+                                
+                                # 旋转能量环
+                                ring_angle = (pygame.time.get_ticks() / 20) % 360
+                                for i in range(6):
+                                    angle_rad = math.radians(ring_angle + i * 60)
+                                    px = station_x + math.cos(angle_rad) * 18
+                                    py = station_y + math.sin(angle_rad) * 18
+                                    pygame.draw.circle(screen, (0, 255, 200), (int(px), int(py)), 3)
+                                
+                                # 十字天线
+                                cross_size = 12
+                                pygame.draw.line(screen, (0, 255, 200),
+                                               (station_x - cross_size, station_y),
+                                               (station_x + cross_size, station_y), 4)
+                                pygame.draw.line(screen, (0, 255, 200),
+                                               (station_x, station_y - cross_size),
+                                               (station_x, station_y + cross_size), 4)
+                                
+                                # 外边框
+                                pygame.draw.circle(screen, (0, 255, 200),
+                                                 (station_x, station_y), 20, 3)
+                                
+                                # 范围圈（持续可见，透明度变化）
+                                range_alpha = int(50 + 30 * abs(math.sin(station_t * 1.5)))
+                                range_surf = pygame.Surface((station_radius*2, station_radius*2), pygame.SRCALPHA)
+                                pygame.draw.circle(range_surf, (0, 255, 200, range_alpha),
+                                                 (station_radius, station_radius), station_radius, 3)
+                                screen.blit(range_surf, (station_x - station_radius, 
+                                                        station_y - station_radius))
                     
                     # 【新】冰霜新星：周期性范围冻结
                     if hasattr(player, 'card_effect_processor'):
@@ -9397,8 +10053,79 @@ while True:
                                     for _ in range(6):
                                         Particle(b.rect.center, ORANGE)
                             
+                            # === 新卡牌系统：高级效果 ===
+                            
+                            # 1. 弱点打击 - 额外暴击判定
+                            if hasattr(player, 'weakpoint_chance') and player.weakpoint_chance > 0:
+                                if random.random() < player.weakpoint_chance:
+                                    weakpoint_mult = getattr(player, 'weakpoint_mult', 3.0)
+                                    dmg *= weakpoint_mult
+                                    FloatingText(m.rect.centerx, m.rect.top - 30, "弱点!", (255, 200, 0))
+                                    for _ in range(3):
+                                        Particle(m.rect.center, (255, 255, 0))
+                            
+                            # 2. 破甲 - 无视敌人护甲
+                            if hasattr(player, 'armor_penetration') and player.armor_penetration > 0:
+                                # 假设敌人有armor属性，破甲减少其效果
+                                if hasattr(m, 'armor') and m.armor > 0:
+                                    armor_reduction = m.armor * (1 - player.armor_penetration)
+                                    dmg *= (1 + (m.armor - armor_reduction) * 0.01)  # 每点破甲1%额外伤害
+                                # 对装甲单位额外伤害
+                                if hasattr(player, 'bonus_vs_armor') and getattr(m, 'has_armor', False):
+                                    dmg *= (1 + player.bonus_vs_armor)
+                            
+                            # 3. 标记系统 - 标记敌人并在下次攻击暴击
+                            if hasattr(player, 'has_mark') and player.has_mark:
+                                if not hasattr(m, 'marked_by_player'):
+                                    m.marked_by_player = True
+                                    m.mark_timer = player.mark_duration
+                                    FloatingText(m.rect.centerx, m.rect.top - 20, "标记!", (255, 0, 255))
+                                elif m.marked_by_player and m.mark_timer > 0:
+                                    # 标记目标受到暴击
+                                    dmg *= player.mark_crit_mult
+                                    m.marked_by_player = False
+                                    FloatingText(m.rect.centerx, m.rect.top - 30, "标记暴击!", (255, 100, 255))
+                            
+                            # 4. 处决 - 对低血量目标巨额伤害
+                            if hasattr(player, 'has_execute') and player.has_execute:
+                                hp_ratio = m.hp / m.max_hp if hasattr(m, 'max_hp') and m.max_hp > 0 else 1.0
+                                if hp_ratio <= player.execute_threshold:
+                                    dmg *= player.execute_mult
+                                    FloatingText(m.rect.centerx, m.rect.top - 40, "处决!", (200, 0, 0))
+                                    for _ in range(5):
+                                        Particle(m.rect.center, (255, 0, 0))
+                                    # 秒杀效果
+                                    if hasattr(player, 'execute_instant_kill') and player.execute_instant_kill:
+                                        if hp_ratio <= 0.1:
+                                            dmg = m.hp + 1000  # 确保击杀
+                            
+                            # 应用暴击
                             if random.random() < crit_chance: dmg *= crit_mult
+                            
+                            # 应用伤害
                             m.hp -= dmg
+                            
+                            # === 新卡牌系统：命中后效果 ===
+                            
+                            # 5. 集束炸弹 - 子弹爆炸后释放子弹药
+                            if hasattr(player, 'has_cluster') and player.has_cluster:
+                                cluster_count = getattr(player, 'cluster_count', 5)
+                                cluster_radius = getattr(player, 'cluster_radius', 40)
+                                # 生成环形子弹药
+                                for i in range(cluster_count):
+                                    angle = (360 / cluster_count) * i
+                                    rad = math.radians(angle)
+                                    cluster_x = b.rect.centerx + math.cos(rad) * 30
+                                    cluster_y = b.rect.centery + math.sin(rad) * 30
+                                    # 创建小型爆炸子弹
+                                    cluster_bullet = Bullet(cluster_x, cluster_y, angle, False, 0, (255, 150, 0))
+                                    cluster_bullet.damage = dmg * 0.3  # 子弹药伤害30%
+                                    cluster_bullet.is_cluster_child = True
+                                # 视觉效果
+                                for _ in range(8):
+                                    Particle(b.rect.center, (255, 200, 0))
+                                FloatingText(b.rect.centerx, b.rect.centery, "集束!", (255, 150, 0))
+                            
                             if hasattr(player, 'plane_id') and player.plane_id == "crimson":
                                 if hasattr(player, 'apply_crimson_blood'):
                                     player.apply_crimson_blood(m, dmg, b.rect.center)
@@ -9745,6 +10472,21 @@ while True:
                                     FloatingText(m.rect.centerx, m.rect.top-20, "核心+1", CYAN)
                                 m.kill()
                     
+                    # 【新】敌人子弹打中仆从
+                    if hasattr(player, 'minions'):
+                        for minion in player.minions[:]:
+                            minion_rect = pygame.Rect(int(minion['x']) - 8, int(minion['y']) - 8, 16, 16)
+                            for bullet in enemy_bullets:
+                                if minion_rect.colliderect(bullet.rect):
+                                    minion['hp'] -= 10
+                                    bullet.kill()
+                                    FloatingText(int(minion['x']), int(minion['y']) - 10,
+                                               "-10", (255, 100, 100), font_size=12)
+                                    if minion['hp'] <= 0:
+                                        for _ in range(5):
+                                            Particle((int(minion['x']), int(minion['y'])), (255, 100, 255))
+                                    break
+                    
                     if not player.is_dashing:
                         hits = pygame.sprite.spritecollide(player, mobs, False, pygame.sprite.collide_circle)
                         hits.extend(pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle))
@@ -9806,7 +10548,19 @@ while True:
                                                    f"护盾-{int(absorbed)}", (100, 50, 180))
                                         Particle(player.rect.center, (100, 50, 180))
                             
-                            if player.shield > 0:
+                            # 【新】先扣除能量护盾
+                            if hasattr(player, 'barrier_current_hp') and player.barrier_current_hp > 0:
+                                barrier_absorbed = min(player.barrier_current_hp, dmg)
+                                player.barrier_current_hp -= barrier_absorbed
+                                dmg -= barrier_absorbed
+                                FloatingText(player.rect.centerx, player.rect.top - 20,
+                                           f"护盾-{int(barrier_absorbed)}", (0, 200, 255))
+                                Particle(player.rect.center, (0, 200, 255))
+                                # 重置充能计时器
+                                if hasattr(player, 'barrier_recharge_timer'):
+                                    player.barrier_recharge_timer = 0
+                            
+                            if dmg > 0 and player.shield > 0:
                                 player.shield -= dmg
                                 if player.shield < 0: player.shield = 0
                                 # 盾牌吸收时的蓝色特效（简化）
@@ -9815,7 +10569,7 @@ while True:
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(2, 3)
                                         Particle(player.rect.center, CYAN)
-                            else:
+                            elif dmg > 0:
                                 player.hp -= dmg
                                 FloatingText(player.rect.centerx, player.rect.top, f"-{dmg}", RED)
                                 # 受伤时的特效（简化）
@@ -9826,21 +10580,80 @@ while True:
                                         Particle(player.rect.center, RED)
                                 sound_mgr.play("hit")
                                 if player.hp <= 0:
-                                    game_state = "gameover"
-                                    final_score = score
-                                    game_over_timer = 0
-                                    player_name = ""
-                                    # Capture final frozen screen to show for 2s animation
-                                    try:
-                                        frozen_screen = screen.copy()
-                                    except Exception:
-                                        frozen_screen = None
-                                    # 保存成就
-                                    if player and hasattr(player, 'achievement_manager'):
-                                        player.achievement_manager.save_to_file()
-                                    # Boss挑战模式失败时重置标志
-                                    boss_challenge_active = False
-                                    sound_mgr.play("gameover")
+                                    # 检查复活机制
+                                    if hasattr(player, 'revive_hp') and player.revive_hp > 0:
+                                        # 初始化复活冷却计时器
+                                        if not hasattr(player, 'revive_cooldown_timer'):
+                                            player.revive_cooldown_timer = 0
+                                        
+                                        # 获取复活冷却时间（单位：帧，默认3600帧=60秒）
+                                        revive_cooldown = getattr(player, 'revive_cooldown', 3600)
+                                        
+                                        # 检查冷却是否完成
+                                        if player.revive_cooldown_timer >= revive_cooldown:
+                                            # 执行复活
+                                            player.hp = player.revive_hp
+                                            player.revive_cooldown_timer = 0  # 重置冷却
+                                            
+                                            # 复活无敌时间（180帧=3秒）
+                                            if not hasattr(player, 'invincible_timer'):
+                                                player.invincible_timer = 0
+                                            player.invincible_timer = 180
+                                            
+                                            # 复活特效
+                                            FloatingText(player.rect.centerx, player.rect.top - 30, "复活!", (255, 215, 0), font_size=32)
+                                            # 金色光环粒子
+                                            for i in range(50):
+                                                angle = random.uniform(0, math.pi * 2)
+                                                distance = random.uniform(20, 80)
+                                                px = player.rect.centerx + math.cos(angle) * distance
+                                                py = player.rect.centery + math.sin(angle) * distance
+                                                Particle((int(px), int(py)), (255, 215, 0))
+                                            
+                                            # 清除周围敌人
+                                            for m in mobs:
+                                                dist = math.hypot(m.rect.centerx - player.rect.centerx, 
+                                                                m.rect.centery - player.rect.centery)
+                                                if dist < 200:
+                                                    m.hp = 0
+                                                    for _ in range(5):
+                                                        Particle(m.rect.center, (255, 100, 100))
+                                            
+                                            sound_mgr.play("powerup")
+                                        else:
+                                            # 冷却未完成，正常死亡
+                                            game_state = "gameover"
+                                            final_score = score
+                                            game_over_timer = 0
+                                            player_name = ""
+                                            # Capture final frozen screen to show for 2s animation
+                                            try:
+                                                frozen_screen = screen.copy()
+                                            except Exception:
+                                                frozen_screen = None
+                                            # 保存成就
+                                            if player and hasattr(player, 'achievement_manager'):
+                                                player.achievement_manager.save_to_file()
+                                            # Boss挑战模式失败时重置标志
+                                            boss_challenge_active = False
+                                            sound_mgr.play("gameover")
+                                    else:
+                                        # 无复活能力，正常死亡
+                                        game_state = "gameover"
+                                        final_score = score
+                                        game_over_timer = 0
+                                        player_name = ""
+                                        # Capture final frozen screen to show for 2s animation
+                                        try:
+                                            frozen_screen = screen.copy()
+                                        except Exception:
+                                            frozen_screen = None
+                                        # 保存成就
+                                        if player and hasattr(player, 'achievement_manager'):
+                                            player.achievement_manager.save_to_file()
+                                        # Boss挑战模式失败时重置标志
+                                        boss_challenge_active = False
+                                        sound_mgr.play("gameover")
                     
                     # ========== 经验球拾取 ==========
                     xp_orbs = [s for s in all_sprites if isinstance(s, ExperienceOrb)]

@@ -269,7 +269,7 @@
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
     "crimson": "crimson_samurai_bullet",
-    "titan": "titan_nuclear_bullet",
+    "titan": "titan_mech_bullet",
     "thunderbird": "thunderbird_tesla_bullet",
     "viper": "viper_serpent_god_bullet",
     "specter": "specter_wraith_bullet",

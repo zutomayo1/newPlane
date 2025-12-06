@@ -78,15 +78,19 @@ RARITY_1_STAR = (150, 150, 150)    # 1星-普通 (灰色)
 RARITY_2_STAR = (100, 200, 255)    # 2星-稀有 (蓝色)
 RARITY_3_STAR = (200, 100, 255)    # 3星-史诗 (紫色)
 RARITY_4_STAR = (255, 200, 50)     # 4星-传说 (金色)
+RARITY_5_STAR = (255, 100, 200)    # 5星-神话 (粉紫色)
+RARITY_6_STAR = (255, 255, 255)    # 6星-至高 (纯白色)
 
 # 保持兼容旧名称
 RARITY_COMMON = RARITY_1_STAR
 RARITY_RARE = RARITY_2_STAR
 RARITY_EPIC = RARITY_3_STAR
 RARITY_LEGEND = RARITY_4_STAR
+RARITY_MYTHIC = RARITY_5_STAR
+RARITY_SUPREME = RARITY_6_STAR
 
-RARITY_NAMES = ["全部", "1星普通", "2星稀有", "3星史诗", "4星传说"]
-RARITY_COLORS = [WHITE, RARITY_1_STAR, RARITY_2_STAR, RARITY_3_STAR, RARITY_4_STAR]
+RARITY_NAMES = ["全部", "1星普通", "2星稀有", "3星史诗", "4星传说", "5星神话", "6星至高"]
+RARITY_COLORS = [WHITE, RARITY_1_STAR, RARITY_2_STAR, RARITY_3_STAR, RARITY_4_STAR, RARITY_5_STAR, RARITY_6_STAR]
 
 # ==============================================================================
 #   精灵组 (全局单例，防止循环引用)

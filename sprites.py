@@ -4098,12 +4098,14 @@ class DefenseTurret:
 #   核心实体：Bullet, Player, Enemy, Boss
 # ==============================================================================
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, x, y, angle=0, is_enemy=False, piercing=0, color=YELLOW, homing=0, bounce=0, b_type="beam", bullet_theme=None, is_split=False):
+    def __init__(self, x, y, angle=0, is_enemy=False, piercing=0, color=YELLOW, homing=0, bounce=0, b_type="beam", bullet_theme=None, is_split=False, bounce_damage=1.0, damage=0):
         super().__init__()
         self.is_enemy = is_enemy
         self.piercing = piercing
         self.homing = homing
         self.bounce = bounce
+        self.bounce_damage = bounce_damage  # 【新】弹跳伤害倍数（每次弹跳后伤害衰减）
+        self.damage = damage  # 【新】子弹基础伤害
         self.color = color
         self.b_type = b_type
         self.timer = 0
@@ -4291,12 +4293,12 @@ class Bullet(pygame.sprite.Sprite):
                 self.piercing = max(1, self.piercing)
                 
             elif b_type == "rocket":  # 3. Titan - 钢铁泰坦（橙色重型火箭）
-                self.image = pygame.Surface((20, 38), pygame.SRCALPHA)
-                pygame.draw.rect(self.image, ORANGE, (4, 12, 12, 22))
-                pygame.draw.rect(self.image, CYBER_AMBER, (3, 12, 14, 22), 3)
-                pygame.draw.polygon(self.image, CYBER_AMBER, [(4,12), (10,0), (16,12)])
-                pygame.draw.rect(self.image, (255, 80, 0), (6, 34, 8, 4))
-                pygame.draw.circle(self.image, WHITE, (10, 22), 4)
+                self.image = pygame.Surface((10, 22), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, ORANGE, (2, 7, 6, 12))
+                pygame.draw.rect(self.image, CYBER_AMBER, (2, 7, 6, 12), 1)
+                pygame.draw.polygon(self.image, CYBER_AMBER, [(2,7), (5,0), (8,7)])
+                pygame.draw.rect(self.image, (255, 80, 0), (3, 19, 4, 3))
+                pygame.draw.circle(self.image, WHITE, (5, 13), 2)
                 self.speed = -15
                 
             elif b_type == "lightning":  # 4. Thunderbird - 雷霆战鹰（黄色闪电链）
@@ -7748,7 +7750,7 @@ class Bullet(pygame.sprite.Sprite):
                 rune_color = tuple(min(255, c + 30) for c in color)
                 pygame.draw.circle(self.image, rune_color, (px, py), size//10)
         
-        # 反弹逻辑
+        # 反弹逻辑 - 【增强】支持bounce_damage倍数
         if not self.is_enemy and self.bounce > 0:
             bounced = False
             if self.rect.left < 0: 
@@ -7763,8 +7765,23 @@ class Bullet(pygame.sprite.Sprite):
                 self.vel.y *= -1
                 self.pos.y = self.rect.height
                 bounced = True
+            elif self.rect.bottom > HEIGHT:
+                self.vel.y *= -1
+                self.pos.y = HEIGHT - self.rect.height
+                bounced = True
+                
             if bounced: 
                 self.bounce -= 1
+                
+                # 【新】弹跳伤害衰减：每次弹跳应用bounce_damage倍数
+                if hasattr(self, 'bounce_damage') and self.bounce_damage < 1.0:
+                    if hasattr(self, 'damage'):
+                        self.damage = int(self.damage * self.bounce_damage)
+                
+                # 【优化】减少弹跳粒子避免掉帧（从5个减到2个）
+                from sprites import Particle
+                for _ in range(2):
+                    Particle(self.rect.center, (150, 255, 255))
                 
         if not screen_rect.colliderect(self.rect): 
             self.kill()
@@ -10506,6 +10523,10 @@ class Player(pygame.sprite.Sprite):
         h_lvl = self.homing_level
         x, y = self.rect.centerx, self.rect.top
 
+        # 【新】从玩家属性读取弹跳参数
+        player_bounce = getattr(self, 'bounce_count', 0)
+        player_bounce_damage = getattr(self, 'bounce_damage', 1.0)
+
         # 计算追踪等级加成
         if w_type == "missile": h_lvl += 5
         elif w_type == "arc": h_lvl += 3
@@ -10513,31 +10534,31 @@ class Player(pygame.sprite.Sprite):
 
         # --- 发射逻辑移植 ---
         if w_type == "cannon":
-            Bullet(x, y, color=color, b_type="needle", homing=h_lvl)
+            Bullet(x, y, color=color, b_type="needle", homing=h_lvl, bounce=player_bounce, bounce_damage=player_bounce_damage)
             sound_mgr.play("shoot")
         elif w_type == "beam":
-            Bullet(x, y, color=color, b_type="beam", homing=h_lvl)
+            Bullet(x, y, color=color, b_type="beam", homing=h_lvl, bounce=player_bounce, bounce_damage=player_bounce_damage)
         elif w_type == "explosive":
-            b = Bullet(x, y, color=color, b_type="plasma", homing=h_lvl)
+            b = Bullet(x, y, color=color, b_type="plasma", homing=h_lvl, bounce=player_bounce, bounce_damage=player_bounce_damage)
             b.speed = -6
         elif w_type == "missile":
-            Bullet(x, y, homing=h_lvl, color=color, b_type="rocket")
+            Bullet(x, y, homing=h_lvl, color=color, b_type="rocket", bounce=player_bounce, bounce_damage=player_bounce_damage)
             sound_mgr.play("shoot")
         elif w_type == "exotic":
             for i in range(0, 360, 45): 
-                Bullet(x, y, angle=i, color=color, b_type="star", homing=h_lvl)
+                Bullet(x, y, angle=i, color=color, b_type="star", homing=h_lvl, bounce=player_bounce, bounce_damage=player_bounce_damage)
             sound_mgr.play("zap")
         elif w_type == "scatter":
             sound_mgr.play("shoot")
             for i in range(-2, 3):
-                b = Bullet(x, y, angle=i*10, color=color, b_type="shard", homing=h_lvl)
+                b = Bullet(x, y, angle=i*10, color=color, b_type="shard", homing=h_lvl, bounce=player_bounce, bounce_damage=player_bounce_damage)
                 b.speed = -10
         elif w_type == "arc":
             sound_mgr.play("zap")
-            Bullet(x, y, homing=h_lvl, color=color, b_type="lightning")
+            Bullet(x, y, homing=h_lvl, color=color, b_type="lightning", bounce=player_bounce, bounce_damage=player_bounce_damage)
         elif w_type == "sniper":
             sound_mgr.play("sniper_charge")
-            b = Bullet(x, y, color=color, b_type="needle", piercing=999, homing=h_lvl)
+            b = Bullet(x, y, color=color, b_type="needle", piercing=999, homing=h_lvl, bounce=player_bounce, bounce_damage=player_bounce_damage)
             b.speed = -25
             # 特效需要引用 Particle，确保已导入
             Particle((x, y), color, mode="shockwave")
@@ -10550,20 +10571,20 @@ class Player(pygame.sprite.Sprite):
         elif w_type == "railgun":
             sound_mgr.play("laser")
             Particle((x, y), color, mode="shockwave")
-            b = Bullet(x, y, color=color, b_type="beam", piercing=999)
+            b = Bullet(x, y, color=color, b_type="beam", piercing=999, bounce=player_bounce, bounce_damage=player_bounce_damage)
             b.speed = -40
         elif w_type == "void":
-            b = Bullet(x, y, color=color, b_type="orb", piercing=10)
+            b = Bullet(x, y, color=color, b_type="orb", piercing=10, bounce=player_bounce, bounce_damage=player_bounce_damage)
             b.speed = -3
             sound_mgr.play("blackhole")
         elif w_type == "frost":
-            Bullet(x, y, color=color, b_type="shard", homing=h_lvl)
+            Bullet(x, y, color=color, b_type="shard", homing=h_lvl, bounce=player_bounce, bounce_damage=player_bounce_damage)
             sound_mgr.play("shoot")
         elif w_type == "swarm":
             sound_mgr.play("shoot")
             for i in range(8):
                 angle = random.randint(-45, 45)
-                b = Bullet(x, y, angle=angle, color=color, b_type="rocket", homing=h_lvl)
+                b = Bullet(x, y, angle=angle, color=color, b_type="rocket", homing=h_lvl, bounce=player_bounce, bounce_damage=player_bounce_damage)
                 b.speed = -7
     
     # ========== 肉鸽系统方法 ==========
