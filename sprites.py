@@ -8733,6 +8733,46 @@ class Player(pygame.sprite.Sprite):
         self.necro_ghosts = []        # 亡灵列表
         self.max_necro_ghosts = 6     # 最大亡灵数
         self.necro_ghost_damage = 0   # 亡灵总伤害统计
+        
+        # 【霓虹突击者】超载引擎状态
+        self.striker_charge = 0
+        self.max_striker_charge = 100
+        self.striker_overdrive = False
+        self.striker_overdrive_timer = 0
+        self.striker_idle_timer = 0  # 命中间隔计时，决定何时开始衰减
+        self.striker_decay_delay = 90  # 约1.5秒无命中后开始衰减
+        self.striker_decay_rate = 0.6  # 衰减速度（每帧）
+        
+        # 【虚空幻影】相位漂移状态
+        self.phantom_phase = 0
+        self.max_phantom_phase = 100
+        self.phantom_intangible = False
+        self.phantom_intangible_timer = 0
+        
+        # 【雷霆战鹰】雷暴连锁状态
+        self.thunder_charge = 0
+        self.max_thunder_charge = 100
+        self.thunder_idle_timer = 0  # 命中间隔计时器
+        self.thunder_decay_delay = 60
+        self.thunder_decay_rate = 1.0
+        
+        # 【剧毒蝰蛇】剧毒累积状态
+        self.viper_venom_stacks = {}  # {enemy_id: stack_count}
+        self.viper_total_poison = 0
+        
+        # 【幽灵收割者】死神印记状态
+        self.specter_focus = None
+        self.specter_focus_time = 0
+        self.specter_stealth = 0
+        self.specter_focus_ready = False
+        self.specter_focus_decay_timer = 0
+        self.specter_focus_decay_delay = 120
+        self.specter_focus_decay_rate = 0.8
+        
+        # 【极光女神】极光共鸣状态
+        self.aurora_orbs = []
+        self.max_aurora_orbs = 5
+        self.aurora_orb_damage = 0
 
         # 炮塔系统(固定位置防御塔)
         self.has_turrets = False
@@ -8802,6 +8842,11 @@ class Player(pygame.sprite.Sprite):
         self.rect.x += dx
         self.rect.y += dy
         
+        # 【虚空幻影】移动时积累相位
+        if self.plane_id == "phantom" and (dx != 0 or dy != 0):
+            move_speed = math.sqrt(dx*dx + dy*dy)
+            self.gain_phantom_phase(move_speed * 0.18)
+        
         # 边界限制
         self.rect.clamp_ip(screen_rect)
 
@@ -8825,6 +8870,18 @@ class Player(pygame.sprite.Sprite):
         self._update_prism_state()
         # 【死灵骑士】亡魂收割状态维护
         self._update_necro_state()
+        # 【霓虹突击者】超载引擎状态维护
+        self._update_striker_state()
+        # 【虚空幻影】相位漂移状态维护
+        self._update_phantom_state()
+        # 【雷霆战鹰】雷暴连锁状态维护
+        self._update_thunder_state()
+        # 【剧毒蝰蛇】剧毒累积状态维护
+        self._update_viper_state()
+        # 【幽灵收割者】死神印记状态维护
+        self._update_specter_state()
+        # 【极光女神】极光共鸣状态维护
+        self._update_aurora_state()
 
         # 切换武器
         if self.switch_cooldown <= 0:
@@ -9798,6 +9855,7 @@ class Player(pygame.sprite.Sprite):
         if self.striker_overdrive:
             return  # 超载中不积累
         self.striker_charge = min(self.max_striker_charge, self.striker_charge + amount)
+        self.striker_idle_timer = self.striker_decay_delay
         if self.striker_charge >= self.max_striker_charge:
             self.striker_overdrive = True
             self.striker_overdrive_timer = 300  # 5秒超载
@@ -9819,9 +9877,13 @@ class Player(pygame.sprite.Sprite):
             elif random.random() < 0.15:
                 Particle(self.rect.center, CYAN)
         else:
-            # 超载能量缓慢衰减
             if self.striker_charge > 0:
-                self.striker_charge = max(0, self.striker_charge - 0.2)
+                if self.striker_idle_timer > 0:
+                    self.striker_idle_timer -= 1
+                else:
+                    self.striker_charge = max(0, self.striker_charge - self.striker_decay_rate)
+                    if self.striker_charge == 0:
+                        FloatingText(self.rect.centerx, self.rect.top - 15, "能量耗散", (80, 160, 160))
 
     # ========== 虚空幻影 - 相位漂移 ==========
     def gain_phantom_phase(self, amount):
@@ -9831,6 +9893,9 @@ class Player(pygame.sprite.Sprite):
         if self.phantom_intangible:
             return
         self.phantom_phase = min(self.max_phantom_phase, self.phantom_phase + amount)
+        # 自动触发：能量满自动进入相位无敌
+        if self.phantom_phase >= self.max_phantom_phase:
+            self.activate_phantom_intangible()
 
     def activate_phantom_intangible(self):
         """激活相位无敌"""
@@ -9855,9 +9920,9 @@ class Player(pygame.sprite.Sprite):
             elif random.random() < 0.2:
                 Particle(self.rect.center, (200, 100, 255))
         else:
-            # 相位能量缓慢衰减
-            if self.phantom_phase > 0:
-                self.phantom_phase = max(0, self.phantom_phase - 0.15)
+            # 不再被动衰减，改为仅在命中或移动时蓄能
+            if self.phantom_phase >= self.max_phantom_phase:
+                self.activate_phantom_intangible()
 
     # ========== 雷霆战鹰 - 雷暴连锁 ==========
     def gain_thunder_charge(self, amount):
@@ -9865,36 +9930,51 @@ class Player(pygame.sprite.Sprite):
         if self.plane_id != "thunderbird":
             return
         self.thunder_charge = min(self.max_thunder_charge, self.thunder_charge + amount)
+        self.thunder_idle_timer = self.thunder_decay_delay
 
     def trigger_chain_lightning(self, hit_pos):
         """触发连锁闪电"""
         if self.plane_id != "thunderbird" or self.thunder_charge < self.max_thunder_charge:
-            return
+            return []
         self.thunder_charge = 0
-        FloatingText(hit_pos[0], hit_pos[1] - 20, "雷暴!", YELLOW)
-        # 连锁闪电伤害
-        chain_damage = self.damage * 1.5
-        hit_enemies = []
-        for m in list(mobs):
-            dist = math.hypot(m.rect.centerx - hit_pos[0], m.rect.centery - hit_pos[1])
-            if dist <= 200:
-                hit_enemies.append(m)
-                m.hp -= chain_damage
-                FloatingText(m.rect.centerx, m.rect.top - 10, f"-{int(chain_damage)}", YELLOW)
-                Particle(m.rect.center, YELLOW)
-        for _ in range(10):
-            Particle(hit_pos, YELLOW)
+        lightning_paths = []
+        base_color = (120, 200, 255)
+        FloatingText(hit_pos[0], hit_pos[1] - 20, "雷暴!", base_color)
+        # 选择最近的最多5个目标，逐个连锁
+        candidates = []
+        for enemy in mobs:
+            dist = math.hypot(enemy.rect.centerx - hit_pos[0], enemy.rect.centery - hit_pos[1])
+            if dist <= 240:
+                candidates.append((dist, enemy))
+        candidates.sort(key=lambda item: item[0])
+        targets = [enemy for _, enemy in candidates[:5]]
+        last_point = hit_pos
+        damage = self.damage * 1.8
+        for idx, enemy in enumerate(targets):
+            enemy.hp -= damage
+            FloatingText(enemy.rect.centerx, enemy.rect.top - 12, f"-{int(damage)}", base_color)
+            Particle(enemy.rect.center, base_color)
+            lightning_paths.append((last_point, enemy.rect.center))
+            last_point = enemy.rect.center
+            damage *= 0.85  # 每次连锁衰减
+        # 中心闪电粒子
+        for _ in range(14):
+            Particle(hit_pos, base_color)
+        return lightning_paths
 
     def _update_thunder_state(self):
         """每帧更新雷霆战鹰状态"""
         if self.plane_id != "thunderbird":
             return
-        # 电荷缓慢衰减
-        if self.thunder_charge > 0:
-            self.thunder_charge = max(0, self.thunder_charge - 0.1)
         # 高电荷粒子
         if self.thunder_charge > 70 and random.random() < 0.12:
             Particle(self.rect.center, YELLOW)
+        # 衰减机制：离战斗太久会流失
+        if self.thunder_charge > 0:
+            if self.thunder_idle_timer > 0:
+                self.thunder_idle_timer -= 1
+            else:
+                self.thunder_charge = max(0, self.thunder_charge - self.thunder_decay_rate)
 
     # ========== 剧毒蝰蛇 - 剧毒累积 ==========
     def apply_viper_poison(self, enemy, damage):
@@ -9943,17 +10023,26 @@ class Player(pygame.sprite.Sprite):
         if self.plane_id != "specter":
             return
         if target == self.specter_focus:
-            self.specter_focus_time = min(180, self.specter_focus_time + 1)  # 最多3秒
+            self.specter_focus_time = min(180, self.specter_focus_time + 0.6)  # 更慢充能
+            if self.specter_focus_time >= 180:
+                self.specter_focus_ready = True
+            self.specter_focus_decay_timer = self.specter_focus_decay_delay
         else:
             self.specter_focus = target
             self.specter_focus_time = 0
+            self.specter_focus_ready = False
+            self.specter_focus_decay_timer = self.specter_focus_decay_delay
 
     def get_specter_damage_mult(self, target):
         """获取幽灵收割者对目标的伤害倍率"""
         if self.plane_id != "specter":
             return 1.0
         if target == self.specter_focus and self.specter_focus_time > 0:
-            return 1.0 + (self.specter_focus_time / 180) * 1.0  # 最高+100%
+            base_mult = 1.0 + (self.specter_focus_time / 180) * 1.0  # 最高+100%
+            if self.specter_focus_ready:
+                base_mult += 0.5  # 满印记再+50%
+                self.specter_focus_ready = False  # 触发一次后重置
+            return base_mult
         return 1.0
 
     def trigger_specter_stealth(self):
@@ -9972,10 +10061,21 @@ class Player(pygame.sprite.Sprite):
             self.specter_stealth -= 1
             if random.random() < 0.1:
                 Particle(self.rect.center, (150, 100, 255))
-        # 无目标时瞄准时间衰减
+        # 焦点能量衰减：长时间未命中会慢慢流失
+        if self.specter_focus_time > 0:
+            if self.specter_focus_decay_timer > 0:
+                self.specter_focus_decay_timer -= 1
+            else:
+                decay_step = self.specter_focus_decay_rate
+                if self.specter_focus is None or self.specter_focus not in mobs:
+                    decay_step *= 1.5
+                self.specter_focus_time = max(0, self.specter_focus_time - decay_step)
+                if self.specter_focus_time == 0:
+                    self.specter_focus_ready = False
+                    self.specter_focus_decay_timer = 0
+        # 目标消失时保留蓄力，等待新目标
         if self.specter_focus is None or self.specter_focus not in mobs:
             self.specter_focus = None
-            self.specter_focus_time = max(0, self.specter_focus_time - 2)
 
     # ========== 极光女神 - 极光共鸣 ==========
     def spawn_aurora_orb(self, pos):
@@ -9997,6 +10097,9 @@ class Player(pygame.sprite.Sprite):
         self.aurora_orbs.append(orb)
         for _ in range(3):
             Particle(pos, TEAL)
+        # 达到上限时自动引爆所有极光球
+        if len(self.aurora_orbs) >= self.max_aurora_orbs:
+            self._trigger_aurora_nova()
 
     def _update_aurora_state(self):
         """每帧更新极光女神状态"""
@@ -10040,6 +10143,35 @@ class Player(pygame.sprite.Sprite):
                 Particle((int(orb['x']), int(orb['y'])), (0, 200, 180))
         for orb in orbs_to_remove:
             self.aurora_orbs.remove(orb)
+
+        # 被动光环：多球时给予轻微攻速移速加成（非持久，随球数量刷新）
+        orb_count = len(self.aurora_orbs)
+        if orb_count >= 3:
+            bonus_ratio = 0.1 if orb_count == 3 else (0.2 if orb_count == 4 else 0.35)
+            self.shoot_delay = max(5, int(self.plane_data["delay"] * (1 - bonus_ratio)))
+            self.speed = self.plane_data.get("speed", self.speed) * (1 + bonus_ratio)
+        else:
+            # 恢复基础数值
+            self.shoot_delay = self.plane_data["delay"]
+            self.speed = self.plane_data.get("speed", self.speed)
+
+    def _trigger_aurora_nova(self):
+        """引爆所有极光球造成范围伤害"""
+        if self.plane_id != "aurora" or not self.aurora_orbs:
+            return
+        center = self.rect.center
+        orb_count = len(self.aurora_orbs)
+        nova_damage = self.damage * 0.6 * orb_count
+        radius = 180
+        for enemy in list(mobs):
+            dist = math.hypot(enemy.rect.centerx - center[0], enemy.rect.centery - center[1])
+            if dist <= radius:
+                enemy.hp -= nova_damage
+                Particle(enemy.rect.center, TEAL)
+                FloatingText(enemy.rect.centerx, enemy.rect.top - 12, f"-{int(nova_damage)}", (100, 255, 200))
+        for _ in range(8):
+            Particle(center, TEAL)
+        self.aurora_orbs.clear()
 
     def _update_crimson_state(self):
         if self.plane_id != "crimson":
