@@ -3989,7 +3989,7 @@ class BackgroundManager:
             "elements": {"clouds": 15, "light_rays": 4, "stars": 50},
             "grid_color": None,
             "element_type": "dawn",
-            "bgm": "ethereal"
+            "bgm": "ambient"
         },
         "thunderstorm": {
             "name": "雷暴云团",
@@ -4005,7 +4005,7 @@ class BackgroundManager:
             "elements": {"buildings": 12, "stars": 100},
             "grid_color": None,
             "element_type": "urban",
-            "bgm": "cyber"
+            "bgm": "synthwave"
         },
         "aurora": {
             "name": "极光彩幕",
@@ -4013,7 +4013,7 @@ class BackgroundManager:
             "elements": {"aurora_waves": 4, "stars": 300},
             "grid_color": None,
             "element_type": "aurora",
-            "bgm": "ethereal"
+            "bgm": "trance"
         },
         "deep_ocean": {
             "name": "深海裂谷",
@@ -4029,7 +4029,7 @@ class BackgroundManager:
             "elements": {"asteroids": 20, "stars": 400, "nebulae": 3},
             "grid_color": None,
             "element_type": "space",
-            "bgm": "epic"
+            "bgm": "orchestra"
         },
         "volcano": {
             "name": "火山烟霾",
@@ -4037,7 +4037,7 @@ class BackgroundManager:
             "elements": {"volcano_smoke": 25, "embers": 60},
             "grid_color": None,
             "element_type": "volcano",
-            "bgm": "intense"
+            "bgm": "metal"
         },
         "matrix": {
             "name": "数字矩阵",
@@ -4045,7 +4045,7 @@ class BackgroundManager:
             "elements": {"matrix_rain": 18, "hexagons": 12},
             "grid_color": (0, 255, 0),
             "element_type": "cyber",
-            "bgm": "cyber"
+            "bgm": "electronic"
         },
         "autumn_forest": {
             "name": "秋日枫林",
@@ -4054,7 +4054,7 @@ class BackgroundManager:
             "grid_color": None,
             "element_type": "autumn",
             "gradient": [(60, 30, 15), (200, 100, 30), (255, 180, 50)],
-            "bgm": "calm"
+            "bgm": "piano"
         },
         "salt_lake": {
             "name": "镜面盐湖",
@@ -4063,7 +4063,7 @@ class BackgroundManager:
             "grid_color": None,
             "element_type": "salt",
             "gradient": [(180, 200, 255), (255, 200, 220), (200, 255, 240)],
-            "bgm": "calm"
+            "bgm": "lofi"
         },
         "war_ruins": {
             "name": "战争废墟",
@@ -4072,7 +4072,7 @@ class BackgroundManager:
             "grid_color": None,
             "element_type": "ruins",
             "gradient": [(80, 80, 90), (120, 80, 60), (60, 50, 45)],
-            "bgm": "intense"
+            "bgm": "industrial"
         },
         "crystal_cave": {
             "name": "水晶洞穴",
@@ -4081,7 +4081,7 @@ class BackgroundManager:
             "grid_color": None,
             "element_type": "crystal",
             "gradient": [(25, 10, 35), (40, 20, 50), (30, 15, 40)],
-            "bgm": "calm"
+            "bgm": "ethereal"
         },
         "candle_library": {
             "name": "烛火图书馆",
@@ -4099,7 +4099,7 @@ class BackgroundManager:
             "grid_color": (50, 100, 150),
             "element_type": "space_tech",
             "gradient": [(10, 20, 40), (30, 60, 100), (20, 40, 70)],
-            "bgm": "epic"
+            "bgm": "chiptune"
         },
         "energy_matrix": {
             "name": "能量矩阵",
@@ -4108,7 +4108,7 @@ class BackgroundManager:
             "grid_color": (150, 50, 255),
             "element_type": "energy",
             "gradient": [(20, 0, 40), (80, 20, 120), (150, 50, 200)],
-            "bgm": "epic"
+            "bgm": "dubstep"
         },
         "clockwork_realm": {
             "name": "钟表领域",
@@ -4117,7 +4117,7 @@ class BackgroundManager:
             "grid_color": (120, 100, 70),
             "element_type": "steampunk",
             "gradient": [(40, 30, 20), (60, 50, 35), (50, 40, 25)],
-            "bgm": "mystery"
+            "bgm": "jazz"
         },
         "firefly_forest": {
             "name": "萤火森林",
@@ -4135,7 +4135,7 @@ class BackgroundManager:
             "grid_color": (100, 80, 150),
             "element_type": "music",
             "gradient": [(25, 15, 40), (40, 25, 60), (30, 20, 50)],
-            "bgm": "epic"
+            "bgm": "orchestra"
         },
         "shinto_shrine": {
             "name": "神道神社",
@@ -4162,7 +4162,7 @@ class BackgroundManager:
             "grid_color": (0, 200, 150),
             "element_type": "cyber",
             "gradient": [(10, 10, 25), (15, 20, 40), (10, 15, 30)],
-            "bgm": "epic"
+            "bgm": "breakbeat"
         },
         "ancient_coin_shop": {
             "name": "古代钱币铺",
@@ -4234,7 +4234,7 @@ class BackgroundManager:
             "grid_color": (180, 140, 100),
             "element_type": "clockwork",
             "gradient": [(40, 30, 20), (120, 90, 60), (200, 150, 100)],
-            "bgm": "cyber"
+            "bgm": "industrial"
         },
         "paper_scroll": {
             "name": "墨染卷轴",

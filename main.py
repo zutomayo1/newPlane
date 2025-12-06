@@ -45,6 +45,8 @@ bg_manager = BackgroundManager(style=game_settings.get("background_style", "clas
 sound_mgr.set_master_volume(game_settings.get("master_volume", 1.0))
 sound_mgr.set_music_volume(game_settings.get("music_volume", 0.5))
 sound_mgr.set_sfx_volume(game_settings.get("sfx_volume", 0.8))
+# 播放主菜单音乐
+sound_mgr.play_music("cinematic")
 
 # ==============================================================================
 #   UI 布局常量
@@ -6569,34 +6571,6 @@ def draw_top_hud():
     draw_text(screen, "推进", 16, label_x, bar_y + bar_gap*2 - 1, MAGENTA, glow=True, align='left')
     draw_text(screen, f"{int(player.dash_energy)}/{int(player.max_dash_energy)}", 14, label_x + 45, bar_y + bar_gap*2 + 1, WHITE, align='left')
     
-    # 【霓虹突击者】超载层数显示
-    if hasattr(player, 'plane_id') and player.plane_id == "striker":
-        if hasattr(player, 'overdrive_hits') and player.overdrive_hits > 0:
-            overdrive_pct = (player.overdrive_hits / 10) * 100  # 最大10层
-            # 超载条 (青色渐变到金色)
-            overdrive_color = CYAN if player.overdrive_hits < 10 else GOLD
-            draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, overdrive_pct, overdrive_color, 
-                           bg_color=(20, 40, 50), tilt=tilt, border_color=overdrive_color, border_width=1)
-            # 标签和层数
-            bonus_text = f"+{int(player.overdrive_bonus * 100)}%"
-            draw_text(screen, "超载", 16, label_x, bar_y + bar_gap*3 - 1, overdrive_color, glow=True, align='left')
-            draw_text(screen, f"{player.overdrive_hits}/10 ({bonus_text})", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
-    
-    # 【幽灵收割者】灵魂数量显示
-    if hasattr(player, 'plane_id') and player.plane_id == "specter":
-        souls = getattr(player, 'souls', 0)
-        if souls > 0:
-            soul_pct = (souls / 30) * 100  # 最大30灵魂
-            # 灵魂条 (紫色)
-            soul_color = (150, 100, 255) if souls < 30 else (200, 150, 255)
-            draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, soul_pct, soul_color, 
-                           bg_color=(30, 20, 50), tilt=tilt, border_color=soul_color, border_width=1)
-            # 计算加成
-            crit_bonus = int(souls * 2)  # 暴击率加成
-            dmg_bonus = int(souls * 5)   # 暴击伤害加成
-            draw_text(screen, "灵魂", 16, label_x, bar_y + bar_gap*3 - 1, soul_color, glow=True, align='left')
-            draw_text(screen, f"{souls}/30 (暴击+{crit_bonus}%)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
-    
     # 【绯红之刃】鲜血狂热层数显示
     if hasattr(player, 'plane_id') and player.plane_id == "crimson":
         stacks = getattr(player, 'blood_stacks', 0)
@@ -6760,6 +6734,125 @@ def draw_top_hud():
                          bg_color=(30, 15, 25), tilt=tilt, border_color=necro_color, border_width=1)
         draw_text(screen, "亡灵", 16, label_x, bar_y + bar_gap*3 - 1, necro_color, glow=True, align='left')
         draw_text(screen, f"{ghost_count}/{max_ghosts} 总伤害:{total_damage}", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+    
+    # 【霓虹突击者】超载引擎显示 - 常驻
+    if hasattr(player, 'plane_id') and player.plane_id == "striker":
+        charge = getattr(player, 'striker_charge', 0)
+        max_charge = max(1, getattr(player, 'max_striker_charge', 100))
+        is_overdrive = getattr(player, 'striker_overdrive', False)
+        bar_pct = (charge / max_charge) * 100
+        if is_overdrive:
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            striker_color = (int(100 + 155 * flash), int(200 + 55 * flash), int(200 + 55 * flash))
+        else:
+            striker_color = (int(80 + 120 * (charge/max_charge)), int(180 + 75 * (charge/max_charge)), 220) if charge > 0 else (60, 150, 180)
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, striker_color, 
+                       bg_color=(20, 40, 50), tilt=tilt, border_color=striker_color, border_width=1)
+        if is_overdrive:
+            timer = getattr(player, 'striker_overdrive_timer', 0)
+            draw_text(screen, "超载", 16, label_x, bar_y + bar_gap*3 - 1, (100, 255, 255), glow=True, align='left')
+            draw_text(screen, f"激活中! +50%攻速 ({timer//60}s)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        else:
+            draw_text(screen, "超载", 16, label_x, bar_y + bar_gap*3 - 1, striker_color, glow=True, align='left')
+            draw_text(screen, f"{int(charge)}%", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+    
+    # 【虚空幻影】相位漂移显示 - 常驻
+    if hasattr(player, 'plane_id') and player.plane_id == "phantom":
+        phase = getattr(player, 'phantom_phase', 0)
+        max_phase = max(1, getattr(player, 'max_phantom_phase', 100))
+        is_intangible = getattr(player, 'phantom_intangible', False)
+        bar_pct = (phase / max_phase) * 100
+        if is_intangible:
+            flash = abs(math.sin(pygame.time.get_ticks() / 60))
+            phantom_color = (int(200 + 55 * flash), int(100 + 100 * flash), 255)
+        elif phase >= 50:
+            phantom_color = (180, 80, 255)
+        else:
+            phantom_color = (int(120 + 60 * (phase/max_phase)), int(50 + 30 * (phase/max_phase)), int(180 + 75 * (phase/max_phase))) if phase > 0 else (100, 50, 150)
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, phantom_color, 
+                       bg_color=(30, 15, 45), tilt=tilt, border_color=phantom_color, border_width=1)
+        if is_intangible:
+            timer = getattr(player, 'phantom_intangible_timer', 0)
+            draw_text(screen, "相位", 16, label_x, bar_y + bar_gap*3 - 1, (255, 150, 255), glow=True, align='left')
+            draw_text(screen, f"无敌中! ({timer}帧)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        else:
+            status = "可激活!" if phase >= 50 else f"{int(phase)}%"
+            draw_text(screen, "相位", 16, label_x, bar_y + bar_gap*3 - 1, phantom_color, glow=True, align='left')
+            draw_text(screen, f"{status}", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+    
+    # 【雷霆战鹰】雷暴连锁显示 - 常驻
+    if hasattr(player, 'plane_id') and player.plane_id == "thunderbird":
+        charge = getattr(player, 'thunder_charge', 0)
+        max_charge = max(1, getattr(player, 'max_thunder_charge', 100))
+        bar_pct = (charge / max_charge) * 100
+        is_ready = charge >= max_charge
+        if is_ready:
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            thunder_color = (int(200 + 55 * flash), int(200 + 55 * flash), int(100 * flash))
+        else:
+            thunder_color = (int(200 + 55 * (charge/max_charge)), int(200 + 55 * (charge/max_charge)), 50) if charge > 0 else (180, 180, 50)
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, thunder_color, 
+                       bg_color=(35, 35, 15), tilt=tilt, border_color=thunder_color, border_width=1)
+        if is_ready:
+            draw_text(screen, "雷暴", 16, label_x, bar_y + bar_gap*3 - 1, (255, 255, 100), glow=True, align='left')
+            draw_text(screen, "就绪! 下次命中触发!", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        else:
+            draw_text(screen, "电荷", 16, label_x, bar_y + bar_gap*3 - 1, thunder_color, glow=True, align='left')
+            draw_text(screen, f"{int(charge)}%", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+    
+    # 【剧毒蝰蛇】剧毒累积显示 - 常驻
+    if hasattr(player, 'plane_id') and player.plane_id == "viper":
+        poison = getattr(player, 'viper_total_poison', 0)
+        bar_pct = min(100, poison * 5)
+        if poison >= 15:
+            venom_color = (80, 255, 80)
+        else:
+            venom_color = (int(100 + 80 * (poison/20)), int(200 + 55 * (poison/20)), int(100 + 80 * (poison/20))) if poison > 0 else (80, 180, 80)
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, venom_color, 
+                       bg_color=(20, 40, 20), tilt=tilt, border_color=venom_color, border_width=1)
+        draw_text(screen, "毒素", 16, label_x, bar_y + bar_gap*3 - 1, venom_color, glow=True, align='left')
+        draw_text(screen, f"{poison}层 (持续伤害)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+    
+    # 【幽灵收割者】死神印记显示 - 常驻
+    if hasattr(player, 'plane_id') and player.plane_id == "specter":
+        focus_time = getattr(player, 'specter_focus_time', 0)
+        stealth = getattr(player, 'specter_stealth', 0)
+        has_target = getattr(player, 'specter_focus', None) is not None
+        bar_pct = (focus_time / 180) * 100 if has_target else 0
+        if stealth > 0:
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            specter_color = (int(100 + 100 * flash), int(50 + 50 * flash), int(200 + 55 * flash))
+        elif focus_time > 120:
+            specter_color = (200, 100, 255)
+        else:
+            specter_color = (int(100 + 60 * (focus_time/180)), int(50 + 30 * (focus_time/180)), int(180 + 75 * (focus_time/180))) if focus_time > 0 else (100, 50, 160)
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, specter_color, 
+                       bg_color=(30, 20, 50), tilt=tilt, border_color=specter_color, border_width=1)
+        if stealth > 0:
+            draw_text(screen, "隐身", 16, label_x, bar_y + bar_gap*3 - 1, (200, 150, 255), glow=True, align='left')
+            draw_text(screen, f"激活中! ({stealth}帧)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        else:
+            dmg_mult = int((1.0 + (focus_time / 180) * 1.0) * 100) if has_target else 100
+            target_text = f"锁定! {dmg_mult}%伤害" if has_target else "寻找目标..."
+            draw_text(screen, "印记", 16, label_x, bar_y + bar_gap*3 - 1, specter_color, glow=True, align='left')
+            draw_text(screen, target_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+    
+    # 【极光女神】极光共鸣显示 - 常驻
+    if hasattr(player, 'plane_id') and player.plane_id == "aurora":
+        orbs = getattr(player, 'aurora_orbs', [])
+        orb_count = len(orbs)
+        max_orbs = getattr(player, 'max_aurora_orbs', 5)
+        total_damage = int(getattr(player, 'aurora_orb_damage', 0))
+        bar_pct = (orb_count / max_orbs) * 100
+        if orb_count >= max_orbs:
+            flash = abs(math.sin(pygame.time.get_ticks() / 120))
+            aurora_color = (int(100 * flash), int(200 + 55 * flash), int(180 + 75 * flash))
+        else:
+            aurora_color = (int(80 * (orb_count/max_orbs)), int(180 + 75 * (orb_count/max_orbs)), int(160 + 95 * (orb_count/max_orbs))) if orb_count > 0 else (60, 160, 140)
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, aurora_color, 
+                       bg_color=(20, 40, 35), tilt=tilt, border_color=aurora_color, border_width=1)
+        draw_text(screen, "极光", 16, label_x, bar_y + bar_gap*3 - 1, aurora_color, glow=True, align='left')
+        draw_text(screen, f"{orb_count}/{max_orbs}球 总伤:{total_damage}", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
     
     # ===== 顶部右侧：积分和时间（创意特效面板） =====
     score_value_x = WIDTH - 24  # 数值右对齐位置
@@ -8275,8 +8368,8 @@ while True:
                                 if player and hasattr(player, 'achievement_manager'):
                                     player.achievement_manager.save_to_file()
                                 game_state = "menu"
-                                # 菜单使用normal BGM
-                                sound_mgr.play_music("normal")
+                                # 菜单使用电影配乐
+                                sound_mgr.play_music("cinematic")
                         elif event.key == pygame.K_p:
                             is_paused = False; sound_mgr.play("select")
                         elif event.key == pygame.K_r:
@@ -8349,7 +8442,7 @@ while True:
                         boss_challenge_active = True
                         try:
                             reset_game()
-                            sound_mgr.play_music("boss")
+                            sound_mgr.play_music("orchestral_dark")
                             # 立即生成第一个Boss
                             if boss_challenge_active and boss_challenge_current < len(boss_challenge_order):
                                 boss_type = boss_challenge_order[boss_challenge_current]
@@ -8773,8 +8866,8 @@ while True:
                             sound_mgr.play("select")
                         elif pygame.Rect(cx-100, cy+80, 200, 50).collidepoint(mx, my):
                             game_state = "menu" # 退出
-                            # 菜单使用normal BGM
-                            sound_mgr.play_music("normal")
+                            # 菜单使用电影配乐
+                            sound_mgr.play_music("cinematic")
                             sound_mgr.play("select")
                     else:
                         # 游戏进行中：处理点击攻击等逻辑
@@ -9088,35 +9181,6 @@ while True:
                                         enemy.frozen_timer = freeze_duration
                                         Particle(enemy.rect.center, (150, 200, 255))
                         
-                        # 【霓虹突击者】超载模式计时器衰减
-                        if hasattr(player, 'plane_id') and player.plane_id == "striker":
-                            if hasattr(player, 'overdrive_timer') and player.overdrive_timer > 0:
-                                player.overdrive_timer -= 1
-                                if player.overdrive_timer <= 0:
-                                    # 超载重置
-                                    player.overdrive_hits = 0
-                                    player.overdrive_bonus = 0
-                        
-                        # 【虚空幻影】相位无敌计时器衰减
-                        if hasattr(player, 'phase_invuln') and player.phase_invuln > 0:
-                            player.phase_invuln -= 1
-                            # 无敌期间的视觉效果 - 紫色光环
-                            if player.phase_invuln > 0 and random.random() < 0.3:
-                                angle = random.uniform(0, math.pi * 2)
-                                dist = random.uniform(15, 25)
-                                px = player.rect.centerx + math.cos(angle) * dist
-                                py = player.rect.centery + math.sin(angle) * dist
-                                Particle((int(px), int(py)), MAGENTA)
-                        
-                        # 【幽灵收割者】灵魂衰减（每2秒流失1个灵魂）
-                        if hasattr(player, 'plane_id') and player.plane_id == "specter":
-                            if hasattr(player, 'souls') and player.souls > 0:
-                                if not hasattr(player, 'soul_decay_timer'):
-                                    player.soul_decay_timer = 0
-                                player.soul_decay_timer += 1
-                                if player.soul_decay_timer >= 120:  # 2秒
-                                    player.soul_decay_timer = 0
-                                    player.souls = max(0, player.souls - 1)
                     # Boss spawn logic: handled by boss_manager
                     warning_active, spawn_now = boss_manager.update(score, player.level, boss_exists=bool(boss))
                     if warning_active and not boss:
@@ -9135,7 +9199,7 @@ while True:
                         if candidate:
                             boss = candidate
                             all_sprites.add(boss)
-                            sound_mgr.play_music("boss")
+                            sound_mgr.play_music("funk")
                     
                     if len(mobs) < (12 if not boss else 4):
                         # ========== 全新敌人生成系统 v2.0 ==========
@@ -9374,6 +9438,39 @@ while True:
                                 if getattr(b, 'damage_mult', 1) > 1:
                                     dmg *= getattr(b, 'damage_mult', 1)
                             
+                            # 【霓虹突击者】超载引擎积累
+                            if hasattr(player, 'plane_id') and player.plane_id == "striker":
+                                if hasattr(player, 'gain_striker_charge'):
+                                    player.gain_striker_charge(3)
+                            
+                            # 【雷霆战鹰】雷暴连锁
+                            if hasattr(player, 'plane_id') and player.plane_id == "thunderbird":
+                                if hasattr(player, 'gain_thunder_charge'):
+                                    player.gain_thunder_charge(5)
+                                if hasattr(player, 'trigger_chain_lightning'):
+                                    lightning_paths = player.trigger_chain_lightning(b.rect.center)
+                                    for start_pos, end_pos in lightning_paths:
+                                        pygame.draw.line(screen, (120, 200, 255), start_pos, end_pos, 3)
+                                        if random.random() < 0.5:
+                                            Particle(end_pos, (120, 200, 255))
+                            
+                            # 【剧毒蝰蛇】剧毒累积
+                            if hasattr(player, 'plane_id') and player.plane_id == "viper":
+                                if hasattr(player, 'apply_viper_poison'):
+                                    player.apply_viper_poison(m, dmg)
+                            
+                            # 【幽灵收割者】死神印记
+                            if hasattr(player, 'plane_id') and player.plane_id == "specter":
+                                if hasattr(player, 'update_specter_focus'):
+                                    player.update_specter_focus(m)
+                                if hasattr(player, 'get_specter_damage_mult'):
+                                    dmg *= player.get_specter_damage_mult(m)
+                            
+                            # 【极光女神】极光共鸣
+                            if hasattr(player, 'plane_id') and player.plane_id == "aurora":
+                                if hasattr(player, 'spawn_aurora_orb'):
+                                    player.spawn_aurora_orb(b.rect.center)
+                            
                             # ===== 增强打击感（优化版） =====
                             # 1. 屏幕震动（基于伤害）- 减弱
                             shake_intensity = max(0, min(1, int(dmg / 80)))  # 减少震动强度
@@ -9430,6 +9527,7 @@ while True:
                                 chain_count = base_chain + getattr(player, 'chain_count', 0)
                                 chain_damage_mult = getattr(player, 'chain_damage', 0.7)  # 提高连锁伤害
                                 chain_range = 250  # 增加连锁范围
+                                lightning_color = (120, 200, 255) if getattr(player, 'plane_id', None) == "thunderbird" else YELLOW
                                 
                                 current_target = m
                                 chain_damage = dmg * chain_damage_mult
@@ -9452,18 +9550,18 @@ while True:
                                     
                                     if nearest_enemy:
                                         # 绘制闪电连线特效
-                                        pygame.draw.line(screen, YELLOW, 
+                                        pygame.draw.line(screen, lightning_color, 
                                                        current_target.rect.center, 
                                                        nearest_enemy.rect.center, 2)
                                         
                                         # 造成连锁伤害
                                         nearest_enemy.hp -= chain_damage
                                         FloatingText(nearest_enemy.rect.centerx, nearest_enemy.rect.top - 10, 
-                                                   f"-{int(chain_damage)}", YELLOW)
+                                                   f"-{int(chain_damage)}", lightning_color)
                                         
                                         # 闪电特效（优化：减少粒子）
                                         if random.random() < 0.5:
-                                            Particle(nearest_enemy.rect.center, YELLOW)
+                                            Particle(nearest_enemy.rect.center, lightning_color)
                                         
                                         chained_enemies.add(nearest_enemy)
                                         current_target = nearest_enemy
@@ -9489,74 +9587,6 @@ while True:
                                     px = m.rect.centerx + math.cos(angle) * dist
                                     py = m.rect.centery + math.sin(angle) * dist
                                     Particle((int(px), int(py)), (0, 255, 100))
-                            
-                            # 【霓虹突击者】固有能力：超载模式 - 连续命中提升伤害
-                            if hasattr(player, 'plane_id') and player.plane_id == "striker":
-                                # 初始化超载计数器
-                                if not hasattr(player, 'overdrive_hits'):
-                                    player.overdrive_hits = 0
-                                    player.overdrive_timer = 0
-                                    player.overdrive_bonus = 0
-                                
-                                # 命中增加超载层数（最多10层）
-                                player.overdrive_hits = min(10, player.overdrive_hits + 1)
-                                player.overdrive_timer = 90  # 1.5秒内不命中则重置
-                                player.overdrive_bonus = player.overdrive_hits * 0.08  # 每层+8%伤害
-                                
-                                # 超载视觉效果 - 青色能量
-                                if player.overdrive_hits >= 3:
-                                    for _ in range(2):
-                                        angle = random.uniform(0, math.pi * 2)
-                                        dist = random.uniform(8, 20)
-                                        px = m.rect.centerx + math.cos(angle) * dist
-                                        py = m.rect.centery + math.sin(angle) * dist
-                                        Particle((int(px), int(py)), CYAN)
-                            
-                            # 【虚空幻影】固有能力：相位闪避 - 攻击时有几率获得短暂无敌
-                            if hasattr(player, 'plane_id') and player.plane_id == "phantom":
-                                # 15%概率触发相位闪避
-                                if random.random() < 0.15:
-                                    # 获得30帧（0.5秒）无敌
-                                    if not hasattr(player, 'phase_invuln'):
-                                        player.phase_invuln = 0
-                                    player.phase_invuln = 30
-                                    # 相位特效 - 紫色闪烁
-                                    for _ in range(5):
-                                        angle = random.uniform(0, math.pi * 2)
-                                        dist = random.uniform(10, 30)
-                                        px = player.rect.centerx + math.cos(angle) * dist
-                                        py = player.rect.centery + math.sin(angle) * dist
-                                        Particle((int(px), int(py)), MAGENTA)
-                            
-                            # 【极光女神】固有能力：极光领域 - 命中敌人时减速周围敌人
-                            if hasattr(player, 'plane_id') and player.plane_id == "aurora":
-                                # 25%概率触发极光领域
-                                if random.random() < 0.25:
-                                    aurora_radius = 120  # 极光范围
-                                    slow_duration = 90   # 减速持续1.5秒
-                                    slow_amount = 0.4    # 减速40%
-                                    
-                                    # 对范围内所有敌人施加减速
-                                    for enemy in mobs:
-                                        dist = math.hypot(
-                                            enemy.rect.centerx - m.rect.centerx,
-                                            enemy.rect.centery - m.rect.centery
-                                        )
-                                        if dist <= aurora_radius:
-                                            if not hasattr(enemy, 'aurora_slow'):
-                                                enemy.aurora_slow = 0
-                                                enemy.aurora_slow_mult = 1.0
-                                            enemy.aurora_slow = slow_duration
-                                            enemy.aurora_slow_mult = slow_amount
-                                    
-                                    # 极光领域视觉效果 - 青色光环扩散
-                                    pygame.draw.circle(screen, TEAL, m.rect.center, int(aurora_radius), 2)
-                                    for _ in range(6):
-                                        angle = random.uniform(0, math.pi * 2)
-                                        dist = random.uniform(20, aurora_radius * 0.8)
-                                        px = m.rect.centerx + math.cos(angle) * dist
-                                        py = m.rect.centery + math.sin(angle) * dist
-                                        Particle((int(px), int(py)), TEAL)
                             
                             # 【优化】爆炸模块：子弹击中时产生范围爆炸伤害
                             if hasattr(player, 'has_area_dmg') and player.has_area_dmg:
@@ -9680,16 +9710,15 @@ while True:
                                 if corpse_effect:
                                     create_explosion(corpse_effect["pos"], ORANGE, 8)
                                 
-                                # 【幽灵收割者】固有能力：灵魂收割 - 击杀敌人收集灵魂
+                                # 【幽灵收割者】击杀后触发隐身
                                 if hasattr(player, 'plane_id') and player.plane_id == "specter":
-                                    if not hasattr(player, 'souls'):
-                                        player.souls = 0
-                                    # 精英敌人给2个灵魂，普通敌人给1个
-                                    soul_gain = 2 if m.is_elite else 1
-                                    player.souls = min(30, player.souls + soul_gain)  # 最多30灵魂
-                                    # 灵魂特效 - 紫色幽灵粒子飞向玩家
-                                    for _ in range(3):
-                                        Particle(m.rect.center, (150, 100, 255))
+                                    if hasattr(player, 'trigger_specter_stealth'):
+                                        player.trigger_specter_stealth()
+                                
+                                # 【死灵骑士】击杀召唤亡灵
+                                if hasattr(player, 'plane_id') and player.plane_id == "necro":
+                                    if hasattr(player, 'gain_necro_soul'):
+                                        player.gain_necro_soul(m.rect.center)
                                 
                                 if random.random() < 0.25:
                                     arsenal_save_data["currencies"]["cores"] += 1
@@ -9701,13 +9730,12 @@ while True:
                         hits.extend(pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle))
                         if hits:
                             # 【虚空幻影】相位无敌检查
-                            if hasattr(player, 'phase_invuln') and player.phase_invuln > 0:
-                                # 无敌状态，免疫伤害
-                                FloatingText(player.rect.centerx, player.rect.top, "相位!", MAGENTA)
-                                # 相位特效
-                                for _ in range(3):
-                                    Particle(player.rect.center, MAGENTA)
-                                continue  # 免疫伤害
+                            if hasattr(player, 'plane_id') and player.plane_id == "phantom":
+                                if getattr(player, 'phantom_intangible', False):
+                                    FloatingText(player.rect.centerx, player.rect.top, "相位!", MAGENTA)
+                                    for _ in range(3):
+                                        Particle(player.rect.center, MAGENTA)
+                                    continue  # 免疫伤害
                             
                             # 【新】相位闪避：概率完全闪避伤害
                             dodge_chance = getattr(player, 'dodge_chance', 0)
@@ -9739,6 +9767,12 @@ while True:
                                 dmg = int(dmg * (1 - armor_reduction))
                                 if hasattr(player, 'gain_titan_armor'):
                                     player.gain_titan_armor()
+                            
+                            # 【幽灵收割者】隐身减伤
+                            if hasattr(player, 'plane_id') and player.plane_id == "specter":
+                                if getattr(player, 'specter_stealth', 0) > 0:
+                                    dmg = int(dmg * 0.25)  # 隐身时减伤75%
+                                    FloatingText(player.rect.centerx, player.rect.top - 15, "隐匿!", (150, 100, 255))
                             
                             # 【日食幽灵】暗影护盾优先抵消伤害
                             if hasattr(player, 'plane_id') and player.plane_id == "eclipse":

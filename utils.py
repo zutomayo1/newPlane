@@ -144,7 +144,7 @@ def safe_blit(target_surf, src_surf, dest):
 class AudioSynthesizer:
     def __init__(self):
         self.sample_rate = 44100
-        self.cache_dir = os.path.join(tempfile.gettempdir(), "neon_space_audio_v13")
+        self.cache_dir = os.path.join(tempfile.gettempdir(), "neon_space_audio_v15")
         if not os.path.exists(self.cache_dir):
             try: os.makedirs(self.cache_dir)
             except: self.cache_dir = None
@@ -160,22 +160,152 @@ class AudioSynthesizer:
                 f.writeframes(packed_data)
             return path
         except: return None
+    
+    def apply_lowpass_filter(self, data, cutoff_ratio=0.3):
+        """应用简单的低通滤波器,减少高频刺耳"""
+        if not data:
+            return data
+        filtered = [data[0]]
+        alpha = cutoff_ratio
+        for i in range(1, len(data)):
+            filtered.append(alpha * data[i] + (1 - alpha) * filtered[-1])
+        return filtered
+    
+    def apply_compressor(self, data, threshold=0.7, ratio=0.5):
+        """应用压缩器,防止音量过大"""
+        compressed = []
+        for sample in data:
+            if abs(sample) > threshold:
+                sign = 1 if sample > 0 else -1
+                excess = abs(sample) - threshold
+                sample = sign * (threshold + excess * ratio)
+            compressed.append(sample)
+        return compressed
+    
+    def normalize_audio(self, data, target_level=0.8):
+        """归一化音频,确保音量适中"""
+        if not data:
+            return data
+        max_val = max(abs(s) for s in data)
+        if max_val > 0:
+            scale = target_level / max_val
+            return [s * scale for s in data]
+        return data
 
-    def generate_tone(self, freq, duration, vol=0.5, wave_type="sine"):
+    def generate_tone(self, freq, duration, vol=0.5, wave_type="sine", envelope="smooth"):
+        """生成音调,支持多种波形和包络"""
         n_samples = int(self.sample_rate * duration)
         data = []
         for i in range(n_samples):
             t = i / self.sample_rate
             v = 0
-            if wave_type == "sine": v = math.sin(2 * math.pi * freq * t)
-            elif wave_type == "square": v = 1.0 if math.sin(2 * math.pi * freq * t) > 0 else -1.0
-            elif wave_type == "saw": v = 2 * (t * freq - math.floor(t * freq + 0.5))
-            elif wave_type == "noise": v = random.uniform(-1, 1)
-            # Envelope
-            if i < 100: v *= (i/100)
-            if i > n_samples - 500: v *= ((n_samples - i)/500)
+            # 波形生成
+            if wave_type == "sine": 
+                v = math.sin(2 * math.pi * freq * t)
+            elif wave_type == "square": 
+                # 柔化方波 - 使用多个正弦波合成
+                v = (math.sin(2 * math.pi * freq * t) * 0.7 +
+                     math.sin(6 * math.pi * freq * t) * 0.15 +
+                     math.sin(10 * math.pi * freq * t) * 0.08)
+            elif wave_type == "saw": 
+                # 柔化锯齿波 - 限制高频
+                v = 2 * (t * freq - math.floor(t * freq + 0.5))
+                v = max(-0.8, min(0.8, v))  # 软削波
+            elif wave_type == "triangle":
+                phase = (t * freq) % 1.0
+                v = 4 * abs(phase - 0.5) - 1
+            elif wave_type == "noise": 
+                # 柔化噪音 - 降低峰值
+                v = random.uniform(-0.7, 0.7)
+            elif wave_type == "organ":  # 风琴音色 - 多个正弦波叠加
+                v = (math.sin(2 * math.pi * freq * t) * 0.5 +
+                     math.sin(4 * math.pi * freq * t) * 0.25 +
+                     math.sin(6 * math.pi * freq * t) * 0.125)
+            elif wave_type == "pluck":  # 拨弦音色
+                decay_factor = math.exp(-t * 5)
+                v = math.sin(2 * math.pi * freq * t) * decay_factor
+            elif wave_type == "bell":  # 钟声音色
+                v = (math.sin(2 * math.pi * freq * t) * 0.5 +
+                     math.sin(4 * math.pi * freq * t) * 0.3 * math.exp(-t * 2) +
+                     math.sin(6 * math.pi * freq * t) * 0.2 * math.exp(-t * 4))
+            
+            # 包络处理
+            if envelope == "smooth":
+                if i < 100: v *= (i/100)
+                if i > n_samples - 500: v *= ((n_samples - i)/500)
+            elif envelope == "sharp":
+                if i < 10: v *= (i/10)
+                if i > n_samples - 50: v *= ((n_samples - i)/50)
+            elif envelope == "long":
+                if i < 500: v *= (i/500)
+                if i > n_samples - 2000: v *= ((n_samples - i)/2000)
+            elif envelope == "pluck":
+                v *= math.exp(-t * 4)
+                
             data.append(v * vol)
         return data
+    
+    def generate_drum(self, drum_type, vol=0.5):
+        """生成鼓点音效(优化版,更柔和)"""
+        if drum_type == "kick":
+            data = []
+            dur = 0.3
+            for i in range(int(self.sample_rate * dur)):
+                t = i / self.sample_rate
+                freq = 120 * math.exp(-t * 12)  # 降低频率和衰减速度
+                v = math.sin(2 * math.pi * freq * t) * math.exp(-t * 7)
+                data.append(v * vol * 0.7)  # 降低音量
+            return data
+        elif drum_type == "snare":
+            data = []
+            dur = 0.15
+            for i in range(int(self.sample_rate * dur)):
+                t = i / self.sample_rate
+                tone = math.sin(2 * math.pi * 180 * t) * 0.25
+                noise = random.uniform(-0.6, 0.6) * 0.5  # 降低噪音
+                v = (tone + noise) * math.exp(-t * 10)
+                data.append(v * vol * 0.7)
+            return data
+        elif drum_type == "hihat":
+            data = []
+            dur = 0.08
+            for i in range(int(self.sample_rate * dur)):
+                t = i / self.sample_rate
+                v = random.uniform(-0.6, 0.6) * math.exp(-t * 25)  # 降低强度
+                data.append(v * vol * 0.25)
+            return data
+        elif drum_type == "tom":
+            data = []
+            dur = 0.2
+            for i in range(int(self.sample_rate * dur)):
+                t = i / self.sample_rate
+                freq = 100 * math.exp(-t * 7)  # 降低频率
+                v = math.sin(2 * math.pi * freq * t) * math.exp(-t * 5)
+                data.append(v * vol * 0.6)
+            return data
+        return []
+    
+    def add_reverb(self, data, decay=0.3, delay_samples=4410):
+        """添加混响效果"""
+        reverb_data = data[:]
+        for i in range(delay_samples, len(data)):
+            reverb_data[i] += data[i - delay_samples] * decay
+        return reverb_data
+    
+    def mix_tracks(self, *tracks):
+        """混合多个音轨,应用压缩和归一化"""
+        if not tracks:
+            return []
+        max_len = max(len(t) for t in tracks)
+        mixed = [0] * max_len
+        for track in tracks:
+            for i, sample in enumerate(track):
+                mixed[i] += sample
+        # 应用压缩器防止削波
+        mixed = self.apply_compressor(mixed, threshold=0.6, ratio=0.4)
+        # 归一化到安全音量
+        mixed = self.normalize_audio(mixed, target_level=0.7)
+        return mixed
 
     def generate_all(self):
         if not self.cache_dir: return {}
@@ -274,8 +404,11 @@ class AudioSynthesizer:
                     if beat % 4 == 2: val_drum += random.uniform(-0.5, 0.5) * 0.4 * math.exp(-t_local*15)
                     if beat % 2 == 1: val_drum += random.uniform(-0.3, 0.3) * 0.2 * math.exp(-t_local*30)
                     val_arp = 0
-                    if beat % 2 == 0: arp_note = freq * 4; val_arp = math.sin(2 * math.pi * arp_note * t_local) * 0.1 * math.exp(-t_local*8)
-                    bgm_data.append((val_bass + val_drum + val_arp) * 0.5)
+                    if beat % 2 == 0: arp_note = freq * 4; val_arp = math.sin(2 * math.pi * arp_note * t_local) * 0.08 * math.exp(-t_local*8)
+                    bgm_data.append((val_bass + val_drum + val_arp) * 0.4)
+            # 应用低通滚波和归一化
+            bgm_data = self.apply_lowpass_filter(bgm_data, 0.4)
+            bgm_data = self.normalize_audio(bgm_data, 0.55)
             paths["bgm_normal"] = self.save_wave("bgm_normal.wav", bgm_data)
 
             # 17. BGM Boss
@@ -290,8 +423,11 @@ class AudioSynthesizer:
                     if beat % 4 == 2: val_drum += random.uniform(-0.9, 0.9) * 0.6 * math.exp(-t_local*20)
                     val_lead = 0
                     if beat % 8 == 0: val_lead = math.sin(2 * math.pi * (900 - t_local*300) * t_local) * 0.25 * math.exp(-t_local*2)
-                    mix = (val_bass + val_drum + val_lead) * 0.7; mix = max(-0.9, min(0.9, mix))
+                    mix = (val_bass + val_drum + val_lead) * 0.5; mix = max(-0.7, min(0.7, mix))
                     boss_bgm_data.append(mix)
+            # 应用压缩和归一化
+            boss_bgm_data = self.apply_compressor(boss_bgm_data, threshold=0.6, ratio=0.4)
+            boss_bgm_data = self.normalize_audio(boss_bgm_data, 0.58)
             paths["bgm_boss"] = self.save_wave("bgm_boss.wav", boss_bgm_data)
 
             # 18. BGM Calm (宁静氛围 - 适合秋日枫林、水晶洞穴、镜面盐湖)
@@ -311,7 +447,10 @@ class AudioSynthesizer:
                     val_perc = 0
                     if beat % 4 == 0 and i < 1000:
                         val_perc = random.uniform(-0.2, 0.2) * math.exp(-t_local * 10)
-                    calm_bgm.append((val_melody + val_harmony + val_perc) * 0.6)
+                    calm_bgm.append((val_melody + val_harmony + val_perc) * 0.45)
+            # 应用低通滚波
+            calm_bgm = self.apply_lowpass_filter(calm_bgm, 0.35)
+            calm_bgm = self.normalize_audio(calm_bgm, 0.5)
             paths["bgm_calm"] = self.save_wave("bgm_calm.wav", calm_bgm)
 
             # 19. BGM Mystery (神秘氛围 - 适合深海、遗忘都市、量子泡沫)
@@ -330,7 +469,10 @@ class AudioSynthesizer:
                     val_echo = 0
                     if beat % 5 == 0:
                         val_echo = math.sin(2 * math.pi * 880 * t_local) * 0.15 * math.exp(-t_local * 5)
-                    mystery_bgm.append((val_bass + val_high + val_echo) * 0.5)
+                    mystery_bgm.append((val_bass + val_high + val_echo) * 0.4)
+            # 应用低通滚波
+            mystery_bgm = self.apply_lowpass_filter(mystery_bgm, 0.35)
+            mystery_bgm = self.normalize_audio(mystery_bgm, 0.52)
             paths["bgm_mystery"] = self.save_wave("bgm_mystery.wav", mystery_bgm)
 
             # 20. BGM Epic (史诗战斗 - 适合太空战场、时空裂隙、破碎天空)
@@ -350,7 +492,10 @@ class AudioSynthesizer:
                         val_drum = math.sin(2 * math.pi * 80 * math.exp(-t_local*30) * t_local) * 0.8 * math.exp(-t_local*12)
                     # 高频旋律
                     val_lead = math.sin(2 * math.pi * (chord_freq * 6 + 100 * math.sin(beat * 0.7)) * t_local) * 0.2 * math.exp(-t_local * 4)
-                    epic_bgm.append((val_bass + val_drum + val_lead) * 0.75)
+                    epic_bgm.append((val_bass + val_drum + val_lead) * 0.55)
+            # 应用压缩和归一化
+            epic_bgm = self.apply_compressor(epic_bgm, threshold=0.6, ratio=0.4)
+            epic_bgm = self.normalize_audio(epic_bgm, 0.58)
             paths["bgm_epic"] = self.save_wave("bgm_epic.wav", epic_bgm)
 
             # 21. BGM Intense (紧张激烈 - 适合雷暴、火山、战争废墟)
@@ -371,7 +516,10 @@ class AudioSynthesizer:
                     val_stab = 0
                     if beat % 2 == 0:
                         val_stab = math.sin(2 * math.pi * 1760 * t_local) * 0.3 * math.exp(-t_local * 8)
-                    intense_bgm.append((val_saw + val_perc + val_stab) * 0.7)
+                    intense_bgm.append((val_saw + val_perc + val_stab) * 0.5)
+            # 应用压缩防止过载
+            intense_bgm = self.apply_compressor(intense_bgm, threshold=0.6, ratio=0.4)
+            intense_bgm = self.normalize_audio(intense_bgm, 0.56)
             paths["bgm_intense"] = self.save_wave("bgm_intense.wav", intense_bgm)
 
             # 22. BGM Cyber (电子科技 - 适合数字矩阵、城市上空)
@@ -392,7 +540,10 @@ class AudioSynthesizer:
                     arp_notes = [523, 659, 784, 1047]  # C E G C'
                     arp_freq = arp_notes[(beat * 4 + int(t_local * 8)) % len(arp_notes)]
                     val_arp = math.sin(2 * math.pi * arp_freq * t_local) * 0.15 * math.exp(-t_local * 6)
-                    cyber_bgm.append((val_bass + val_kick + val_arp) * 0.6)
+                    cyber_bgm.append((val_bass + val_kick + val_arp) * 0.48)
+            # 应用低通滚波和归一化
+            cyber_bgm = self.apply_lowpass_filter(cyber_bgm, 0.4)
+            cyber_bgm = self.normalize_audio(cyber_bgm, 0.55)
             paths["bgm_cyber"] = self.save_wave("bgm_cyber.wav", cyber_bgm)
 
             # 23. BGM Ethereal (空灵飘渺 - 适合晨曦云海、极光彩幕)
@@ -409,7 +560,10 @@ class AudioSynthesizer:
                     # 飘渺的高音
                     shimmer_freq = 1760 + 440 * math.sin(t_local * 2 + beat * 0.5)
                     val_shimmer = math.sin(2 * math.pi * shimmer_freq * t_local) * 0.1 * math.exp(-t_local * 1)
-                    ethereal_bgm.append((val_pad + val_shimmer) * 0.5)
+                    ethereal_bgm.append((val_pad + val_shimmer) * 0.4)
+            # 应用低通滚波
+            ethereal_bgm = self.apply_lowpass_filter(ethereal_bgm, 0.3)
+            ethereal_bgm = self.normalize_audio(ethereal_bgm, 0.5)
             paths["bgm_ethereal"] = self.save_wave("bgm_ethereal.wav", ethereal_bgm)
             
             # 24. Achievement (成就解锁)
@@ -439,6 +593,537 @@ class AudioSynthesizer:
             for i in range(int(self.sample_rate * dur)):
                 t = i / self.sample_rate; freq = 800 + 200 * math.sin(2 * math.pi * 5 * t); v = math.sin(2 * math.pi * freq * t) * 0.35 * (1 - t/dur); data.append(v)
             paths["shield"] = self.save_wave("shield.wav", data)
+
+            # ===== 新增丰富的BGM音乐 =====
+            
+            # 23. BGM Orchestra (管弦乐 - 史诗战斗)
+            orchestra_bgm = []
+            bpm = 140; beat_dur = 60 / bpm; total_beats = 32
+            melody_notes = [523, 587, 659, 698, 784, 880]  # C D E F G A
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                note_idx = (beat // 2) % len(melody_notes)
+                melody_freq = melody_notes[note_idx]
+                
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 弦乐组 - organ音色模拟弦乐
+                    val_strings = (math.sin(2 * math.pi * melody_freq * t_local) * 0.3 +
+                                  math.sin(4 * math.pi * melody_freq * t_local) * 0.15 +
+                                  math.sin(6 * math.pi * melody_freq * t_local) * 0.08) * 0.25
+                    # 铜管组 - 低八度的强音
+                    val_brass = math.sin(2 * math.pi * (melody_freq * 0.5) * t_local) * 0.18 * (1 if beat % 4 == 0 else 0.4)
+                    # 定音鼓
+                    val_timpani = 0
+                    if beat % 4 == 0 and i < 2000:
+                        val_timpani = math.sin(2 * math.pi * 65 * t_local) * 0.25 * math.exp(-t_local * 8)
+                    orchestra_bgm.append((val_strings + val_brass + val_timpani) * 0.5)
+            # 应用低通滤波和归一化
+            orchestra_bgm = self.apply_lowpass_filter(orchestra_bgm, 0.4)
+            orchestra_bgm = self.normalize_audio(orchestra_bgm, 0.6)
+            paths["bgm_orchestra"] = self.save_wave("bgm_orchestra.wav", orchestra_bgm)
+            
+            # 24. BGM Jazz (爵士 - 休闲探索)
+            jazz_bgm = []
+            bpm = 110; beat_dur = 60 / bpm; total_beats = 24
+            jazz_progression = [262, 330, 392, 349]  # C E G F (爵士和弦根音)
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                bass_note = jazz_progression[(beat // 4) % len(jazz_progression)]
+                
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 爵士低音 - walking bass
+                    val_bass = math.sin(2 * math.pi * bass_note * t_local) * 0.3 * math.exp(-t_local * 2)
+                    # 钢琴和弦 - bell音色
+                    val_piano = 0
+                    if beat % 2 == 0 and i < 5000:
+                        chord_notes = [bass_note * 2, bass_note * 2.5, bass_note * 3]
+                        for note in chord_notes:
+                            val_piano += (math.sin(2 * math.pi * note * t_local) * 0.15 +
+                                        math.sin(4 * math.pi * note * t_local) * 0.08 * math.exp(-t_local * 3))
+                    # 爵士刷子鼓
+                    val_brush = 0
+                    if beat % 1 == 0 and i < 500:
+                        val_brush = random.uniform(-0.15, 0.15) * math.exp(-t_local * 15)
+                    jazz_bgm.append((val_bass + val_piano + val_brush) * 0.45)
+            # 应用低通滚波和归一化
+            jazz_bgm = self.apply_lowpass_filter(jazz_bgm, 0.4)
+            jazz_bgm = self.normalize_audio(jazz_bgm, 0.55)
+            paths["bgm_jazz"] = self.save_wave("bgm_jazz.wav", jazz_bgm)
+            
+            # 25. BGM Piano (钢琴独奏 - 情感场景)
+            piano_bgm = []
+            bpm = 90; beat_dur = 60 / bpm; total_beats = 20
+            piano_melody = [392, 440, 523, 587, 523, 440, 392, 349]  # G A C D C A G F
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                note = piano_melody[beat % len(piano_melody)]
+                
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 钢琴主旋律 - bell音色
+                    val_melody = (math.sin(2 * math.pi * note * t_local) * 0.5 +
+                                 math.sin(4 * math.pi * note * t_local) * 0.25 * math.exp(-t_local * 2) +
+                                 math.sin(6 * math.pi * note * t_local) * 0.15 * math.exp(-t_local * 4))
+                    val_melody *= math.exp(-t_local * 1.5)
+                    # 和弦伴奏
+                    val_chord = 0
+                    if beat % 4 == 0:
+                        chord_root = note * 0.5
+                        val_chord = math.sin(2 * math.pi * chord_root * t_local) * 0.15 * math.exp(-t_local * 2)
+                    piano_bgm.append((val_melody + val_chord) * 0.5)
+            # 应用低通滚波和归一化
+            piano_bgm = self.apply_lowpass_filter(piano_bgm, 0.35)
+            piano_bgm = self.normalize_audio(piano_bgm, 0.55)
+            paths["bgm_piano"] = self.save_wave("bgm_piano.wav", piano_bgm)
+            
+            # 26. BGM Rock (摇滚 - 高能战斗)
+            rock_bgm = []
+            bpm = 160; beat_dur = 60 / bpm; total_beats = 32
+            power_riff = [82, 98, 110, 98]  # E G A G (强力Riff)
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                riff_note = power_riff[(beat // 2) % len(power_riff)]
+                
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 失真吉他 - saw波 + 过载
+                    val_guitar = (2 * (t_local * riff_note - math.floor(t_local * riff_note + 0.5)))
+                    val_guitar = max(-0.8, min(0.8, val_guitar * 1.5)) * 0.4  # 过载效果
+                    # 贝斯 - 低八度
+                    val_bass = (2 * (t_local * (riff_note * 0.5) - math.floor(t_local * (riff_note * 0.5) + 0.5))) * 0.35
+                    # 摇滚鼓组
+                    val_drums = 0
+                    if beat % 2 == 0 and i < 1500:  # Kick
+                        val_drums += math.sin(2 * math.pi * 60 * math.exp(-t_local * 25) * t_local) * 0.6 * math.exp(-t_local * 10)
+                    if beat % 4 == 2 and i < 800:  # Snare
+                        val_drums += (math.sin(2 * math.pi * 200 * t_local) * 0.3 + random.uniform(-0.5, 0.5)) * math.exp(-t_local * 15)
+                    if beat % 1 == 0 and i < 300:  # Hi-hat
+                        val_drums += random.uniform(-0.2, 0.2) * math.exp(-t_local * 35)
+                    rock_bgm.append((val_guitar + val_bass + val_drums) * 0.55)
+            # 应用压缩和归一化
+            rock_bgm = self.apply_compressor(rock_bgm, threshold=0.6, ratio=0.4)
+            rock_bgm = self.normalize_audio(rock_bgm, 0.6)
+            paths["bgm_rock"] = self.save_wave("bgm_rock.wav", rock_bgm)
+            
+            # 27. BGM Ambient (环境音乐 - 探索场景)
+            ambient_bgm = []
+            bpm = 60; beat_dur = 60 / bpm; total_beats = 16
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                for i in range(samples_per_beat):
+                    t = beat * beat_dur + i / self.sample_rate
+                    # 深沉的音垫层
+                    val_pad1 = math.sin(2 * math.pi * 110 * t + math.sin(t * 0.3)) * 0.15
+                    val_pad2 = math.sin(2 * math.pi * 165 * t + math.sin(t * 0.5)) * 0.12
+                    val_pad3 = math.sin(2 * math.pi * 220 * t + math.sin(t * 0.7)) * 0.10
+                    # 飘渺的高音
+                    val_high = math.sin(2 * math.pi * (1760 + 220 * math.sin(t * 0.2)) * (i / self.sample_rate)) * 0.08
+                    ambient_bgm.append((val_pad1 + val_pad2 + val_pad3 + val_high) * 0.4)
+            # 应用低通滚波
+            ambient_bgm = self.apply_lowpass_filter(ambient_bgm, 0.3)
+            ambient_bgm = self.normalize_audio(ambient_bgm, 0.5)
+            paths["bgm_ambient"] = self.save_wave("bgm_ambient.wav", ambient_bgm)
+            
+            # 28. BGM Electronic (电子舞曲 - 快节奏)
+            electronic_bgm = []
+            bpm = 130; beat_dur = 60 / bpm; total_beats = 32
+            edm_bass = [65, 73, 82, 73]  # E F# G F#
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                bass_freq = edm_bass[(beat // 4) % len(edm_bass)]
+                
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 重低音 - square波
+                    val_sub = (1.0 if math.sin(2 * math.pi * bass_freq * t_local) > 0 else -1.0) * 0.4
+                    # 合成器主音
+                    val_synth = math.sin(2 * math.pi * (bass_freq * 4) * t_local + math.sin(2 * math.pi * 5 * t_local)) * 0.25
+                    # 电子鼓
+                    val_edrum = 0
+                    if beat % 4 == 0 and i < 1200:
+                        val_edrum += math.sin(2 * math.pi * 50 * math.exp(-t_local * 30) * t_local) * 0.7 * math.exp(-t_local * 12)
+                    if beat % 2 == 1 and i < 600:
+                        val_edrum += random.uniform(-0.4, 0.4) * math.exp(-t_local * 20)
+                    # 合成器音效
+                    val_fx = 0
+                    if beat % 8 == 0:
+                        val_fx = math.sin(2 * math.pi * (4000 * (1 - t_local * 2)) * t_local) * 0.15 * math.exp(-t_local * 3)
+                    electronic_bgm.append((val_sub + val_synth + val_edrum + val_fx) * 0.5)
+            # 应用压缩和归一化
+            electronic_bgm = self.apply_compressor(electronic_bgm, threshold=0.65, ratio=0.4)
+            electronic_bgm = self.normalize_audio(electronic_bgm, 0.58)
+            paths["bgm_electronic"] = self.save_wave("bgm_electronic.wav", electronic_bgm)
+            
+            # 29. BGM Chiptune (8位芯片音乐 - 复古风格)
+            chiptune_bgm = []
+            bpm = 150; beat_dur = 60 / bpm; total_beats = 24
+            chip_melody = [659, 784, 880, 784, 659, 523, 587, 659]  # E G A G E C D E
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                note = chip_melody[beat % len(chip_melody)]
+                
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 主旋律 - square波 (8位风格)
+                    val_melody = (1.0 if math.sin(2 * math.pi * note * t_local) > 0 else -1.0) * 0.25 * math.exp(-t_local * 3)
+                    # 贝斯 - square波
+                    val_bass = (1.0 if math.sin(2 * math.pi * (note * 0.25) * t_local) > 0 else -1.0) * 0.3 * (1 if beat % 2 == 0 else 0.5)
+                    # 噪音通道 - 节奏
+                    val_noise = 0
+                    if beat % 4 == 0 and i < 500:
+                        val_noise = random.uniform(-0.3, 0.3) * math.exp(-t_local * 20)
+                    # 琶音
+                    arp_notes = [note, note * 1.5, note * 2]
+                    arp_idx = int((t_local * 8) % 3)
+                    val_arp = (1.0 if math.sin(2 * math.pi * arp_notes[arp_idx] * t_local) > 0 else -1.0) * 0.15
+                    chiptune_bgm.append((val_melody + val_bass + val_noise + val_arp) * 0.45)
+            # 应用低通滚波减少方波刺耳
+            chiptune_bgm = self.apply_lowpass_filter(chiptune_bgm, 0.45)
+            chiptune_bgm = self.normalize_audio(chiptune_bgm, 0.55)
+            paths["bgm_chiptune"] = self.save_wave("bgm_chiptune.wav", chiptune_bgm)
+            
+            # 30. BGM Tribal (部落节奏 - 原始战斗)
+            tribal_bgm = []
+            bpm = 120; beat_dur = 60 / bpm; total_beats = 32
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 深沉的鼓点
+                    val_drum = 0
+                    if beat % 2 == 0 and i < 2000:
+                        val_drum = math.sin(2 * math.pi * 45 * math.exp(-t_local * 20) * t_local) * 0.7 * math.exp(-t_local * 8)
+                    if beat % 4 == 1 and i < 1500:
+                        val_drum += math.sin(2 * math.pi * 90 * t_local) * 0.5 * math.exp(-t_local * 10)
+                    if beat % 4 == 3 and i < 1500:
+                        val_drum += math.sin(2 * math.pi * 70 * t_local) * 0.5 * math.exp(-t_local * 10)
+                    # 部落人声 (低沉的吟唱)
+                    val_chant = 0
+                    if beat % 8 == 0:
+                        chant_freq = 110 + 20 * math.sin(t_local * 3)
+                        val_chant = math.sin(2 * math.pi * chant_freq * t_local) * 0.2 * (1 - t_local * 0.5)
+                    # 打击乐器
+                    val_perc = 0
+                    if beat % 1 == 0 and i < 300:
+                        val_perc = random.uniform(-0.25, 0.25) * math.exp(-t_local * 25)
+                    tribal_bgm.append((val_drum + val_chant + val_perc) * 0.55)
+            # 应用压缩和归一化
+            tribal_bgm = self.apply_compressor(tribal_bgm, threshold=0.6, ratio=0.4)
+            tribal_bgm = self.normalize_audio(tribal_bgm, 0.58)
+            paths["bgm_tribal"] = self.save_wave("bgm_tribal.wav", tribal_bgm)
+            
+            # 31. BGM Dubstep (重低音电子 - 疯狂战斗)
+            dubstep_bgm = []
+            bpm = 140; beat_dur = 60 / bpm; total_beats = 24
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # Wobble贝斯 - LFO调制的低音
+                    wobble_freq = 65 + 30 * abs(math.sin(2 * math.pi * 4 * (beat * beat_dur + t_local)))
+                    val_wobble = (2 * (t_local * wobble_freq - math.floor(t_local * wobble_freq + 0.5)))
+                    val_wobble = max(-0.8, min(0.8, val_wobble * 2)) * 0.45  # 过载
+                    # 陷阱鼓
+                    val_trap = 0
+                    if beat % 4 == 0 and i < 1000:
+                        val_trap = math.sin(2 * math.pi * 55 * math.exp(-t_local * 30) * t_local) * 0.8 * math.exp(-t_local * 10)
+                    if beat % 4 == 2 and i < 500:
+                        val_trap += (random.uniform(-0.7, 0.7) + math.sin(2 * math.pi * 180 * t_local) * 0.3) * math.exp(-t_local * 12)
+                    # Hi-hat快速律动
+                    if i % 200 < 100 and i < 3000:
+                        val_trap += random.uniform(-0.15, 0.15) * math.exp(-t_local * 40)
+                    dubstep_bgm.append((val_wobble + val_trap) * 0.5)
+            # 应用压缩器防止过载
+            dubstep_bgm = self.apply_compressor(dubstep_bgm, threshold=0.5, ratio=0.35)
+            dubstep_bgm = self.normalize_audio(dubstep_bgm, 0.55)
+            paths["bgm_dubstep"] = self.save_wave("bgm_dubstep.wav", dubstep_bgm)
+            
+            # 32. BGM Synthwave (合成器波 - 赛博朋克)
+            synthwave_bgm = []
+            bpm = 120; beat_dur = 60 / bpm; total_beats = 32
+            synthwave_chords = [220, 247, 277, 293]  # A B C# D
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                chord = synthwave_chords[(beat // 4) % len(synthwave_chords)]
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 合成贝斯线
+                    val_bass = (2 * (t_local * chord * 0.5 - math.floor(t_local * chord * 0.5 + 0.5))) * 0.4
+                    # 复古合成器和弦
+                    val_synth = (math.sin(2 * math.pi * chord * t_local) * 0.25 +
+                                math.sin(2 * math.pi * chord * 1.5 * t_local) * 0.15 +
+                                math.sin(2 * math.pi * chord * 2 * t_local) * 0.1)
+                    # 琶音器
+                    arp_speed = 8
+                    arp_notes = [chord * 2, chord * 2.5, chord * 3, chord * 4]
+                    arp_idx = int((t_local * arp_speed) % len(arp_notes))
+                    val_arp = math.sin(2 * math.pi * arp_notes[arp_idx] * t_local) * 0.15 * math.exp(-t_local * 4)
+                    # 80年代电子鼓
+                    val_drum = 0
+                    if beat % 4 == 0 and i < 1500:
+                        val_drum = (1.0 if math.sin(2 * math.pi * 60 * math.exp(-t_local * 20) * t_local) > 0 else -1.0) * 0.6 * math.exp(-t_local * 8)
+                    if beat % 4 == 2 and i < 800:
+                        val_drum += random.uniform(-0.4, 0.4) * 0.5 * math.exp(-t_local * 15)
+                    synthwave_bgm.append((val_bass + val_synth + val_arp + val_drum) * 0.5)
+            # 应用低通滚波和归一化
+            synthwave_bgm = self.apply_lowpass_filter(synthwave_bgm, 0.4)
+            synthwave_bgm = self.normalize_audio(synthwave_bgm, 0.58)
+            paths["bgm_synthwave"] = self.save_wave("bgm_synthwave.wav", synthwave_bgm)
+            
+            # 33. BGM Metal (金属摇滚 - 极限战斗)
+            metal_bgm = []
+            bpm = 180; beat_dur = 60 / bpm; total_beats = 32
+            metal_riff = [82, 73, 82, 92, 82, 73, 65, 73]  # E D E F# E D C# D
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                note = metal_riff[beat % len(metal_riff)]
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 重失真吉他 - 双音轨
+                    val_guitar1 = (2 * (t_local * note - math.floor(t_local * note + 0.5)))
+                    val_guitar1 = max(-0.9, min(0.9, val_guitar1 * 2.5)) * 0.35
+                    val_guitar2 = (2 * (t_local * note * 2 - math.floor(t_local * note * 2 + 0.5)))
+                    val_guitar2 = max(-0.9, min(0.9, val_guitar2 * 2.5)) * 0.25
+                    # 金属贝斯
+                    val_bass = (2 * (t_local * note * 0.5 - math.floor(t_local * note * 0.5 + 0.5))) * 0.4
+                    # 双踩底鼓
+                    val_drums = 0
+                    if beat % 1 == 0 and i < 800:
+                        val_drums = math.sin(2 * math.pi * 50 * math.exp(-t_local * 35) * t_local) * 0.8 * math.exp(-t_local * 12)
+                    if beat % 4 == 2 and i < 600:
+                        val_drums += (math.sin(2 * math.pi * 220 * t_local) * 0.3 + random.uniform(-0.6, 0.6)) * math.exp(-t_local * 18)
+                    # 镲片疯狂打击
+                    if i < 400:
+                        val_drums += random.uniform(-0.2, 0.2) * math.exp(-t_local * 50)
+                    metal_bgm.append((val_guitar1 + val_guitar2 + val_bass + val_drums) * 0.55)
+            # 应用压缩防止失真过度
+            metal_bgm = self.apply_compressor(metal_bgm, threshold=0.55, ratio=0.35)
+            metal_bgm = self.normalize_audio(metal_bgm, 0.58)
+            paths["bgm_metal"] = self.save_wave("bgm_metal.wav", metal_bgm)
+            
+            # 34. BGM Trance (迷幻电子 - 催眠节奏)
+            trance_bgm = []
+            bpm = 138; beat_dur = 60 / bpm; total_beats = 32
+            trance_progression = [165, 185, 196, 220]  # E F# G A
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                base_note = trance_progression[(beat // 8) % len(trance_progression)]
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 迷幻主音 - FM合成
+                    mod_freq = 5
+                    carrier = base_note * 2
+                    val_lead = math.sin(2 * math.pi * carrier * t_local + 2 * math.sin(2 * math.pi * mod_freq * t_local)) * 0.3
+                    # Trance门控贝斯
+                    gate = 1.0 if (beat % 2 == 0 and i < samples_per_beat // 2) else 0.3
+                    val_bass = math.sin(2 * math.pi * base_note * t_local) * 0.35 * gate
+                    # 4/4节拍
+                    val_kick = 0
+                    if beat % 4 == 0 and i < 1200:
+                        val_kick = math.sin(2 * math.pi * 55 * math.exp(-t_local * 25) * t_local) * 0.7 * math.exp(-t_local * 10)
+                    # 升降音效
+                    val_riser = 0
+                    if beat % 16 >= 12:
+                        riser_freq = 200 * (1 + (beat % 16 - 12) * 0.5)
+                        val_riser = random.uniform(-0.15, 0.15) * (1 - math.exp(-t_local * 10))
+                    trance_bgm.append((val_lead + val_bass + val_kick + val_riser) * 0.5)
+            # 应用低通滚波和压缩
+            trance_bgm = self.apply_lowpass_filter(trance_bgm, 0.4)
+            trance_bgm = self.apply_compressor(trance_bgm, threshold=0.6, ratio=0.4)
+            trance_bgm = self.normalize_audio(trance_bgm, 0.57)
+            paths["bgm_trance"] = self.save_wave("bgm_trance.wav", trance_bgm)
+            
+            # 35. BGM Orchestral_Dark (黑暗管弦 - 恐怖氛围)
+            dark_orch_bgm = []
+            bpm = 100; beat_dur = 60 / bpm; total_beats = 20
+            dark_notes = [110, 117, 123, 131]  # A A# B C (不协和音程)
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                note = dark_notes[(beat // 4) % len(dark_notes)]
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 低沉弦乐组 - 不协和和弦
+                    val_strings = (math.sin(2 * math.pi * note * t_local) * 0.3 +
+                                  math.sin(2 * math.pi * note * 1.06 * t_local) * 0.25 +  # 微分音
+                                  math.sin(2 * math.pi * note * 0.5 * t_local) * 0.2)
+                    # 定音鼓轰鸣
+                    val_timpani = 0
+                    if beat % 8 == 0 and i < 3000:
+                        val_timpani = math.sin(2 * math.pi * 50 * t_local) * 0.5 * math.exp(-t_local * 3)
+                    # 不祥的铜管
+                    val_brass = 0
+                    if beat % 4 == 2:
+                        val_brass = (2 * (t_local * (note * 0.75) - math.floor(t_local * (note * 0.75) + 0.5))) * 0.3 * (1 - t_local * 0.5)
+                    dark_orch_bgm.append((val_strings + val_timpani + val_brass) * 0.48)
+            # 应用低通滚波和归一化
+            dark_orch_bgm = self.apply_lowpass_filter(dark_orch_bgm, 0.35)
+            dark_orch_bgm = self.normalize_audio(dark_orch_bgm, 0.55)
+            paths["bgm_orchestral_dark"] = self.save_wave("bgm_orchestral_dark.wav", dark_orch_bgm)
+            
+            # 36. BGM Funk (放克 - 律动感)
+            funk_bgm = []
+            bpm = 115; beat_dur = 60 / bpm; total_beats = 24
+            funk_bassline = [82, 82, 98, 82, 110, 98, 82, 73]  # E E G E A G E D
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                bass_note = funk_bassline[beat % len(funk_bassline)]
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # Slap贝斯
+                    val_bass = (2 * (t_local * bass_note - math.floor(t_local * bass_note + 0.5))) * 0.4 * math.exp(-t_local * 3)
+                    # 放克吉他 - 切分节奏
+                    val_guitar = 0
+                    if (beat % 4 == 1 or beat % 4 == 3) and i < 800:
+                        guitar_freq = bass_note * 2
+                        val_guitar = (1.0 if math.sin(2 * math.pi * guitar_freq * t_local) > 0 else -1.0) * 0.2 * math.exp(-t_local * 8)
+                    # 铜管刺 (horn stabs)
+                    val_horns = 0
+                    if beat % 8 == 4 and i < 1500:
+                        val_horns = math.sin(2 * math.pi * (bass_note * 3) * t_local) * 0.25 * math.exp(-t_local * 4)
+                    # 放克鼓
+                    val_drums = 0
+                    if beat % 4 == 0 and i < 1000:
+                        val_drums = math.sin(2 * math.pi * 60 * math.exp(-t_local * 20) * t_local) * 0.6 * math.exp(-t_local * 10)
+                    if beat % 4 == 2 and i < 700:
+                        val_drums += (math.sin(2 * math.pi * 200 * t_local) * 0.25 + random.uniform(-0.3, 0.3)) * math.exp(-t_local * 14)
+                    if beat % 2 == 1 and i < 400:
+                        val_drums += random.uniform(-0.15, 0.15) * math.exp(-t_local * 25)
+                    funk_bgm.append((val_bass + val_guitar + val_horns + val_drums) * 0.52)
+            # 应用低通滚波和归一化
+            funk_bgm = self.apply_lowpass_filter(funk_bgm, 0.4)
+            funk_bgm = self.normalize_audio(funk_bgm, 0.57)
+            paths["bgm_funk"] = self.save_wave("bgm_funk.wav", funk_bgm)
+            
+            # 37. BGM Breakbeat (碎拍 - 快速节奏)
+            breakbeat_bgm = []
+            bpm = 150; beat_dur = 60 / bpm; total_beats = 24
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 切碎的鼓循环
+                    val_drums = 0
+                    # Kick模式
+                    kick_pattern = [0, 6, 8, 14]
+                    sixteenth = int((t_local * 16) // 1)
+                    if sixteenth in kick_pattern and (t_local * 16) % 1 < 0.3:
+                        kick_t = (t_local * 16) % 1
+                        val_drums = math.sin(2 * math.pi * 55 * math.exp(-kick_t * 25) * kick_t) * 0.7 * math.exp(-kick_t * 10)
+                    # Snare模式
+                    snare_pattern = [4, 12]
+                    if sixteenth in snare_pattern and (t_local * 16) % 1 < 0.2:
+                        snare_t = (t_local * 16) % 1
+                        val_drums += (math.sin(2 * math.pi * 200 * snare_t) * 0.3 + random.uniform(-0.5, 0.5)) * math.exp(-snare_t * 15)
+                    # Hi-hat碎拍
+                    if (t_local * 32) % 1 < 0.1:
+                        val_drums += random.uniform(-0.2, 0.2) * math.exp(-(t_local * 32 % 1) * 40)
+                    # Reese贝斯
+                    bass_freq = 65 if beat % 8 < 4 else 73
+                    val_bass = (2 * (t_local * bass_freq - math.floor(t_local * bass_freq + 0.5))) * 0.35
+                    val_bass += (2 * (t_local * bass_freq * 1.01 - math.floor(t_local * bass_freq * 1.01 + 0.5))) * 0.35  # 微分音产生厚度
+                    breakbeat_bgm.append((val_drums + val_bass) * 0.5)
+            # 应用压缩和归一化
+            breakbeat_bgm = self.apply_compressor(breakbeat_bgm, threshold=0.6, ratio=0.4)
+            breakbeat_bgm = self.normalize_audio(breakbeat_bgm, 0.57)
+            paths["bgm_breakbeat"] = self.save_wave("bgm_breakbeat.wav", breakbeat_bgm)
+            
+            # 38. BGM Lofi (Lo-fi Hip Hop - 放松氛围)
+            lofi_bgm = []
+            bpm = 85; beat_dur = 60 / bpm; total_beats = 16
+            lofi_chords = [220, 247, 196, 220]  # A B G A
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                chord = lofi_chords[(beat // 4) % len(lofi_chords)]
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 温暖的和弦 - 模拟黑胶质感
+                    val_chord = (math.sin(2 * math.pi * chord * t_local) * 0.2 +
+                                math.sin(2 * math.pi * chord * 1.5 * t_local) * 0.15 +
+                                math.sin(2 * math.pi * chord * 2 * t_local) * 0.1)
+                    # 加入轻微噪音模拟黑胶
+                    val_chord += random.uniform(-0.02, 0.02)
+                    # Lo-fi节拍
+                    val_beat = 0
+                    if beat % 4 == 0 and i < 2000:
+                        val_beat = math.sin(2 * math.pi * 50 * math.exp(-t_local * 15) * t_local) * 0.5 * math.exp(-t_local * 8)
+                    if beat % 4 == 2 and i < 1500:
+                        val_beat += (math.sin(2 * math.pi * 180 * t_local) * 0.25 + random.uniform(-0.3, 0.3)) * math.exp(-t_local * 10)
+                    # Hi-hat轻柔
+                    if beat % 2 == 1 and i < 600:
+                        val_beat += random.uniform(-0.1, 0.1) * math.exp(-t_local * 20)
+                    lofi_bgm.append((val_chord + val_beat) * 0.45)
+            # 应用低通滚波模拟黑胶质感
+            lofi_bgm = self.apply_lowpass_filter(lofi_bgm, 0.3)
+            lofi_bgm = self.normalize_audio(lofi_bgm, 0.52)
+            paths["bgm_lofi"] = self.save_wave("bgm_lofi.wav", lofi_bgm)
+            
+            # 39. BGM Industrial (工业 - 机械感)
+            industrial_bgm = []
+            bpm = 130; beat_dur = 60 / bpm; total_beats = 24
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 金属敲击声
+                    val_metal = 0
+                    if beat % 2 == 0 and i < 500:
+                        metal_freqs = [800, 1200, 1800]
+                        for freq in metal_freqs:
+                            val_metal += math.sin(2 * math.pi * freq * t_local) * 0.1 * math.exp(-t_local * 20)
+                    # 机械噪音
+                    val_noise = random.uniform(-0.3, 0.3) * 0.2 if i % 100 < 10 else 0
+                    # 重工业鼓
+                    val_drums = 0
+                    if beat % 4 == 0 and i < 1500:
+                        val_drums = (1.0 if math.sin(2 * math.pi * 45 * math.exp(-t_local * 30) * t_local) > 0 else -1.0) * 0.7 * math.exp(-t_local * 10)
+                    if beat % 4 == 2 and i < 800:
+                        val_drums += random.uniform(-0.6, 0.6) * 0.6 * math.exp(-t_local * 18)
+                    # 失真贝斯
+                    bass_freq = 55
+                    val_bass = (2 * (t_local * bass_freq - math.floor(t_local * bass_freq + 0.5)))
+                    val_bass = max(-0.85, min(0.85, val_bass * 2)) * 0.35
+                    industrial_bgm.append((val_metal + val_noise + val_drums + val_bass) * 0.52)
+            # 应用压缩和归一化
+            industrial_bgm = self.apply_compressor(industrial_bgm, threshold=0.55, ratio=0.35)
+            industrial_bgm = self.normalize_audio(industrial_bgm, 0.56)
+            paths["bgm_industrial"] = self.save_wave("bgm_industrial.wav", industrial_bgm)
+            
+            # 40. BGM Cinematic (电影配乐 - 史诗叙事)
+            cinematic_bgm = []
+            bpm = 80; beat_dur = 60 / bpm; total_beats = 20
+            cinematic_progression = [220, 247, 277, 294, 330]  # A B C# D E
+            for beat in range(total_beats):
+                samples_per_beat = int(self.sample_rate * beat_dur)
+                note = cinematic_progression[(beat // 4) % len(cinematic_progression)]
+                for i in range(samples_per_beat):
+                    t_local = i / self.sample_rate
+                    # 宏大的弦乐垫
+                    val_strings = (math.sin(2 * math.pi * note * t_local) * 0.25 +
+                                  math.sin(2 * math.pi * note * 1.5 * t_local) * 0.2 +
+                                  math.sin(2 * math.pi * note * 2 * t_local) * 0.15 +
+                                  math.sin(2 * math.pi * note * 0.5 * t_local) * 0.2)
+                    # 法国号
+                    val_horn = 0
+                    if beat % 8 == 0:
+                        val_horn = math.sin(2 * math.pi * (note * 0.75) * t_local) * 0.3 * (1 - t_local * 0.3)
+                    # 定音鼓震撼
+                    val_timp = 0
+                    if beat % 4 == 0 and i < 3500:
+                        val_timp = math.sin(2 * math.pi * 55 * t_local) * 0.6 * math.exp(-t_local * 2.5)
+                    # 钟琴点缀
+                    val_bells = 0
+                    if beat % 2 == 0 and i < 2000:
+                        bell_note = note * 4
+                        val_bells = (math.sin(2 * math.pi * bell_note * t_local) * 0.15 +
+                                    math.sin(4 * math.pi * bell_note * t_local) * 0.08 * math.exp(-t_local * 3))
+                        val_bells *= math.exp(-t_local * 2)
+                    cinematic_bgm.append((val_strings + val_horn + val_timp + val_bells) * 0.52)
+            # 应用低通滚波和归一化
+            cinematic_bgm = self.apply_lowpass_filter(cinematic_bgm, 0.35)
+            cinematic_bgm = self.normalize_audio(cinematic_bgm, 0.58)
+            paths["bgm_cinematic"] = self.save_wave("bgm_cinematic.wav", cinematic_bgm)
 
         except Exception as e:
             log_error(f"音频生成错误: {e}")
