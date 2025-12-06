@@ -1365,8 +1365,10 @@ class UpgradeManager:
                 player.homing_strength = getattr(player, "homing_strength", 0.0) + effect["homing_strength"]
             else:
                 player.homing_strength = getattr(player, "homing_strength", 0.0) + 0.15
+            print(f"[卡牌效果] 应用追踪卡牌: has_homing=True, homing_strength={player.homing_strength}")
         elif "homing_strength" in effect:
             player.homing_strength = getattr(player, "homing_strength", 0.0) + effect["homing_strength"]
+            print(f"[卡牌效果] 应用追踪强度: homing_strength={player.homing_strength}")
         if "crit_chance" in effect:
             player.crit_chance = getattr(player, "crit_chance", 0) + effect["crit_chance"]
         if "crit_mult" in effect:

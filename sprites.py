@@ -8916,6 +8916,10 @@ class Player(pygame.sprite.Sprite):
         # 计算追踪强度（如果有追踪卡牌）
         homing_value = getattr(self, 'homing_strength', 0) if getattr(self, 'has_homing', False) else 0
         
+        # 【调试】追踪卡牌诊断
+        if hasattr(self, 'has_homing') or hasattr(self, 'homing_strength'):
+            print(f"[追踪诊断] has_homing={getattr(self, 'has_homing', False)}, homing_strength={getattr(self, 'homing_strength', 0)}, homing_value={homing_value}")
+        
         # ========== 1. 霓虹突击者 - 直线扇形射击 ==========
         if pid == "striker":
             # 中间直射 + 两侧略微散开
