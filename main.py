@@ -170,6 +170,7 @@ pause_menu_selected = 0  # 0: 继续, 1: 重新开始, 2: 退出战斗
 # 房间系统状态
 show_full_map = False  # 是否显示完整地图
 map_paused = False  # 标记是否是M键地图暂停
+room_completion_paused = False  # 房间完成后暂停锁
 
 # ==============================================================================
 # 主菜单选择
@@ -3305,12 +3306,16 @@ def reset_game():
     global global_time_freeze, is_paused
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave, tab_paused
+    global map_paused, show_full_map, room_completion_paused
     
     # reset_game() called
     
     is_paused = False 
     frozen_screen = None
     tab_paused = False
+    map_paused = False
+    show_full_map = False
+    room_completion_paused = False
     upgrade_options = []
     upgrade_selected = 0
     levelup_ready = False
@@ -3327,8 +3332,10 @@ def reset_game():
     
     # 初始化房间系统（仅房间模式）
     if game_mode == "roguelike":
-        room_manager = RoomManager()
+        # 从第一张地图开始（线性顺序：星域迷航 -> 赛博迷城 -> 噩梦深渊）
+        room_manager = RoomManager()  # 不指定theme，自动从第一张开始
         room_manager.generate_map()
+        log_info(f"房间模式开始 - 第一张地图: {room_manager.get_theme_name()} ({room_manager.get_map_progress()})")
     else:
         room_manager = None
     
@@ -8910,6 +8917,9 @@ while True:
             
             # --- 滚轮事件 (通用) ---
             if event.type == pygame.MOUSEWHEEL:
+                if room_manager and show_full_map and game_state in ["game", "boss_challenge_play"]:
+                    room_manager.adjust_map_zoom(event.y * 0.08)
+                    continue
                 # 属性面板滚动（TAB暂停时）
                 if tab_paused and game_state in ["game", "boss_challenge_play"]:
                     if hasattr(player, 'upgrade_manager') and player.upgrade_manager:
@@ -9100,27 +9110,84 @@ while True:
 
                 # 游戏内键盘：P 暂停 (在 game 中), ESC 在 game 中不做任何事
                 if game_state == "game" or game_state == "boss_challenge_play":
-                    # 房间选择UI输入处理（最高优先级）
-                    if room_manager and room_manager.show_completion_ui:
+                    # 商店UI输入处理（最高优先级）
+                    if room_manager and room_manager.show_shop_ui:
                         if event.key == pygame.K_LEFT:
-                            room_manager.selected_next_room = max(0, room_manager.selected_next_room - 1)
+                            room_manager.shop_selected = max(0, room_manager.shop_selected - 1)
                             sound_mgr.play("select")
                         elif event.key == pygame.K_RIGHT:
+                            room_manager.shop_selected = min(len(room_manager.shop_items) - 1, room_manager.shop_selected + 1)
+                            sound_mgr.play("select")
+                        elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                            # 尝试购买物品
+                            purchased = room_manager.try_purchase_item(room_manager.shop_selected)
+                            if purchased:
+                                # 应用购买的物品效果
+                                item_type = purchased["type"]
+                                value = purchased["value"]
+                                if item_type == "heal":
+                                    player.hp = min(player.max_hp, player.hp + value)
+                                elif item_type == "exp":
+                                    player.gain_exp(value)
+                                elif item_type == "item" and item_manager:
+                                    for _ in range(value):
+                                        item_manager.try_spawn_drop(player.rect.centerx, player.rect.centery)
+                                elif item_type == "card":
+                                    for _ in range(value):
+                                        player.gain_exp(player.exp_to_next_level)
+                        elif event.key == pygame.K_ESCAPE:
+                            # 离开商店
+                            room_manager.close_shop()
+                            room_rewards = room_manager._finish_room()
+                            room_completion_paused = True
+                            # 保持暂停状态以显示房间完成UI
+                            if frozen_screen is None:
+                                frozen_screen = screen.copy()
+                            sound_mgr.play("select")
+                    # 房间选择UI输入处理
+                    elif room_manager and room_manager.show_completion_ui:
+                        if event.key == pygame.K_LEFT and room_manager.available_next_rooms:
+                            room_manager.selected_next_room = max(0, room_manager.selected_next_room - 1)
+                            sound_mgr.play("select")
+                        elif event.key == pygame.K_RIGHT and room_manager.available_next_rooms:
                             room_manager.selected_next_room = min(len(room_manager.available_next_rooms) - 1, room_manager.selected_next_room + 1)
                             sound_mgr.play("select")
                         elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
-                            # 确认选择房间
+                            # 确认选择房间或进入下一地图
+                            log_info(f"Enter按下 - available_next_rooms数量: {len(room_manager.available_next_rooms)}, 当前房间类型: {room_manager.current_room.room_type if room_manager.current_room else 'None'}")
+                            
                             if room_manager.available_next_rooms:
+                                # 有下一房间，正常选择
                                 selected_room = room_manager.available_next_rooms[room_manager.selected_next_room]
                                 room_manager.enter_room(selected_room.room_id)
                                 room_manager.show_completion_ui = False
                                 room_manager.selected_next_room = 0
                                 room_manager.available_next_rooms = []
+                                room_completion_paused = False
                                 # 恢复游戏状态
                                 is_paused = False
                                 frozen_screen = None
                                 sound_mgr.play("levelup")
-                    # M键地图切换（仅房间模式，优先处理，无论是否暂停）
+                            elif room_manager.current_room and room_manager.current_room.room_type == RoomType.BOSS:
+                                # Boss房间完成且没有下一房间
+                                log_info(f"Boss房间完成检测: is_final_map={room_manager.is_final_map()}, current_map_index={room_manager.current_map_index}, total_maps={len(room_manager.map_sequence)}")
+                                if not room_manager.is_final_map():
+                                    # 进入下一张地图
+                                    if room_manager.advance_to_next_map():
+                                        room_manager.show_completion_ui = False
+                                        room_completion_paused = False
+                                        is_paused = False
+                                        frozen_screen = None
+                                        sound_mgr.play("achievement")
+                                        log_info(f"进入下一张地图: {room_manager.get_theme_name()}")
+                                else:
+                                    # 已经是最后一张地图，真正通关
+                                    room_manager.show_completion_ui = False
+                                    room_completion_paused = False
+                                    is_paused = False
+                                    frozen_screen = None
+                                    game_state = "gameover"
+                                    sound_mgr.play("achievement")
                     elif event.key == pygame.K_m and room_manager and game_mode == "roguelike":
                         show_full_map = not show_full_map
                         if show_full_map:
@@ -9135,6 +9202,16 @@ while True:
                             is_paused = False
                             frozen_screen = None
                         sound_mgr.play("select")
+                    # 地图缩放控制（地图打开时）
+                    elif show_full_map and room_manager and game_mode == "roguelike":
+                        if event.key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
+                            room_manager.adjust_map_zoom(0.08)
+                            sound_mgr.play("select")
+                            continue
+                        elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
+                            room_manager.adjust_map_zoom(-0.08)
+                            sound_mgr.play("select")
+                            continue
                     elif is_paused:
                         if event.key == pygame.K_UP:
                             pause_menu_selected = (pause_menu_selected - 1) % 3
@@ -9720,14 +9797,50 @@ while True:
                 
                 # --- 游戏中的点击逻辑 (彻底修复输入冲突) ---
                 elif game_state == "game" or game_state == "boss_challenge_play":
-                    # 房间选择UI点击处理
-                    if room_manager and room_manager.show_completion_ui and room_manager.available_next_rooms:
-                        card_width = 280
-                        card_height = 350
-                        gap = 40
-                        total_width = len(room_manager.available_next_rooms) * card_width + (len(room_manager.available_next_rooms) - 1) * gap
+                    # 商店UI点击处理
+                    if room_manager and room_manager.show_shop_ui and room_manager.shop_items:
+                        card_width = 260
+                        card_height = 280
+                        gap = 30
+                        total_width = len(room_manager.shop_items) * card_width + (len(room_manager.shop_items) - 1) * gap
                         start_x = (WIDTH - total_width) // 2
-                        card_y = 220
+                        card_y = 200
+                        
+                        for i, item in enumerate(room_manager.shop_items):
+                            card_x = start_x + i * (card_width + gap)
+                            card_rect = pygame.Rect(card_x, card_y, card_width, card_height)
+                            if card_rect.collidepoint(mx, my):
+                                # 尝试购买
+                                purchased = room_manager.try_purchase_item(i)
+                                if purchased:
+                                    # 应用购买的物品效果
+                                    item_type = purchased["type"]
+                                    value = purchased["value"]
+                                    if item_type == "heal":
+                                        player.hp = min(player.max_hp, player.hp + value)
+                                    elif item_type == "exp":
+                                        player.gain_exp(value)
+                                    elif item_type == "item" and item_manager:
+                                        for _ in range(value):
+                                            item_manager.try_spawn_drop(player.rect.centerx, player.rect.centery)
+                                    elif item_type == "card":
+                                        for _ in range(value):
+                                            player.gain_exp(player.exp_to_next_level)
+                                break
+                    # 房间选择UI点击处理
+                    elif room_manager and room_manager.show_completion_ui and room_manager.available_next_rooms:
+                        # 根据房间数量调整卡片大小（与room_system.py保持一致）
+                        num_rooms = len(room_manager.available_next_rooms)
+                        if num_rooms <= 3:
+                            card_width, card_height, gap = 280, 360, 40
+                        elif num_rooms == 4:
+                            card_width, card_height, gap = 240, 340, 30
+                        else:  # 5个或更多
+                            card_width, card_height, gap = 200, 320, 25
+                        
+                        total_width = num_rooms * card_width + (num_rooms - 1) * gap
+                        start_x = (WIDTH - total_width) // 2
+                        card_y = 210
                         
                         for i, room in enumerate(room_manager.available_next_rooms):
                             card_x = start_x + i * (card_width + gap)
@@ -9903,6 +10016,8 @@ while True:
         elif game_state == "customization":
             draw_customization_ui()
         elif game_state == "game" or game_state == "boss_challenge_play":
+            if room_completion_paused and not is_paused:
+                is_paused = True
             # drawing game view
             if is_paused:
                 # M键地图暂停：显示地图界面
@@ -9931,6 +10046,26 @@ while True:
                         tab_paused = False
                         frozen_screen = None
                         is_paused = False
+                elif room_manager and room_manager.show_shop_ui:
+                    # 商店界面：显示冻结画面作为背景
+                    if frozen_screen:
+                        safe_blit(screen, frozen_screen, (0, 0))
+                    else:
+                        s = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                        s.fill((0, 0, 0, 180))
+                        safe_blit(screen, s, (0, 0))
+                    # 在暂停分支中直接绘制商店UI
+                    safe_call_draw(lambda: room_manager.draw_shop_ui(screen))
+                elif room_manager and room_manager.show_completion_ui:
+                    # 房间完成时仅冻结画面，交由房间UI渲染
+                    if frozen_screen:
+                        safe_blit(screen, frozen_screen, (0, 0))
+                    else:
+                        s = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                        s.fill((0, 0, 0, 180))
+                        safe_blit(screen, s, (0, 0))
+                    # 在暂停分支中直接绘制房间选择UI
+                    safe_call_draw(lambda: room_manager.draw_room_selection_ui(screen))
                 else:
                     # 常规由 P / 菜单触发的暂停界面（原有行为）
                     all_sprites.draw(screen)
@@ -10573,12 +10708,92 @@ while True:
                             
                             # 生成房间敌人
                             if not boss_challenge_active:  # Boss挑战模式不使用房间系统
-                                room_manager.spawn_room_enemies(enemy_factory, mobs, all_sprites)
+                                room_manager.spawn_room_enemies(enemy_factory, mobs, all_sprites, [boss], boss_manager)
+                                # 更新波次刷怪
+                                room_manager.update_wave_spawning(enemy_factory, mobs)
+                            
+                            # 处理非战斗房间（宝箱、休息、事件、商店等）
+                            if not boss_challenge_active:
+                                non_combat_data = room_manager.handle_non_combat_room()
+                                if non_combat_data:
+                                    action = non_combat_data.get("action")
+                                    
+                                    # 商店房间特殊处理
+                                    if action == "shop":
+                                        room_manager.show_shop_ui = True
+                                        room_manager.shop_items = non_combat_data.get("shop_items", [])
+                                        room_manager.shop_selected = 0
+                                        is_paused = True
+                                        if frozen_screen is None:
+                                            frozen_screen = screen.copy()
+                                    else:
+                                        # 完成非战斗房间并获取奖励
+                                        room_rewards = room_manager._finish_room()
+                                        
+                                        # 应用房间基础奖励
+                                        if "exp" in room_rewards:
+                                            player.gain_exp(room_rewards["exp"])
+                                        if "score" in room_rewards:
+                                            score += room_rewards["score"]
+                                            room_manager.currency += room_rewards["score"]  # 积分也加入商店货币
+                                        if "heal" in room_rewards:
+                                            player.hp = min(player.max_hp, player.hp + room_rewards["heal"])
+                                        if "item" in room_rewards and item_manager:
+                                            for _ in range(room_rewards["item"]):
+                                                item_manager.try_spawn_drop(player.rect.centerx, player.rect.centery)
+                                        if "card" in room_rewards:
+                                            for _ in range(room_rewards["card"]):
+                                                player.gain_exp(player.exp_to_next_level)
+                                        
+                                        # 应用事件特殊奖励
+                                        if "event_data" in non_combat_data:
+                                            event_rewards = non_combat_data["event_data"].get("奖励", {})
+                                            if "exp" in event_rewards:
+                                                player.gain_exp(event_rewards["exp"])
+                                            if "heal" in event_rewards:
+                                                player.hp = min(player.max_hp, player.hp + event_rewards["heal"])
+                                            if "score" in event_rewards:
+                                                score += event_rewards["score"]
+                                                room_manager.currency += event_rewards["score"]  # 积分也加入商店货币
+                                            if "item" in event_rewards and item_manager:
+                                                for _ in range(event_rewards["item"]):
+                                                    item_manager.try_spawn_drop(player.rect.centerx, player.rect.centery)
+                                        
+                                        # 触发房间完成UI
+                                        room_completion_paused = True
+                                        map_paused = False
+                                        show_full_map = False
+                                        tab_paused = False
+                                        is_paused = True
+                                        if frozen_screen is None:
+                                            frozen_screen = screen.copy()
                             
                             # 检测房间完成（如果完成，暂停游戏显示选择UI）
                             if not boss_challenge_active:
-                                if room_manager.check_room_completion(mobs, boss):
+                                room_rewards = room_manager.check_room_completion(mobs, boss)
+                                if room_rewards is not None:
+                                    # 应用房间奖励
+                                    if "exp" in room_rewards:
+                                        player.gain_exp(room_rewards["exp"])
+                                    if "score" in room_rewards:
+                                        score += room_rewards["score"]
+                                        room_manager.currency += room_rewards["score"]  # 积分也加入商店货币
+                                    if "heal" in room_rewards:
+                                        player.hp = min(player.max_hp, player.hp + room_rewards["heal"])
+                                    if "item" in room_rewards and item_manager:
+                                        # 在玩家位置生成物品
+                                        for _ in range(room_rewards["item"]):
+                                            item_manager.try_spawn_drop(player.rect.centerx, player.rect.centery)
+                                    if "card" in room_rewards:
+                                        # 触发卡牌选择（通过经验值触发升级）
+                                        for _ in range(room_rewards["card"]):
+                                            player.gain_exp(player.exp_to_next_level)
+                                    
                                     # 房间完成，暂停游戏
+                                    room_completion_paused = True
+                                    map_paused = False
+                                    show_full_map = False
+                                    tab_paused = False
                                     is_paused = True
                                     if frozen_screen is None:
                                         frozen_screen = screen.copy()
@@ -11972,9 +12187,14 @@ while True:
                 # 【新】协同combo提示
                 safe_call_draw(draw_synergy_combo_hints)
                 
-                # 【新】房间选择UI（仅房间模式显示）
-                if room_manager and game_mode == "roguelike" and room_manager.show_completion_ui:
-                    safe_call_draw(lambda: room_manager.draw_room_selection_ui(screen))
+                # 注意：商店UI和房间选择UI已在暂停分支中绘制，此处不重复绘制
+                
+                # 奖励飘字动画（房间模式）
+                if room_manager and game_mode == "roguelike":
+                    safe_call_draw(lambda: room_manager.draw_reward_floaters(screen))
+                    # 波次信息UI
+                    if not room_manager.show_completion_ui and not is_paused:
+                        safe_call_draw(lambda: room_manager.draw_wave_info(screen))
                 
                 # 显示FPS（中间上方）- 根据设置决定是否显示
                 if game_settings.get("show_fps", True):

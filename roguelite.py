@@ -2621,6 +2621,40 @@ class UpgradeManager:
                 player.slow_on_hit = effect["slow_on_hit"]
         
         log_info(f"协同触发！【{synergy_data['name']}】: {synergy_data['desc']}")
+
+    def _pick_base_card(self, rarity_weights, preferred_archetype=None, exclude=None):
+        """根据稀有度和偏好流派挑选基础卡牌"""
+        exclude = exclude or set()
+        candidates = []
+        for card_id, card_data in BASE_CARDS.items():
+            if card_id in exclude:
+                continue
+            if card_data.get("rarity") not in rarity_weights:
+                continue
+            if preferred_archetype and card_data.get("archetype") != preferred_archetype:
+                continue
+            candidates.append(card_id)
+        if not candidates and preferred_archetype:
+            return self._pick_base_card(rarity_weights, None, exclude)
+        if not candidates:
+            return None
+        weights = [rarity_weights.get(BASE_CARDS[c]["rarity"], 0) for c in candidates]
+        if sum(weights) <= 0:
+            return random.choice(candidates)
+        return random.choices(candidates, weights=weights, k=1)[0]
+
+    def _pick_modifier_card(self, exclude=None):
+        exclude = exclude or set()
+        candidates = [mid for mid in MODIFIER_CARDS.keys() if mid not in exclude]
+        return random.choice(candidates) if candidates else None
+
+    def _pick_upgrade_candidate(self, exclude=None):
+        exclude = exclude or set()
+        upgradable = [
+            card_id for card_id, card in self.owned_cards.items()
+            if card.type == "base" and card.level < 5 and card_id not in exclude
+        ]
+        return random.choice(upgradable) if upgradable else None
     
     def trigger_levelup(self):
         """触发升级，生成3选1卡牌（支持1-6星）"""
@@ -2648,46 +2682,74 @@ class UpgradeManager:
             # 21级+：可能出现至高
             rarity_weights = {1: 0.2, 2: 0.5, 3: 0.6, 4: 0.3, 5: 0.05, 6: 0.01}
         
-        # 选择3张卡牌
         selected = []
-        
-        for i in range(3):
-            # 70%基础卡，20%参数卡，10%已有卡升级
-            roll = random.random()
-            
-            if roll < 0.7:
-                # 基础卡
-                candidates = [
-                    card_id for card_id, card_data in BASE_CARDS.items()
-                    if card_data["rarity"] in rarity_weights
-                ]
-                weights = [rarity_weights.get(BASE_CARDS[c]["rarity"], 0) for c in candidates]
-                if candidates:
-                    card_id = random.choices(candidates, weights=weights, k=1)[0]
-                    selected.append({"type": "base", "id": card_id})
-            
-            elif roll < 0.9:
-                # 参数卡
-                candidates = list(MODIFIER_CARDS.keys())
-                if candidates:
-                    card_id = random.choice(candidates)
-                    selected.append({"type": "modifier", "id": card_id})
-            
-            else:
-                # 升级已有卡（最高5级）
-                upgradable = [
-                    card_id for card_id, card in self.owned_cards.items()
-                    if card.type == "base" and card.level < 5
-                ]
-                if upgradable:
-                    card_id = random.choice(upgradable)
-                    selected.append({"type": "upgrade", "id": card_id})
-                else:
-                    # 没有可升级的，给基础卡
-                    candidates = list(BASE_CARDS.keys())
-                    if candidates:
-                        card_id = random.choice(candidates)
-                        selected.append({"type": "base", "id": card_id})
+        choice_keys = set()
+        base_exclude, modifier_exclude, upgrade_exclude = set(), set(), set()
+
+        def add_choice(choice):
+            if not choice:
+                return
+            key = (choice["type"], choice["id"])
+            if key in choice_keys:
+                return
+            selected.append(choice)
+            choice_keys.add(key)
+            if choice["type"] == "base":
+                base_exclude.add(choice["id"])
+            elif choice["type"] == "modifier":
+                modifier_exclude.add(choice["id"])
+            elif choice["type"] == "upgrade":
+                upgrade_exclude.add(choice["id"])
+
+        # 第一张：满足当前主流派，确保持续强化核心
+        dominant_archetype = None
+        if self.archetype_counts:
+            dominant_archetype = max(self.archetype_counts.items(), key=lambda x: x[1])[0]
+            if self.archetype_counts[dominant_archetype] == 0:
+                dominant_archetype = None
+        base_choice = self._pick_base_card(rarity_weights, dominant_archetype, base_exclude)
+        if base_choice:
+            add_choice({"type": "base", "id": base_choice})
+
+        # 第二张：引导补足短板或提供新流派
+        missing = [arc for arc, count in self.archetype_counts.items() if count == 0]
+        fallback_arc = None
+        if self.archetype_counts:
+            fallback_arc = min(self.archetype_counts.items(), key=lambda x: x[1])[0]
+        support_arc = missing[0] if missing else fallback_arc
+        support_choice = self._pick_base_card(rarity_weights, support_arc, base_exclude)
+        if support_choice:
+            add_choice({"type": "base", "id": support_choice})
+
+        # 第三张：优先给已有卡的升级，否则提供参数卡
+        upgrade_target = self._pick_upgrade_candidate(upgrade_exclude)
+        if upgrade_target:
+            add_choice({"type": "upgrade", "id": upgrade_target})
+        else:
+            modifier_choice = self._pick_modifier_card(modifier_exclude)
+            if modifier_choice:
+                add_choice({"type": "modifier", "id": modifier_choice})
+
+        # 兜底：确保总数达到3张
+        guard_counter = 0
+        while len(selected) < 3 and guard_counter < 6:
+            guard_counter += 1
+            fallback_base = self._pick_base_card(rarity_weights, None, base_exclude)
+            if fallback_base:
+                add_choice({"type": "base", "id": fallback_base})
+                continue
+            modifier_choice = self._pick_modifier_card(modifier_exclude)
+            if modifier_choice:
+                add_choice({"type": "modifier", "id": modifier_choice})
+                continue
+            upgrade_target = self._pick_upgrade_candidate(upgrade_exclude)
+            if upgrade_target:
+                add_choice({"type": "upgrade", "id": upgrade_target})
+                continue
+            break
+        if not selected:
+            fallback_id = random.choice(list(BASE_CARDS.keys()))
+            selected.append({"type": "base", "id": fallback_id})
         
         self.upgrade_choice = selected
         self.upgrade_choice_index = 0
