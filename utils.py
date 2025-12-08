@@ -14674,7 +14674,302 @@ def _generate_plane_surf(pid, visual=None, static=False):
         # 能量流向
         for offset in range(-10, 15, 5):
             pygame.draw.line(s, (200, 50, 150), (40, 60 + offset), (50, 70 + offset), 1)
+    
+    elif pid == "wormhole":
+        # ========== Wormhole 专属涂装 ==========
+        if model_style == "wormhole_monsoon":
+            # 季风暴雨 - 暴雨倾泻、闪电劈云
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 暴雨效果
+            for i in range(40):
+                rain_x = (t * 100 + i * 10) % 120
+                rain_y = (t * 150 + i * 15) % 120
+                pygame.draw.line(s, (100, 150, 220), (rain_x, rain_y), (rain_x - 2, rain_y + 8), 2)
+            # 闪电
+            if int(t * 5) % 3 == 0:
+                pygame.draw.line(s, (255, 255, 255), (60, 0), (50, 40), 3)
+                pygame.draw.line(s, (255, 255, 255), (50, 40), (70, 60), 3)
+            # 主体
+            pygame.draw.circle(s, (80, 120, 180), (60, 60), 30)
         
+        elif model_style == "wormhole_mirage":
+            # 沙漠海市 - 蜃景宫殿、光线折射
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 扭曲波纹
+            for i in range(5):
+                wave_y = 30 + i * 15 + int(math.sin(t * 2 + i) * 5)
+                for x in range(0, 120, 10):
+                    distort = math.sin(x * 0.1 + t * 3) * 3
+                    pygame.draw.line(s, (255, 220, 150, 100), (x, wave_y + distort), (x + 5, wave_y + distort), 1)
+            # 虚幻宫殿轮廓
+            pygame.draw.polygon(s, (200, 180, 120, 150), [(60, 20), (40, 60), (80, 60)])
+            pygame.draw.circle(s, (100, 200, 255), (60, 60), 25, 2)
+        
+        elif model_style == "wormhole_bonsai":
+            # 盆景园 - 微型山水、禅意
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 盆景底座
+            pygame.draw.rect(s, (120, 100, 80), (30, 80, 60, 15))
+            # 树干
+            pygame.draw.line(s, (100, 70, 50), (60, 80), (55, 50), 5)
+            # 树冠
+            for i in range(6):
+                angle = i * 1.047 + t * 0.5
+                bx = 55 + math.cos(angle) * 15
+                by = 45 + math.sin(angle) * 15
+                pygame.draw.circle(s, (100, 150, 80), (int(bx), int(by)), 8)
+            # 禅意纹路
+            pygame.draw.arc(s, (180, 160, 140), (20, 90, 80, 20), 0, 3.14, 1)
+        
+        elif model_style == "wormhole_lantern":
+            # 灯笼祭 - 天灯升空
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 多个灯笼漂浮
+            for i in range(5):
+                ly = 20 + i * 20 - int((t + i) * 10) % 120
+                lx = 40 + i * 10
+                # 灯笼外框
+                pygame.draw.rect(s, (255, 180, 80), (lx, ly, 15, 20), 1)
+                # 发光
+                glow_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surf, (255, 200, 100, 100), (lx + 7, ly + 10), 12)
+                s.blit(glow_surf, (0, 0))
+        
+        elif model_style == "wormhole_geode":
+            # 晶洞秘境 - 紫晶洞、晶簇
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 洞穴轮廓
+            pygame.draw.ellipse(s, (100, 80, 120), (20, 20, 80, 80), 3)
+            # 晶簇
+            for i in range(12):
+                angle = i * 0.524 + t * 0.3
+                cx = 60 + math.cos(angle) * 25
+                cy = 60 + math.sin(angle) * 25
+                crystal_points = [
+                    (cx, cy - 8),
+                    (cx + 3, cy),
+                    (cx, cy + 8),
+                    (cx - 3, cy)
+                ]
+                pygame.draw.polygon(s, (150, 100, 200), crystal_points)
+            # 发光核心
+            pygame.draw.circle(s, (200, 150, 255), (60, 60), 15)
+        
+        elif model_style == "wormhole_totem":
+            # 图腾柱 - 部落图腾
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 图腾柱
+            pygame.draw.rect(s, (200, 100, 50), (50, 20, 20, 80))
+            # 面具层
+            for i in range(3):
+                mask_y = 30 + i * 25
+                pygame.draw.ellipse(s, (255, 150, 80), (45, mask_y, 30, 20))
+                # 眼睛
+                pygame.draw.circle(s, (50, 20, 0), (55, mask_y + 8), 3)
+                pygame.draw.circle(s, (50, 20, 0), (65, mask_y + 8), 3)
+            # 符文发光
+            for i in range(4):
+                rx = 60 + math.sin(t * 3 + i) * 15
+                ry = 40 + i * 15
+                pygame.draw.circle(s, (255, 200, 100), (int(rx), int(ry)), 2)
+        
+        elif model_style == "wormhole_ruins":
+            # 废墟遗迹 - 古代文明
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 断柱
+            for i in range(3):
+                px = 30 + i * 25
+                col_height = 40 + i * 10
+                pygame.draw.rect(s, (180, 160, 120), (px, 80 - col_height, 15, col_height))
+                # 柱顶
+                pygame.draw.rect(s, (220, 200, 150), (px - 3, 80 - col_height, 21, 5))
+            # 古文字符号
+            for i in range(6):
+                sx = 20 + i * 15
+                sy = 90 + math.sin(t + i) * 3
+                pygame.draw.line(s, (160, 140, 100), (sx, sy), (sx + 8, sy), 2)
+        
+        elif model_style == "wormhole_teaceremony":
+            # 茶道静寂 - 茶室氛围
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 茶碗
+            pygame.draw.ellipse(s, (150, 180, 120), (40, 50, 40, 30))
+            # 茶叶漂浮
+            for i in range(6):
+                leaf_angle = t * 2 + i * 1.047
+                lx = 60 + math.cos(leaf_angle) * 20
+                ly = 60 + math.sin(leaf_angle) * 15
+                pygame.draw.ellipse(s, (100, 140, 80), (lx - 3, ly - 2, 6, 4))
+            # 蒸汽袅袅
+            for i in range(5):
+                steam_y = 50 - i * 8 - int(t * 15) % 40
+                steam_x = 60 + math.sin(t + i) * 5
+                pygame.draw.circle(s, (200, 220, 200, 150 - i * 30), (int(steam_x), int(steam_y)), 3)
+        
+        elif model_style == "wormhole_windchime":
+            # 风铃物语 - 风铃摇曳
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 吊环
+            pygame.draw.circle(s, (200, 220, 255), (60, 20), 8, 2)
+            # 风铃吊坠
+            for i in range(5):
+                chime_x = 40 + i * 10 + math.sin(t * 2 + i) * 3
+                chime_y = 35 + i * 5
+                # 吊线
+                pygame.draw.line(s, (180, 200, 240), (60, 20), (chime_x, chime_y), 1)
+                # 铃铛
+                pygame.draw.circle(s, (150, 180, 220), (int(chime_x), int(chime_y)), 6)
+            # 音波涟漪
+            for ring in range(3):
+                ring_radius = 20 + ring * 15 + int(pulse * 8)
+                pygame.draw.circle(s, (180, 200, 240, 100 - ring * 30), (60, 60), ring_radius, 1)
+        
+        elif model_style == "wormhole_silk_road":
+            # 丝绸之路 - 驼铃、丝绸
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 驼队剪影
+            for i in range(3):
+                camel_x = 20 + i * 30 + int(t * 10) % 30
+                pygame.draw.ellipse(s, (200, 150, 100), (camel_x, 70, 20, 15))
+                pygame.draw.circle(s, (200, 150, 100), (camel_x + 10, 65), 8)
+            # 丝绸飘带
+            for i in range(4):
+                silk_points = []
+                for j in range(8):
+                    sx = 30 + j * 12
+                    sy = 30 + i * 10 + math.sin(t * 2 + j * 0.5 + i) * 8
+                    silk_points.append((sx, sy))
+                if len(silk_points) >= 2:
+                    pygame.draw.lines(s, (220, 180, 130), False, silk_points, 2)
+        
+        elif model_style == "wormhole_supercell":
+            # 超级单体 - 龙卷母体
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 云团
+            for i in range(8):
+                cloud_x = 40 + i * 8 + math.sin(t + i) * 5
+                cloud_y = 20 + math.cos(t * 2 + i) * 5
+                pygame.draw.circle(s, (80, 100, 120), (int(cloud_x), int(cloud_y)), 8)
+            # 旋转涡旋
+            for ring in range(6):
+                ring_angle = t * 3 - ring * 0.5
+                ring_radius = 15 + ring * 5
+                for seg in range(8):
+                    seg_angle = ring_angle + seg * 0.785
+                    sx = 60 + math.cos(seg_angle) * ring_radius
+                    sy = 70 + math.sin(seg_angle) * ring_radius * 0.6
+                    pygame.draw.circle(s, (100, 120, 150), (int(sx), int(sy)), 2)
+        
+        elif model_style == "wormhole_paperlamp":
+            # 纸灯长廊 - 和式灯影
+            s = pygame.Surface((120, 120), pygame.SRCALPHA)
+            # 纸灯笼阵列
+            for row in range(2):
+                for col in range(3):
+                    lamp_x = 25 + col * 30
+                    lamp_y = 30 + row * 40
+                    # 灯笼框架
+                    pygame.draw.rect(s, (255, 220, 180), (lamp_x, lamp_y, 20, 25), 2)
+                    # 纸质纹理
+                    for i in range(3):
+                        pygame.draw.line(s, (240, 210, 170), 
+                                       (lamp_x + 2, lamp_y + 5 + i * 7), 
+                                       (lamp_x + 18, lamp_y + 5 + i * 7), 1)
+                    # 柔和光晕
+                    glow = pygame.Surface((120, 120), pygame.SRCALPHA)
+                    pygame.draw.circle(glow, (255, 200, 150, 80), (lamp_x + 10, lamp_y + 12), 15)
+                    s.blit(glow, (0, 0))
+        
+        else:
+            # 默认虫洞：生物机械混合体，虫洞传送效果
+            main_color = (180, 0, 255)
+            portal_color = (0, 255, 180)
+            
+            # 主体：有机生物外壳
+            # 外层触手状结构
+            for i in range(6):
+                angle = t * 2 + i * 1.047  # 60度间隔
+                tentacle_length = 35 + math.sin(t * 3 + i) * 8
+                # 触手起点和终点
+                start_x = 60 + math.cos(angle) * 15
+                start_y = 60 + math.sin(angle) * 15
+                end_x = 60 + math.cos(angle) * tentacle_length
+                end_y = 60 + math.sin(angle) * tentacle_length
+                
+                # 触手分段绘制，带波动效果
+                segments = 5
+                for seg in range(segments):
+                    seg_progress = seg / segments
+                    wave_offset = math.sin(t * 4 + i + seg * 0.5) * 3
+                    
+                    seg_x1 = start_x + (end_x - start_x) * seg_progress
+                    seg_y1 = start_y + (end_y - start_y) * seg_progress
+                    seg_x2 = start_x + (end_x - start_x) * (seg_progress + 0.2)
+                    seg_y2 = start_y + (end_y - start_y) * (seg_progress + 0.2)
+                    
+                    # 添加波动
+                    perp_angle = angle + 1.571  # 垂直方向
+                    seg_x1 += math.cos(perp_angle) * wave_offset
+                    seg_y1 += math.sin(perp_angle) * wave_offset
+                    seg_x2 += math.cos(perp_angle) * wave_offset
+                    seg_y2 += math.sin(perp_angle) * wave_offset
+                    
+                    # 触手颜色渐变
+                    seg_color_r = int(180 - seg_progress * 100)
+                    seg_color_g = int(seg_progress * 255)
+                    seg_color_b = 255
+                    pygame.draw.line(s, (seg_color_r, seg_color_g, seg_color_b), 
+                                   (seg_x1, seg_y1), (seg_x2, seg_y2), 3)
+            
+            # 中心虫洞入口（旋转的虫洞）
+            wormhole_layers = 5
+            for layer in range(wormhole_layers, 0, -1):
+                layer_radius = layer * 6 + int(pulse * 3)
+                layer_rotation = t * (3 - layer * 0.3) * (-1 if layer % 2 else 1)
+                
+                # 虫洞环
+                points = []
+                spiral_points = 12
+                for i in range(spiral_points):
+                    point_angle = layer_rotation + (i / spiral_points) * 2 * math.pi
+                    distortion = math.sin(t * 5 + i + layer) * 2
+                    px = 60 + math.cos(point_angle) * (layer_radius + distortion)
+                    py = 60 + math.sin(point_angle) * (layer_radius + distortion)
+                    points.append((px, py))
+                
+                if len(points) >= 3:
+                    # 颜色从外到内：紫色到青色
+                    layer_r = int(180 * (layer / wormhole_layers))
+                    layer_g = int(255 * (1 - layer / wormhole_layers))
+                    layer_b = 255
+                    pygame.draw.polygon(s, (layer_r, layer_g, layer_b), points, 2)
+            
+            # 虫洞核心（黑洞效果）
+            core_size = int(8 + 3 * pulse)
+            for core_ring in range(3, 0, -1):
+                core_alpha = int(255 * (core_ring / 3))
+                core_color = (50 * core_ring, 0, 100 * core_ring)
+                pygame.draw.circle(s, core_color, (60, 60), core_size - core_ring * 2)
+            
+            # 维度裂缝粒子（从虫洞飞出）
+            for particle_idx in range(8):
+                particle_angle = t * 4 + particle_idx * 0.785
+                particle_progress = (t * 3 + particle_idx * 0.3) % 1.0
+                particle_distance = 5 + particle_progress * 30
+                
+                px = 60 + math.cos(particle_angle) * particle_distance
+                py = 60 + math.sin(particle_angle) * particle_distance
+                
+                particle_size = int(4 * (1 - particle_progress))
+                if particle_size > 0:
+                    particle_color = (int(180 * (1 - particle_progress)), 
+                                    int(255 * particle_progress), 255)
+                    pygame.draw.circle(s, particle_color, (int(px), int(py)), particle_size)
+            
+            # 能量脉冲环
+            pulse_ring_radius = int(40 + 10 * abs(math.sin(t * 2)))
+            pygame.draw.circle(s, portal_color, (60, 60), pulse_ring_radius, 1)
+    
     return s
 
 

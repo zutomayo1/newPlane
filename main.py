@@ -7467,6 +7467,44 @@ def draw_top_hud():
         draw_text(screen, "极光", 16, label_x, bar_y + bar_gap*3 - 1, aurora_color, glow=True, align='left')
         draw_text(screen, f"{orb_count}/{max_orbs}球 总伤:{total_damage}", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
     
+    # 【混沌虫洞】裂缝能量显示 - 常驻
+    if hasattr(player, 'plane_id') and player.plane_id == "wormhole":
+        rift_energy = getattr(player, 'rift_energy', 0)
+        max_rift = getattr(player, 'max_rift_energy', 100)
+        portals = getattr(player, 'rift_portals', [])
+        portal_count = len(portals)
+        bar_pct = (rift_energy / max_rift) * 100
+        
+        # 能量条颜色根据能量等级变化
+        if rift_energy >= 90:
+            # 90%+ 闪烁紫红色(裂缝波动就绪)
+            flash = abs(math.sin(pygame.time.get_ticks() / 60))
+            rift_color = (int(200 + 55 * flash), int(50 * flash), int(200 + 55 * flash))
+        elif rift_energy >= 70:
+            # 70%+ 明亮紫色(增强子弹就绪)
+            rift_color = (220, 80, 255)
+        else:
+            # 低能量 深紫到明紫渐变
+            rift_color = (int(120 + 100 * (rift_energy/max_rift)), int(30 + 50 * (rift_energy/max_rift)), int(150 + 105 * (rift_energy/max_rift))) if rift_energy > 0 else (100, 30, 120)
+        
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, rift_color, 
+                       bg_color=(30, 10, 40), tilt=tilt, border_color=rift_color, border_width=1)
+        
+        # 状态文本
+        if rift_energy >= 90:
+            status_text = f"{int(rift_energy)}% (裂缝波动!)"
+        elif rift_energy >= 70:
+            status_text = f"{int(rift_energy)}% (增强就绪!)"
+        else:
+            status_text = f"{int(rift_energy)}%"
+        
+        # 如果有活跃传送门,显示数量
+        if portal_count > 0:
+            status_text += f" 门:{portal_count}"
+        
+        draw_text(screen, "裂缝", 16, label_x, bar_y + bar_gap*3 - 1, rift_color, glow=True, align='left')
+        draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+    
     # ===== 顶部右侧：积分和时间（创意特效面板） =====
     score_value_x = WIDTH - 24  # 数值右对齐位置
     score_y = 12
@@ -7735,7 +7773,7 @@ def draw_top_hud():
         "aurora": "极光冲击波", "crimson": "刀刃风暴", "stalker": "引力陷阱",
         "gaia": "岩石护盾", "weaver": "蛛网陷阱", "solar": "太阳耀斑",
         "arbiter": "数据腐蚀", "eclipse": "暗物质爆发", "prism": "彩虹碎裂",
-        "necro": "生命汲取", "void": "虚空撕裂"
+        "necro": "生命汲取", "void": "虚空撕裂", "wormhole": "虫洞链接"
     }
     ult2_name = ult2_names.get(player.plane_id, '次级技能')
     ult2_y = bar1_y + bar1_h + 3
@@ -7797,7 +7835,7 @@ def draw_top_hud():
         "aurora": "北极光", "crimson": "刀刃旋风", "stalker": "重力炸弹",
         "gaia": "水晶屏障", "weaver": "蜘蛛群袭", "solar": "太阳光束",
         "arbiter": "病毒感染", "eclipse": "虚空坍缩", "prism": "光之棱镜",
-        "necro": "灵魂收割", "void": "等离子漩涡"
+        "necro": "灵魂收割", "void": "等离子漩涡", "wormhole": "时空逆流"
     }
     ult3_name = ult3_names.get(player.plane_id, '终极技能')
     ult3_y = bar2_y + bar2_h + 3

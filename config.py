@@ -125,7 +125,8 @@ PLANES = {
     "arbiter": { "name": "量子裁决者", "desc": "几何科技，分裂碎片", "hp": 148, "speed": 4.0, "damage": 20, "delay": 245, "color": NEON_PURPLE, "ult_name": "矩阵重置", "ult_color": NEON_PURPLE, "bullet_type": "quant" },
     "eclipse": { "name": "日食幽灵", "desc": "双核心战机，双线射击吸收伤害", "hp": 163, "speed": 4.2, "damage": 12, "delay": 154, "color": (50, 30, 80), "ult_name": "黑日降临", "ult_color": (100, 50, 180), "bullet_type": "shadow", "visual": {"neon_color": (100, 50, 180), "accent_color": (200, 100, 255), "trail_color": (100, 50, 180), "ability": "dual_core"} },
     "prism": { "name": "棱镜分光", "desc": "分裂射击型，一发三道散射", "hp": 155, "speed": 4.2, "damage": 11, "delay": 196, "color": (100, 180, 255), "ult_name": "光谱爆裂", "ult_color": (0, 255, 200), "bullet_type": "prism", "visual": {"neon_color": (0, 255, 200), "accent_color": (100, 200, 255), "trail_color": (100, 180, 255), "ability": "split_fire"} },
-    "necro": { "name": "死灵骑士", "desc": "吸血型战机，伤害转化为治疗", "hp": 178, "speed": 3.4, "damage": 16, "delay": 196, "color": (150, 50, 100), "ult_name": "亡灵收割", "ult_color": (200, 50, 150), "bullet_type": "spectral", "visual": {"neon_color": (200, 50, 150), "accent_color": (100, 0, 100), "trail_color": (150, 50, 100), "ability": "lifesteal"} }
+    "necro": { "name": "死灵骑士", "desc": "吸血型战机，伤害转化为治疗", "hp": 178, "speed": 3.4, "damage": 16, "delay": 196, "color": (150, 50, 100), "ult_name": "亡灵收割", "ult_color": (200, 50, 150), "bullet_type": "spectral", "visual": {"neon_color": (200, 50, 150), "accent_color": (100, 0, 100), "trail_color": (150, 50, 100), "ability": "lifesteal"} },
+    "wormhole": { "name": "混沌虫洞", "desc": "虫洞传送型，子弹从敌人背后虫洞出现", "hp": 145, "speed": 5.2, "damage": 19, "delay": 238, "color": (180, 0, 255), "ult_name": "维度坍缩", "ult_color": (255, 0, 255), "bullet_type": "wormhole", "visual": {"neon_color": (180, 0, 255), "accent_color": (0, 255, 180), "trail_color": (120, 0, 200), "ability": "dimension_rift"} }
 }
 
 BOSS_DB = {

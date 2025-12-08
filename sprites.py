@@ -1633,6 +1633,330 @@ class PrismBurst(pygame.sprite.Sprite):
                     Particle(m.rect.center, beam['color'])
 
 
+class DimensionCollapse(pygame.sprite.Sprite):
+    """混沌虫洞·维度坍缩 - 全屏虫洞爆发"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120  # 持续2秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.wormholes = []
+        self.hit_count = 0
+        sound_mgr.play("nuke")
+        
+        # 在屏幕上创建8个虫洞
+        for i in range(8):
+            angle = i * (math.pi / 4)
+            distance = 200
+            wx = WIDTH // 2 + math.cos(angle) * distance
+            wy = HEIGHT // 2 + math.sin(angle) * distance
+            self.wormholes.append({
+                'x': wx,
+                'y': wy,
+                'radius': 10,
+                'rotation': 0,
+                'active': True,
+                'damage_ticks': 0
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            # 最终爆炸
+            for wh in self.wormholes:
+                NukeExplosion(center=(int(wh['x']), int(wh['y'])))
+            FloatingText(WIDTH // 2, HEIGHT // 2 - 100, f"🌀维度坍缩 x{self.hit_count}", (180, 0, 255))
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        # 更新虫洞
+        for wh in self.wormholes:
+            wh['radius'] = min(80, wh['radius'] + 1.5)
+            wh['rotation'] += 0.15
+            
+            # 绘制虫洞
+            wx, wy = int(wh['x']), int(wh['y'])
+            radius = wh['radius']
+            
+            # 多层旋转环
+            for layer in range(5, 0, -1):
+                layer_radius = radius * (layer / 5)
+                layer_rotation = wh['rotation'] * (1 if layer % 2 else -1)
+                
+                # 螺旋点
+                points = []
+                for i in range(12):
+                    angle = layer_rotation + (i / 12) * 2 * math.pi
+                    distortion = math.sin(self.life * 0.1 + i) * 3
+                    px = wx + math.cos(angle) * (layer_radius + distortion)
+                    py = wy + math.sin(angle) * (layer_radius + distortion)
+                    points.append((px, py))
+                
+                if len(points) >= 3:
+                    layer_r = int(180 * (layer / 5))
+                    layer_g = int(255 * (1 - layer / 5))
+                    layer_b = 255
+                    pygame.draw.polygon(self.image, (layer_r, layer_g, layer_b), points, 2)
+            
+            # 虫洞伤害判定
+            wh['damage_ticks'] += 1
+            if wh['damage_ticks'] >= 10:  # 每10帧判定一次
+                wh['damage_ticks'] = 0
+                for m in list(mobs):
+                    dist = math.hypot(m.rect.centerx - wx, m.rect.centery - wy)
+                    if dist < radius:
+                        dmg = 150
+                        m.hp -= dmg
+                        self.hit_count += 1
+                        FloatingText(m.rect.centerx, m.rect.top - 20, f"-{dmg}", (255, 0, 255))
+                        # 吸引效果
+                        angle_to_wh = math.atan2(wy - m.rect.centery, wx - m.rect.centerx)
+                        m.rect.x += math.cos(angle_to_wh) * 3
+                        m.rect.y += math.sin(angle_to_wh) * 3
+                        # 粒子效果
+                        if random.random() < 0.3:
+                            Particle(m.rect.center, (180, 0, 255), mode='star')
+        
+        # 虫洞间连线
+        if self.life % 4 == 0:
+            for i, wh1 in enumerate(self.wormholes):
+                if i < len(self.wormholes) - 1:
+                    wh2 = self.wormholes[i + 1]
+                    pygame.draw.line(self.image, (100, 0, 200, 100), 
+                                   (int(wh1['x']), int(wh1['y'])),
+                                   (int(wh2['x']), int(wh2['y'])), 2)
+        
+        # 中心坍缩效果
+        center_x, center_y = WIDTH // 2, HEIGHT // 2
+        collapse_radius = 150 + abs(math.sin(self.life * 0.1)) * 50
+        pygame.draw.circle(self.image, (255, 0, 255, 80), (center_x, center_y), int(collapse_radius), 3)
+
+class WormholeLink(pygame.sprite.Sprite):
+    """混沌虫洞·虫洞链接 - G键第二大招：创建传送门对"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180  # 持续3秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.portal_pairs = []
+        self.hit_count = 0
+        self.teleport_cooldown = 0
+        sound_mgr.play("nuke")
+        
+        # 创建4对传送门(共8个)
+        for i in range(4):
+            angle1 = i * (math.pi / 2)
+            angle2 = angle1 + math.pi  # 对面位置
+            distance = 250
+            
+            # 入口虫洞
+            p1_x = WIDTH // 2 + math.cos(angle1) * distance
+            p1_y = HEIGHT // 2 + math.sin(angle1) * distance
+            
+            # 出口虫洞
+            p2_x = WIDTH // 2 + math.cos(angle2) * distance
+            p2_y = HEIGHT // 2 + math.sin(angle2) * distance
+            
+            self.portal_pairs.append({
+                'entrance': {'x': p1_x, 'y': p1_y, 'radius': 5, 'rotation': 0},
+                'exit': {'x': p2_x, 'y': p2_y, 'radius': 5, 'rotation': 0},
+                'link_alpha': 0
+            })
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            FloatingText(WIDTH // 2, HEIGHT // 2 - 100, f"🌀虫洞链接 x{self.hit_count}", (0, 255, 180))
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        # 更新冷却
+        if self.teleport_cooldown > 0:
+            self.teleport_cooldown -= 1
+        
+        # 更新传送门对
+        for pair in self.portal_pairs:
+            entrance = pair['entrance']
+            exit_portal = pair['exit']
+            
+            # 扩大半径
+            entrance['radius'] = min(60, entrance['radius'] + 0.8)
+            exit_portal['radius'] = min(60, exit_portal['radius'] + 0.8)
+            entrance['rotation'] += 0.12
+            exit_portal['rotation'] -= 0.12
+            
+            # 绘制入口虫洞(紫色)
+            self._draw_portal(entrance, (180, 0, 255))
+            
+            # 绘制出口虫洞(青色)
+            self._draw_portal(exit_portal, (0, 255, 180))
+            
+            # 绘制连接线
+            pair['link_alpha'] = (pair['link_alpha'] + 5) % 255
+            if self.life % 3 == 0:
+                pygame.draw.line(self.image, (100, 100, 200, 100),
+                               (int(entrance['x']), int(entrance['y'])),
+                               (int(exit_portal['x']), int(exit_portal['y'])), 2)
+            
+            # 传送判定(每5帧一次)
+            if self.life % 5 == 0 and self.teleport_cooldown <= 0:
+                for m in list(mobs):
+                    # 检测是否进入入口
+                    dist_to_entrance = math.hypot(m.rect.centerx - entrance['x'], 
+                                                 m.rect.centery - entrance['y'])
+                    if dist_to_entrance < entrance['radius']:
+                        # 传送到出口
+                        m.rect.centerx = int(exit_portal['x'])
+                        m.rect.centery = int(exit_portal['y'])
+                        # 造成伤害
+                        dmg = 80
+                        m.hp -= dmg
+                        self.hit_count += 1
+                        FloatingText(m.rect.centerx, m.rect.top - 20, f"-{dmg}", (0, 255, 180))
+                        # 特效
+                        for _ in range(8):
+                            Particle(m.rect.center, (180, 0, 255), mode='spark')
+                        self.teleport_cooldown = 3  # 短暂冷却
+                        break
+    
+    def _draw_portal(self, portal, color):
+        """绘制单个传送门"""
+        px, py = int(portal['x']), int(portal['y'])
+        radius = portal['radius']
+        rotation = portal['rotation']
+        
+        # 绘制旋转螺旋
+        for layer in range(4, 0, -1):
+            layer_radius = radius * (layer / 4)
+            points = []
+            for i in range(8):
+                angle = rotation + (i / 8) * 2 * math.pi
+                distortion = math.sin(self.life * 0.08 + i) * 2
+                ppx = px + math.cos(angle) * (layer_radius + distortion)
+                ppy = py + math.sin(angle) * (layer_radius + distortion)
+                points.append((ppx, ppy))
+            
+            if len(points) >= 3:
+                alpha = int(200 * (layer / 4))
+                layer_color = (color[0], color[1], color[2])
+                pygame.draw.polygon(self.image, layer_color, points, 2)
+        
+        # 中心光点
+        pygame.draw.circle(self.image, (255, 255, 255), (px, py), 3)
+
+class TimeReversal(pygame.sprite.Sprite):
+    """混沌虫洞·时空逆流 - C键第三大招：时空倒流"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 90  # 持续1.5秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.affected_enemies = {}  # 记录敌人初始位置
+        self.hit_count = 0
+        sound_mgr.play("nuke")
+        
+        # 记录所有敌人的当前位置
+        for m in mobs:
+            self.affected_enemies[m] = {
+                'start_x': m.rect.centerx,
+                'start_y': m.rect.centery,
+                'pushed_distance': 0
+            }
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            FloatingText(WIDTH // 2, HEIGHT // 2 - 100, f"⏪时空逆流 x{self.hit_count}", (120, 0, 200))
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        # 绘制时空漩涡效果
+        center_x, center_y = WIDTH // 2, HEIGHT // 2
+        for ring in range(5, 0, -1):
+            ring_radius = ring * 80 + abs(math.sin(self.life * 0.15)) * 20
+            ring_alpha = int(150 * (ring / 5))
+            # 逆时针旋转螺旋
+            points = []
+            for i in range(24):
+                angle = -(self.life * 0.1) + (i / 24) * 2 * math.pi
+                distortion = math.cos(self.life * 0.12 + i * 0.5) * 15
+                rx = center_x + math.cos(angle) * (ring_radius + distortion)
+                ry = center_y + math.sin(angle) * (ring_radius + distortion)
+                points.append((rx, ry))
+            
+            if len(points) >= 3:
+                ring_color = (int(120 * (ring / 5)), 0, int(200 * (ring / 5)))
+                pygame.draw.lines(self.image, ring_color, False, points, 3)
+        
+        # 时钟刻度
+        for i in range(12):
+            angle = (i / 12) * 2 * math.pi - self.life * 0.05
+            tick_len = 30
+            start_r = 280
+            sx = center_x + math.cos(angle) * start_r
+            sy = center_y + math.sin(angle) * start_r
+            ex = center_x + math.cos(angle) * (start_r + tick_len)
+            ey = center_y + math.sin(angle) * (start_r + tick_len)
+            pygame.draw.line(self.image, (150, 50, 200), (int(sx), int(sy)), (int(ex), int(ey)), 2)
+        
+        # 对敌人施加时空倒流效果
+        for m in list(self.affected_enemies.keys()):
+            if m not in mobs:  # 敌人已死亡
+                continue
+            
+            info = self.affected_enemies[m]
+            
+            # 推回效果：向起始位置推
+            dx = info['start_x'] - m.rect.centerx
+            dy = info['start_y'] - m.rect.centery
+            distance = math.hypot(dx, dy)
+            
+            if distance > 5:
+                # 推回速度
+                push_speed = 4
+                m.rect.x += int((dx / distance) * push_speed) if distance > 0 else 0
+                m.rect.y += int((dy / distance) * push_speed) if distance > 0 else 0
+                info['pushed_distance'] += push_speed
+                
+                # 每推回一定距离造成伤害
+                if info['pushed_distance'] >= 20:
+                    dmg = 50
+                    m.hp -= dmg
+                    self.hit_count += 1
+                    FloatingText(m.rect.centerx, m.rect.top - 20, f"-{dmg}", (120, 0, 200))
+                    info['pushed_distance'] = 0
+                    # 粒子效果
+                    if random.random() < 0.4:
+                        Particle(m.rect.center, (150, 50, 200), mode='spark')
+            
+            # 减速效果：修改敌人速度(如果有speedx/speedy属性)
+            if hasattr(m, 'speedy'):
+                m.speedy = max(-1, m.speedy * 0.5)
+            if hasattr(m, 'speedx'):
+                m.speedx *= 0.5
+        
+        # 中心时钟符号
+        pygame.draw.circle(self.image, (200, 100, 255), (center_x, center_y), 15, 3)
+        # 逆时针箭头
+        arrow_angle = -self.life * 0.2
+        arrow_len = 12
+        arrow_x = center_x + math.cos(arrow_angle) * arrow_len
+        arrow_y = center_y + math.sin(arrow_angle) * arrow_len
+        pygame.draw.line(self.image, (200, 100, 255), (center_x, center_y), 
+                        (int(arrow_x), int(arrow_y)), 2)
+
 class SoulHarvest(pygame.sprite.Sprite):
     """死灵骑士·亡灵收割 - 灵魂吸取风暴"""
     def __init__(self, owner):
@@ -8870,6 +9194,13 @@ class Player(pygame.sprite.Sprite):
         self.turret_count = 0
         self.turret_damage = 0.6
         self.turrets = []  # 存储炮塔对象
+        
+        # 【混沌虫洞】维度裂缝状态
+        self.rift_energy = 0          # 裂缝能量
+        self.max_rift_energy = 100    # 最大裂缝能量
+        self.rift_portals = []        # 活跃虫洞列表
+        self.max_rift_portals = 3     # 最大同时存在虫洞数
+        self.rift_teleport_cooldown = 0  # 传送冷却
 
     def update(self):
         # 更新动态飞机模型
@@ -8953,6 +9284,8 @@ class Player(pygame.sprite.Sprite):
         self._update_weaver_state()
         # 【日冕耀斑】灼热核心状态维护
         self._update_solar_state()
+        # 【混沌虫洞】维度裂缝状态维护
+        self._update_wormhole_state()
         # 【量子裁决者】量子叠加态状态维护
         self._update_arbiter_state()
         # 【日食幽灵】光暗交替状态维护
@@ -9231,6 +9564,44 @@ class Player(pygame.sprite.Sprite):
                     brightness = min(255, 150 + ghost_count * 20)
                     bullet.color = (brightness, 50, int(100 + ghost_count * 15))
         
+        # ========== 17. 混沌虫洞 - 维度传送射击 ==========
+        elif pid == "wormhole":
+            # 虫洞特性：子弹从敌人背后的虫洞出现
+            rift_energy = getattr(self, 'rift_energy', 0)
+            max_rift = getattr(self, 'max_rift_energy', 100)
+            rift_ratio = rift_energy / max(1, max_rift)
+            
+            # 每次射击积累裂缝能量
+            if hasattr(self, 'gain_rift_energy'):
+                self.gain_rift_energy(8)  # 约12-13次射击满能量
+            
+            # 当裂缝能量较高时，发射增强弹
+            is_enhanced = rift_ratio > 0.7
+            
+            for i in range(cnt):
+                offset_x = (i - (cnt-1)/2) * 20
+                bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                       color=(180, 0, 255) if not is_enhanced else (255, 0, 255), 
+                       b_type="wormhole", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                bullet.is_wormhole_bullet = True
+                bullet.wormhole_enhanced = is_enhanced
+                # 标记来源玩家，用于虫洞传送
+                bullet.source_player = self
+                
+                # 增强弹：更快，更强
+                if is_enhanced:
+                    bullet.speed = -15
+                    bullet.damage_mult = 1.5
+            
+            # 高能量时额外发射裂缝波
+            if rift_ratio > 0.9:
+                for angle in [-30, 30]:
+                    bullet = Bullet(self.rect.centerx, self.rect.top, angle=angle,
+                           color=(0, 255, 180), b_type="wormhole", piercing=self.piercing + 1, homing=homing_value, bullet_theme=self.bullet_theme)
+                    bullet.is_wormhole_bullet = True
+                    bullet.is_rift_wave = True
+                    bullet.source_player = self
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -9361,6 +9732,10 @@ class Player(pygame.sprite.Sprite):
             elif pid == "necro":
                 # 亡灵收割：灵魂吸取风暴
                 SoulHarvest(self)
+            
+            elif pid == "wormhole":
+                # 维度坍缩：全屏虫洞爆发
+                DimensionCollapse(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -9697,6 +10072,56 @@ class Player(pygame.sprite.Sprite):
                                 FloatingText(enemy.rect.centerx, enemy.rect.top - 8, 
                                            f"-{int(aura_dmg)}", (255, 150, 50))
                             Particle(enemy.rect.center, (255, 120, 30))
+
+    def gain_rift_energy(self, amount):
+        """混沌虫洞射击时积累裂缝能量"""
+        if self.plane_id != "wormhole":
+            return
+        self.rift_energy = min(self.max_rift_energy, self.rift_energy + amount)
+        energy_ratio = self.rift_energy / self.max_rift_energy
+        
+        # 能量满时产生视觉效果
+        if self.rift_energy >= self.max_rift_energy and random.random() < 0.15:
+            FloatingText(self.rect.centerx, self.rect.top - 20, "⚡裂缝就绪!", (180, 0, 255))
+            Particle(self.rect.center, (255, 0, 255))
+        
+        # 能量越高，虫洞特效越明显
+        if energy_ratio > 0.5 and random.random() < 0.1:
+            angle = random.uniform(0, math.pi * 2)
+            dist = random.uniform(15, 30)
+            px = self.rect.centerx + math.cos(angle) * dist
+            py = self.rect.centery + math.sin(angle) * dist
+            Particle((int(px), int(py)), (0, 255, 180))
+    
+    def _update_wormhole_state(self):
+        """每帧更新虫洞状态"""
+        if self.plane_id != "wormhole":
+            return
+        
+        # 裂缝能量自然衰减（慢速）
+        if self.rift_energy > 0:
+            self.rift_energy = max(0, self.rift_energy - 0.3)
+        
+        # 更新传送冷却
+        if self.rift_teleport_cooldown > 0:
+            self.rift_teleport_cooldown -= 1
+        
+        # 清理过期虫洞
+        self.rift_portals = [p for p in self.rift_portals if p.alive()]
+        
+        # 维度裂缝被动：高能量时随机传送敌弹
+        if self.rift_energy > 70 and random.random() < 0.02:
+            if enemy_bullets:
+                bullet = random.choice(list(enemy_bullets))
+                # 创建传送特效
+                for _ in range(5):
+                    Particle(bullet.rect.center, (180, 0, 255), mode='star')
+                # 传送到随机位置
+                bullet.rect.x = random.randint(50, WIDTH - 50)
+                bullet.rect.y = random.randint(50, HEIGHT // 2)
+                # 视觉反馈
+                if random.random() < 0.3:
+                    FloatingText(bullet.rect.centerx, bullet.rect.centery, "传送!", (255, 0, 255))
 
     def gain_arbiter_quantum(self, amount):
         """量子裁决者命中时积累量子能量"""
@@ -10321,7 +10746,8 @@ class Player(pygame.sprite.Sprite):
                 "eclipse": "暗物质爆发",
                 "prism": "彩虹碎裂",
                 "necro": "生命汲取",
-                "void": "虚空撕裂"
+                "void": "虚空撕裂",
+                "wormhole": "虫洞链接"
             }
             
             pid = self.plane_id
@@ -10399,6 +10825,10 @@ class Player(pygame.sprite.Sprite):
                 # 虚空撕裂（与主大招相同但稍弱）
                 VoidRift(self.rect.center)
             
+            elif pid == "wormhole":
+                # 虫洞链接：创建传送门对
+                WormholeLink(self)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -10434,7 +10864,8 @@ class Player(pygame.sprite.Sprite):
                 "eclipse": "虚空坍缩",
                 "prism": "光之棱镜",
                 "necro": "灵魂收割",
-                "void": "等离子漩涡"
+                "void": "等离子漩涡",
+                "wormhole": "时空逆流"
             }
             
             pid = self.plane_id
@@ -10511,6 +10942,10 @@ class Player(pygame.sprite.Sprite):
             elif pid == "void":
                 # 虚空类也用等离子漩涡
                 PlasmaVortex(self)
+            
+            elif pid == "wormhole":
+                # 时空逆流：时空倒流
+                TimeReversal(self)
             
             else:
                 # 通用：全屏伤害
