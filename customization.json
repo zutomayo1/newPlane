@@ -337,6 +337,13 @@
     "arbiter_geometric_wave": true,
     "arbiter_quantum_entangle": true,
     "arbiter_collapse_star": true,
+    "wormhole_rift_shard": true,
+    "wormhole_void_spike": true,
+    "wormhole_singularity": true,
+    "wormhole_plasma_vortex": true,
+    "wormhole_chrono_bolt": true,
+    "wormhole_nebula_burst": true,
+    "wormhole_antimatter": true,
     "eclipse_dual_core": true,
     "eclipse_shadow_eclipse": true,
     "eclipse_corona_burst": true,
@@ -386,7 +393,8 @@
     "arbiter": "arbiter_collapse_star",
     "eclipse": "eclipse_black_sun",
     "prism": "prism_aurora_split",
-    "necro": "necro_blood_curse"
+    "necro": "necro_blood_curse",
+    "wormhole": "wormhole_rift_shard"
   },
   "equipped_wingman_themes": {
     "slot_0": "striker_holy",
