@@ -3476,6 +3476,199 @@ def draw_bullet_preview(surface, theme, x, y, size=60):
                 ey = center_y + int(crack_len * math.sin(angle))
                 pygame.draw.line(surface, (180, 200, 230), (center_x, center_y), (ex, ey), 2)
         
+        # ========== Chronos 子弹预览 ==========
+        elif "time_ripple" in effects or "chrono_freeze" in effects:
+            # 时钟表盘
+            # 时钟圆盘
+            pygame.draw.circle(surface, (200, 200, 230), (center_x, center_y), size//3)
+            pygame.draw.circle(surface, color, (center_x, center_y), size//3, 2)
+            # 时钟刻度（12个）
+            for i in range(12):
+                angle = (i * 30 - 90) * 3.14159 / 180
+                r1 = size//4 if i % 3 == 0 else size//3.5
+                r2 = size//3
+                x1 = center_x + int(r1 * math.cos(angle))
+                y1 = center_y + int(r1 * math.sin(angle))
+                x2 = center_x + int(r2 * math.cos(angle))
+                y2 = center_y + int(r2 * math.sin(angle))
+                width = 2 if i % 3 == 0 else 1
+                pygame.draw.line(surface, (100, 100, 160), (x1, y1), (x2, y2), width)
+            # 时针（向上指12点）
+            pygame.draw.line(surface, (60, 60, 120), (center_x, center_y), 
+                           (center_x, center_y - size//4), 3)
+            # 时间波纹
+            pulse = (pygame.time.get_ticks() / 300) % 100 / 100
+            ripple_r = int(size//3 + pulse * size//6)
+            alpha = int(150 * (1 - pulse))
+            temp_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            pygame.draw.circle(temp_surf, (*color, alpha), (size, size), ripple_r, 2)
+            surface.blit(temp_surf, (x - size//2, y - size//2))
+        
+        elif "reverse_trail" in effects or "time_rewind" in effects:
+            # 逆转螺旋
+            # 逆时针螺旋
+            rotation = -pygame.time.get_ticks() / 300  # 负值表示逆时针
+            for arm in range(2):
+                spiral_points = []
+                arm_offset = arm * 180
+                for i in range(8):
+                    angle = (rotation * 50 + i * 30 + arm_offset) * 3.14159 / 180
+                    radius = size//8 + i * size//40
+                    sx = center_x + int(radius * math.cos(angle))
+                    sy = center_y + int(radius * math.sin(angle))
+                    spiral_points.append((sx, sy))
+                if len(spiral_points) > 1:
+                    pygame.draw.lines(surface, (180, 150, 255), False, spiral_points, 3)
+            # 中心倒带标记（⏪）
+            pygame.draw.circle(surface, color, (center_x, center_y), size//6)
+            # 双箭头
+            for offset in [-size//12, size//20]:
+                arrow = [
+                    (center_x + offset, center_y),
+                    (center_x - size//8 + offset, center_y - size//15),
+                    (center_x - size//8 + offset, center_y + size//15)
+                ]
+                pygame.draw.polygon(surface, (100, 70, 150), arrow)
+        
+        elif "season_cycle" in effects or "day_night_shift" in effects:
+            # 纪元日历
+            # 日历页面
+            page_rect = (center_x - size//3, center_y - size//2.5, size*2//3, size)
+            pygame.draw.rect(surface, (240, 240, 250), page_rect, border_radius=5)
+            pygame.draw.rect(surface, color, page_rect, 2, border_radius=5)
+            # 四季色块（4象限）
+            season_colors = [(120, 220, 120), (255, 200, 80), (200, 120, 80), (220, 220, 255)]
+            for i, season_color in enumerate(season_colors):
+                angle = (i * 90 + 45) * 3.14159 / 180
+                sx = center_x + int(size//5 * math.cos(angle))
+                sy = center_y + int(size//5 * math.sin(angle))
+                pygame.draw.circle(surface, season_color, (sx, sy), size//12)
+            # 太阳（左上）
+            sun_x, sun_y = center_x - size//4, center_y - size//4
+            pygame.draw.circle(surface, (255, 255, 100), (sun_x, sun_y), size//15)
+            for j in range(6):
+                ray_angle = (j * 60) * 3.14159 / 180
+                ray_x = sun_x + int(size//10 * math.cos(ray_angle))
+                ray_y = sun_y + int(size//10 * math.sin(ray_angle))
+                pygame.draw.line(surface, (255, 255, 100), (sun_x, sun_y), (ray_x, ray_y), 1)
+            # 月亮（右下）
+            moon_x, moon_y = center_x + size//4, center_y + size//4
+            pygame.draw.circle(surface, (200, 200, 240), (moon_x, moon_y), size//15)
+        
+        elif "sand_flow" in effects or "hourglass_flip" in effects:
+            # 沙漏
+            # 沙漏外框（上三角）
+            hourglass_top = [
+                (center_x - size//3, center_y - size//2.5),
+                (center_x + size//3, center_y - size//2.5),
+                (center_x, center_y)
+            ]
+            pygame.draw.polygon(surface, (200, 180, 140), hourglass_top)
+            pygame.draw.polygon(surface, color, hourglass_top, 2)
+            # 下三角
+            hourglass_bottom = [
+                (center_x, center_y),
+                (center_x - size//3, center_y + size//2.5),
+                (center_x + size//3, center_y + size//2.5)
+            ]
+            pygame.draw.polygon(surface, (200, 180, 140), hourglass_bottom)
+            pygame.draw.polygon(surface, color, hourglass_bottom, 2)
+            # 流动沙子
+            sand_phase = (pygame.time.get_ticks() / 100) % 100 / 100
+            # 上半部少量沙粒
+            for i in range(3):
+                sand_x = center_x + (i - 1) * size//10
+                sand_y = center_y - size//3 + int(sand_phase * size//6)
+                pygame.draw.circle(surface, (220, 200, 120), (sand_x, sand_y), 2)
+            # 下半部较多沙粒
+            for i in range(8):
+                sand_x = center_x + ((i % 3) - 1) * size//12
+                sand_y = center_y + size//6 + (i // 3) * size//12
+                pygame.draw.circle(surface, (220, 200, 120), (sand_x, sand_y), 2)
+        
+        elif "space_crack" in effects or "causality_break" in effects:
+            # 悖论漩涡（无限符号∞）
+            # 左环
+            left_center = (center_x - size//4, center_y)
+            pygame.draw.circle(surface, color, left_center, size//5, 3)
+            # 右环
+            right_center = (center_x + size//4, center_y)
+            pygame.draw.circle(surface, color, right_center, size//5, 3)
+            # 中心连接点
+            pygame.draw.circle(surface, color, (center_x, center_y), size//8)
+            # 时空裂痕（放射）
+            for i in range(8):
+                angle = (i * 45 + pygame.time.get_ticks() / 100) * 3.14159 / 180
+                x1 = center_x + int(size//3 * math.cos(angle))
+                y1 = center_y + int(size//3 * math.sin(angle))
+                x2 = center_x + int(size//2 * math.cos(angle))
+                y2 = center_y + int(size//2 * math.sin(angle))
+                pygame.draw.line(surface, (200, 150, 255, 180), (x1, y1), (x2, y2), 1)
+            # 因果破碎闪电
+            for i in range(4):
+                angle = (i * 90) * 3.14159 / 180
+                bolt_points = [(center_x, center_y)]
+                for j in range(2):
+                    radius = (j + 1) * size//6
+                    bx = center_x + int(radius * math.cos(angle))
+                    by = center_y + int(radius * math.sin(angle))
+                    bolt_points.append((bx, by))
+                if len(bolt_points) > 1:
+                    pygame.draw.lines(surface, (255, 200, 255), False, bolt_points, 1)
+        
+        elif "echo_trail" in effects or "resonance" in effects:
+            # 回声波纹
+            # 主波形核心
+            pygame.draw.circle(surface, (180, 200, 255), (center_x, center_y), size//6)
+            pygame.draw.circle(surface, color, (center_x, center_y), size//8)
+            # 波纹（虚线效果）
+            for i in range(3):
+                wave_r = size//4 + i * size//10
+                alpha = 200 - i * 50
+                # 虚线波纹
+                for angle_deg in range(0, 360, 30):
+                    angle = angle_deg * 3.14159 / 180
+                    x1 = center_x + int(wave_r * math.cos(angle))
+                    y1 = center_y + int(wave_r * math.sin(angle))
+                    x2 = center_x + int((wave_r + size//20) * math.cos(angle))
+                    y2 = center_y + int((wave_r + size//20) * math.sin(angle))
+                    pygame.draw.line(surface, (*color, alpha), (x1, y1), (x2, y2), 1)
+            # 音叉共振
+            fork_y = center_y - size//3
+            # 音叉柄
+            pygame.draw.rect(surface, (160, 180, 220), (center_x - 2, fork_y, 4, size//5))
+            # 音叉两臂
+            pygame.draw.line(surface, (160, 180, 220), 
+                           (center_x - size//10, fork_y - size//12), (center_x - size//10, fork_y), 2)
+            pygame.draw.line(surface, (160, 180, 220), 
+                           (center_x + size//10, fork_y - size//12), (center_x + size//10, fork_y), 2)
+        
+        elif "infinite_loop" in effects or "holy_glow" in effects:
+            # 永恒莫比乌斯环
+            # 两个相交的圆（8字形）
+            left_loop = (center_x - size//4, center_y)
+            right_loop = (center_x + size//4, center_y)
+            pygame.draw.circle(surface, color, left_loop, size//4, 4)
+            pygame.draw.circle(surface, color, right_loop, size//4, 4)
+            # 中心交点
+            pygame.draw.circle(surface, (255, 255, 255), (center_x, center_y), size//10)
+            pygame.draw.circle(surface, color, (center_x, center_y), size//12)
+            # 环上运动点
+            for i in range(4):
+                angle = (i * 90 + pygame.time.get_ticks() / 20) * 3.14159 / 180
+                loop_x = center_x + (size//4 if i % 2 == 0 else -size//4)
+                px = loop_x + int(size//4 * math.cos(angle))
+                py = center_y + int(size//4 * math.sin(angle))
+                pygame.draw.circle(surface, (200, 200, 255), (px, py), 3)
+            # 神圣光辉（外发光）
+            glow_pulse = abs(math.sin(pygame.time.get_ticks() / 300))
+            for i in range(2):
+                glow_r = size//2 + i * size//8 + int(glow_pulse * size//10)
+                alpha = int((100 - i * 40) * glow_pulse)
+                temp_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+                pygame.draw.circle(temp_surf, (255, 255, 255, alpha), (size, size), glow_r, 2)
+                surface.blit(temp_surf, (x - size//2, y - size//2))
+        
         else:
             # 默认：简单圆形
             pygame.draw.circle(surface, color, (center_x, center_y), size//3)
@@ -7696,6 +7889,51 @@ def draw_top_hud():
             status_text += f" 门:{portal_count}"
         
         draw_text(screen, "裂缝", 16, label_x, bar_y + bar_gap*3 - 1, rift_color, glow=True, align='left')
+        draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+    
+    # 【时之回响·克洛诺斯】时间回溯显示 - 常驻
+    if hasattr(player, 'plane_id') and player.plane_id == "chronos":
+        time_charge = getattr(player, 'chronos_charge', 0)
+        max_time = getattr(player, 'max_chronos_charge', 100)
+        echo_stacks = getattr(player, 'chronos_echo_stacks', 0)
+        is_rewinding = getattr(player, 'chronos_rewinding', False)
+        bar_pct = (time_charge / max_time) * 100
+        
+        # 能量条颜色
+        if is_rewinding:
+            # 回溯中 - 金色闪烁
+            flash = abs(math.sin(pygame.time.get_ticks() / 50))
+            chronos_color = (int(100 + 155 * flash), int(220 * flash), int(255 * flash))
+        elif time_charge >= 80:
+            # 80%+ 亮青蓝(回溯就绪)
+            flash = abs(math.sin(pygame.time.get_ticks() / 100))
+            chronos_color = (int(100 + 50 * flash), int(220 + 35 * flash), 255)
+        elif time_charge >= 50:
+            # 50%+ 青蓝色(时停就绪)
+            chronos_color = (80, 200, 255)
+        else:
+            # 低能量 深蓝到青蓝渐变
+            chronos_color = (int(60 + 40 * (time_charge/max_time)), int(180 + 40 * (time_charge/max_time)), int(230 + 25 * (time_charge/max_time))) if time_charge > 0 else (60, 180, 230)
+        
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, chronos_color, 
+                       bg_color=(20, 40, 60), tilt=tilt, border_color=chronos_color, border_width=1)
+        
+        # 状态文本
+        if is_rewinding:
+            rewind_timer = getattr(player, 'chronos_rewind_timer', 0)
+            status_text = f"时间回溯中! ({rewind_timer//60}s)"
+        elif time_charge >= 80:
+            status_text = f"{int(time_charge)}% (回溯就绪!)"
+        elif time_charge >= 50:
+            status_text = f"{int(time_charge)}% (时停就绪!)"
+        else:
+            status_text = f"{int(time_charge)}%"
+        
+        # 显示时间回响层数
+        if echo_stacks > 0:
+            status_text += f" 回响x{echo_stacks}"
+        
+        draw_text(screen, "时流", 16, label_x, bar_y + bar_gap*3 - 1, chronos_color, glow=True, align='left')
         draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
     
     # ===== 顶部右侧：积分和时间（创意特效面板） =====

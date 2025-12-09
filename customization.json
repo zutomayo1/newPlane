@@ -216,7 +216,19 @@
     "wormhole_windchime": true,
     "wormhole_silk_road": true,
     "wormhole_supercell": true,
-    "wormhole_paperlamp": true
+    "wormhole_paperlamp": true,
+    "chronos_memoir": true,
+    "chronos_biological": true,
+    "chronos_tidal": true,
+    "chronos_musical": true,
+    "chronos_geological": true,
+    "chronos_culinary": true,
+    "chronos_athletic": true,
+    "chronos_gardening": true,
+    "chronos_theatrical": true,
+    "chronos_chemical": true,
+    "chronos_meteorological": true,
+    "chronos_archaeological": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -235,7 +247,8 @@
     "eclipse": "eclipse_cosmos",
     "prism": "prism_aurora",
     "necro": "rare_cyan",
-    "wormhole": "wormhole_supercell"
+    "wormhole": "wormhole_monsoon",
+    "chronos": "chronos_chemical"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -371,7 +384,14 @@
     "wormhole_lantern": true,
     "wormhole_geode": true,
     "wormhole_totem": true,
-    "wormhole_ruins": true
+    "wormhole_ruins": true,
+    "chronos_chrono_bullet": true,
+    "chronos_rewind_bullet": true,
+    "chronos_epoch_bullet": true,
+    "chronos_hourglass_bullet": true,
+    "chronos_paradox_bullet": true,
+    "chronos_echo_bullet": true,
+    "chronos_eternal_bullet": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -389,12 +409,13 @@
     "eclipse": "eclipse_black_sun",
     "prism": "prism_aurora_split",
     "necro": "necro_blood_curse",
-    "wormhole": "wormhole_monsoon_bullet"
+    "wormhole": "default",
+    "chronos": "chronos_rewind_bullet"
   },
   "equipped_wingman_themes": {
     "slot_0": "striker_holy",
     "slot_1": "viper_serpent_god",
     "slot_2": "aurora_rainbow",
-    "slot_3": "crimson_inferno"
+    "slot_3": "chronos_meteorological"
   }
 }

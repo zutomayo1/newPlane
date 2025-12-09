@@ -4806,7 +4806,26 @@ class Bullet(pygame.sprite.Sprite):
                 self.wave_amplitude = 15
                 self.wave_frequency = 0.2
                 
-            else:  # 16. Necro + 默认（紫红幽能，与Specter共用）
+            elif b_type == "chrono":  # 17. Chronos - 时之回响（时钟指针子弹）
+                self.image = pygame.Surface((24, 36), pygame.SRCALPHA)
+                # 时钟外圈
+                pygame.draw.circle(self.image, (100, 220, 255), (12, 18), 10, 2)
+                pygame.draw.circle(self.image, (50, 180, 255), (12, 18), 8)
+                # 时针和分针
+                pygame.draw.line(self.image, (255, 200, 100), (12, 18), (12, 10), 3)
+                pygame.draw.line(self.image, WHITE, (12, 18), (16, 18), 2)
+                # 能量尾迹
+                for i in range(3):
+                    y_offset = 26 + i * 4
+                    alpha = 200 - i * 60
+                    glow = pygame.Surface((24, 36), pygame.SRCALPHA)
+                    pygame.draw.circle(glow, (100, 220, 255, alpha), (12, y_offset), 6 - i * 2)
+                    self.image.blit(glow, (0, 0))
+                self.speed = -20
+                # 时间子弹特性
+                self.chrono_freeze_timer = 0  # 时停计时器
+                self.chrono_delayed = False  # 是否延迟爆发
+            else:  # 18. Necro + 默认（紫红幽能，与Specter共用）
                 self.image = pygame.Surface((18, 42), pygame.SRCALPHA)
                 points = [(9,0), (5,14), (13,28), (9,42)]
                 pygame.draw.lines(self.image, (200, 50, 150), False, points, 5)
@@ -7431,6 +7450,286 @@ class Bullet(pygame.sprite.Sprite):
                     glow_y = crack_start_y + int(j * crack_len//3 * math.sin(crack_angle))
                     pygame.draw.circle(self.image, (200, 220, 255), (glow_x, glow_y), size//50)
             self.speed = -15
+        
+        # ========== Chronos 子弹 ==========
+        elif "time_ripple" in effects or "chrono_freeze" in effects:
+            # 时钟表盘子弹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 时钟圆盘
+            pygame.draw.circle(self.image, (200, 200, 230), (center, center), size//2)
+            pygame.draw.circle(self.image, color, (center, center), size//2, 3)
+            # 时钟刻度（12个）
+            for i in range(12):
+                angle = (i * 30 - 90) * 3.14159 / 180
+                x1 = center + int(size//2.5 * math.cos(angle))
+                y1 = center + int(size//2.5 * math.sin(angle))
+                x2 = center + int(size//2 * math.cos(angle))
+                y2 = center + int(size//2 * math.sin(angle))
+                width = 3 if i % 3 == 0 else 2
+                pygame.draw.line(self.image, (100, 100, 160), (x1, y1), (x2, y2), width)
+            # 时针（向上指）
+            time_angle = -90 * 3.14159 / 180
+            needle_x = center + int(size//3 * math.cos(time_angle))
+            needle_y = center + int(size//3 * math.sin(time_angle))
+            pygame.draw.line(self.image, (60, 60, 120), (center, center), (needle_x, needle_y), 4)
+            # 时间波纹（3层）
+            for i in range(3):
+                ripple_r = size//2 + size//8 + i * size//6
+                pygame.draw.circle(self.image, (*color, 150 - i * 40), (center, center), ripple_r, 2)
+            # 冻结标记（蓝色冰晶）
+            if "chrono_freeze" in effects:
+                for i in range(4):
+                    angle = (i * 90 + 45) * 3.14159 / 180
+                    fx = center + int(size//1.8 * math.cos(angle))
+                    fy = center + int(size//1.8 * math.sin(angle))
+                    ice_points = [
+                        (fx, fy - size//12),
+                        (fx + size//15, fy),
+                        (fx, fy + size//12),
+                        (fx - size//15, fy)
+                    ]
+                    pygame.draw.polygon(self.image, (150, 200, 255), ice_points)
+            self.speed = -14
+            
+        elif "reverse_trail" in effects or "time_rewind" in effects:
+            # 逆转螺旋子弹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 逆时针螺旋（2条臂）
+            for arm in range(2):
+                spiral_points = []
+                arm_offset = arm * 180
+                for i in range(12):
+                    # 逆时针角度（负值）
+                    angle = -(i * 30 + arm_offset) * 3.14159 / 180
+                    radius = size//6 + i * size//30
+                    sx = center + int(radius * math.cos(angle))
+                    sy = center + int(radius * math.sin(angle))
+                    spiral_points.append((sx, sy))
+                if len(spiral_points) > 1:
+                    pygame.draw.lines(self.image, (180, 150, 255), False, spiral_points, 4)
+                    pygame.draw.lines(self.image, color, False, spiral_points, 2)
+            # 中心倒转标记
+            pygame.draw.circle(self.image, (200, 170, 255), (center, center), size//5)
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            # 倒转箭头（⏪）
+            arrow_left = [
+                (center - size//8, center),
+                (center - size//4, center - size//10),
+                (center - size//4, center + size//10)
+            ]
+            arrow_right = [
+                (center + size//12, center),
+                (center - size//12, center - size//10),
+                (center - size//12, center + size//10)
+            ]
+            pygame.draw.polygon(self.image, (100, 70, 150), arrow_left)
+            pygame.draw.polygon(self.image, (100, 70, 150), arrow_right)
+            self.speed = -15
+            
+        elif "season_cycle" in effects or "day_night_shift" in effects:
+            # 纪元日历子弹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 日历页面
+            page_rect = (center - size//1.5, center - size//1.3, size*4//3, size*5//3)
+            pygame.draw.rect(self.image, (240, 240, 250), page_rect, border_radius=int(size//10))
+            pygame.draw.rect(self.image, color, page_rect, 3, border_radius=int(size//10))
+            # 四季色块（4象限）
+            season_colors = [(120, 220, 120), (255, 200, 80), (200, 120, 80), (220, 220, 255)]
+            for i, season_color in enumerate(season_colors):
+                angle = (i * 90) * 3.14159 / 180
+                quarter_x = center + int(size//4 * math.cos(angle + 0.785))
+                quarter_y = center + int(size//4 * math.sin(angle + 0.785))
+                pygame.draw.circle(self.image, season_color, (quarter_x, quarter_y), size//8)
+            # 昼夜标记（太阳月亮）
+            if "day_night_shift" in effects:
+                # 太阳（左上）
+                sun_x, sun_y = center - size//3, center - size//3
+                pygame.draw.circle(self.image, (255, 255, 100), (sun_x, sun_y), size//12)
+                for j in range(8):
+                    ray_angle = (j * 45) * 3.14159 / 180
+                    ray_x = sun_x + int(size//7 * math.cos(ray_angle))
+                    ray_y = sun_y + int(size//7 * math.sin(ray_angle))
+                    pygame.draw.line(self.image, (255, 255, 100), (sun_x, sun_y), (ray_x, ray_y), 2)
+                # 月亮（右下）
+                moon_x, moon_y = center + size//3, center + size//3
+                pygame.draw.circle(self.image, (200, 200, 240), (moon_x, moon_y), size//12)
+                pygame.draw.circle(self.image, (180, 180, 220), (moon_x - size//20, moon_y), size//14)
+            self.speed = -13
+            
+        elif "sand_flow" in effects or "hourglass_flip" in effects:
+            # 沙漏子弹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 沙漏外框
+            hourglass_top = [
+                (center - size//2, center - size),
+                (center + size//2, center - size),
+                (center + size//8, center)
+            ]
+            hourglass_bottom = [
+                (center - size//8, center),
+                (center - size//2, center + size),
+                (center + size//2, center + size)
+            ]
+            pygame.draw.polygon(self.image, (200, 180, 140), hourglass_top)
+            pygame.draw.polygon(self.image, (200, 180, 140), hourglass_bottom)
+            pygame.draw.polygon(self.image, color, hourglass_top, 3)
+            pygame.draw.polygon(self.image, color, hourglass_bottom, 3)
+            # 中心收缩点
+            pygame.draw.circle(self.image, (160, 140, 100), (center, center), size//12)
+            # 流动的沙子（上半部少，下半部多）
+            import random
+            random.seed(789)
+            # 上半部分沙粒（较少）
+            for _ in range(8):
+                sx = center + random.randint(-size//3, size//3)
+                sy = center - size + random.randint(size//6, size//2)
+                pygame.draw.circle(self.image, (220, 200, 120), (sx, sy), size//40)
+            # 下半部分沙粒（较多）
+            for _ in range(20):
+                sx = center + random.randint(-size//3, size//3)
+                sy = center + random.randint(size//6, size)
+                pygame.draw.circle(self.image, (220, 200, 120), (sx, sy), size//40)
+            # 翻转标记（双向箭头）
+            if "hourglass_flip" in effects:
+                pygame.draw.line(self.image, (180, 160, 120), (center - size//6, center - size//8), 
+                               (center + size//6, center - size//8), 3)
+                pygame.draw.line(self.image, (180, 160, 120), (center - size//6, center + size//8), 
+                               (center + size//6, center + size//8), 3)
+                # 箭头
+                pygame.draw.polygon(self.image, (180, 160, 120), [
+                    (center + size//6, center - size//8), 
+                    (center + size//8, center - size//5), 
+                    (center + size//8, center - size//20)
+                ])
+                pygame.draw.polygon(self.image, (180, 160, 120), [
+                    (center - size//6, center + size//8), 
+                    (center - size//8, center + size//20), 
+                    (center - size//8, center + size//5)
+                ])
+            self.speed = -14
+            
+        elif "space_crack" in effects or "causality_break" in effects:
+            # 悖论漩涡子弹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 无限符号基础（∞）
+            left_loop_center = (center - size//3, center)
+            right_loop_center = (center + size//3, center)
+            # 左环
+            pygame.draw.circle(self.image, (*color, 200), left_loop_center, size//3, 4)
+            # 右环
+            pygame.draw.circle(self.image, (*color, 200), right_loop_center, size//3, 4)
+            # 中心连接点
+            pygame.draw.circle(self.image, color, (center, center), size//6)
+            # 时空裂痕（放射状）
+            if "space_crack" in effects:
+                import random
+                random.seed(456)
+                for _ in range(12):
+                    crack_angle = random.uniform(0, 6.28)
+                    crack_start = size//2
+                    crack_end = size//2 + size//3
+                    x1 = center + int(crack_start * math.cos(crack_angle))
+                    y1 = center + int(crack_start * math.sin(crack_angle))
+                    x2 = center + int(crack_end * math.cos(crack_angle))
+                    y2 = center + int(crack_end * math.sin(crack_angle))
+                    pygame.draw.line(self.image, (200, 150, 255, 180), (x1, y1), (x2, y2), 2)
+            # 因果破碎效果（闪电状）
+            if "causality_break" in effects:
+                for i in range(6):
+                    angle = (i * 60) * 3.14159 / 180
+                    bolt_points = [(center, center)]
+                    for j in range(4):
+                        import random
+                        random.seed(100 + i * 10 + j)
+                        radius = (j + 1) * size//8
+                        offset = random.randint(-size//12, size//12)
+                        bx = center + int(radius * math.cos(angle)) + offset
+                        by = center + int(radius * math.sin(angle)) + offset
+                        bolt_points.append((bx, by))
+                    if len(bolt_points) > 1:
+                        pygame.draw.lines(self.image, (255, 200, 255), False, bolt_points, 2)
+            self.speed = -16
+            
+        elif "echo_trail" in effects or "resonance" in effects:
+            # 回声波纹子弹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 主波形核心
+            pygame.draw.circle(self.image, (180, 200, 255), (center, center), size//4)
+            pygame.draw.circle(self.image, color, (center, center), size//5)
+            # 波纹（5层）
+            for i in range(5):
+                wave_r = size//3 + i * size//8
+                alpha = 220 - i * 40
+                # 波纹用虚线效果
+                for angle_deg in range(0, 360, 20):
+                    angle = angle_deg * 3.14159 / 180
+                    x1 = center + int(wave_r * math.cos(angle))
+                    y1 = center + int(wave_r * math.sin(angle))
+                    x2 = center + int((wave_r + size//20) * math.cos(angle))
+                    y2 = center + int((wave_r + size//20) * math.sin(angle))
+                    pygame.draw.line(self.image, (*color, alpha), (x1, y1), (x2, y2), 2)
+            # 共振标记（音叉）
+            if "resonance" in effects:
+                fork_y = center - size//2
+                # 音叉柄
+                pygame.draw.rect(self.image, (160, 180, 220), (center - size//30, fork_y, size//15, size//3))
+                # 音叉两臂
+                left_arm = [
+                    (center - size//8, fork_y - size//6),
+                    (center - size//8, fork_y),
+                    (center - size//20, fork_y)
+                ]
+                right_arm = [
+                    (center + size//8, fork_y - size//6),
+                    (center + size//8, fork_y),
+                    (center + size//20, fork_y)
+                ]
+                pygame.draw.lines(self.image, (160, 180, 220), False, left_arm, 3)
+                pygame.draw.lines(self.image, (160, 180, 220), False, right_arm, 3)
+                # 振动波纹（3层）
+                for j in range(3):
+                    vib_r = size//10 + j * size//15
+                    pygame.draw.circle(self.image, (180, 200, 240, 180 - j * 50), 
+                                     (center, fork_y - size//6), vib_r, 2)
+            self.speed = -14
+            
+        elif "infinite_loop" in effects or "holy_glow" in effects:
+            # 永恒莫比乌斯子弹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 莫比乌斯环（8字形扭曲）
+            # 绘制两个相交的圆形路径
+            for loop in range(2):
+                loop_center_x = center + (size//3 if loop == 0 else -size//3)
+                loop_center_y = center
+                # 主环
+                pygame.draw.circle(self.image, (*color, 220), (loop_center_x, loop_center_y), size//2.5, 5)
+                # 内环（制造扭曲感）
+                pygame.draw.circle(self.image, (240, 240, 255, 150), (loop_center_x, loop_center_y), size//4, 3)
+            # 中心交点强调
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//8)
+            pygame.draw.circle(self.image, color, (center, center), size//10)
+            # 环上的运动点（6个）
+            for i in range(6):
+                angle = (i * 60) * 3.14159 / 180
+                # 点在左右环上交替
+                loop_x = center + (size//3 if i % 2 == 0 else -size//3)
+                px = loop_x + int(size//2.5 * math.cos(angle))
+                py = center + int(size//2.5 * math.sin(angle))
+                pygame.draw.circle(self.image, (200, 200, 255), (px, py), size//20)
+            # 神圣光辉（外发光）
+            if "holy_glow" in effects:
+                for i in range(4):
+                    glow_r = size + i * size//6
+                    alpha = 120 - i * 30
+                    pygame.draw.circle(self.image, (255, 255, 255, alpha), (center, center), glow_r, 3)
+            self.speed = -17
             
         else:
             # 默认子弹
@@ -9486,6 +9785,17 @@ class Player(pygame.sprite.Sprite):
         self.rift_portals = []        # 活跃虫洞列表
         self.max_rift_portals = 3     # 最大同时存在虫洞数
         self.rift_teleport_cooldown = 0  # 传送冷却
+        
+        # 【时之回响·克洛诺斯】时间系统状态
+        self.chronos_charge = 0       # 时间能量
+        self.max_chronos_charge = 100 # 最大时间能量
+        self.chronos_echo_stacks = 0  # 时间回响层数（叠加伤害）
+        self.max_chronos_echoes = 5   # 最大回响层数
+        self.chronos_rewinding = False  # 是否正在回溯
+        self.chronos_rewind_timer = 0   # 回溯持续时间
+        self.chronos_position_history = []  # 位置历史记录（用于回溯）
+        self.max_history_length = 180   # 记录3秒历史（60帧/秒 × 3）
+        self.chronos_frozen_bullets = []  # 时停的子弹列表
 
     def update(self):
         # 更新动态飞机模型
@@ -10021,6 +10331,10 @@ class Player(pygame.sprite.Sprite):
             elif pid == "wormhole":
                 # 维度坍缩：全屏虫洞爆发
                 DimensionCollapse(self)
+            
+            elif pid == "chronos":
+                # 【过去之影】时间回溯：回到3秒前的位置状态，恢复HP，清除debuff
+                ChronosPastShadow(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -11032,7 +11346,8 @@ class Player(pygame.sprite.Sprite):
                 "prism": "彩虹碎裂",
                 "necro": "生命汲取",
                 "void": "虚空撕裂",
-                "wormhole": "虫洞链接"
+                "wormhole": "虫洞链接",
+                "chronos": "现在之锁"
             }
             
             pid = self.plane_id
@@ -11114,6 +11429,10 @@ class Player(pygame.sprite.Sprite):
                 # 虫洞链接：创建传送门对
                 WormholeLink(self)
             
+            elif pid == "chronos":
+                # 【现在之锁】时间停滞：冻结敌人和子弹，创造时停领域
+                ChronosPresentLock(self)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -11150,7 +11469,8 @@ class Player(pygame.sprite.Sprite):
                 "prism": "光之棱镜",
                 "necro": "灵魂收割",
                 "void": "等离子漩涡",
-                "wormhole": "时空逆流"
+                "wormhole": "时空逆流",
+                "chronos": "未来之视"
             }
             
             pid = self.plane_id
@@ -11231,6 +11551,10 @@ class Player(pygame.sprite.Sprite):
             elif pid == "wormhole":
                 # 时空逆流：时空倒流
                 TimeReversal(self)
+            
+            elif pid == "chronos":
+                # 【未来之视】预知未来：显示敌人轨迹，自动瞄准，增加伤害
+                ChronosFutureVision(self)
             
             else:
                 # 通用：全屏伤害
@@ -11451,3 +11775,284 @@ class Player(pygame.sprite.Sprite):
         """接收增益时的钩子（可用于显示通知）"""
         color = RARITY_COLORS[buff_data["rarity"]]
         FloatingText(self.rect.centerx, self.rect.top - 30, f"✦ {buff_data['name']}", color)
+
+
+# ==================== Chronos时间系大招 ====================
+
+class ChronosPastShadow(pygame.sprite.Sprite):
+    """【过去之影】时间回溯 - Q键主大招
+    回到3秒前的位置和状态，恢复HP，清除debuff，获得3秒无敌"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180  # 特效持续3秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("blackhole")
+        
+        # 回溯效果
+        self.rewind_active = True
+        self.owner.chronos_rewinding = True
+        self.owner.chronos_rewind_timer = 180
+        
+        # 读取历史记录
+        if len(self.owner.chronos_position_history) > 0:
+            # 获取3秒前的状态（180帧前）
+            past_state = self.owner.chronos_position_history[0]
+            self.past_pos = past_state.get('pos', (self.owner.rect.centerx, self.owner.rect.centery))
+            self.past_hp = past_state.get('hp', self.owner.hp)
+            
+            # 保存当前位置用于轨迹显示
+            self.current_pos = (self.owner.rect.centerx, self.owner.rect.centery)
+            
+            # 执行回溯
+            self.owner.rect.center = self.past_pos
+            self.owner.hp = min(self.past_hp + 50, self.owner.max_hp)  # 额外恢复50HP
+            
+            # 清除所有敌方子弹
+            enemy_bullets.empty()
+            
+            # 无敌时间
+            self.owner.invincible_timer = 180  # 3秒无敌
+            
+            # 时间回响层数+2
+            self.owner.chronos_echo_stacks = min(
+                self.owner.chronos_echo_stacks + 2,
+                self.owner.max_chronos_echoes
+            )
+            
+            FloatingText(WIDTH // 2, HEIGHT // 2 - 100, "⏪ 时间回溯！", (100, 220, 255))
+        else:
+            # 没有历史记录，只提供基础效果
+            self.past_pos = (self.owner.rect.centerx, self.owner.rect.centery)
+            self.current_pos = self.past_pos
+            self.owner.hp = min(self.owner.hp + 50, self.owner.max_hp)
+            self.owner.invincible_timer = 120
+            FloatingText(WIDTH // 2, HEIGHT // 2 - 100, "⏪ 时光治愈！", (100, 220, 255))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.owner.chronos_rewinding = False
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        # 时钟倒转特效
+        center_x, center_y = WIDTH // 2, HEIGHT // 2
+        
+        # 大时钟外圈
+        clock_radius = 150 + abs(math.sin(self.life * 0.05)) * 30
+        pygame.draw.circle(self.image, (100, 220, 255), (center_x, center_y), int(clock_radius), 4)
+        pygame.draw.circle(self.image, (50, 180, 255), (center_x, center_y), int(clock_radius - 10), 2)
+        
+        # 逆时针旋转的时针
+        angle = -(self.life * 0.15)  # 逆时针
+        hand_len = clock_radius - 20
+        end_x = center_x + math.cos(angle) * hand_len
+        end_y = center_y + math.sin(angle) * hand_len
+        pygame.draw.line(self.image, (255, 200, 100), (center_x, center_y), (end_x, end_y), 8)
+        
+        # 时间粒子回流
+        particle_count = 30
+        for i in range(particle_count):
+            progress = (self.life * 0.02 + i * 0.1) % 1.0
+            particle_angle = i * (360 / particle_count) * 0.01745
+            particle_dist = 200 * (1 - progress)  # 向中心收缩
+            px = center_x + math.cos(particle_angle) * particle_dist
+            py = center_y + math.sin(particle_angle) * particle_dist
+            particle_size = int(8 * progress)
+            if particle_size > 0:
+                pygame.draw.circle(self.image, (100, 220, 255), (int(px), int(py)), particle_size)
+        
+        # 历史轨迹显示
+        if hasattr(self, 'past_pos') and hasattr(self, 'current_pos'):
+            pygame.draw.line(self.image, (255, 200, 100, 150), self.current_pos, self.past_pos, 3)
+
+
+class ChronosPresentLock(pygame.sprite.Sprite):
+    """【现在之锁】时间停滞 - G键第二大招
+    冻结敌人和子弹5秒，创造时停领域，玩家攻速+100%"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 300  # 持续5秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.frozen_enemies = []
+        self.frozen_bullets = []
+        sound_mgr.play("zap")
+        
+        # 冻结所有敌人和子弹
+        for m in mobs:
+            if not hasattr(m, 'time_frozen'):
+                m.time_frozen = True
+                m.frozen_timer = 300
+                self.frozen_enemies.append(m)
+        
+        for eb in enemy_bullets:
+            if not hasattr(eb, 'time_frozen'):
+                eb.time_frozen = True
+                eb.frozen_timer = 300
+                self.frozen_bullets.append(eb)
+        
+        # 玩家攻速加倍
+        self.owner.shoot_delay_backup = self.owner.shoot_delay
+        self.owner.shoot_delay = self.owner.shoot_delay // 2
+        
+        # 时间回响层数+1
+        self.owner.chronos_echo_stacks = min(
+            self.owner.chronos_echo_stacks + 1,
+            self.owner.max_chronos_echoes
+        )
+        
+        FloatingText(WIDTH // 2, HEIGHT // 2 - 100, "⏸ 时间停滞！", (255, 200, 100))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            # 解除冻结
+            for m in self.frozen_enemies:
+                if hasattr(m, 'time_frozen'):
+                    m.time_frozen = False
+            for eb in self.frozen_bullets:
+                if hasattr(eb, 'time_frozen'):
+                    eb.time_frozen = False
+            
+            # 恢复攻速
+            if hasattr(self.owner, 'shoot_delay_backup'):
+                self.owner.shoot_delay = self.owner.shoot_delay_backup
+            
+            FloatingText(WIDTH // 2, HEIGHT // 2 - 100, "▶ 时间恢复", (150, 200, 255))
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        # 时停领域特效
+        center_x, center_y = WIDTH // 2, HEIGHT // 2
+        
+        # 扩散的时停波纹
+        for ring in range(5):
+            ring_progress = (self.life * 0.03 + ring * 0.2) % 1.0
+            ring_radius = int(100 + ring_progress * 300)
+            ring_alpha = int(120 * (1 - ring_progress))
+            if ring_alpha > 0:
+                pygame.draw.circle(self.image, (255, 200, 100, ring_alpha), 
+                                 (center_x, center_y), ring_radius, 3)
+        
+        # 时钟刻度环
+        clock_radius = 200
+        for hour in range(12):
+            angle = (hour * 30 - 90) * 0.01745
+            tick_len = 15 if hour % 3 == 0 else 10
+            outer_x = center_x + math.cos(angle) * clock_radius
+            outer_y = center_y + math.sin(angle) * clock_radius
+            inner_x = center_x + math.cos(angle) * (clock_radius - tick_len)
+            inner_y = center_y + math.sin(angle) * (clock_radius - tick_len)
+            pygame.draw.line(self.image, (255, 200, 100), 
+                           (outer_x, outer_y), (inner_x, inner_y), 3)
+        
+        # 冻结粒子效果
+        if self.life % 3 == 0:
+            for m in self.frozen_enemies[:5]:  # 只显示前5个
+                if m in mobs:
+                    Particle(m.rect.center, (200, 240, 255), mode='star')
+
+
+class ChronosFutureVision(pygame.sprite.Sprite):
+    """【未来之视】预知未来 - C键第三大招
+    显示敌人3秒后轨迹，自动瞄准，全伤害+50%，持续8秒"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 480  # 持续8秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.predicted_paths = {}
+        sound_mgr.play("laser")
+        
+        # 伤害增幅
+        self.owner.future_vision_active = True
+        self.owner.damage_backup = self.owner.damage
+        self.owner.damage = int(self.owner.damage * 1.5)
+        
+        # 预测所有敌人的轨迹
+        for m in mobs:
+            if hasattr(m, 'rect'):
+                # 简单预测：基于当前速度外推
+                predicted_points = []
+                current_x, current_y = m.rect.centerx, m.rect.centery
+                
+                for frame in range(60):  # 预测1秒
+                    # 假设敌人直线移动
+                    future_x = current_x
+                    future_y = current_y + frame * 2  # 假设向下移动
+                    predicted_points.append((int(future_x), int(future_y)))
+                
+                self.predicted_paths[id(m)] = predicted_points
+        
+        # 时间回响层数+1
+        self.owner.chronos_echo_stacks = min(
+            self.owner.chronos_echo_stacks + 1,
+            self.owner.max_chronos_echoes
+        )
+        
+        FloatingText(WIDTH // 2, HEIGHT // 2 - 100, "⏩ 预知未来！", (255, 255, 100))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            # 取消效果
+            self.owner.future_vision_active = False
+            if hasattr(self.owner, 'damage_backup'):
+                self.owner.damage = self.owner.damage_backup
+            
+            FloatingText(WIDTH // 2, HEIGHT // 2 - 100, "⏺ 未来收束", (180, 180, 255))
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        # 绘制预测轨迹
+        for mob_id, path in list(self.predicted_paths.items()):
+            # 检查敌人是否还存在
+            mob_exists = any(id(m) == mob_id for m in mobs)
+            if not mob_exists:
+                continue
+            
+            # 绘制虚线轨迹
+            if len(path) > 1:
+                for i in range(0, len(path) - 1, 3):  # 虚线效果
+                    if i + 1 < len(path):
+                        pygame.draw.line(self.image, (255, 255, 100, 100), 
+                                       path[i], path[i + 1], 2)
+        
+        # 未来之眼特效
+        center_x, center_y = WIDTH // 2, HEIGHT // 2
+        
+        # 三角形眼睛
+        eye_size = 60 + abs(math.sin(self.life * 0.1)) * 20
+        eye_points = [
+            (center_x, center_y - eye_size),
+            (center_x - eye_size * 0.866, center_y + eye_size * 0.5),
+            (center_x + eye_size * 0.866, center_y + eye_size * 0.5)
+        ]
+        pygame.draw.polygon(self.image, (255, 255, 100), eye_points, 3)
+        
+        # 眼睛中心
+        pygame.draw.circle(self.image, (255, 255, 200), (center_x, center_y), 15)
+        pygame.draw.circle(self.image, (100, 100, 50), (center_x, center_y), 8)
+        
+        # 视线扫描线
+        scan_angle = self.life * 0.1
+        for i in range(3):
+            angle = scan_angle + i * (math.pi * 2 / 3)
+            end_x = center_x + math.cos(angle) * 250
+            end_y = center_y + math.sin(angle) * 250
+            pygame.draw.line(self.image, (255, 255, 100, 80), 
+                           (center_x, center_y), (end_x, end_y), 2)
