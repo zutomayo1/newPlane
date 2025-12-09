@@ -7741,6 +7741,12 @@ class Bullet(pygame.sprite.Sprite):
     def update(self):
         self.timer += 1
         
+        # 【Chronos】延迟出现效果
+        if hasattr(self, 'spawn_delay') and self.spawn_delay > 0:
+            self.spawn_delay -= 1
+            if self.spawn_delay > 0:
+                return  # 还未到出现时间，暂停更新
+        
         # 【改进】时间冻结时跳过移动
         if self.frozen:
             return
@@ -7754,6 +7760,17 @@ class Bullet(pygame.sprite.Sprite):
         
         # 【优化】速度因子 - 玩家子弹更快，敌人子弹正常
         speed_factor = 0.6 if not self.is_enemy else 0.4
+        
+        # 【Wormhole】螺旋运动
+        if hasattr(self, 'spiral_phase') and hasattr(self, 'spiral_amplitude'):
+            self.spiral_phase += 5  # 螺旋速度
+            spiral_offset_x = int(self.spiral_amplitude * math.cos(self.spiral_phase * 3.14159 / 180))
+            # 先按速度移动
+            self.pos += self.vel * speed_factor
+            # 再添加螺旋偏移
+            self.pos.x += spiral_offset_x * 0.3  # 水平螺旋
+            self.rect.center = self.pos
+            return  # 螺旋子弹使用特殊移动，直接返回
         
         # 特殊移动逻辑
         if not self.is_enemy and self.b_type == "flame":
@@ -10161,7 +10178,7 @@ class Player(pygame.sprite.Sprite):
         
         # ========== 17. 混沌虫洞 - 维度传送射击 ==========
         elif pid == "wormhole":
-            # 虫洞特性：子弹从敌人背后的虫洞出现
+            # 虫洞特性：螺旋式传送弹幕，击中敌人会从其他敌人背后传送出子弹
             rift_energy = getattr(self, 'rift_energy', 0)
             max_rift = getattr(self, 'max_rift_energy', 100)
             rift_ratio = rift_energy / max(1, max_rift)
@@ -10173,29 +10190,91 @@ class Player(pygame.sprite.Sprite):
             # 当裂缝能量较高时，发射增强弹
             is_enhanced = rift_ratio > 0.7
             
+            # 螺旋式发射（模拟维度扭曲）
             for i in range(cnt):
-                offset_x = (i - (cnt-1)/2) * 20
-                bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                # 计算螺旋偏移
+                spiral_angle = (i * 60 + pygame.time.get_ticks() / 30) % 360
+                spiral_radius = 30
+                offset_x = int(spiral_radius * math.cos(spiral_angle * 3.14159 / 180))
+                offset_y = int(spiral_radius * math.sin(spiral_angle * 3.14159 / 180) * 0.3)  # 椭圆螺旋
+                
+                bullet = Bullet(self.rect.centerx + offset_x, self.rect.top + offset_y,
                        color=(180, 0, 255) if not is_enhanced else (255, 0, 255), 
                        b_type="wormhole", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
                 bullet.is_wormhole_bullet = True
                 bullet.wormhole_enhanced = is_enhanced
                 # 标记来源玩家，用于虫洞传送
                 bullet.source_player = self
+                # 添加螺旋运动属性
+                bullet.spiral_phase = spiral_angle
+                bullet.spiral_amplitude = 20 if not is_enhanced else 30  # 螺旋幅度
                 
-                # 增强弹：更快，更强
+                # 增强弹：更快，更强，螺旋更大
                 if is_enhanced:
-                    bullet.speed = -15
+                    bullet.speed = -16
                     bullet.damage_mult = 1.5
             
-            # 高能量时额外发射裂缝波
+            # 高能量时发射六芒星裂缝波（环形扩散）
             if rift_ratio > 0.9:
-                for angle in [-30, 30]:
+                # 六个方向形成虫洞环
+                for i in range(6):
+                    angle = i * 60 - 90  # -90度让正上方也有一发
                     bullet = Bullet(self.rect.centerx, self.rect.top, angle=angle,
-                           color=(0, 255, 180), b_type="wormhole", piercing=self.piercing + 1, homing=homing_value, bullet_theme=self.bullet_theme)
+                           color=(0, 255, 180), b_type="wormhole", piercing=self.piercing + 2, homing=homing_value, bullet_theme=self.bullet_theme)
                     bullet.is_wormhole_bullet = True
                     bullet.is_rift_wave = True
                     bullet.source_player = self
+                    bullet.speed = -13  # 环形波速度适中
+        
+        # ========== 18. 永恒时计 - 时间回溯三连射 ==========
+        elif pid == "chronos":
+            # 时间特性：发射后会产生时间回声，形成三重时间线攻击（过去-现在-未来）
+            time_energy = getattr(self, 'chronos_time_energy', 0)
+            max_time = getattr(self, 'max_time_energy', 100)
+            time_ratio = time_energy / max(1, max_time)
+            echo_stacks = getattr(self, 'chronos_echo_stacks', 0)
+            
+            # 回声强化：每层回声增加额外子弹
+            extra_bullets = min(2, echo_stacks // 3)  # 每3层回声+1发
+            total_cnt = cnt + extra_bullets
+            
+            for i in range(total_cnt):
+                offset_x = (i - (total_cnt-1)/2) * 18
+                
+                # 主时间线子弹（蓝色）
+                main_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                       color=(100, 220, 255), b_type="chrono", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                main_bullet.is_chronos_bullet = True
+                main_bullet.time_phase = 0  # 主时间线
+                
+                # 时间能量高时产生回声子弹（过去和未来）
+                if time_ratio > 0.4:
+                    # 过去回声（淡蓝色，稍微延迟发射）
+                    past_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                           color=(150, 200, 255), b_type="chrono", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                    past_bullet.is_chronos_bullet = True
+                    past_bullet.time_phase = -1  # 过去
+                    past_bullet.spawn_delay = 5  # 5帧后出现
+                    past_bullet.rect.y += 30  # 稍微靠后
+                
+                if time_ratio > 0.7:
+                    # 未来回声（金色，提前发射）
+                    future_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top - 30,
+                           color=(255, 200, 100), b_type="chrono", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                    future_bullet.is_chronos_bullet = True
+                    future_bullet.time_phase = 1  # 未来
+                    future_bullet.speed = -18  # 更快
+            
+            # 高时间能量时额外发射时钟指针弹幕
+            if time_ratio > 0.9:
+                # 12个方向的时钟刻度弹（只发射4个主方向）
+                for hour in range(0, 12, 3):  # 4个主方向（12点、3点、6点、9点）
+                    angle = hour * 30 - 90  # 转换为角度
+                    bullet = Bullet(self.rect.centerx, self.rect.top, angle=angle,
+                           color=(200, 255, 255), b_type="chrono", piercing=self.piercing + 1, homing=homing_value, bullet_theme=self.bullet_theme)
+                    bullet.is_chronos_bullet = True
+                    bullet.is_clock_hand = True
+                    bullet.speed = -14
         
         # 默认情况
         else:
