@@ -16,11 +16,11 @@ OMEGA_STYLES = [
     "omega_infernal",    # 地狱烈焰 - 红黑炼狱
     "omega_quantum",     # 量子形态 - 青蓝科技
     "omega_primal",      # 原始神力 - 翠绿自然
-    "omega_ex",          # EX改装涂装
-    "omega_ex2",         # EX2改装涂装
-    "omega_ex3",         # EX3改装涂装
-    "omega_ex4",         # EX4改装涂装
-    "omega_ex5",         # EX5改装涂装
+    "omega_clockwork",   # 永恒钟表 - 齿轮时钟机械
+    "omega_dragon",      # 神龙之魂 - 东方龙鳞
+    "omega_galactic",    # 银河霸主 - 星系漩涡
+    "omega_runic",       # 符文铭刻 - 古代符文
+    "omega_tempest",     # 风暴君王 - 雷电风暴
 ]
 
 
@@ -50,8 +50,16 @@ def render_omega_skin(s, c, model_style, t, pid, static):
         _render_omega_quantum(s, t, pulse)
     elif model_style == "omega_primal":
         _render_omega_primal(s, t, pulse)
-    elif model_style.startswith("omega_ex"):
-        _render_omega_ex(s, t, pulse, model_style)
+    elif model_style == "omega_clockwork":
+        _render_omega_clockwork(s, t, pulse)
+    elif model_style == "omega_dragon":
+        _render_omega_dragon(s, t, pulse)
+    elif model_style == "omega_galactic":
+        _render_omega_galactic(s, t, pulse)
+    elif model_style == "omega_runic":
+        _render_omega_runic(s, t, pulse)
+    elif model_style == "omega_tempest":
+        _render_omega_tempest(s, t, pulse)
     else:
         _render_omega_base(s, t, pulse)
     
@@ -59,456 +67,784 @@ def render_omega_skin(s, c, model_style, t, pid, static):
 
 
 def _render_omega_base(s, t, pulse):
-    """Omega 基础渲染 - 融合七属性的机械神殿"""
-    # 七彩流光色系
+    """Omega 基础渲染 - 机械圣殿，七属性折射棱面"""
     colors = [
-        (255, 100, 100),   # 红-火
-        (255, 200, 100),   # 橙-雷
-        (255, 255, 100),   # 黄-光
-        (100, 255, 100),   # 绿-风
-        (100, 200, 255),   # 青-冰
-        (100, 100, 255),   # 蓝-水
-        (200, 100, 255),   # 紫-暗
+        (255, 112, 112),   # 红-火
+        (255, 186, 96),    # 橙-雷
+        (255, 231, 120),   # 黄-光
+        (96, 214, 132),    # 绿-风
+        (96, 214, 214),    # 青-冰
+        (96, 132, 214),    # 蓝-水
+        (186, 112, 255),   # 紫-暗
     ]
-    
-    # 外围神圣光环（七芒星）
+
+    # 外环：折线七芒棱框
+    frame_points = []
     for i in range(7):
-        angle = (i * 360 / 7 + t * 30) * 0.01745
-        color = colors[i]
-        outer_r = 52 + int(3 * math.sin(t * 4 + i))
-        ox = 60 + math.cos(angle) * outer_r
-        oy = 60 + math.sin(angle) * outer_r
-        
-        # 光芒线
-        inner_r = 25
-        ix = 60 + math.cos(angle) * inner_r
-        iy = 60 + math.sin(angle) * inner_r
-        pygame.draw.line(s, color, (int(ix), int(iy)), (int(ox), int(oy)), 3)
-        
-        # 顶点光球
-        glow_size = int(6 + 2 * math.sin(t * 5 + i))
-        pygame.draw.circle(s, color, (int(ox), int(oy)), glow_size)
-        pygame.draw.circle(s, (255, 255, 255), (int(ox), int(oy)), glow_size - 2)
-    
-    # 七芒星连线
+        ang = (i * 360 / 7 + t * 25) * 0.01745
+        r = 50 + 4 * math.sin(t * 3 + i)
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r * 0.92
+        frame_points.append((int(x), int(y)))
+    pygame.draw.polygon(s, (80, 80, 90), frame_points, 3)
+
+    # 七条能量折线（非圆形）
     for i in range(7):
-        angle1 = (i * 360 / 7 + t * 30) * 0.01745
-        angle2 = ((i + 2) * 360 / 7 + t * 30) * 0.01745  # 跳两个点连线
-        r = 52
-        x1 = 60 + math.cos(angle1) * r
-        y1 = 60 + math.sin(angle1) * r
-        x2 = 60 + math.cos(angle2) * r
-        y2 = 60 + math.sin(angle2) * r
-        
-        line_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-        pygame.draw.line(line_surf, (*colors[i], 150), (int(x1), int(y1)), (int(x2), int(y2)), 2)
-        s.blit(line_surf, (0, 0))
-    
-    # 中心核心 - 多层结构
-    # 外壳
-    pygame.draw.circle(s, (200, 200, 220), (60, 60), 28)
-    pygame.draw.circle(s, (255, 255, 255), (60, 60), 26)
-    pygame.draw.circle(s, (220, 220, 240), (60, 60), 28, 2)
-    
-    # 内部旋转核心
-    core_color_idx = int(t * 2) % 7
-    core_color = colors[core_color_idx]
-    pygame.draw.circle(s, core_color, (60, 60), 18)
-    pygame.draw.circle(s, (255, 255, 255), (60, 60), 12)
-    
-    # 中心Ω符号
-    omega_surf = pygame.Surface((30, 30), pygame.SRCALPHA)
-    # 简化的Ω形状
-    pygame.draw.arc(omega_surf, (100, 100, 150), (3, 3, 24, 20), 0, math.pi, 3)
-    pygame.draw.line(omega_surf, (100, 100, 150), (3, 13), (3, 20), 3)
-    pygame.draw.line(omega_surf, (100, 100, 150), (27, 13), (27, 20), 3)
-    s.blit(omega_surf, (45, 50))
-    
-    # 环绕能量粒子
-    for i in range(14):
-        p_angle = (i * 360 / 14 - t * 60) * 0.01745
-        p_r = 38 + int(3 * math.sin(t * 6 + i))
-        px = 60 + math.cos(p_angle) * p_r
-        py = 60 + math.sin(p_angle) * p_r
-        p_color = colors[i % 7]
-        pygame.draw.circle(s, p_color, (int(px), int(py)), 3)
+        ang = (i * 360 / 7 + t * 40) * 0.01745
+        mid_ang = ang + 0.25
+        inner = 18
+        mid = 34 + 6 * math.sin(t * 5 + i)
+        outer = 52
+        ix = 60 + math.cos(ang) * inner
+        iy = 60 + math.sin(ang) * inner
+        mx = 60 + math.cos(mid_ang) * mid
+        my = 60 + math.sin(mid_ang) * mid
+        ox = 60 + math.cos(ang) * outer
+        oy = 60 + math.sin(ang) * outer
+        pygame.draw.lines(s, colors[i], False, [(int(ix), int(iy)), (int(mx), int(my)), (int(ox), int(oy))], 3)
+
+    # 中层：旋转菱格网
+    grid = pygame.Surface((120, 120), pygame.SRCALPHA)
+    rot = t * 18
+    for offset in range(-3, 4):
+        y0 = 60 + offset * 10
+        pygame.draw.aaline(grid, (200, 200, 220, 120), (0, y0), (120, y0))
+        pygame.draw.aaline(grid, (200, 200, 220, 120), (y0, 0), (120 - y0, 120))
+    grid = pygame.transform.rotozoom(grid, rot, 1)
+    s.blit(grid, (-20, -20))
+
+    # 内层：旋转六边核
+    hex_points = []
+    for i in range(6):
+        ang = (i * 60 + t * 35) * 0.01745
+        r = 20 + 2 * math.sin(t * 4 + i)
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        hex_points.append((int(x), int(y)))
+    pygame.draw.polygon(s, colors[int(t) % 7], hex_points)
+    pygame.draw.polygon(s, (255, 255, 255), hex_points, 2)
+
+    # Ω字形（线段组合，避免圆形）
+    omega = pygame.Surface((40, 40), pygame.SRCALPHA)
+    pygame.draw.arc(omega, (150, 150, 200), (4, 6, 32, 22), 0, math.pi, 3)
+    pygame.draw.line(omega, (150, 150, 200), (4, 18), (4, 30), 3)
+    pygame.draw.line(omega, (150, 150, 200), (36, 18), (36, 30), 3)
+    pygame.draw.line(omega, (150, 150, 200), (10, 28), (30, 28), 3)
+    s.blit(omega, (40, 40))
+
+    # 碎片化粒子（多边形片）
+    shard_count = 12
+    for i in range(shard_count):
+        ang = (i * (360 / shard_count) - t * 55) * 0.01745
+        r = 38 + 5 * math.sin(t * 6 + i)
+        cx = 60 + math.cos(ang) * r
+        cy = 60 + math.sin(ang) * r
+        shard = [
+            (cx + 4, cy - 2),
+            (cx + 8, cy + 2),
+            (cx - 2, cy + 6),
+            (cx - 6, cy + 1),
+        ]
+        pygame.draw.polygon(s, (*colors[i % 7], 200), shard)
 
 
 def _render_omega_divine(s, t, pulse):
-    """神圣审判 - 金白圣光主题"""
-    gold = (255, 215, 0)
+    """神圣审判 - 金白圣光主题，十字光剑与羽刃"""
+    gold = (255, 215, 64)
     white = (255, 255, 255)
-    light_gold = (255, 240, 200)
-    
-    # 神圣光环
-    for ring in range(3):
-        ring_r = 48 - ring * 8
-        ring_alpha = 200 - ring * 50
-        ring_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-        pygame.draw.circle(ring_surf, (*gold, ring_alpha), (60, 60), ring_r, 2)
-        s.blit(ring_surf, (0, 0))
-    
-    # 十字圣光
-    cross_len = int(45 + 5 * pulse)
-    pygame.draw.line(s, light_gold, (60, 60 - cross_len), (60, 60 + cross_len), 4)
-    pygame.draw.line(s, light_gold, (60 - cross_len, 60), (60 + cross_len, 60), 4)
-    
-    # 对角光芒
-    for i in range(4):
-        angle = (45 + i * 90 + t * 20) * 0.01745
-        ray_len = 35 + int(5 * math.sin(t * 4 + i))
-        rx = 60 + math.cos(angle) * ray_len
-        ry = 60 + math.sin(angle) * ray_len
-        pygame.draw.line(s, gold, (60, 60), (int(rx), int(ry)), 2)
-    
-    # 中心神圣核心
-    pygame.draw.circle(s, white, (60, 60), 20)
-    pygame.draw.circle(s, gold, (60, 60), 16)
-    pygame.draw.circle(s, light_gold, (60, 60), 10)
-    
-    # 天使羽翼效果
-    for side in [-1, 1]:
-        for feather in range(5):
-            f_angle = (side * (30 + feather * 15) + math.sin(t * 3 + feather) * 5) * 0.01745
-            f_len = 30 + feather * 5
-            fx = 60 + math.cos(f_angle) * f_len
-            fy = 60 + math.sin(f_angle) * f_len
-            f_alpha = 200 - feather * 30
-            f_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-            pygame.draw.line(f_surf, (*gold, f_alpha), (60, 60), (int(fx), int(fy)), 3)
-            s.blit(f_surf, (0, 0))
+    ivory = (255, 235, 210)
+
+    # 双层斜十字光剑
+    cross_len = int(48 + 6 * pulse)
+    cross_thickness = 4
+    for rot in [0, 45]:
+        rot_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+        pygame.draw.polygon(rot_surf, gold, [
+            (60 - cross_thickness, 60 - cross_len),
+            (60 + cross_thickness, 60 - cross_len),
+            (60 + cross_thickness, 60 + cross_len),
+            (60 - cross_thickness, 60 + cross_len),
+        ])
+        pygame.draw.polygon(rot_surf, gold, [
+            (60 - cross_len, 60 - cross_thickness),
+            (60 + cross_len, 60 - cross_thickness),
+            (60 + cross_len, 60 + cross_thickness),
+            (60 - cross_len, 60 + cross_thickness),
+        ])
+        rot_surf = pygame.transform.rotozoom(rot_surf, rot + t * 6, 1)
+        s.blit(rot_surf, (-20, -20))
+
+    # 六翼羽刃（长三角）
+    for i in range(6):
+        ang = (i * 60 + 30 + math.sin(t * 2 + i) * 8) * 0.01745
+        base = 18
+        tip = 46 + 6 * pulse
+        px = 60 + math.cos(ang) * tip
+        py = 60 + math.sin(ang) * tip
+        left = (60 + math.cos(ang + 0.45) * base, 60 + math.sin(ang + 0.45) * base)
+        right = (60 + math.cos(ang - 0.45) * base, 60 + math.sin(ang - 0.45) * base)
+        pygame.draw.polygon(s, ivory, [(px, py), left, right])
+        pygame.draw.polygon(s, gold, [(px, py), left, right], 2)
+
+    # 中心圣核（分层方钻）
+    core = [
+        (60, 40), (78, 60), (60, 80), (42, 60)
+    ]
+    pygame.draw.polygon(s, white, core)
+    inner = [(60, 46), (74, 60), (60, 74), (46, 60)]
+    pygame.draw.polygon(s, gold, inner)
+    pygame.draw.line(s, gold, inner[0], inner[2], 2)
+    pygame.draw.line(s, gold, inner[1], inner[3], 2)
 
 
 def _render_omega_void(s, t, pulse):
-    """虚空终末 - 深紫黑暗主题"""
-    void_purple = (80, 0, 120)
-    dark_purple = (40, 0, 60)
-    bright_purple = (180, 80, 255)
-    
-    # 虚空漩涡背景
-    for ring in range(6):
-        ring_r = 50 - ring * 7
-        rotation = t * (30 + ring * 10) * (1 if ring % 2 == 0 else -1)
-        ring_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-        
-        for seg in range(8):
-            seg_angle = (seg * 45 + rotation) * 0.01745
-            seg_len = ring_r
-            sx = 60 + math.cos(seg_angle) * seg_len
-            sy = 60 + math.sin(seg_angle) * seg_len
-            seg_alpha = 150 - ring * 20
-            pygame.draw.line(ring_surf, (*void_purple, seg_alpha), (60, 60), (int(sx), int(sy)), 2)
-        
-        s.blit(ring_surf, (0, 0))
-    
-    # 虚空裂隙
-    for crack in range(6):
-        crack_angle = (crack * 60 + t * 15) * 0.01745
-        crack_len = 45 + int(5 * math.sin(t * 5 + crack))
-        cx = 60 + math.cos(crack_angle) * crack_len
-        cy = 60 + math.sin(crack_angle) * crack_len
-        
-        # 裂隙光芒
-        pygame.draw.line(s, bright_purple, (60, 60), (int(cx), int(cy)), 2)
-        pygame.draw.circle(s, bright_purple, (int(cx), int(cy)), 4)
-    
-    # 中心虚空核心
-    pygame.draw.circle(s, dark_purple, (60, 60), 22)
-    pygame.draw.circle(s, void_purple, (60, 60), 18)
-    
-    # 脉动的虚空之眼
-    eye_size = int(10 + 4 * pulse)
-    pygame.draw.circle(s, (0, 0, 0), (60, 60), eye_size)
-    pygame.draw.circle(s, bright_purple, (60, 60), eye_size, 2)
-    
-    # 中心瞳孔
-    pygame.draw.circle(s, bright_purple, (60, 60), 4)
+    """虚空终末 - 深紫黑暗主题，裂隙棱带与折线眼"""
+    void_purple = (70, 10, 120)
+    abyss = (20, 5, 40)
+    glow = (190, 120, 255)
+
+    # 扭曲菱环
+    for ring in range(5):
+        r = 50 - ring * 9
+        rot = t * (28 + ring * 8) * (1 if ring % 2 == 0 else -1)
+        band = []
+        for seg in range(10):
+            ang = (seg * 36 + rot) * 0.01745
+            off = 6 * math.sin(t * 4 + seg + ring)
+            x = 60 + math.cos(ang) * (r + off)
+            y = 60 + math.sin(ang) * (r - off * 0.4)
+            band.append((int(x), int(y)))
+        pygame.draw.polygon(s, (*void_purple, 140 - ring * 15), band, 2)
+
+    # 裂隙棱带（锯齿线）
+    for i in range(8):
+        ang = (i * 45 + t * 22) * 0.01745
+        len1 = 28 + 10 * math.sin(t * 5 + i)
+        len2 = 52
+        base = (60, 60)
+        mid = (60 + math.cos(ang) * len1, 60 + math.sin(ang) * len1)
+        tip = (60 + math.cos(ang + 0.15) * len2, 60 + math.sin(ang + 0.15) * len2)
+        pygame.draw.polygon(s, glow, [base, mid, tip])
+
+    # 中心多边眼
+    hex_eye = []
+    for i in range(6):
+        ang = (i * 60 + t * 30) * 0.01745
+        r = 16 + 2 * math.sin(t * 3 + i)
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        hex_eye.append((int(x), int(y)))
+    pygame.draw.polygon(s, abyss, hex_eye)
+    pygame.draw.polygon(s, glow, hex_eye, 2)
+
+    # 瞳孔裂隙（折线）
+    slit = [
+        (60 - 10, 60 - 2),
+        (60 - 3, 60 - 6),
+        (60 + 4, 60 + 6),
+        (60 + 11, 60 + 2),
+    ]
+    pygame.draw.polygon(s, glow, slit)
 
 
 def _render_omega_aurora(s, t, pulse):
-    """极光流转 - 七彩极光主题"""
-    # 极光色带
+    """极光流转 - 七彩极光主题，棱镜碎片与波纹多边形"""
     aurora_colors = [
-        (255, 100, 150),
-        (255, 200, 100),
-        (200, 255, 100),
-        (100, 255, 200),
-        (100, 200, 255),
-        (150, 100, 255),
-        (255, 100, 200),
+        (255, 90, 140),
+        (255, 180, 80),
+        (180, 255, 90),
+        (80, 255, 180),
+        (80, 180, 255),
+        (140, 90, 255),
+        (255, 90, 200),
     ]
-    
-    # 流动的极光带
+
+    # 极光波纹带（多边形条带）
     for band in range(7):
-        band_offset = (t * 50 + band * 30) % 360
-        band_color = aurora_colors[band]
-        
         wave_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-        points = []
-        for x in range(0, 121, 10):
-            y = 60 + math.sin((x + band_offset) * 0.05 + band) * (20 + band * 3)
-            points.append((x, int(y)))
-        
-        if len(points) > 1:
-            pygame.draw.lines(wave_surf, (*band_color, 100), False, points, 3)
+        pts_top = []
+        pts_bot = []
+        for x in range(0, 121, 8):
+            phase = (x * 0.06 + t * 2 + band * 0.8)
+            y_mid = 60 + math.sin(phase) * (18 + band * 2.5)
+            pts_top.append((x, int(y_mid - 4)))
+            pts_bot.append((x, int(y_mid + 4)))
+        ribbon = pts_top + pts_bot[::-1]
+        pygame.draw.polygon(wave_surf, (*aurora_colors[band], 70), ribbon)
         s.blit(wave_surf, (0, 0))
-    
-    # 中心棱镜核心
-    prism_points = []
-    for i in range(6):
-        angle = (i * 60 + t * 20) * 0.01745
-        r = 25
-        px = 60 + math.cos(angle) * r
-        py = 60 + math.sin(angle) * r
-        prism_points.append((int(px), int(py)))
-    
-    # 棱镜填充（半透明彩虹）
-    prism_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-    pygame.draw.polygon(prism_surf, (255, 255, 255, 150), prism_points)
-    s.blit(prism_surf, (0, 0))
-    
-    # 棱镜边框
-    for i in range(6):
-        color = aurora_colors[i]
-        pygame.draw.line(s, color, prism_points[i], prism_points[(i+1)%6], 2)
-    
-    # 中心光核
-    core_color_idx = int(t * 3) % 7
-    pygame.draw.circle(s, aurora_colors[core_color_idx], (60, 60), 12)
-    pygame.draw.circle(s, (255, 255, 255), (60, 60), 8)
+
+    # 旋转棱镜碎片环
+    for i in range(12):
+        ang = (i * 30 + t * 35) * 0.01745
+        r = 42 + 6 * math.sin(t * 4 + i)
+        cx = 60 + math.cos(ang) * r
+        cy = 60 + math.sin(ang) * r
+        shard = [
+            (cx, cy - 7),
+            (cx + 5, cy + 2),
+            (cx - 5, cy + 5),
+        ]
+        pygame.draw.polygon(s, aurora_colors[i % 7], shard)
+        pygame.draw.polygon(s, (255, 255, 255), shard, 1)
+
+    # 中心八边棱镜
+    prism = []
+    for i in range(8):
+        ang = (i * 45 + t * 18) * 0.01745
+        r = 22 + 3 * math.sin(t * 5 + i)
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        prism.append((int(x), int(y)))
+    pygame.draw.polygon(s, (255, 255, 255, 180), prism)
+    for i in range(8):
+        pygame.draw.line(s, aurora_colors[i % 7], prism[i], prism[(i + 1) % 8], 2)
+
+    # 核心菱形
+    diamond = [(60, 50), (70, 60), (60, 70), (50, 60)]
+    pygame.draw.polygon(s, aurora_colors[int(t * 3) % 7], diamond)
+    pygame.draw.polygon(s, (255, 255, 255), diamond, 2)
 
 
 def _render_omega_celestial(s, t, pulse):
-    """天界机神 - 蓝金神圣主题"""
-    celestial_blue = (80, 150, 255)
-    celestial_gold = (255, 215, 100)
+    """天界机神 - 蓝金神圣主题，齿轮光轮与刃翼"""
+    blue = (70, 140, 255)
+    gold = (255, 210, 80)
     white = (255, 255, 255)
-    
-    # 天界光轮
-    for ring in range(4):
-        ring_r = 50 - ring * 10
-        ring_rot = t * (20 + ring * 5) * (1 if ring % 2 == 0 else -1)
-        
-        for spoke in range(12):
-            spoke_angle = (spoke * 30 + ring_rot) * 0.01745
-            inner_r = ring_r - 5
-            outer_r = ring_r
-            
-            ix = 60 + math.cos(spoke_angle) * inner_r
-            iy = 60 + math.sin(spoke_angle) * inner_r
-            ox = 60 + math.cos(spoke_angle) * outer_r
-            oy = 60 + math.sin(spoke_angle) * outer_r
-            
-            color = celestial_gold if spoke % 3 == 0 else celestial_blue
-            pygame.draw.line(s, color, (int(ix), int(iy)), (int(ox), int(oy)), 2)
-    
-    # 六翼
-    for wing in range(6):
-        wing_angle = (wing * 60 + 30) * 0.01745
-        wing_len = 45 + int(5 * math.sin(t * 3 + wing))
-        wx = 60 + math.cos(wing_angle) * wing_len
-        wy = 60 + math.sin(wing_angle) * wing_len
-        
-        # 翼尖
-        pygame.draw.line(s, celestial_gold, (60, 60), (int(wx), int(wy)), 3)
-        pygame.draw.circle(s, celestial_blue, (int(wx), int(wy)), 5)
-        pygame.draw.circle(s, white, (int(wx), int(wy)), 3)
-    
-    # 中心神核
-    pygame.draw.circle(s, celestial_blue, (60, 60), 20)
-    pygame.draw.circle(s, celestial_gold, (60, 60), 15)
-    pygame.draw.circle(s, white, (60, 60), 10)
+
+    # 三层齿轮光轮
+    for ring in range(3):
+        r = 48 - ring * 14
+        teeth = 12 - ring * 2
+        rot = t * (22 + ring * 8) * (1 if ring % 2 == 0 else -1)
+        gear = []
+        for i in range(teeth * 2):
+            ang = (i * 180 / teeth + rot) * 0.01745
+            rad = r if i % 2 == 0 else r - 6
+            x = 60 + math.cos(ang) * rad
+            y = 60 + math.sin(ang) * rad
+            gear.append((int(x), int(y)))
+        color = gold if ring == 1 else blue
+        pygame.draw.polygon(s, color, gear, 2)
+
+    # 八刃翼（梯形刀刃）
+    for i in range(8):
+        ang = (i * 45 + 22.5 + math.sin(t * 2.5 + i) * 6) * 0.01745
+        base_in = 20
+        base_out = 28
+        tip = 52 + 5 * pulse
+        b1 = (60 + math.cos(ang - 0.12) * base_in, 60 + math.sin(ang - 0.12) * base_in)
+        b2 = (60 + math.cos(ang + 0.12) * base_in, 60 + math.sin(ang + 0.12) * base_in)
+        m1 = (60 + math.cos(ang - 0.08) * base_out, 60 + math.sin(ang - 0.08) * base_out)
+        m2 = (60 + math.cos(ang + 0.08) * base_out, 60 + math.sin(ang + 0.08) * base_out)
+        tp = (60 + math.cos(ang) * tip, 60 + math.sin(ang) * tip)
+        blade = [b1, m1, tp, m2, b2]
+        color = gold if i % 2 == 0 else blue
+        pygame.draw.polygon(s, color, blade)
+        pygame.draw.polygon(s, white, blade, 1)
+
+    # 中心十二边神核
+    core = []
+    for i in range(12):
+        ang = (i * 30 + t * 25) * 0.01745
+        r = 14 + 2 * math.sin(t * 4 + i)
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        core.append((int(x), int(y)))
+    pygame.draw.polygon(s, white, core)
+    pygame.draw.polygon(s, gold, core, 2)
+    # 内六边
+    inner = []
+    for i in range(6):
+        ang = (i * 60 + t * 30) * 0.01745
+        x = 60 + math.cos(ang) * 8
+        y = 60 + math.sin(ang) * 8
+        inner.append((int(x), int(y)))
+    pygame.draw.polygon(s, blue, inner)
 
 
 def _render_omega_infernal(s, t, pulse):
-    """地狱烈焰 - 红黑炼狱主题"""
-    infernal_red = (255, 50, 0)
-    dark_red = (150, 0, 0)
-    black = (30, 0, 0)
-    ember = (255, 200, 50)
-    
-    # 炼狱火焰
-    for flame in range(12):
-        flame_angle = (flame * 30 + t * 40) * 0.01745
-        flame_len = 35 + int(15 * math.sin(t * 6 + flame))
-        
-        fx = 60 + math.cos(flame_angle) * flame_len
-        fy = 60 + math.sin(flame_angle) * flame_len
-        
-        # 火焰渐变
-        mid_x = 60 + math.cos(flame_angle) * (flame_len * 0.6)
-        mid_y = 60 + math.sin(flame_angle) * (flame_len * 0.6)
-        
-        pygame.draw.line(s, dark_red, (60, 60), (int(mid_x), int(mid_y)), 4)
-        pygame.draw.line(s, infernal_red, (int(mid_x), int(mid_y)), (int(fx), int(fy)), 3)
-        pygame.draw.circle(s, ember, (int(fx), int(fy)), 4)
-    
-    # 魔王之角
-    for horn in [-1, 1]:
-        horn_base_x = 60 + horn * 15
-        horn_tip_x = 60 + horn * 35
-        horn_tip_y = 30 + int(5 * math.sin(t * 2))
-        
-        pygame.draw.line(s, dark_red, (horn_base_x, 50), (horn_tip_x, horn_tip_y), 5)
-        pygame.draw.circle(s, infernal_red, (horn_tip_x, horn_tip_y), 4)
-    
-    # 中心熔岩核心
-    pygame.draw.circle(s, black, (60, 60), 22)
-    pygame.draw.circle(s, dark_red, (60, 60), 18)
-    
-    # 脉动的熔岩
-    lava_size = int(12 + 4 * pulse)
-    pygame.draw.circle(s, infernal_red, (60, 60), lava_size)
-    pygame.draw.circle(s, ember, (60, 60), lava_size - 4)
+    """地狱烈焰 - 红黑炼狱主题，锯齿火焰与魔角"""
+    crimson = (255, 40, 20)
+    blood = (140, 10, 0)
+    black = (25, 5, 5)
+    ember = (255, 190, 60)
+
+    # 外层锯齿火环（不规则多边形）
+    fire_ring = []
+    for i in range(24):
+        ang = (i * 15 + t * 45) * 0.01745
+        r = 48 + (12 if i % 2 == 0 else 0) + 5 * math.sin(t * 6 + i)
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        fire_ring.append((int(x), int(y)))
+    pygame.draw.polygon(s, (*crimson, 180), fire_ring)
+    pygame.draw.polygon(s, ember, fire_ring, 2)
+
+    # 内层地狱熔岩纹
+    lava_band = []
+    for i in range(16):
+        ang = (i * 22.5 - t * 30) * 0.01745
+        r = 28 + 8 * math.sin(t * 5 + i * 0.7)
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        lava_band.append((int(x), int(y)))
+    pygame.draw.polygon(s, blood, lava_band)
+    pygame.draw.polygon(s, crimson, lava_band, 2)
+
+    # 双魔角（曲线三角）
+    for side in [-1, 1]:
+        base = (60 + side * 12, 58)
+        mid = (60 + side * 28, 42 + 4 * math.sin(t * 3))
+        tip = (60 + side * 38, 22 + 6 * math.sin(t * 2.5))
+        horn = [base, mid, tip, (60 + side * 22, 50)]
+        pygame.draw.polygon(s, blood, horn)
+        pygame.draw.polygon(s, ember, horn, 2)
+
+    # 中心熔岩六边核
+    core = []
+    for i in range(6):
+        ang = (i * 60 + t * 20) * 0.01745
+        r = 14 + 3 * pulse
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        core.append((int(x), int(y)))
+    pygame.draw.polygon(s, black, core)
+    pygame.draw.polygon(s, crimson, core, 2)
+    # 内菱形
+    inner = [(60, 54), (66, 60), (60, 66), (54, 60)]
+    pygame.draw.polygon(s, ember, inner)
 
 
 def _render_omega_quantum(s, t, pulse):
-    """量子形态 - 青蓝科技主题"""
-    quantum_cyan = (0, 255, 255)
-    quantum_blue = (0, 150, 255)
+    """量子形态 - 青蓝科技主题，六边网格与电子轨迹"""
+    cyan = (0, 240, 255)
+    blue = (20, 120, 255)
     white = (255, 255, 255)
-    
-    # 量子网格
-    grid_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-    for i in range(6):
-        offset = (t * 20 + i * 20) % 120
-        pygame.draw.line(grid_surf, (*quantum_cyan, 50), (0, int(offset)), (120, int(offset)), 1)
-        pygame.draw.line(grid_surf, (*quantum_cyan, 50), (int(offset), 0), (int(offset), 120), 1)
-    s.blit(grid_surf, (0, 0))
-    
-    # 量子轨道
+
+    # 六边蜂窝网格
+    grid = pygame.Surface((120, 120), pygame.SRCALPHA)
+    hex_r = 12
+    for row in range(-2, 5):
+        for col in range(-2, 6):
+            cx = col * hex_r * 1.73 + (row % 2) * hex_r * 0.866 + t * 8 % (hex_r * 1.73)
+            cy = row * hex_r * 1.5 + 10
+            if 0 < cx < 120 and 0 < cy < 120:
+                hex_pts = []
+                for i in range(6):
+                    ang = (i * 60 + 30) * 0.01745
+                    hx = cx + math.cos(ang) * hex_r * 0.8
+                    hy = cy + math.sin(ang) * hex_r * 0.8
+                    hex_pts.append((int(hx), int(hy)))
+                pygame.draw.polygon(grid, (*cyan, 40), hex_pts, 1)
+    s.blit(grid, (0, 0))
+
+    # 三层椭圆轨道（多边形近似）
     for orbit in range(3):
-        orbit_r = 25 + orbit * 12
-        orbit_rot = t * (40 - orbit * 10)
-        
-        # 轨道线
-        pygame.draw.circle(s, quantum_blue, (60, 60), orbit_r, 1)
-        
-        # 轨道电子
-        for electron in range(2):
-            e_angle = (orbit_rot + electron * 180) * 0.01745
-            ex = 60 + math.cos(e_angle) * orbit_r
-            ey = 60 + math.sin(e_angle) * orbit_r
-            pygame.draw.circle(s, quantum_cyan, (int(ex), int(ey)), 4)
-            pygame.draw.circle(s, white, (int(ex), int(ey)), 2)
-    
-    # 中心量子核
-    pygame.draw.circle(s, quantum_blue, (60, 60), 15)
-    pygame.draw.circle(s, quantum_cyan, (60, 60), 10)
-    
-    # 不确定性波动
-    wave_size = int(8 + 4 * math.sin(t * 8))
-    pygame.draw.circle(s, white, (60, 60), wave_size)
+        r = 22 + orbit * 14
+        rot = t * (35 - orbit * 8)
+        pts = []
+        for i in range(20):
+            ang = (i * 18 + rot) * 0.01745
+            x = 60 + math.cos(ang) * r
+            y = 60 + math.sin(ang) * (r * 0.65)
+            pts.append((int(x), int(y)))
+        pygame.draw.polygon(s, blue, pts, 1)
+        # 电子菱形
+        for e in range(2):
+            e_ang = (rot + e * 180) * 0.01745
+            ex = 60 + math.cos(e_ang) * r
+            ey = 60 + math.sin(e_ang) * (r * 0.65)
+            electron = [(ex, ey - 5), (ex + 4, ey), (ex, ey + 5), (ex - 4, ey)]
+            pygame.draw.polygon(s, cyan, electron)
+            pygame.draw.polygon(s, white, electron, 1)
+
+    # 中心八边量子核
+    core = []
+    for i in range(8):
+        ang = (i * 45 + t * 40) * 0.01745
+        r = 12 + 3 * math.sin(t * 6 + i)
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        core.append((int(x), int(y)))
+    pygame.draw.polygon(s, blue, core)
+    pygame.draw.polygon(s, cyan, core, 2)
+    # 内方块
+    inner = [(60, 55), (65, 60), (60, 65), (55, 60)]
+    pygame.draw.polygon(s, white, inner)
 
 
 def _render_omega_primal(s, t, pulse):
-    """原始神力 - 翠绿自然主题"""
-    primal_green = (50, 200, 80)
-    forest_green = (30, 150, 50)
-    gold = (255, 215, 0)
-    brown = (139, 90, 43)
-    
-    # 生命之树
-    # 树干
-    pygame.draw.rect(s, brown, (55, 60, 10, 35))
-    
-    # 树冠（多层叶子）
-    for layer in range(4):
-        layer_y = 55 - layer * 12
-        layer_width = 40 - layer * 8
-        leaf_color = primal_green if layer % 2 == 0 else forest_green
-        
-        pygame.draw.polygon(s, leaf_color, [
-            (60, layer_y - 15),
-            (60 - layer_width // 2, layer_y + 5),
-            (60 + layer_width // 2, layer_y + 5)
-        ])
-    
-    # 根系
-    for root in range(5):
-        root_angle = (root * 36 + 162) * 0.01745
-        root_len = 20 + int(5 * math.sin(t * 2 + root))
-        rx = 60 + math.cos(root_angle) * root_len
-        ry = 95 + math.sin(root_angle) * (root_len * 0.3)
-        pygame.draw.line(s, brown, (60, 95), (int(rx), int(ry)), 2)
-    
-    # 生命能量粒子
-    for particle in range(12):
-        p_angle = (particle * 30 + t * 25) * 0.01745
-        p_r = 45 + int(5 * math.sin(t * 4 + particle))
-        px = 60 + math.cos(p_angle) * p_r
-        py = 60 + math.sin(p_angle) * p_r
-        
-        p_color = primal_green if particle % 2 == 0 else gold
-        p_size = int(3 + 2 * math.sin(t * 5 + particle))
-        pygame.draw.circle(s, p_color, (int(px), int(py)), p_size)
-    
-    # 中心生命核心（花蕾）
-    pygame.draw.circle(s, gold, (60, 30), 8)
-    for petal in range(5):
-        petal_angle = (petal * 72 + t * 10) * 0.01745
-        px = 60 + math.cos(petal_angle) * 12
-        py = 30 + math.sin(petal_angle) * 12
-        pygame.draw.circle(s, primal_green, (int(px), int(py)), 5)
+    """原始神力 - 翠绿自然主题，生命之树与蔓藤"""
+    emerald = (40, 200, 90)
+    forest = (25, 140, 55)
+    gold = (255, 210, 60)
+    bark = (120, 75, 35)
+    root_c = (90, 60, 30)
+
+    # 树干（梯形）
+    trunk = [(55, 58), (65, 58), (68, 98), (52, 98)]
+    pygame.draw.polygon(s, bark, trunk)
+    pygame.draw.polygon(s, root_c, trunk, 2)
+
+    # 分支树枝（折线）
+    branches = [
+        [(60, 58), (48, 48), (38, 38 + 4 * math.sin(t * 2))],
+        [(60, 58), (72, 48), (82, 38 + 4 * math.sin(t * 2 + 1))],
+        [(60, 58), (55, 42), (45, 28 + 3 * math.sin(t * 2.5))],
+        [(60, 58), (65, 42), (75, 28 + 3 * math.sin(t * 2.5 + 1))],
+    ]
+    for br in branches:
+        pygame.draw.lines(s, bark, False, [(int(x), int(y)) for x, y in br], 3)
+
+    # 树叶（多边形簇）
+    leaf_centers = [(38, 32), (82, 32), (45, 22), (75, 22), (60, 12)]
+    for i, (lx, ly) in enumerate(leaf_centers):
+        offset = 3 * math.sin(t * 3 + i)
+        leaf = [
+            (lx, ly - 10 + offset),
+            (lx + 9, ly + 2),
+            (lx, ly + 8),
+            (lx - 9, ly + 2),
+        ]
+        color = emerald if i % 2 == 0 else forest
+        pygame.draw.polygon(s, color, leaf)
+        pygame.draw.polygon(s, gold, leaf, 1)
+
+    # 根系（折线三角）
+    roots = [
+        [(55, 98), (42, 105), (30, 112)],
+        [(60, 98), (60, 108), (60, 118)],
+        [(65, 98), (78, 105), (90, 112)],
+    ]
+    for rt in roots:
+        pygame.draw.lines(s, root_c, False, rt, 2)
+
+    # 环绕生命能量碎片
+    for i in range(10):
+        ang = (i * 36 + t * 28) * 0.01745
+        r = 50 + 5 * math.sin(t * 4 + i)
+        cx = 60 + math.cos(ang) * r
+        cy = 60 + math.sin(ang) * r
+        shard = [
+            (cx, cy - 5),
+            (cx + 4, cy),
+            (cx, cy + 5),
+            (cx - 4, cy),
+        ]
+        color = emerald if i % 2 == 0 else gold
+        pygame.draw.polygon(s, color, shard)
+
+    # 中心花蕾（五边形）
+    bud = []
+    for i in range(5):
+        ang = (i * 72 - 90 + t * 12) * 0.01745
+        r = 8 + 2 * pulse
+        x = 60 + math.cos(ang) * r
+        y = 30 + math.sin(ang) * r
+        bud.append((int(x), int(y)))
+    pygame.draw.polygon(s, gold, bud)
+    pygame.draw.polygon(s, emerald, bud, 2)
 
 
-def _render_omega_ex(s, t, pulse, style):
-    """EX 改装系列"""
-    # 根据 EX 等级确定颜色
-    ex_colors = {
-        "omega_ex": ((255, 200, 150), (255, 150, 100)),    # 铜色
-        "omega_ex2": ((200, 200, 220), (150, 150, 200)),   # 银色
-        "omega_ex3": ((255, 220, 100), (255, 180, 50)),    # 金色
-        "omega_ex4": ((200, 100, 255), (150, 50, 200)),    # 紫晶
-        "omega_ex5": ((255, 255, 255), (200, 220, 255)),   # 圣白
-    }
-    
-    main_color, accent = ex_colors.get(style, ((255, 255, 255), (200, 200, 200)))
-    
-    # EX 机甲框架
-    # 六边形装甲板
+def _render_omega_clockwork(s, t, pulse):
+    """永恒钟表 - 精密齿轮与时钟机械"""
+    bronze = (180, 130, 70)
+    gold = (220, 180, 80)
+    dark = (60, 45, 30)
+    white = (255, 250, 240)
+
+    # 三层同心齿轮（不同转速）
+    for gear_idx, (r, teeth, speed) in enumerate([(48, 24, 1), (32, 16, -1.5), (18, 10, 2.2)]):
+        rot = t * 20 * speed
+        pts = []
+        for i in range(teeth * 2):
+            ang = (i * 180 / teeth + rot) * 0.01745
+            rad = r if i % 2 == 0 else r - 5
+            x = 60 + math.cos(ang) * rad
+            y = 60 + math.sin(ang) * rad
+            pts.append((int(x), int(y)))
+        color = bronze if gear_idx == 0 else (gold if gear_idx == 1 else dark)
+        pygame.draw.polygon(s, color, pts)
+        pygame.draw.polygon(s, gold if gear_idx != 1 else bronze, pts, 2)
+
+    # 时钟指针（时/分/秒）
+    for length, width, speed, color in [(35, 3, 0.5, gold), (28, 4, 6, bronze), (22, 2, 72, white)]:
+        ang = (t * speed - 90) * 0.01745
+        tip = (60 + math.cos(ang) * length, 60 + math.sin(ang) * length)
+        pygame.draw.line(s, color, (60, 60), (int(tip[0]), int(tip[1])), width)
+
+    # 罗马数字刻度位置（12点钟方向等）
+    for i in range(12):
+        ang = (i * 30 - 90) * 0.01745
+        r = 44
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        mark = [(x, y - 3), (x + 2, y), (x, y + 3), (x - 2, y)]
+        pygame.draw.polygon(s, white, mark)
+
+    # 中心轴（八边形）
+    axle = []
+    for i in range(8):
+        ang = (i * 45 + t * 30) * 0.01745
+        x = 60 + math.cos(ang) * 6
+        y = 60 + math.sin(ang) * 6
+        axle.append((int(x), int(y)))
+    pygame.draw.polygon(s, gold, axle)
+
+
+def _render_omega_dragon(s, t, pulse):
+    """神龙之魂 - 东方龙鳞与龙须"""
+    jade = (60, 180, 120)
+    gold = (255, 200, 60)
+    red = (220, 50, 50)
+    dark = (30, 60, 45)
+
+    # 龙身S曲线（鳞片链）
+    for row in range(3):
+        offset = row * 8
+        for i in range(12):
+            progress = i / 11
+            wave = math.sin(progress * math.pi * 2 + t * 3 + row * 0.5) * 15
+            x = 20 + progress * 80
+            y = 55 + wave + (row - 1) * 12
+            # 菱形鳞片
+            scale = [
+                (x, y - 6), (x + 5, y), (x, y + 6), (x - 5, y)
+            ]
+            color = jade if (i + row) % 3 != 0 else gold
+            pygame.draw.polygon(s, color, scale)
+            pygame.draw.polygon(s, dark, scale, 1)
+
+    # 龙首（三角+角）
+    head = [(95, 50), (110, 60), (95, 70), (85, 60)]
+    pygame.draw.polygon(s, jade, head)
+    pygame.draw.polygon(s, gold, head, 2)
+    # 龙角
+    horn1 = [(98, 48), (105, 35 + 3 * math.sin(t * 2)), (100, 50)]
+    horn2 = [(98, 72), (105, 85 - 3 * math.sin(t * 2)), (100, 70)]
+    pygame.draw.polygon(s, gold, horn1)
+    pygame.draw.polygon(s, gold, horn2)
+    # 龙眼
+    pygame.draw.polygon(s, red, [(100, 58), (104, 60), (100, 62), (96, 60)])
+
+    # 龙须（飘动折线）
+    for side in [-1, 1]:
+        whisker = [(108, 60 + side * 5)]
+        for seg in range(4):
+            wx = 112 + seg * 6
+            wy = 60 + side * (8 + seg * 3 + 4 * math.sin(t * 4 + seg))
+            whisker.append((wx, wy))
+        pygame.draw.lines(s, gold, False, whisker, 2)
+
+    # 龙珠（中心六边形）
+    pearl = []
     for i in range(6):
-        angle = (i * 60 + t * 15) * 0.01745
-        r = 42
-        x = 60 + math.cos(angle) * r
-        y = 60 + math.sin(angle) * r
-        
-        # 装甲连接线
-        next_angle = ((i + 1) * 60 + t * 15) * 0.01745
-        nx = 60 + math.cos(next_angle) * r
-        ny = 60 + math.sin(next_angle) * r
-        pygame.draw.line(s, main_color, (int(x), int(y)), (int(nx), int(ny)), 3)
-        
-        # 节点
-        pygame.draw.circle(s, accent, (int(x), int(y)), 5)
-    
-    # 内部三角结构
-    for tri in range(2):
-        tri_offset = tri * 60
-        tri_points = []
-        for i in range(3):
-            angle = (i * 120 + tri_offset + t * 20) * 0.01745
-            r = 28
-            tx = 60 + math.cos(angle) * r
-            ty = 60 + math.sin(angle) * r
-            tri_points.append((int(tx), int(ty)))
-        pygame.draw.polygon(s, accent, tri_points, 2)
-    
-    # 中心 EX 核心
-    pygame.draw.circle(s, main_color, (60, 60), 18)
-    pygame.draw.circle(s, accent, (60, 60), 12)
-    
-    # EX 等级标记
-    ex_level = style.replace("omega_ex", "")
-    level_num = int(ex_level) if ex_level.isdigit() else 1
-    
-    # 环绕的 EX 粒子数量基于等级
-    for p in range(level_num * 3 + 3):
-        p_angle = (p * (360 / (level_num * 3 + 3)) - t * 50) * 0.01745
-        p_r = 35
-        px = 60 + math.cos(p_angle) * p_r
-        py = 60 + math.sin(p_angle) * p_r
-        pygame.draw.circle(s, main_color, (int(px), int(py)), 3)
+        ang = (i * 60 + t * 25) * 0.01745
+        x = 35 + math.cos(ang) * 12
+        y = 60 + math.sin(ang) * 12
+        pearl.append((int(x), int(y)))
+    pygame.draw.polygon(s, gold, pearl)
+    pygame.draw.polygon(s, red, pearl, 2)
+    inner = [(35, 54), (41, 60), (35, 66), (29, 60)]
+    pygame.draw.polygon(s, red, inner)
+
+
+def _render_omega_galactic(s, t, pulse):
+    """银河霸主 - 星系漩涡与星云"""
+    purple = (100, 60, 180)
+    blue = (60, 100, 200)
+    pink = (200, 100, 180)
+    white = (255, 255, 255)
+    dark = (20, 15, 40)
+
+    # 背景星云（不规则多边形）
+    nebula = pygame.Surface((120, 120), pygame.SRCALPHA)
+    for layer in range(3):
+        pts = []
+        sides = 12 + layer * 4
+        for i in range(sides):
+            ang = (i * 360 / sides + t * (5 - layer * 2)) * 0.01745
+            r = 55 - layer * 12 + 8 * math.sin(t * 2 + i + layer)
+            x = 60 + math.cos(ang) * r
+            y = 60 + math.sin(ang) * r
+            pts.append((int(x), int(y)))
+        colors = [purple, blue, pink]
+        pygame.draw.polygon(nebula, (*colors[layer], 60), pts)
+    s.blit(nebula, (0, 0))
+
+    # 四条旋臂（弧形多边形）
+    for arm in range(4):
+        arm_pts = []
+        base = arm * 90 + t * 15
+        for seg in range(15):
+            progress = seg / 14
+            ang = (base + progress * 180) * 0.01745
+            r = 10 + progress * 45
+            x = 60 + math.cos(ang) * r
+            y = 60 + math.sin(ang) * r
+            arm_pts.append((int(x), int(y)))
+        for seg in range(14, -1, -1):
+            progress = seg / 14
+            ang = (base + progress * 180 + 12) * 0.01745
+            r = 8 + progress * 40
+            x = 60 + math.cos(ang) * r
+            y = 60 + math.sin(ang) * r
+            arm_pts.append((int(x), int(y)))
+        color = purple if arm % 2 == 0 else blue
+        pygame.draw.polygon(s, color, arm_pts)
+
+    # 散布星点（小菱形）
+    import random
+    random.seed(77)
+    for _ in range(20):
+        sx = random.randint(15, 105)
+        sy = random.randint(15, 105)
+        dist = math.sqrt((sx - 60) ** 2 + (sy - 60) ** 2)
+        if dist < 52:
+            star = [(sx, sy - 2), (sx + 2, sy), (sx, sy + 2), (sx - 2, sy)]
+            pygame.draw.polygon(s, white, star)
+
+    # 中心黑洞（多层六边形）
+    for layer in range(3):
+        r = 14 - layer * 4
+        pts = []
+        for i in range(6):
+            ang = (i * 60 + t * 35 * (1 if layer % 2 == 0 else -1)) * 0.01745
+            x = 60 + math.cos(ang) * r
+            y = 60 + math.sin(ang) * r
+            pts.append((int(x), int(y)))
+        color = dark if layer == 0 else (purple if layer == 1 else white)
+        pygame.draw.polygon(s, color, pts)
+
+
+def _render_omega_runic(s, t, pulse):
+    """符文铭刻 - 古代神秘符文"""
+    stone = (80, 75, 70)
+    glow = (120, 200, 255)
+    gold = (255, 200, 100)
+    dark = (30, 28, 25)
+
+    # 石板底座（八边形）
+    tablet = []
+    for i in range(8):
+        ang = (i * 45 + 22.5) * 0.01745
+        r = 52
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        tablet.append((int(x), int(y)))
+    pygame.draw.polygon(s, stone, tablet)
+    pygame.draw.polygon(s, dark, tablet, 3)
+
+    # 内层符文环
+    inner_ring = []
+    for i in range(12):
+        ang = (i * 30 + t * 8) * 0.01745
+        r = 38
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        inner_ring.append((int(x), int(y)))
+    pygame.draw.polygon(s, dark, inner_ring, 2)
+
+    # 八个符文字符（各种几何图案）
+    rune_patterns = [
+        [(0, -8), (5, 0), (0, 8), (-5, 0)],  # 菱形
+        [(0, -8), (6, 8), (-6, 8)],           # 三角
+        [(-5, -6), (5, -6), (5, 6), (-5, 6)], # 方形
+        [(0, -8), (0, 8), (-6, 0)],           # 箭头
+        [(0, -8), (6, -2), (4, 8), (-4, 8), (-6, -2)],  # 五边
+        [(-6, -4), (6, -4), (0, 8)],          # 倒三角
+        [(0, -6), (6, 0), (0, 6), (-6, 0), (0, -6), (0, 6)],  # X
+        [(-5, -5), (5, -5), (0, 0), (5, 5), (-5, 5), (0, 0)], # 沙漏
+    ]
+    glow_alpha = int(150 + 100 * math.sin(t * 3))
+    for i in range(8):
+        ang = (i * 45 + t * 8) * 0.01745
+        r = 38
+        cx = 60 + math.cos(ang) * r
+        cy = 60 + math.sin(ang) * r
+        pattern = rune_patterns[i]
+        pts = [(cx + dx, cy + dy) for dx, dy in pattern]
+        rune_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+        pygame.draw.polygon(rune_surf, (*glow, glow_alpha), pts)
+        pygame.draw.polygon(rune_surf, gold, pts, 1)
+        s.blit(rune_surf, (0, 0))
+
+    # 中心大符文（旋转五芒星）
+    star = []
+    for i in range(10):
+        ang = (i * 36 - 90 + t * 12) * 0.01745
+        r = 18 if i % 2 == 0 else 8
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        star.append((int(x), int(y)))
+    pygame.draw.polygon(s, glow, star)
+    pygame.draw.polygon(s, gold, star, 2)
+
+
+def _render_omega_tempest(s, t, pulse):
+    """风暴君王 - 雷电风暴与旋风"""
+    dark_blue = (20, 30, 60)
+    lightning = (200, 220, 255)
+    yellow = (255, 255, 150)
+    purple = (150, 100, 200)
+
+    # 风暴云层（多层不规则形）
+    for layer in range(4):
+        cloud = []
+        sides = 16 - layer * 2
+        rot = t * (10 + layer * 5) * (1 if layer % 2 == 0 else -1)
+        for i in range(sides):
+            ang = (i * 360 / sides + rot) * 0.01745
+            r = 52 - layer * 10 + 6 * math.sin(t * 4 + i * 2 + layer)
+            x = 60 + math.cos(ang) * r
+            y = 60 + math.sin(ang) * r
+            cloud.append((int(x), int(y)))
+        alpha = 180 - layer * 40
+        surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+        pygame.draw.polygon(surf, (*dark_blue, alpha), cloud)
+        s.blit(surf, (0, 0))
+
+    # 闪电（锯齿折线）
+    for bolt in range(6):
+        ang_base = (bolt * 60 + t * 30) * 0.01745
+        bolt_pts = [(60, 60)]
+        pos = [60, 60]
+        for seg in range(5):
+            length = 8 + seg * 2
+            ang = ang_base + (0.3 if seg % 2 == 0 else -0.3)
+            pos = [pos[0] + math.cos(ang) * length, pos[1] + math.sin(ang) * length]
+            bolt_pts.append((int(pos[0]), int(pos[1])))
+        flash = int(200 + 55 * math.sin(t * 15 + bolt * 2))
+        pygame.draw.lines(s, (flash, flash, 255), False, bolt_pts, 3)
+        # 闪电末端光点
+        end = bolt_pts[-1]
+        spark = [(end[0], end[1] - 4), (end[0] + 3, end[1]), (end[0], end[1] + 4), (end[0] - 3, end[1])]
+        pygame.draw.polygon(s, yellow, spark)
+
+    # 旋风中心（螺旋线）
+    spiral_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+    for arm in range(3):
+        pts = []
+        for seg in range(20):
+            progress = seg / 19
+            ang = (arm * 120 + progress * 360 + t * 60) * 0.01745
+            r = 5 + progress * 18
+            x = 60 + math.cos(ang) * r
+            y = 60 + math.sin(ang) * r
+            pts.append((int(x), int(y)))
+        pygame.draw.lines(spiral_surf, (*purple, 200), False, pts, 2)
+    s.blit(spiral_surf, (0, 0))
+
+    # 风暴之眼（中心六边形）
+    eye = []
+    for i in range(6):
+        ang = (i * 60 + t * 40) * 0.01745
+        r = 10 + 3 * math.sin(t * 5 + i)
+        x = 60 + math.cos(ang) * r
+        y = 60 + math.sin(ang) * r
+        eye.append((int(x), int(y)))
+    pygame.draw.polygon(s, lightning, eye)
+    pygame.draw.polygon(s, yellow, eye, 2)
 
 
 __all__ = ['render_omega_skin', 'is_omega_style', 'OMEGA_STYLES']

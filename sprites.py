@@ -4873,8 +4873,68 @@ class Bullet(pygame.sprite.Sprite):
                     pygame.draw.rect(self.image, (0, 0, 0), (9, 14, 3, 6))
                 self.speed = -16
                 self.card_suit = suit
+            
+            elif b_type == "omega_fusion":  # 20. Omega - 终末神兵（七芒星融合弹）
+                t = pygame.time.get_ticks() / 1000.0
+                self.image = pygame.Surface((32, 32), pygame.SRCALPHA)
+                center = 16
+                # 七属性颜色
+                element_colors = [
+                    (255, 80, 30),    # 炎红
+                    (100, 200, 255),  # 冰蓝
+                    (255, 255, 100),  # 雷黄
+                    (150, 255, 80),   # 毒绿
+                    (255, 255, 255),  # 圣白
+                    (150, 50, 200),   # 暗紫
+                    (255, 200, 100),  # 元金
+                ]
+                # 七芒星外轮廓
+                for i in range(7):
+                    angle1 = (i * 360 / 7) * math.pi / 180
+                    angle2 = ((i + 3) * 360 / 7) * math.pi / 180
+                    x1 = center + int(math.cos(angle1) * 14)
+                    y1 = center + int(math.sin(angle1) * 14)
+                    x2 = center + int(math.cos(angle2) * 14)
+                    y2 = center + int(math.sin(angle2) * 14)
+                    pygame.draw.line(self.image, element_colors[i], (x1, y1), (x2, y2), 2)
+                    # 顶点光球
+                    pygame.draw.circle(self.image, element_colors[i], (x1, y1), 3)
+                # 核心（白色发光）
+                pygame.draw.circle(self.image, (255, 255, 255), (center, center), 8)
+                pygame.draw.circle(self.image, color, (center, center), 6)
+                pygame.draw.circle(self.image, (255, 255, 200), (center, center), 3)
+                self.speed = -25
                 
-            else:  # 20. Necro + 默认（紫红幽能，与Specter共用）
+            elif b_type == "genesis_star":  # 21. Genesis - 创世之翼（宇宙创世弹）
+                self.image = pygame.Surface((30, 30), pygame.SRCALPHA)
+                center = 15
+                # 宇宙扩散环
+                for ring in range(4):
+                    ring_r = 4 + ring * 3
+                    alpha = 220 - ring * 50
+                    ring_color = (
+                        int(255 - ring * 20),
+                        int(200 - ring * 30),
+                        int(100 + ring * 30)
+                    )
+                    pygame.draw.circle(self.image, ring_color, (center, center), ring_r, 2)
+                # 星系旋臂
+                for arm in range(4):
+                    arm_angle = arm * 90 * math.pi / 180
+                    for seg in range(5):
+                        progress = seg / 4
+                        seg_angle = arm_angle + progress * math.pi / 2
+                        r = progress * 12
+                        ax = center + int(math.cos(seg_angle) * r)
+                        ay = center + int(math.sin(seg_angle) * r)
+                        pygame.draw.circle(self.image, (255, 220, 150), (ax, ay), 2)
+                # 核心
+                pygame.draw.circle(self.image, (255, 200, 100), (center, center), 6)
+                pygame.draw.circle(self.image, (255, 255, 200), (center, center), 4)
+                pygame.draw.circle(self.image, (255, 255, 255), (center, center), 2)
+                self.speed = -24
+                
+            else:  # 默认（紫红幽能，与Specter共用）
                 self.image = pygame.Surface((18, 42), pygame.SRCALPHA)
                 points = [(9,0), (5,14), (13,28), (9,42)]
                 pygame.draw.lines(self.image, (200, 50, 150), False, points, 5)
@@ -8131,6 +8191,247 @@ class Bullet(pygame.sprite.Sprite):
                 alpha = 150 - ring * 40
                 pygame.draw.circle(self.image, (100, 0, 0, alpha), (center, center), ring_r, 2)
             self.speed = -16
+        
+        # ========== Omega 终极机体子弹涂装 ==========
+        elif "omega_fusion" in effects or "divine_judgment" in effects:
+            # 七属性融合弹 - 七芒星
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            element_colors = [
+                (255, 80, 30), (100, 200, 255), (255, 255, 100),
+                (150, 255, 80), (255, 255, 255), (150, 50, 200), (255, 200, 100)
+            ]
+            # 七芒星
+            for i in range(7):
+                angle1 = (i * 360 / 7) * math.pi / 180
+                angle2 = ((i + 3) * 360 / 7) * math.pi / 180
+                x1 = center + int(math.cos(angle1) * size//1.5)
+                y1 = center + int(math.sin(angle1) * size//1.5)
+                x2 = center + int(math.cos(angle2) * size//1.5)
+                y2 = center + int(math.sin(angle2) * size//1.5)
+                pygame.draw.line(self.image, element_colors[i], (x1, y1), (x2, y2), 2)
+                pygame.draw.circle(self.image, element_colors[i], (x1, y1), size//8)
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//4)
+            pygame.draw.circle(self.image, color, (center, center), size//5)
+            self.speed = -18
+            
+        elif "void_collapse" in effects:
+            # 虚空坍缩弹 - 黑洞漩涡
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 吸收螺旋
+            for spiral in range(4):
+                pts = []
+                for seg in range(12):
+                    progress = seg / 11
+                    angle = (spiral * 90 - progress * 270) * math.pi / 180
+                    r = (1 - progress) * size//1.5
+                    pts.append((center + math.cos(angle) * r, center + math.sin(angle) * r))
+                if len(pts) > 1:
+                    pygame.draw.lines(self.image, (100, 0, 150), False, pts, 2)
+            # 黑洞核心
+            pygame.draw.circle(self.image, (20, 0, 30), (center, center), size//4)
+            pygame.draw.circle(self.image, (80, 0, 120), (center, center), size//4, 2)
+            self.speed = -16
+            
+        elif "aurora_cascade" in effects:
+            # 极光瀑布弹 - 彩虹波浪
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            aurora_colors = [(255, 100, 150), (255, 200, 100), (200, 255, 100), 
+                           (100, 255, 200), (100, 200, 255), (150, 100, 255)]
+            for layer in range(5):
+                pts = []
+                for i in range(16):
+                    angle = (i * 22.5) * math.pi / 180
+                    wave = 3 * math.sin(i * 0.5 + layer)
+                    r = size//2 - layer * 3 + wave
+                    pts.append((center + math.cos(angle) * r, center + math.sin(angle) * r))
+                pygame.draw.polygon(self.image, (*aurora_colors[layer % 6], 180 - layer * 30), pts)
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//5)
+            self.speed = -17
+            
+        elif "celestial_strike" in effects:
+            # 天界打击弹 - 蓝金光轮
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 双层光轮
+            for layer in range(2):
+                for spoke in range(12):
+                    angle = (spoke * 30 + layer * 15) * math.pi / 180
+                    x2 = center + int(math.cos(angle) * size//1.5)
+                    y2 = center + int(math.sin(angle) * size//1.5)
+                    spoke_color = (255, 215, 100) if (spoke + layer) % 3 == 0 else (80, 150, 255)
+                    pygame.draw.line(self.image, spoke_color, (center, center), (x2, y2), 2)
+            pygame.draw.circle(self.image, (80, 150, 255), (center, center), size//4)
+            pygame.draw.circle(self.image, (255, 215, 100), (center, center), size//5)
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//8)
+            self.speed = -17
+            
+        elif "infernal_blast" in effects:
+            # 地狱爆破弹 - 红黑火焰
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            flame_colors = [(255, 50, 0), (255, 150, 50), (255, 200, 50)]
+            # 火焰旋涡
+            for ring in range(3):
+                for flame in range(8):
+                    angle = (flame * 45 + ring * 15) * math.pi / 180
+                    flame_len = size//2 - ring * 4
+                    fx = center + int(math.cos(angle) * flame_len)
+                    fy = center + int(math.sin(angle) * flame_len)
+                    tri = [
+                        (center + math.cos(angle + 0.3) * (flame_len * 0.3), center + math.sin(angle + 0.3) * (flame_len * 0.3)),
+                        (fx, fy),
+                        (center + math.cos(angle - 0.3) * (flame_len * 0.3), center + math.sin(angle - 0.3) * (flame_len * 0.3))
+                    ]
+                    pygame.draw.polygon(self.image, flame_colors[(flame + ring) % 3], tri)
+            pygame.draw.circle(self.image, (150, 0, 0), (center, center), size//4)
+            pygame.draw.circle(self.image, (255, 100, 0), (center, center), size//6)
+            self.speed = -16
+            
+        elif "primal_force" in effects:
+            # 原始神力弹 - 自然叶片
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 叶片环绕
+            for i in range(8):
+                angle = (i * 45) * math.pi / 180
+                lx = center + int(math.cos(angle) * size//2)
+                ly = center + int(math.sin(angle) * size//2)
+                leaf_angle = angle + math.pi / 2
+                leaf_pts = [
+                    (lx, ly),
+                    (lx + math.cos(leaf_angle + 0.3) * 8, ly + math.sin(leaf_angle + 0.3) * 8),
+                    (lx + math.cos(angle) * 10, ly + math.sin(angle) * 10),
+                    (lx + math.cos(leaf_angle - 0.3) * 8, ly + math.sin(leaf_angle - 0.3) * 8),
+                ]
+                pygame.draw.polygon(self.image, (50, 200, 80) if i % 2 == 0 else (255, 215, 0), leaf_pts)
+            pygame.draw.circle(self.image, (139, 90, 43), (center, center), size//4)
+            pygame.draw.circle(self.image, (50, 200, 80), (center, center), size//5)
+            pygame.draw.circle(self.image, (255, 215, 0), (center, center), size//8)
+            self.speed = -15
+        
+        # ========== Genesis 终极机体子弹涂装 ==========
+        elif "genesis_star" in effects or "cosmic_origin" in effects:
+            # 创世之星弹 - 宇宙扩散
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 扩散环
+            for ring in range(4):
+                ring_r = size//6 + ring * size//8
+                ring_color = (255 - ring * 15, 200 - ring * 20, 100 + ring * 30)
+                pygame.draw.circle(self.image, ring_color, (center, center), ring_r, 2)
+            # 星系旋臂
+            for arm in range(4):
+                for seg in range(8):
+                    progress = seg / 7
+                    angle = (arm * 90 + progress * 120) * math.pi / 180
+                    r = progress * size//2
+                    pygame.draw.circle(self.image, (255, 220, 150), (int(center + math.cos(angle) * r), int(center + math.sin(angle) * r)), 2)
+            pygame.draw.circle(self.image, (255, 200, 100), (center, center), size//4)
+            pygame.draw.circle(self.image, (255, 255, 200), (center, center), size//6)
+            self.speed = -17
+            
+        elif "solar_birth" in effects:
+            # 太阳诞生弹 - 金红炽焰
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 日冕喷发
+            for flare in range(10):
+                angle = (flare * 36) * math.pi / 180
+                flare_len = size//3 + size//8
+                fx = center + int(math.cos(angle) * flare_len)
+                fy = center + int(math.sin(angle) * flare_len)
+                tri = [
+                    (center + math.cos(angle + 0.2) * size//4, center + math.sin(angle + 0.2) * size//4),
+                    (fx, fy),
+                    (center + math.cos(angle - 0.2) * size//4, center + math.sin(angle - 0.2) * size//4)
+                ]
+                colors = [(255, 80, 30), (255, 150, 0), (255, 200, 50)]
+                pygame.draw.polygon(self.image, colors[flare % 3], tri)
+            pygame.draw.circle(self.image, (255, 150, 0), (center, center), size//4)
+            pygame.draw.circle(self.image, (255, 200, 50), (center, center), size//5)
+            pygame.draw.circle(self.image, (255, 255, 200), (center, center), size//8)
+            self.speed = -16
+            
+        elif "nebula_seed" in effects:
+            # 星云种子弹 - 紫粉梦幻
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            nebula_colors = [(200, 150, 255), (255, 150, 200), (150, 180, 255)]
+            # 气体云
+            for layer in range(4):
+                for blob in range(6):
+                    angle = (blob * 60 + layer * 15) * math.pi / 180
+                    blob_r = size//4 + layer * size//12
+                    bx = center + int(math.cos(angle) * blob_r)
+                    by = center + int(math.sin(angle) * blob_r)
+                    pygame.draw.circle(self.image, (*nebula_colors[(layer + blob) % 3], 120 - layer * 25), (bx, by), size//8)
+            pygame.draw.circle(self.image, (200, 150, 255), (center, center), size//5)
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//10)
+            self.speed = -16
+            
+        elif "void_creation" in effects:
+            # 虚无创生弹 - 黑白太极
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 太极圆
+            pygame.draw.circle(self.image, (200, 200, 200), (center, center), size//2)
+            # 黑半
+            pts = [(center, center)]
+            for i in range(181):
+                angle = (i + 180) * math.pi / 180
+                pts.append((center + int(math.cos(angle) * size//2), center + int(math.sin(angle) * size//2)))
+            pygame.draw.polygon(self.image, (30, 30, 30), pts)
+            # 小圆
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center - size//4), size//6)
+            pygame.draw.circle(self.image, (30, 30, 30), (center, center + size//4), size//6)
+            pygame.draw.circle(self.image, (30, 30, 30), (center, center - size//4), size//12)
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center + size//4), size//12)
+            self.speed = -15
+            
+        elif "life_spark" in effects:
+            # 生命火花弹 - DNA螺旋
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            helix_colors = [(50, 200, 100), (255, 215, 100)]
+            for strand in range(2):
+                pts = []
+                for i in range(12):
+                    progress = i / 11
+                    angle = progress * math.pi * 2 + strand * math.pi
+                    hx = center + int(math.cos(angle) * size//3)
+                    hy = center - size//2 + int(progress * size)
+                    pts.append((hx, hy))
+                if len(pts) > 1:
+                    pygame.draw.lines(self.image, helix_colors[strand], False, pts, 3)
+            pygame.draw.circle(self.image, (255, 215, 100), (center, center), size//5)
+            pygame.draw.circle(self.image, (50, 200, 100), (center, center), size//8)
+            self.speed = -16
+            
+        elif "chaos_burst" in effects:
+            # 混沌爆发弹 - 多彩风暴
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            chaos_colors = [(255, 50, 50), (255, 150, 50), (255, 255, 50), 
+                          (50, 255, 50), (50, 255, 255), (50, 50, 255), (255, 50, 255)]
+            # 混沌尖刺
+            for burst in range(12):
+                angle = (burst * 30) * math.pi / 180
+                burst_len = size//4 + size//6
+                bx = center + int(math.cos(angle) * burst_len)
+                by = center + int(math.sin(angle) * burst_len)
+                spike = [
+                    (center + math.cos(angle) * size//6, center + math.sin(angle) * size//6),
+                    (bx + math.cos(angle + 0.3) * 4, by + math.sin(angle + 0.3) * 4),
+                    (bx, by),
+                    (bx + math.cos(angle - 0.3) * 4, by + math.sin(angle - 0.3) * 4),
+                ]
+                pygame.draw.polygon(self.image, chaos_colors[burst % 7], spike)
+            pygame.draw.circle(self.image, chaos_colors[0], (center, center), size//4)
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//8)
+            self.speed = -17
             
         else:
             # 默认子弹
@@ -10843,6 +11144,168 @@ class Player(pygame.sprite.Sprite):
             # 处理感染和变异
             self._update_pandemic_infections()
         
+        # ========== 23. 终末神兵·奥米茄 - 七属性融合射击 ==========
+        elif pid == "omega":
+            # 终极机体Omega：七属性循环 + 融合终极弹
+            # 初始化Omega专属属性
+            if not hasattr(self, 'omega_element_index'):
+                self.omega_element_index = 0  # 当前属性索引
+                self.omega_fusion_charge = 0  # 融合能量
+                self.omega_fusion_max = 100
+                self.omega_elements = [
+                    {"name": "火", "color": (255, 80, 30), "effect": "burn"},
+                    {"name": "冰", "color": (100, 200, 255), "effect": "freeze"},
+                    {"name": "雷", "color": (255, 255, 100), "effect": "chain"},
+                    {"name": "毒", "color": (150, 255, 80), "effect": "poison"},
+                    {"name": "光", "color": (255, 255, 255), "effect": "holy"},
+                    {"name": "暗", "color": (150, 50, 200), "effect": "void"},
+                    {"name": "元", "color": (255, 200, 100), "effect": "arcane"},
+                ]
+            
+            current_element = self.omega_elements[self.omega_element_index]
+            self.omega_fusion_charge += 5  # 每次射击积累融合能量
+            
+            # 当融合能量满时，发射七属性融合终极弹
+            if self.omega_fusion_charge >= self.omega_fusion_max:
+                self.omega_fusion_charge = 0
+                FloatingText(self.rect.centerx, self.rect.top - 40, "◆七曜融合◆", (255, 220, 180))
+                
+                # 七属性同时发射！形成七芒星阵
+                for i, elem in enumerate(self.omega_elements):
+                    angle = i * (360 / 7) - 90
+                    fusion_bullet = Bullet(self.rect.centerx, self.rect.top, angle=angle,
+                           color=elem["color"], b_type="omega_fusion", piercing=self.piercing + 3, homing=homing_value, bullet_theme=self.bullet_theme)
+                    fusion_bullet.is_omega_fusion = True
+                    fusion_bullet.omega_element = elem["effect"]
+                    fusion_bullet.damage_mult = 2.5
+                    fusion_bullet.speed = -14
+                
+                # 中心发射超大融合弹
+                center_bullet = Bullet(self.rect.centerx, self.rect.top, angle=0,
+                       color=(255, 255, 255), b_type="omega_fusion", piercing=self.piercing + 10, homing=homing_value, bullet_theme=self.bullet_theme)
+                center_bullet.is_omega_ultimate_bullet = True
+                center_bullet.damage_mult = 5.0
+                center_bullet.speed = -10
+                
+                # 特效
+                for _ in range(15):
+                    Particle(self.rect.center, random.choice([e["color"] for e in self.omega_elements]))
+            else:
+                # 普通射击：当前属性子弹 + 双翼辅助弹
+                for i in range(cnt):
+                    offset_x = (i - (cnt-1)/2) * 20
+                    main_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                           color=current_element["color"], b_type="omega_fusion", piercing=self.piercing + 1, homing=homing_value, bullet_theme=self.bullet_theme)
+                    main_bullet.is_omega_element = True
+                    main_bullet.omega_element = current_element["effect"]
+                
+                # 两侧辅助弹（下一属性预兆）
+                next_element = self.omega_elements[(self.omega_element_index + 1) % 7]
+                for side in [-1, 1]:
+                    side_bullet = Bullet(self.rect.centerx + side * 35, self.rect.top + 10, angle=side * 8,
+                           color=next_element["color"], b_type="omega_fusion", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                    side_bullet.is_omega_element = True
+                    side_bullet.omega_element = next_element["effect"]
+                    side_bullet.damage_mult = 0.6
+            
+            # 切换到下一个属性
+            self.omega_element_index = (self.omega_element_index + 1) % 7
+        
+        # ========== 24. 创世之翼·起源 - 创造与毁灭双形态 ==========
+        elif pid == "genesis":
+            # 终极机体Genesis：创造/毁灭双形态切换
+            if not hasattr(self, 'genesis_form'):
+                self.genesis_form = "creation"  # creation 或 destruction
+                self.genesis_form_energy = 0
+                self.genesis_max_energy = 80
+                self.genesis_big_bang_charge = 0  # 大爆炸能量
+            
+            self.genesis_form_energy += 3
+            self.genesis_big_bang_charge += 2
+            
+            if self.genesis_form == "creation":
+                # 创造形态：生成光球护盾，治疗型子弹
+                creation_gold = (255, 220, 100)
+                creation_white = (255, 255, 220)
+                
+                # 主弹：星尘光矢（扇形展开）
+                for i in range(cnt + 2):
+                    angle = -20 + i * (40 / (cnt + 1))
+                    star_bullet = Bullet(self.rect.centerx, self.rect.top, angle=angle,
+                           color=creation_gold, b_type="genesis_star", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                    star_bullet.is_genesis_creation = True
+                    star_bullet.creation_heal = True  # 击杀有概率恢复HP
+                
+                # 光环护卫弹（围绕玩家的光球）
+                for i in range(3):
+                    orbit_angle = (pygame.time.get_ticks() / 10 + i * 120) % 360
+                    ox = self.rect.centerx + math.cos(orbit_angle * 0.01745) * 45
+                    oy = self.rect.centery + math.sin(orbit_angle * 0.01745) * 45
+                    orbit_bullet = Bullet(ox, oy, angle=random.uniform(-180, 180),
+                           color=creation_white, b_type="genesis_star", piercing=0, homing=0.5, bullet_theme=self.bullet_theme)
+                    orbit_bullet.is_genesis_orb = True
+                    orbit_bullet.speed = -8
+                    orbit_bullet.damage_mult = 0.5
+                
+            else:
+                # 毁灭形态：高伤害范围爆炸弹
+                destruct_red = (255, 50, 80)
+                destruct_purple = (200, 50, 150)
+                
+                # 主弹：毁灭炮（直线高伤）
+                for i in range(max(1, cnt - 1)):
+                    offset_x = (i - (cnt-2)/2) * 25
+                    destroy_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                           color=destruct_red, b_type="genesis_star", piercing=self.piercing + 3, homing=homing_value, bullet_theme=self.bullet_theme)
+                    destroy_bullet.is_genesis_destruction = True
+                    destroy_bullet.damage_mult = 1.8
+                    destroy_bullet.speed = -16
+                
+                # 虚空裂隙弹（追踪爆炸）
+                void_bullet = Bullet(self.rect.centerx, self.rect.top - 5,
+                       color=destruct_purple, b_type="genesis_star", piercing=self.piercing + 2, homing=min(1.0, homing_value + 0.6), bullet_theme=self.bullet_theme)
+                void_bullet.is_genesis_void = True
+                void_bullet.explode_on_hit = True
+                void_bullet.damage_mult = 1.5
+            
+            # 能量满时自动切换形态 + 发射形态转换波
+            if self.genesis_form_energy >= self.genesis_max_energy:
+                self.genesis_form_energy = 0
+                old_form = self.genesis_form
+                self.genesis_form = "destruction" if old_form == "creation" else "creation"
+                
+                form_name = "毁灭" if self.genesis_form == "destruction" else "创造"
+                form_color = (255, 80, 100) if self.genesis_form == "destruction" else (255, 220, 100)
+                FloatingText(self.rect.centerx, self.rect.top - 35, f"◆{form_name}形态◆", form_color)
+                
+                # 形态转换波（环形爆发）
+                for i in range(12):
+                    wave_angle = i * 30
+                    wave_bullet = Bullet(self.rect.centerx, self.rect.centery, angle=wave_angle,
+                           color=form_color, b_type="genesis_star", piercing=self.piercing + 1, homing=0, bullet_theme=self.bullet_theme)
+                    wave_bullet.is_genesis_wave = True
+                    wave_bullet.damage_mult = 1.2
+                    wave_bullet.speed = -12
+                
+                for _ in range(12):
+                    Particle(self.rect.center, form_color)
+            
+            # 大爆炸能量满时触发小型创世爆发
+            if self.genesis_big_bang_charge >= 200:
+                self.genesis_big_bang_charge = 0
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★创世之光★", (255, 255, 200))
+                # 发射24方向星爆
+                for i in range(24):
+                    burst_angle = i * 15
+                    burst_color = (255, 220, 100) if i % 2 == 0 else (255, 100, 150)
+                    burst_bullet = Bullet(self.rect.centerx, self.rect.centery, angle=burst_angle,
+                           color=burst_color, b_type="genesis_star", piercing=self.piercing + 2, homing=0.3, bullet_theme=self.bullet_theme)
+                    burst_bullet.is_genesis_burst = True
+                    burst_bullet.damage_mult = 2.0
+                    burst_bullet.speed = -15
+                for _ in range(20):
+                    Particle(self.rect.center, random.choice([(255, 220, 100), (255, 100, 150), (255, 255, 255)]))
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -11085,6 +11548,14 @@ class Player(pygame.sprite.Sprite):
             elif pid == "pandemic":
                 # 【零号毒株】全屏感染+变异等级+3
                 PandemicPatientZero(self)
+            
+            elif pid == "omega":
+                # 【终焉审判】七属性同时爆发的终极制裁
+                OmegaFinalJudgment(self)
+            
+            elif pid == "genesis":
+                # 【创世纪元】宇宙大爆炸重塑战场
+                GenesisBigBang(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -12101,7 +12572,9 @@ class Player(pygame.sprite.Sprite):
                 "mirage": "万花镜像",
                 "gambit": "骰子审判",
                 "puppeteer": "命运丝网",
-                "pandemic": "强制变异"
+                "pandemic": "强制变异",
+                "omega": "元素轮转",
+                "genesis": "星辰陨落"
             }
             
             pid = self.plane_id
@@ -12203,6 +12676,14 @@ class Player(pygame.sprite.Sprite):
                 # 【强制变异】立即触发5次变异
                 PandemicForceMutation(self)
             
+            elif pid == "omega":
+                # 【元素轮转】七属性循环攻击，每种属性附加独特效果
+                OmegaElementalCycle(self)
+            
+            elif pid == "genesis":
+                # 【星辰陨落】召唤陨石群轰炸敌人
+                GenesisMeteorShower(self)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -12244,7 +12725,9 @@ class Player(pygame.sprite.Sprite):
                 "mirage": "虚实颠倒",
                 "gambit": "全押梭哈",
                 "puppeteer": "傀儡剧场",
-                "pandemic": "终末审判"
+                "pandemic": "终末审判",
+                "omega": "属性共鸣",
+                "genesis": "新星诞生"
             }
             
             pid = self.plane_id
@@ -12345,6 +12828,14 @@ class Player(pygame.sprite.Sprite):
             elif pid == "pandemic":
                 # 【终末审判】所有感染敌人的潜伏伤害立即爆发，爆发伤害+200%
                 PandemicFinalJudgment(self)
+            
+            elif pid == "omega":
+                # 【属性共鸣】七属性同时爆发环形冲击波
+                OmegaElementalResonance(self)
+            
+            elif pid == "genesis":
+                # 【新星诞生】在敌人位置创造超新星爆炸
+                GenesisSupernovaBlast(self)
             
             else:
                 # 通用：全屏伤害
@@ -13968,3 +14459,901 @@ class PandemicFinalJudgment(pygame.sprite.Sprite):
                 pygame.draw.circle(self.image, (0, 0, 0), (cx - 3, cy - 6), 2)
                 pygame.draw.circle(self.image, (0, 0, 0), (cx + 3, cy - 6), 2)
                 pygame.draw.line(self.image, (0, 0, 0), (cx - 2, cy), (cx + 2, cy), 2)
+
+
+# =====================================================================
+# 终极机体专属大招
+# =====================================================================
+
+class OmegaFinalJudgment(pygame.sprite.Sprite):
+    """【终焉审判】Omega大招 - 七属性同时爆发的终极制裁"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 240  # 4秒持续
+        self.phase = 0
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        # 七属性定义
+        self.elements = [
+            {"name": "炎", "color": (255, 80, 30), "angle": 0},
+            {"name": "冰", "color": (100, 200, 255), "angle": 51.4},
+            {"name": "雷", "color": (255, 255, 100), "angle": 102.8},
+            {"name": "毒", "color": (150, 255, 80), "angle": 154.3},
+            {"name": "圣", "color": (255, 255, 255), "angle": 205.7},
+            {"name": "暗", "color": (150, 50, 200), "angle": 257.1},
+            {"name": "元", "color": (255, 200, 100), "angle": 308.6},
+        ]
+        
+        self.rotation = 0
+        self.scale = 0
+        self.beams = []  # 激光束
+        self.hit_enemies = {}
+        self.judgment_phase = 0  # 0=聚集 1=旋转 2=审判 3=爆发
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 60, "◆◆◆ 终焉审判 ◆◆◆", (255, 220, 180))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = WIDTH // 2, HEIGHT // 2
+        
+        # 阶段1: 七芒星聚集 (60帧)
+        if self.life > 180:
+            self.judgment_phase = 0
+            self.scale = min(1.0, (240 - self.life) / 60)
+            self.rotation += 3
+            
+            # 绘制聚集中的七芒星
+            star_r = 150 * self.scale
+            for i, elem in enumerate(self.elements):
+                angle = (elem["angle"] + self.rotation) * 0.01745
+                x = cx + math.cos(angle) * star_r
+                y = cy + math.sin(angle) * star_r
+                
+                # 元素符文
+                size = int(20 * self.scale)
+                pts = []
+                for j in range(6):
+                    a = (j * 60 + self.rotation * 2) * 0.01745
+                    pts.append((x + math.cos(a) * size, y + math.sin(a) * size))
+                pygame.draw.polygon(self.image, elem["color"], pts)
+                pygame.draw.polygon(self.image, (255, 255, 255), pts, 2)
+                
+                # 连接线到中心
+                pygame.draw.line(self.image, (*elem["color"], 150), (x, y), (cx, cy), 2)
+        
+        # 阶段2: 高速旋转 (60帧)
+        elif self.life > 120:
+            self.judgment_phase = 1
+            self.rotation += 15
+            
+            # 旋转加速的七芒星
+            for i, elem in enumerate(self.elements):
+                angle = (elem["angle"] + self.rotation) * 0.01745
+                x = cx + math.cos(angle) * 150
+                y = cy + math.sin(angle) * 150
+                
+                # 快速旋转光尾
+                for trail in range(5):
+                    trail_angle = (elem["angle"] + self.rotation - trail * 15) * 0.01745
+                    tx = cx + math.cos(trail_angle) * 150
+                    ty = cy + math.sin(trail_angle) * 150
+                    alpha = 200 - trail * 40
+                    pygame.draw.circle(self.image, (*elem["color"], alpha), (int(tx), int(ty)), 15 - trail * 2)
+                
+                pygame.draw.circle(self.image, elem["color"], (int(x), int(y)), 18)
+                pygame.draw.circle(self.image, (255, 255, 255), (int(x), int(y)), 18, 3)
+        
+        # 阶段3: 审判激光 (80帧)
+        elif self.life > 40:
+            self.judgment_phase = 2
+            self.rotation += 5
+            
+            # 七道审判激光扫射
+            for i, elem in enumerate(self.elements):
+                angle = (elem["angle"] + self.rotation) * 0.01745
+                
+                # 激光起点
+                start_x = cx + math.cos(angle) * 60
+                start_y = cy + math.sin(angle) * 60
+                
+                # 激光终点（延伸到屏幕边缘）
+                end_x = cx + math.cos(angle) * 800
+                end_y = cy + math.sin(angle) * 800
+                
+                # 多层激光效果
+                for w, alpha in [(20, 50), (14, 100), (8, 180), (4, 255)]:
+                    pygame.draw.line(self.image, (*elem["color"], alpha), 
+                                   (start_x, start_y), (end_x, end_y), w)
+                
+                # 激光核心（白色）
+                pygame.draw.line(self.image, (255, 255, 255, 200), 
+                               (start_x, start_y), (end_x, end_y), 2)
+                
+                # 伤害检测
+                for m in list(mobs):
+                    mx, my = m.rect.center
+                    # 点到线距离
+                    dist = abs((end_y - start_y) * mx - (end_x - start_x) * my + 
+                              end_x * start_y - end_y * start_x) / max(1, math.hypot(end_x - start_x, end_y - start_y))
+                    if dist < 35:
+                        key = (m, i)
+                        if key not in self.hit_enemies:
+                            self.hit_enemies[key] = 0
+                        if self.hit_enemies[key] < 8:  # 每个属性最多命中8次
+                            m.hp -= 80
+                            self.hit_enemies[key] += 1
+                            FloatingText(m.rect.centerx, m.rect.top - 10, f"Ω{elem['name']}", elem["color"])
+                            Particle(m.rect.center, elem["color"])
+            
+            # 中心核心
+            core_pulse = abs(math.sin(self.life * 0.2)) * 20
+            for r in range(3):
+                pygame.draw.circle(self.image, (255, 255, 255, 200 - r * 50), 
+                                 (cx, cy), int(40 + core_pulse - r * 10))
+        
+        # 阶段4: 终焉爆发 (40帧)
+        else:
+            self.judgment_phase = 3
+            explosion_scale = (40 - self.life) / 40
+            
+            # 七属性同心圆爆发
+            for i, elem in enumerate(self.elements):
+                ring_r = 50 + explosion_scale * 400 + i * 30
+                alpha = int(255 * (1 - explosion_scale))
+                
+                # 元素环
+                pts = []
+                for j in range(60):
+                    a = (j * 6 + i * 10) * 0.01745
+                    pts.append((cx + math.cos(a) * ring_r, cy + math.sin(a) * ring_r))
+                if len(pts) > 2:
+                    pygame.draw.lines(self.image, (*elem["color"], alpha), True, pts, 4)
+            
+            # 最终伤害波
+            if self.life == 35:
+                for m in list(mobs):
+                    m.hp -= 300
+                    FloatingText(m.rect.centerx, m.rect.top - 30, "终焉!", (255, 255, 255))
+                    for _ in range(5):
+                        Particle(m.rect.center, random.choice([e["color"] for e in self.elements]))
+            
+            # 中心闪光
+            flash_alpha = int(255 * (1 - explosion_scale * 0.5))
+            pygame.draw.circle(self.image, (255, 255, 255, flash_alpha), (cx, cy), int(60 * (1 - explosion_scale * 0.5)))
+
+
+class GenesisBigBang(pygame.sprite.Sprite):
+    """【创世纪元】Genesis大招 - 宇宙大爆炸重塑战场"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 300  # 5秒持续
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        self.phase = 0  # 0=坍缩 1=奇点 2=大爆炸 3=创世
+        self.singularity_size = 200
+        self.explosion_radius = 0
+        self.stars = []  # 新生星辰
+        self.nebula_clouds = []  # 星云
+        self.galaxies = []  # 星系
+        self.hit_enemies = set()
+        
+        # 生成星云云团
+        for _ in range(20):
+            self.nebula_clouds.append({
+                'x': random.randint(0, WIDTH),
+                'y': random.randint(0, HEIGHT),
+                'vx': 0, 'vy': 0,
+                'color': random.choice([
+                    (255, 200, 150), (200, 150, 255), (150, 200, 255), 
+                    (255, 150, 200), (200, 255, 150)
+                ]),
+                'size': random.randint(30, 80),
+                'alpha': random.randint(100, 200)
+            })
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 60, "◆◆◆ 创世纪元 ◆◆◆", (255, 220, 150))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = WIDTH // 2, HEIGHT // 2
+        
+        # 阶段1: 宇宙坍缩 (80帧) - 所有物质向中心聚集
+        if self.life > 220:
+            self.phase = 0
+            progress = (300 - self.life) / 80
+            self.singularity_size = 200 * (1 - progress * 0.9)
+            
+            # 星云向中心收缩
+            for cloud in self.nebula_clouds:
+                dx = cx - cloud['x']
+                dy = cy - cloud['y']
+                dist = max(1, math.hypot(dx, dy))
+                cloud['vx'] += dx / dist * 0.5
+                cloud['vy'] += dy / dist * 0.5
+                cloud['x'] += cloud['vx']
+                cloud['y'] += cloud['vy']
+                cloud['size'] = max(5, cloud['size'] - 0.3)
+                
+                # 绘制收缩的星云
+                surf = pygame.Surface((int(cloud['size']*2), int(cloud['size']*2)), pygame.SRCALPHA)
+                pygame.draw.circle(surf, (*cloud['color'], int(cloud['alpha'] * (1-progress))), 
+                                 (int(cloud['size']), int(cloud['size'])), int(cloud['size']))
+                self.image.blit(surf, (int(cloud['x'] - cloud['size']), int(cloud['y'] - cloud['size'])))
+            
+            # 敌人也被吸向中心
+            for m in mobs:
+                dx = cx - m.rect.centerx
+                dy = cy - m.rect.centery
+                dist = max(1, math.hypot(dx, dy))
+                pull = 3 * progress
+                m.rect.x += int(dx / dist * pull)
+                m.rect.y += int(dy / dist * pull)
+            
+            # 收缩光环
+            for ring in range(5):
+                ring_r = self.singularity_size + ring * 20
+                alpha = int(200 * (1 - progress))
+                pygame.draw.circle(self.image, (255, 220, 150, alpha), (cx, cy), int(ring_r), 2)
+        
+        # 阶段2: 奇点形成 (40帧) - 极度压缩
+        elif self.life > 180:
+            self.phase = 1
+            pulse = abs(math.sin((220 - self.life) * 0.3)) * 15
+            
+            # 奇点：极亮的点
+            for layer in range(8):
+                r = 5 + layer * 3 + pulse
+                alpha = 255 - layer * 30
+                pygame.draw.circle(self.image, (255, 255, 255, alpha), (cx, cy), int(r))
+            
+            # 周围的扭曲线
+            for i in range(12):
+                angle = (i * 30 + self.life * 10) * 0.01745
+                length = 30 + pulse * 2
+                sx = cx + math.cos(angle) * 20
+                sy = cy + math.sin(angle) * 20
+                ex = cx + math.cos(angle) * length
+                ey = cy + math.sin(angle) * length
+                pygame.draw.line(self.image, (255, 255, 200), (sx, sy), (ex, ey), 2)
+            
+            # 时空扭曲环
+            distort = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            for ring in range(3):
+                ring_r = 40 + ring * 15
+                pts = []
+                for j in range(36):
+                    a = (j * 10 + self.life * 20) * 0.01745
+                    wobble = 5 * math.sin(j * 0.5 + self.life * 0.5)
+                    pts.append((cx + math.cos(a) * (ring_r + wobble), cy + math.sin(a) * (ring_r + wobble)))
+                pygame.draw.lines(distort, (255, 200, 100, 150), True, pts, 2)
+            self.image.blit(distort, (0, 0))
+        
+        # 阶段3: 大爆炸 (100帧) - 宇宙诞生
+        elif self.life > 80:
+            self.phase = 2
+            progress = (180 - self.life) / 100
+            self.explosion_radius = progress * 600
+            
+            # 大爆炸冲击波
+            wave_colors = [
+                (255, 255, 255), (255, 255, 200), (255, 220, 150),
+                (255, 180, 100), (255, 150, 80), (200, 100, 50)
+            ]
+            for i, color in enumerate(wave_colors):
+                wave_r = self.explosion_radius - i * 30
+                if wave_r > 0:
+                    alpha = int(255 * (1 - progress * 0.5))
+                    pygame.draw.circle(self.image, (*color, alpha), (cx, cy), int(wave_r), max(1, 8 - i))
+            
+            # 生成新星
+            if random.random() < 0.3 and len(self.stars) < 50:
+                angle = random.uniform(0, 360) * 0.01745
+                dist = self.explosion_radius * random.uniform(0.3, 0.9)
+                self.stars.append({
+                    'x': cx + math.cos(angle) * dist,
+                    'y': cy + math.sin(angle) * dist,
+                    'vx': math.cos(angle) * random.uniform(2, 6),
+                    'vy': math.sin(angle) * random.uniform(2, 6),
+                    'size': random.randint(3, 8),
+                    'color': random.choice([
+                        (255, 255, 255), (255, 255, 200), (200, 200, 255),
+                        (255, 200, 200), (200, 255, 200)
+                    ]),
+                    'twinkle': random.uniform(0, 6.28)
+                })
+            
+            # 绘制飞散的星辰
+            for star in self.stars:
+                star['x'] += star['vx']
+                star['y'] += star['vy']
+                star['twinkle'] += 0.2
+                
+                twinkle_size = star['size'] + 2 * abs(math.sin(star['twinkle']))
+                pygame.draw.circle(self.image, star['color'], 
+                                 (int(star['x']), int(star['y'])), int(twinkle_size))
+                # 星光十字
+                pygame.draw.line(self.image, (*star['color'], 150),
+                               (int(star['x'] - twinkle_size * 2), int(star['y'])),
+                               (int(star['x'] + twinkle_size * 2), int(star['y'])), 1)
+                pygame.draw.line(self.image, (*star['color'], 150),
+                               (int(star['x']), int(star['y'] - twinkle_size * 2)),
+                               (int(star['x']), int(star['y'] + twinkle_size * 2)), 1)
+            
+            # 伤害敌人
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                if dist < self.explosion_radius and m not in self.hit_enemies:
+                    self.hit_enemies.add(m)
+                    m.hp -= 250
+                    FloatingText(m.rect.centerx, m.rect.top - 20, "创世!", (255, 220, 150))
+                    for _ in range(3):
+                        Particle(m.rect.center, random.choice([(255, 220, 100), (255, 150, 200), (200, 200, 255)]))
+            
+            # 中心余辉
+            core_r = 60 * (1 - progress * 0.8)
+            pygame.draw.circle(self.image, (255, 255, 255), (cx, cy), int(core_r))
+        
+        # 阶段4: 创世完成 (80帧) - 新宇宙形成
+        else:
+            self.phase = 3
+            fade = self.life / 80
+            
+            # 继续绘制星辰
+            for star in self.stars:
+                star['vx'] *= 0.98
+                star['vy'] *= 0.98
+                star['x'] += star['vx']
+                star['y'] += star['vy']
+                star['twinkle'] += 0.15
+                
+                twinkle_size = star['size'] + 2 * abs(math.sin(star['twinkle']))
+                alpha = int(255 * fade)
+                pygame.draw.circle(self.image, (*star['color'][:3], alpha), 
+                                 (int(star['x']), int(star['y'])), int(twinkle_size))
+            
+            # 生成星系漩涡
+            if random.random() < 0.1 and len(self.galaxies) < 5:
+                self.galaxies.append({
+                    'x': random.randint(100, WIDTH - 100),
+                    'y': random.randint(100, HEIGHT - 100),
+                    'rotation': random.uniform(0, 360),
+                    'size': random.randint(40, 80),
+                    'arms': random.randint(2, 4)
+                })
+            
+            # 绘制星系
+            for galaxy in self.galaxies:
+                galaxy['rotation'] += 2
+                for arm in range(galaxy['arms']):
+                    arm_pts = []
+                    for seg in range(15):
+                        progress_seg = seg / 14
+                        angle = (arm * (360 / galaxy['arms']) + progress_seg * 180 + galaxy['rotation']) * 0.01745
+                        r = progress_seg * galaxy['size']
+                        arm_pts.append((
+                            galaxy['x'] + math.cos(angle) * r,
+                            galaxy['y'] + math.sin(angle) * r
+                        ))
+                    alpha = int(180 * fade)
+                    if len(arm_pts) > 1:
+                        pygame.draw.lines(self.image, (200, 180, 255, alpha), False, arm_pts, 2)
+                # 星系核心
+                pygame.draw.circle(self.image, (255, 255, 200, int(200 * fade)), 
+                                 (galaxy['x'], galaxy['y']), 8)
+            
+            # 持续治疗玩家
+            if self.life % 20 == 0 and hasattr(self.owner, 'hp'):
+                heal = 5
+                self.owner.hp = min(self.owner.max_hp, self.owner.hp + heal)
+                FloatingText(self.owner.rect.centerx, self.owner.rect.centery - 20, f"+{heal}", (100, 255, 150))
+
+
+# ========== Omega 第二大招：元素轮转 ==========
+class OmegaElementalCycle(pygame.sprite.Sprite):
+    """【元素轮转】七属性循环攻击，每种属性附加独特效果"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180  # 3秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        
+        # 七属性
+        self.elements = [
+            {"name": "炎", "color": (255, 80, 30), "effect": "burn"},
+            {"name": "冰", "color": (100, 200, 255), "effect": "freeze"},
+            {"name": "雷", "color": (255, 255, 100), "effect": "chain"},
+            {"name": "毒", "color": (150, 255, 80), "effect": "poison"},
+            {"name": "圣", "color": (255, 255, 255), "effect": "heal"},
+            {"name": "暗", "color": (150, 50, 200), "effect": "weaken"},
+            {"name": "元", "color": (255, 200, 100), "effect": "amplify"},
+        ]
+        self.current_element = 0
+        self.rotation = 0
+        self.projectiles = []
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 50, "◆ 元素轮转 ◆", (255, 220, 180))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        self.rotation += 5
+        cx, cy = self.owner.rect.centerx, self.owner.rect.centery
+        
+        # 每25帧切换元素并发射
+        if self.life % 25 == 0:
+            elem = self.elements[self.current_element]
+            self.current_element = (self.current_element + 1) % 7
+            
+            # 向最近敌人发射元素弹
+            target = None
+            min_dist = float('inf')
+            for m in mobs:
+                dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                if dist < min_dist:
+                    min_dist = dist
+                    target = m
+            
+            if target:
+                angle = math.atan2(target.rect.centery - cy, target.rect.centerx - cx)
+            else:
+                angle = -math.pi / 2  # 向上
+            
+            self.projectiles.append({
+                'x': cx, 'y': cy,
+                'vx': math.cos(angle) * 12,
+                'vy': math.sin(angle) * 12,
+                'element': elem,
+                'life': 60
+            })
+            
+            FloatingText(cx, cy - 30, f"Ω{elem['name']}", elem['color'])
+        
+        # 绘制环绕的元素符文
+        for i, elem in enumerate(self.elements):
+            angle = (i * 360 / 7 + self.rotation) * math.pi / 180
+            ex = cx + math.cos(angle) * 60
+            ey = cy + math.sin(angle) * 60
+            
+            # 高亮当前元素
+            size = 15 if i == self.current_element else 10
+            pygame.draw.circle(self.image, elem['color'], (int(ex), int(ey)), size)
+            if i == self.current_element:
+                pygame.draw.circle(self.image, (255, 255, 255), (int(ex), int(ey)), size + 3, 2)
+        
+        # 更新和绘制元素弹
+        for proj in self.projectiles[:]:
+            proj['x'] += proj['vx']
+            proj['y'] += proj['vy']
+            proj['life'] -= 1
+            
+            if proj['life'] <= 0 or proj['x'] < 0 or proj['x'] > WIDTH or proj['y'] < 0 or proj['y'] > HEIGHT:
+                self.projectiles.remove(proj)
+                continue
+            
+            # 绘制元素弹
+            elem = proj['element']
+            px, py = int(proj['x']), int(proj['y'])
+            
+            # 带尾迹的元素弹
+            for trail in range(4):
+                trail_x = px - proj['vx'] * trail * 0.3
+                trail_y = py - proj['vy'] * trail * 0.3
+                alpha = 200 - trail * 50
+                pygame.draw.circle(self.image, (*elem['color'][:3], alpha), 
+                                 (int(trail_x), int(trail_y)), 10 - trail * 2)
+            
+            pygame.draw.circle(self.image, elem['color'], (px, py), 12)
+            pygame.draw.circle(self.image, (255, 255, 255), (px, py), 6)
+            
+            # 碰撞检测
+            for m in list(mobs):
+                if math.hypot(m.rect.centerx - px, m.rect.centery - py) < 30:
+                    m.hp -= 120
+                    
+                    # 属性特效
+                    effect = elem['effect']
+                    if effect == "burn":
+                        # 燃烧：持续伤害
+                        if not hasattr(m, 'burn_tick'):
+                            m.burn_tick = 0
+                        m.burn_tick = 90
+                        FloatingText(m.rect.centerx, m.rect.top - 10, "燃烧!", (255, 100, 50))
+                    elif effect == "freeze":
+                        # 冻结：减速
+                        if hasattr(m, 'speed'):
+                            m.speed = max(0.5, m.speed * 0.5)
+                        FloatingText(m.rect.centerx, m.rect.top - 10, "冻结!", (100, 200, 255))
+                    elif effect == "chain":
+                        # 连锁：对周围敌人造成伤害
+                        for other in mobs:
+                            if other != m:
+                                dist = math.hypot(other.rect.centerx - m.rect.centerx, 
+                                                other.rect.centery - m.rect.centery)
+                                if dist < 100:
+                                    other.hp -= 40
+                                    pygame.draw.line(self.image, (255, 255, 100), 
+                                                   m.rect.center, other.rect.center, 2)
+                        FloatingText(m.rect.centerx, m.rect.top - 10, "连锁!", (255, 255, 100))
+                    elif effect == "poison":
+                        # 毒素：标记
+                        if not hasattr(m, 'poison_tick'):
+                            m.poison_tick = 0
+                        m.poison_tick = 120
+                        FloatingText(m.rect.centerx, m.rect.top - 10, "剧毒!", (150, 255, 80))
+                    elif effect == "heal":
+                        # 圣光：治疗玩家
+                        if hasattr(self.owner, 'hp'):
+                            self.owner.hp = min(self.owner.max_hp, self.owner.hp + 20)
+                        FloatingText(m.rect.centerx, m.rect.top - 10, "神圣!", (255, 255, 255))
+                    elif effect == "weaken":
+                        # 暗影：削弱防御
+                        FloatingText(m.rect.centerx, m.rect.top - 10, "虚弱!", (150, 50, 200))
+                    elif effect == "amplify":
+                        # 元素：伤害放大
+                        m.hp -= 60  # 额外伤害
+                        FloatingText(m.rect.centerx, m.rect.top - 10, "增幅!", (255, 200, 100))
+                    
+                    Particle(m.rect.center, elem['color'])
+                    if proj in self.projectiles:
+                        self.projectiles.remove(proj)
+                    break
+
+
+# ========== Omega 第三大招：属性共鸣 ==========
+class OmegaElementalResonance(pygame.sprite.Sprite):
+    """【属性共鸣】七属性同时爆发环形冲击波"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120  # 2秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        self.elements = [
+            {"name": "炎", "color": (255, 80, 30)},
+            {"name": "冰", "color": (100, 200, 255)},
+            {"name": "雷", "color": (255, 255, 100)},
+            {"name": "毒", "color": (150, 255, 80)},
+            {"name": "圣", "color": (255, 255, 255)},
+            {"name": "暗", "color": (150, 50, 200)},
+            {"name": "元", "color": (255, 200, 100)},
+        ]
+        self.wave_radius = 0
+        self.hit_enemies = set()
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 50, "★ 属性共鸣 ★", (255, 220, 180))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = self.owner.rect.centerx, self.owner.rect.centery
+        
+        # 冲击波扩展
+        self.wave_radius += 8
+        
+        # 七层元素环
+        for i, elem in enumerate(self.elements):
+            ring_r = self.wave_radius - i * 15
+            if ring_r > 0:
+                # 绘制元素波纹
+                alpha = max(0, 200 - self.wave_radius // 3)
+                
+                # 波浪形环
+                pts = []
+                for j in range(72):
+                    angle = j * 5 * math.pi / 180
+                    wobble = 5 * math.sin(j * 0.3 + self.life * 0.2 + i)
+                    r = ring_r + wobble
+                    pts.append((cx + math.cos(angle) * r, cy + math.sin(angle) * r))
+                
+                if len(pts) > 2:
+                    pygame.draw.lines(self.image, (*elem['color'][:3], alpha), True, pts, 4)
+        
+        # 中心聚能球
+        core_size = 30 + 10 * abs(math.sin(self.life * 0.2))
+        for i, elem in enumerate(self.elements):
+            angle = (i * 360 / 7 + self.life * 5) * math.pi / 180
+            ex = cx + math.cos(angle) * (core_size - 10)
+            ey = cy + math.sin(angle) * (core_size - 10)
+            pygame.draw.circle(self.image, elem['color'], (int(ex), int(ey)), 8)
+        pygame.draw.circle(self.image, (255, 255, 255), (cx, cy), int(core_size // 2))
+        
+        # 伤害敌人
+        for m in list(mobs):
+            dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+            if abs(dist - self.wave_radius) < 40 and m not in self.hit_enemies:
+                self.hit_enemies.add(m)
+                m.hp -= 200
+                FloatingText(m.rect.centerx, m.rect.top - 20, "共鸣!", (255, 220, 180))
+                for elem in self.elements:
+                    Particle((m.rect.centerx + random.randint(-20, 20), 
+                            m.rect.centery + random.randint(-20, 20)), elem['color'])
+
+
+# ========== Genesis 第二大招：星辰陨落 ==========
+class GenesisMeteorShower(pygame.sprite.Sprite):
+    """【星辰陨落】召唤陨石群轰炸敌人"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180  # 3秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        
+        self.meteors = []
+        self.explosions = []
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 50, "◆ 星辰陨落 ◆", (255, 200, 100))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        # 生成新陨石
+        if self.life > 60 and random.random() < 0.15:
+            # 瞄准敌人或随机位置
+            target_x = random.randint(50, WIDTH - 50)
+            target_y = random.randint(100, HEIGHT - 100)
+            
+            if mobs and random.random() < 0.7:
+                target = random.choice(list(mobs))
+                target_x = target.rect.centerx
+                target_y = target.rect.centery
+            
+            self.meteors.append({
+                'x': target_x + random.randint(-100, 100),
+                'y': -50,
+                'target_x': target_x,
+                'target_y': target_y,
+                'size': random.randint(20, 40),
+                'color': random.choice([
+                    (255, 200, 100), (255, 150, 50), (255, 100, 30), (200, 150, 100)
+                ]),
+                'speed': random.uniform(8, 12),
+                'trail': []
+            })
+        
+        # 更新陨石
+        for meteor in self.meteors[:]:
+            # 计算方向
+            dx = meteor['target_x'] - meteor['x']
+            dy = meteor['target_y'] - meteor['y']
+            dist = max(1, math.hypot(dx, dy))
+            
+            meteor['x'] += (dx / dist) * meteor['speed']
+            meteor['y'] += (dy / dist) * meteor['speed']
+            
+            # 记录尾迹
+            meteor['trail'].append((meteor['x'], meteor['y']))
+            if len(meteor['trail']) > 10:
+                meteor['trail'].pop(0)
+            
+            # 绘制尾迹
+            for i, pos in enumerate(meteor['trail']):
+                alpha = int(200 * (i / len(meteor['trail'])))
+                size = int(meteor['size'] * 0.5 * (i / len(meteor['trail'])))
+                pygame.draw.circle(self.image, (*meteor['color'][:3], alpha), 
+                                 (int(pos[0]), int(pos[1])), max(2, size))
+            
+            # 绘制陨石
+            mx, my = int(meteor['x']), int(meteor['y'])
+            # 外焰
+            pygame.draw.circle(self.image, (255, 100, 30), (mx, my), meteor['size'] + 5)
+            # 陨石本体
+            pygame.draw.circle(self.image, meteor['color'], (mx, my), meteor['size'])
+            # 高光
+            pygame.draw.circle(self.image, (255, 255, 200), (mx - meteor['size']//4, my - meteor['size']//4), 
+                             meteor['size'] // 3)
+            
+            # 到达目标或超出屏幕
+            if dist < 20 or meteor['y'] > HEIGHT:
+                # 爆炸
+                self.explosions.append({
+                    'x': meteor['x'], 'y': meteor['y'],
+                    'radius': 0, 'max_radius': meteor['size'] * 3,
+                    'color': meteor['color']
+                })
+                
+                # 伤害敌人
+                for m in list(mobs):
+                    m_dist = math.hypot(m.rect.centerx - meteor['x'], m.rect.centery - meteor['y'])
+                    if m_dist < meteor['size'] * 3:
+                        damage = int(150 * (1 - m_dist / (meteor['size'] * 3)))
+                        m.hp -= damage
+                        FloatingText(m.rect.centerx, m.rect.top - 10, f"-{damage}", meteor['color'])
+                        Particle(m.rect.center, meteor['color'])
+                
+                self.meteors.remove(meteor)
+        
+        # 更新爆炸
+        for exp in self.explosions[:]:
+            exp['radius'] += 10
+            if exp['radius'] > exp['max_radius']:
+                self.explosions.remove(exp)
+                continue
+            
+            # 绘制爆炸环
+            alpha = int(200 * (1 - exp['radius'] / exp['max_radius']))
+            pygame.draw.circle(self.image, (*exp['color'][:3], alpha), 
+                             (int(exp['x']), int(exp['y'])), int(exp['radius']), 4)
+
+
+# ========== Genesis 第三大招：新星诞生 ==========
+class GenesisSupernovaBlast(pygame.sprite.Sprite):
+    """【新星诞生】在敌人位置创造超新星爆炸"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 150  # 2.5秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        # 在每个敌人位置标记超新星
+        self.supernovas = []
+        for m in list(mobs):
+            self.supernovas.append({
+                'x': m.rect.centerx,
+                'y': m.rect.centery,
+                'phase': 0,  # 0=聚集 1=爆发 2=余辉
+                'timer': 0,
+                'radius': 0,
+                'target': m
+            })
+        
+        # 如果没有敌人，随机生成几个
+        if not self.supernovas:
+            for _ in range(5):
+                self.supernovas.append({
+                    'x': random.randint(100, WIDTH - 100),
+                    'y': random.randint(100, HEIGHT - 200),
+                    'phase': 0, 'timer': 0, 'radius': 0, 'target': None
+                })
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 50, "★ 新星诞生 ★", (255, 220, 150))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        for nova in self.supernovas:
+            nova['timer'] += 1
+            x, y = int(nova['x']), int(nova['y'])
+            
+            # 阶段0：能量聚集 (40帧)
+            if nova['phase'] == 0:
+                progress = nova['timer'] / 40
+                
+                # 聚集光线
+                for i in range(12):
+                    angle = (i * 30 + nova['timer'] * 5) * math.pi / 180
+                    length = 80 * (1 - progress)
+                    sx = x + math.cos(angle) * length
+                    sy = y + math.sin(angle) * length
+                    pygame.draw.line(self.image, (255, 255, 200, 200), (sx, sy), (x, y), 2)
+                
+                # 中心聚能
+                core_r = 5 + progress * 15
+                pygame.draw.circle(self.image, (255, 255, 255), (x, y), int(core_r))
+                pygame.draw.circle(self.image, (255, 220, 150), (x, y), int(core_r * 0.7))
+                
+                if nova['timer'] >= 40:
+                    nova['phase'] = 1
+                    nova['timer'] = 0
+            
+            # 阶段1：超新星爆发 (30帧)
+            elif nova['phase'] == 1:
+                progress = nova['timer'] / 30
+                nova['radius'] = progress * 120
+                
+                # 爆发光环
+                colors = [(255, 255, 255), (255, 255, 200), (255, 220, 150), 
+                         (255, 180, 100), (255, 150, 80)]
+                for i, color in enumerate(colors):
+                    ring_r = nova['radius'] - i * 10
+                    if ring_r > 0:
+                        alpha = int(255 * (1 - progress * 0.5))
+                        pygame.draw.circle(self.image, (*color, alpha), (x, y), int(ring_r), max(1, 6 - i))
+                
+                # 中心亮点
+                pygame.draw.circle(self.image, (255, 255, 255), (x, y), int(20 * (1 - progress)))
+                
+                # 喷射物质
+                for i in range(8):
+                    angle = (i * 45) * math.pi / 180
+                    jet_len = nova['radius'] + 20
+                    jx = x + math.cos(angle) * jet_len
+                    jy = y + math.sin(angle) * jet_len
+                    pygame.draw.line(self.image, (255, 200, 100), (x, y), (jx, jy), 3)
+                    pygame.draw.circle(self.image, (255, 255, 200), (int(jx), int(jy)), 5)
+                
+                # 伤害敌人
+                for m in list(mobs):
+                    dist = math.hypot(m.rect.centerx - x, m.rect.centery - y)
+                    if dist < nova['radius']:
+                        # 每帧造成伤害
+                        m.hp -= 8
+                        if nova['timer'] % 10 == 0:
+                            Particle(m.rect.center, (255, 220, 150))
+                
+                if nova['timer'] >= 30:
+                    nova['phase'] = 2
+                    nova['timer'] = 0
+                    # 最终爆炸伤害
+                    if nova['target'] and nova['target'] in mobs:
+                        nova['target'].hp -= 150
+                        FloatingText(nova['target'].rect.centerx, nova['target'].rect.top - 20, 
+                                   "超新星!", (255, 220, 150))
+            
+            # 阶段2：星云余辉 (50帧)
+            elif nova['phase'] == 2:
+                fade = 1 - nova['timer'] / 50
+                
+                # 扩散星云
+                nebula_r = 120 + nova['timer'] * 2
+                nebula_colors = [(255, 200, 150), (200, 150, 255), (150, 200, 255)]
+                
+                for i, color in enumerate(nebula_colors):
+                    nr = nebula_r - i * 20
+                    if nr > 0:
+                        alpha = int(100 * fade)
+                        pygame.draw.circle(self.image, (*color, alpha), (x, y), int(nr), 2)
+                
+                # 新生小星星
+                if nova['timer'] % 5 == 0:
+                    for _ in range(3):
+                        angle = random.uniform(0, 2 * math.pi)
+                        dist = random.uniform(20, nebula_r)
+                        sx = x + math.cos(angle) * dist
+                        sy = y + math.sin(angle) * dist
+                        pygame.draw.circle(self.image, (255, 255, 200, int(200 * fade)), 
+                                         (int(sx), int(sy)), random.randint(1, 3))
+                
+                if nova['timer'] >= 50:
+                    self.supernovas.remove(nova)

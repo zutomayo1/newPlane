@@ -4818,7 +4818,10 @@ def draw_top_hud():
         "aurora": "极光冲击波", "crimson": "刀刃风暴", "stalker": "引力陷阱",
         "gaia": "岩石护盾", "weaver": "蛛网陷阱", "solar": "太阳耀斑",
         "arbiter": "数据腐蚀", "eclipse": "暗物质爆发", "prism": "彩虹碎裂",
-        "necro": "生命汲取", "void": "虚空撕裂", "wormhole": "虫洞链接"
+        "necro": "生命汲取", "void": "虚空撕裂", "wormhole": "虫洞链接",
+        "chronos": "时光冻结", "mirage": "幻影分身", "gambit": "爆裂连锁",
+        "puppeteer": "偶线操控", "pandemic": "病毒变异",
+        "omega": "七曜轮转", "genesis": "毁灭之形"
     }
     ult2_name = ult2_names.get(player.plane_id, '次级技能')
     ult2_y = bar1_y + bar1_h + 3
@@ -4880,7 +4883,10 @@ def draw_top_hud():
         "aurora": "北极光", "crimson": "刀刃旋风", "stalker": "重力炸弹",
         "gaia": "水晶屏障", "weaver": "蜘蛛群袭", "solar": "太阳光束",
         "arbiter": "病毒感染", "eclipse": "虚空坍缩", "prism": "光之棱镜",
-        "necro": "灵魂收割", "void": "等离子漩涡", "wormhole": "时空逆流"
+        "necro": "灵魂收割", "void": "等离子漩涡", "wormhole": "时空逆流",
+        "chronos": "时空回溯", "mirage": "全息影印", "gambit": "命运翻转",
+        "puppeteer": "人偶军团", "pandemic": "全球感染",
+        "omega": "元素融合", "genesis": "创世大爆炸"
     }
     ult3_name = ult3_names.get(player.plane_id, '终极技能')
     ult3_y = bar2_y + bar2_h + 3

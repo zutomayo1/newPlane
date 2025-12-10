@@ -276,7 +276,31 @@
     "pandemic_prion": true,
     "pandemic_alien": true,
     "pandemic_chimera": true,
-    "pandemic_omega": true
+    "pandemic_omega": true,
+    "omega_divine": true,
+    "omega_void": true,
+    "omega_aurora": true,
+    "omega_celestial": true,
+    "omega_infernal": true,
+    "omega_quantum": true,
+    "omega_primal": true,
+    "genesis_cosmic": true,
+    "genesis_solar": true,
+    "genesis_nebula": true,
+    "genesis_void": true,
+    "genesis_life": true,
+    "genesis_crystal": true,
+    "genesis_chaos": true,
+    "omega_clockwork": true,
+    "omega_dragon": true,
+    "omega_galactic": true,
+    "omega_runic": true,
+    "omega_tempest": true,
+    "genesis_phoenix": true,
+    "genesis_ocean": true,
+    "genesis_sakura": true,
+    "genesis_mecha": true,
+    "genesis_constellation": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -301,8 +325,8 @@
     "gambit": "gambit_mahjong",
     "puppeteer": "puppeteer_circus",
     "pandemic": "pandemic_zombie",
-    "genesis": "legend_nebula",
-    "omega": "epic_magma"
+    "genesis": "genesis_phoenix",
+    "omega": "common_red"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -482,7 +506,21 @@
     "pandemic_biohazard_bullet": true,
     "pandemic_cell_bullet": true,
     "pandemic_mutation_bullet": true,
-    "pandemic_extinction_bullet": true
+    "pandemic_extinction_bullet": true,
+    "omega_fusion_bullet": true,
+    "omega_void_bullet": true,
+    "omega_aurora_bullet": true,
+    "omega_celestial_bullet": true,
+    "omega_infernal_bullet": true,
+    "omega_quantum_bullet": true,
+    "omega_primal_bullet": true,
+    "genesis_star_bullet": true,
+    "genesis_solar_bullet": true,
+    "genesis_nebula_bullet": true,
+    "genesis_void_bullet": true,
+    "genesis_life_bullet": true,
+    "genesis_crystal_bullet": true,
+    "genesis_chaos_bullet": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -505,7 +543,9 @@
     "mirage": "mirage_holographic_bullet",
     "gambit": "gambit_joker_bullet",
     "pandemic": "pandemic_toxin_bullet",
-    "puppeteer": "puppeteer_soul_bullet"
+    "puppeteer": "puppeteer_soul_bullet",
+    "genesis": "genesis_void_bullet",
+    "omega": "omega_aurora_bullet"
   },
   "equipped_wingman_themes": {
     "slot_0": "striker_holy",

@@ -30,10 +30,14 @@ from .mirage_bullets import render_mirage_bullet
 from .gambit_bullets import render_gambit_bullet
 from .puppeteer_bullets import render_puppeteer_bullet
 from .pandemic_bullets import render_pandemic_bullet
+from .omega_bullets import render_omega_bullet
+from .genesis_bullets import render_genesis_bullet
 
 
-# 渲染函数列表，按优先级顺序排列
+# 渲染函数列表，按优先级顺序排列（终极机体优先）
 BULLET_RENDERERS = [
+    render_omega_bullet,      # [终极机体] Omega
+    render_genesis_bullet,    # [终极机体] Genesis
     render_striker_bullet,
     render_phantom_bullet,
     render_titan_bullet,
