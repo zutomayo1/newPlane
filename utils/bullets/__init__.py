@@ -27,6 +27,7 @@
 - pandemic_bullets.py: Pandemic子弹涂装
 - omega_bullets.py: Omega子弹涂装 [终极机体]
 - genesis_bullets.py: Genesis子弹涂装 [终极机体]
+- truth_bullets.py: Truth子弹涂装 [终极机体]
 """
 
 from .base import draw_bullet_preview

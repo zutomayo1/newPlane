@@ -300,7 +300,17 @@
     "genesis_ocean": true,
     "genesis_sakura": true,
     "genesis_mecha": true,
-    "genesis_constellation": true
+    "genesis_constellation": true,
+    "truth_base": true,
+    "truth_enlightened": true,
+    "truth_shadow": true,
+    "truth_balance": true,
+    "truth_cosmic": true,
+    "truth_revelation": true,
+    "truth_judgment": true,
+    "truth_oracle": true,
+    "truth_infinity": true,
+    "truth_absolute": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -326,7 +336,8 @@
     "puppeteer": "puppeteer_circus",
     "pandemic": "pandemic_zombie",
     "genesis": "genesis_phoenix",
-    "omega": "common_red"
+    "omega": "common_red",
+    "truth": "truth_judgment"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -520,7 +531,15 @@
     "genesis_void_bullet": true,
     "genesis_life_bullet": true,
     "genesis_crystal_bullet": true,
-    "genesis_chaos_bullet": true
+    "genesis_chaos_bullet": true,
+    "truth_eye_bullet": true,
+    "truth_yinyang_bullet": true,
+    "truth_revelation_bullet": true,
+    "truth_judgment_bullet": true,
+    "truth_yin_bullet": true,
+    "truth_yang_bullet": true,
+    "truth_rune_bullet": true,
+    "truth_absolute_bullet": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -545,7 +564,8 @@
     "pandemic": "pandemic_toxin_bullet",
     "puppeteer": "puppeteer_soul_bullet",
     "genesis": "genesis_void_bullet",
-    "omega": "omega_aurora_bullet"
+    "omega": "omega_aurora_bullet",
+    "truth": "truth_rune_bullet"
   },
   "equipped_wingman_themes": {
     "slot_0": "striker_holy",

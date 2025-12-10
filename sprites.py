@@ -4933,6 +4933,42 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.circle(self.image, (255, 255, 200), (center, center), 4)
                 pygame.draw.circle(self.image, (255, 255, 255), (center, center), 2)
                 self.speed = -24
+            
+            elif b_type == "truth_revelation":  # 22. Truth - 至尊·世界的真相（真言之眼弹）
+                TRUTH_WHITE = (255, 255, 255)
+                TRUTH_BLACK = (20, 20, 30)
+                TRUTH_GOLD = (255, 215, 0)
+                
+                self.image = pygame.Surface((28, 28), pygame.SRCALPHA)
+                center = 14
+                
+                # 外层光环
+                pygame.draw.circle(self.image, TRUTH_GOLD, (center, center), 12, 2)
+                
+                # 眼睛形态
+                eye_pts = [
+                    (center - 10, center),
+                    (center - 5, center - 6),
+                    (center, center - 7),
+                    (center + 5, center - 6),
+                    (center + 10, center),
+                    (center + 5, center + 6),
+                    (center, center + 7),
+                    (center - 5, center + 6),
+                ]
+                pygame.draw.polygon(self.image, TRUTH_WHITE, eye_pts)
+                pygame.draw.polygon(self.image, TRUTH_GOLD, eye_pts, 2)
+                
+                # 虹膜
+                pygame.draw.circle(self.image, TRUTH_GOLD, (center, center), 5)
+                
+                # 瞳孔
+                pygame.draw.circle(self.image, TRUTH_BLACK, (center, center), 3)
+                
+                # 高光
+                pygame.draw.circle(self.image, TRUTH_WHITE, (center - 2, center - 1), 1)
+                
+                self.speed = -26
                 
             else:  # 默认（紫红幽能，与Specter共用）
                 self.image = pygame.Surface((18, 42), pygame.SRCALPHA)
@@ -8432,6 +8468,152 @@ class Bullet(pygame.sprite.Sprite):
             pygame.draw.circle(self.image, chaos_colors[0], (center, center), size//4)
             pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//8)
             self.speed = -17
+        
+        # ========== Truth 至尊·世界的真相 子弹涂装 ==========
+        elif "eye_of_truth" in effects or "truth_gaze" in effects:
+            # 真言之眼弹 - 洞察一切
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 眼睛轮廓
+            pygame.draw.ellipse(self.image, (255, 215, 0), 
+                              (center - size//2, center - size//3, size, size*2//3), 4)
+            # 眼白
+            pygame.draw.ellipse(self.image, (255, 255, 255), 
+                              (center - size//2 + 4, center - size//3 + 4, size - 8, size*2//3 - 8))
+            # 虹膜
+            pygame.draw.circle(self.image, (255, 215, 0), (center, center), size//5)
+            # 瞳孔
+            pygame.draw.circle(self.image, (20, 20, 30), (center, center), size//8)
+            # 高光
+            pygame.draw.circle(self.image, (255, 255, 255), (center - size//10, center - size//15), size//15)
+            self.speed = -16
+            
+        elif "yin_yang_balance" in effects or "duality_core" in effects:
+            # 阴阳平衡弹 - 太极之核
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            taiji_r = size//2
+            # 阴阳鱼
+            for i in range(2):
+                is_yang = (i == 0)
+                fish_color = (255, 255, 255) if is_yang else (20, 20, 30)
+                start = i * 180
+                # 半圆
+                pts = [(center, center)]
+                for j in range(19):
+                    angle = (start + j * 10) * math.pi / 180
+                    pts.append((center + math.cos(angle) * taiji_r, center + math.sin(angle) * taiji_r))
+                pygame.draw.polygon(self.image, fish_color, pts)
+                # 小圆
+                sm_angle = (start + 90) * math.pi / 180
+                sx = center + math.cos(sm_angle) * (taiji_r // 2)
+                sy = center + math.sin(sm_angle) * (taiji_r // 2)
+                pygame.draw.circle(self.image, fish_color, (int(sx), int(sy)), taiji_r // 2)
+                # 鱼眼
+                eye_color = (20, 20, 30) if is_yang else (255, 255, 255)
+                pygame.draw.circle(self.image, eye_color, (int(sx), int(sy)), taiji_r // 6)
+            # 金边
+            pygame.draw.circle(self.image, (255, 215, 0), (center, center), taiji_r + 3, 3)
+            self.speed = -15
+            
+        elif "truth_revelation" in effects or "absolute_insight" in effects:
+            # 真理显现弹 - 全知之眼
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 多层眼环
+            for ring in range(3):
+                ring_r = size//4 + ring * size//8
+                ring_color = (255, 215, 0) if ring % 2 == 0 else (255, 255, 255)
+                pygame.draw.circle(self.image, ring_color, (center, center), ring_r, 2)
+            # 中心瞳孔
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//5)
+            pygame.draw.circle(self.image, (255, 215, 0), (center, center), size//6)
+            pygame.draw.circle(self.image, (20, 20, 30), (center, center), size//10)
+            # 审视射线（8条）
+            for i in range(8):
+                angle = (i * 45) * math.pi / 180
+                x1 = center + int(size//5 * math.cos(angle))
+                y1 = center + int(size//5 * math.sin(angle))
+                x2 = center + int(size//1.5 * math.cos(angle))
+                y2 = center + int(size//1.5 * math.sin(angle))
+                pygame.draw.line(self.image, (255, 215, 0), (x1, y1), (x2, y2), 2)
+            self.speed = -17
+            
+        elif "judgment_verdict" in effects or "truth_sentence" in effects:
+            # 审判裁决弹 - 真言天平
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 天平横梁
+            pygame.draw.line(self.image, (255, 215, 0), (center - size//2, center), (center + size//2, center), 4)
+            # 天平支点
+            pygame.draw.polygon(self.image, (255, 215, 0), [
+                (center, center - size//4),
+                (center - size//10, center),
+                (center + size//10, center)
+            ])
+            # 左盘（白）
+            pygame.draw.circle(self.image, (255, 255, 255), (center - size//3, center + size//4), size//6)
+            pygame.draw.line(self.image, (200, 200, 200), (center - size//3, center), (center - size//3, center + size//4), 2)
+            # 右盘（黑）
+            pygame.draw.circle(self.image, (20, 20, 30), (center + size//3, center + size//4), size//6)
+            pygame.draw.line(self.image, (100, 100, 100), (center + size//3, center), (center + size//3, center + size//4), 2)
+            # 中心之眼
+            pygame.draw.circle(self.image, (255, 215, 0), (center, center - size//4), size//10)
+            pygame.draw.circle(self.image, (20, 20, 30), (center, center - size//4), size//20)
+            self.speed = -15
+            
+        elif "yin_bolt" in effects or "shadow_truth" in effects:
+            # 阴极弹 - 暗影真言
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 黑暗核心
+            pygame.draw.circle(self.image, (20, 20, 30), (center, center), size//3)
+            pygame.draw.circle(self.image, (40, 40, 50), (center, center), size//4)
+            # 暗影射线
+            for i in range(6):
+                angle = (i * 60) * math.pi / 180
+                x2 = center + int(size//1.5 * math.cos(angle))
+                y2 = center + int(size//1.5 * math.sin(angle))
+                pygame.draw.line(self.image, (60, 60, 80), (center, center), (x2, y2), 3)
+            # 金色轮廓
+            pygame.draw.circle(self.image, (255, 215, 0), (center, center), size//3, 2)
+            self.speed = -14
+            
+        elif "yang_bolt" in effects or "light_truth" in effects:
+            # 阳极弹 - 光明真言
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 光明核心
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//3)
+            pygame.draw.circle(self.image, (255, 255, 200), (center, center), size//4)
+            # 光芒射线
+            for i in range(8):
+                angle = (i * 45) * math.pi / 180
+                x2 = center + int(size//1.5 * math.cos(angle))
+                y2 = center + int(size//1.5 * math.sin(angle))
+                pygame.draw.line(self.image, (255, 255, 230), (center, center), (x2, y2), 3)
+            # 金色轮廓
+            pygame.draw.circle(self.image, (255, 215, 0), (center, center), size//3, 2)
+            self.speed = -18
+            
+        elif "rune_circle" in effects or "truth_seal" in effects:
+            # 真言符文环弹
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 符文环
+            pygame.draw.circle(self.image, (255, 215, 0), (center, center), size//2, 3)
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//3, 2)
+            # 符文点
+            for i in range(12):
+                angle = (i * 30) * math.pi / 180
+                rx = center + int(size//2.5 * math.cos(angle))
+                ry = center + int(size//2.5 * math.sin(angle))
+                pygame.draw.circle(self.image, (255, 215, 0), (rx, ry), size//15)
+            # 中心之眼
+            pygame.draw.circle(self.image, (255, 255, 255), (center, center), size//6)
+            pygame.draw.circle(self.image, (255, 215, 0), (center, center), size//8)
+            pygame.draw.circle(self.image, (20, 20, 30), (center, center), size//16)
+            self.speed = -16
             
         else:
             # 默认子弹
@@ -11306,6 +11488,116 @@ class Player(pygame.sprite.Sprite):
                 for _ in range(20):
                     Particle(self.rect.center, random.choice([(255, 220, 100), (255, 100, 150), (255, 255, 255)]))
         
+        # ========== 25. 至尊·世界的真相 - 真言之眼揭示一切 ==========
+        elif pid == "truth":
+            # 终极机体Truth：真言之眼系统 - 标记敌人"真相"状态，暴露弱点
+            TRUTH_WHITE = (255, 255, 255)
+            TRUTH_BLACK = (20, 20, 30)
+            TRUTH_GOLD = (255, 215, 0)
+            
+            # 初始化Truth专属属性
+            if not hasattr(self, 'truth_eye_charge'):
+                self.truth_eye_charge = 0  # 真言之眼能量
+                self.truth_eye_max = 100
+                self.truth_marked_enemies = {}  # 被标记的敌人
+                self.truth_revelation_mode = False  # 真理显现模式
+                self.truth_yin_yang_balance = 0  # 阴阳平衡值 (-100~100)
+            
+            self.truth_eye_charge += 4
+            
+            # 根据阴阳平衡决定子弹属性
+            if self.truth_yin_yang_balance > 30:
+                # 阳盛：白色光明弹，高伤害
+                bullet_color = TRUTH_WHITE
+                bullet_effect = "yang"
+                damage_mult = 1.5
+                self.truth_yin_yang_balance -= 8
+            elif self.truth_yin_yang_balance < -30:
+                # 阴盛：黑色暗影弹，追踪+减速
+                bullet_color = TRUTH_BLACK
+                bullet_effect = "yin"
+                damage_mult = 1.0
+                self.truth_yin_yang_balance += 8
+            else:
+                # 平衡：金色真理弹，标记敌人
+                bullet_color = TRUTH_GOLD
+                bullet_effect = "balance"
+                damage_mult = 1.2
+            
+            # 主弹：真言之矢
+            for i in range(cnt):
+                offset_x = (i - (cnt-1)/2) * 18
+                main_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                       color=bullet_color, b_type="truth_revelation", 
+                       piercing=self.piercing + 1, homing=homing_value + 0.2, bullet_theme=self.bullet_theme)
+                main_bullet.is_truth_bullet = True
+                main_bullet.truth_effect = bullet_effect
+                main_bullet.damage_mult = damage_mult
+                
+                # 平衡弹有标记敌人的能力
+                if bullet_effect == "balance":
+                    main_bullet.can_mark_truth = True
+            
+            # 两侧辅助弹：阴阳双弹
+            yin_bullet = Bullet(self.rect.centerx - 40, self.rect.top + 5, angle=-15,
+                   color=TRUTH_BLACK, b_type="truth_revelation", 
+                   piercing=self.piercing, homing=homing_value + 0.3, bullet_theme=self.bullet_theme)
+            yin_bullet.is_truth_yin = True
+            yin_bullet.damage_mult = 0.7
+            yin_bullet.speed = -12
+            
+            yang_bullet = Bullet(self.rect.centerx + 40, self.rect.top + 5, angle=15,
+                   color=TRUTH_WHITE, b_type="truth_revelation", 
+                   piercing=self.piercing, homing=homing_value + 0.3, bullet_theme=self.bullet_theme)
+            yang_bullet.is_truth_yang = True
+            yang_bullet.damage_mult = 0.7
+            yang_bullet.speed = -12
+            
+            # 阴阳平衡随机波动
+            self.truth_yin_yang_balance += random.randint(-5, 5)
+            self.truth_yin_yang_balance = max(-100, min(100, self.truth_yin_yang_balance))
+            
+            # 真言之眼满能量：触发真理揭示
+            if self.truth_eye_charge >= self.truth_eye_max:
+                self.truth_eye_charge = 0
+                self.truth_revelation_mode = True
+                FloatingText(self.rect.centerx, self.rect.top - 45, "◆真言开眼◆", TRUTH_GOLD)
+                
+                # 全屏扫描：标记所有敌人
+                for m in mobs:
+                    self.truth_marked_enemies[m] = {"timer": 300, "weakness": 1.5}
+                    FloatingText(m.rect.centerx, m.rect.top - 15, "☉真相☉", TRUTH_GOLD)
+                
+                # 发射真理之眼（大型追踪弹）
+                eye_bullet = Bullet(self.rect.centerx, self.rect.top - 10,
+                       color=TRUTH_GOLD, b_type="truth_revelation", 
+                       piercing=self.piercing + 8, homing=0.8, bullet_theme=self.bullet_theme)
+                eye_bullet.is_truth_eye = True
+                eye_bullet.damage_mult = 4.0
+                eye_bullet.speed = -8
+                
+                # 八方真言弹
+                for i in range(8):
+                    reveal_angle = i * 45
+                    reveal_bullet = Bullet(self.rect.centerx, self.rect.centery, angle=reveal_angle,
+                           color=TRUTH_GOLD, b_type="truth_revelation", 
+                           piercing=self.piercing + 2, homing=0.4, bullet_theme=self.bullet_theme)
+                    reveal_bullet.is_truth_revelation = True
+                    reveal_bullet.damage_mult = 2.0
+                    reveal_bullet.speed = -14
+                
+                for _ in range(16):
+                    Particle(self.rect.center, random.choice([TRUTH_GOLD, TRUTH_WHITE, TRUTH_BLACK]))
+            
+            # 更新被标记敌人
+            for enemy, data in list(self.truth_marked_enemies.items()):
+                if not enemy.alive():
+                    del self.truth_marked_enemies[enemy]
+                    continue
+                data["timer"] -= 1
+                if data["timer"] <= 0:
+                    del self.truth_marked_enemies[enemy]
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -11556,6 +11848,10 @@ class Player(pygame.sprite.Sprite):
             elif pid == "genesis":
                 # 【创世纪元】宇宙大爆炸重塑战场
                 GenesisBigBang(self)
+            
+            elif pid == "truth":
+                # 【真理显现】全知之眼审视一切，揭示并制裁所有敌人
+                TruthRevelation(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -12574,7 +12870,8 @@ class Player(pygame.sprite.Sprite):
                 "puppeteer": "命运丝网",
                 "pandemic": "强制变异",
                 "omega": "元素轮转",
-                "genesis": "星辰陨落"
+                "genesis": "星辰陨落",
+                "truth": "阴阳逆转"
             }
             
             pid = self.plane_id
@@ -12684,6 +12981,10 @@ class Player(pygame.sprite.Sprite):
                 # 【星辰陨落】召唤陨石群轰炸敌人
                 GenesisMeteorShower(self)
             
+            elif pid == "truth":
+                # 【阴阳逆转】切换阴阳极性，释放对应属性波动
+                TruthYinYangReverse(self)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -12727,7 +13028,8 @@ class Player(pygame.sprite.Sprite):
                 "puppeteer": "傀儡剧场",
                 "pandemic": "终末审判",
                 "omega": "属性共鸣",
-                "genesis": "新星诞生"
+                "genesis": "新星诞生",
+                "truth": "绝对审判"
             }
             
             pid = self.plane_id
@@ -12836,6 +13138,10 @@ class Player(pygame.sprite.Sprite):
             elif pid == "genesis":
                 # 【新星诞生】在敌人位置创造超新星爆炸
                 GenesisSupernovaBlast(self)
+            
+            elif pid == "truth":
+                # 【绝对审判】对所有标记敌人执行真理裁决
+                TruthAbsoluteJudgment(self)
             
             else:
                 # 通用：全屏伤害
@@ -15357,3 +15663,415 @@ class GenesisSupernovaBlast(pygame.sprite.Sprite):
                 
                 if nova['timer'] >= 50:
                     self.supernovas.remove(nova)
+
+
+# ========== Truth 至尊·世界的真相 大招类 ==========
+
+class TruthRevelation(pygame.sprite.Sprite):
+    """【真理显现】V键大招 - 全知之眼审视一切，揭示并制裁所有敌人"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 300  # 5秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        # 颜色定义
+        self.TRUTH_WHITE = (255, 255, 255)
+        self.TRUTH_BLACK = (20, 20, 30)
+        self.TRUTH_GOLD = (255, 215, 0)
+        
+        self.phase = 0  # 0=眼睛睁开 1=扫描 2=审判 3=消散
+        self.eye_open = 0  # 眼睛睁开程度 0-1
+        self.scan_angle = 0  # 扫描角度
+        self.judgment_targets = []  # 审判目标
+        self.hit_enemies = set()
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 60, "◆◆◆ 真理显现 ◆◆◆", self.TRUTH_GOLD)
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = WIDTH // 2, HEIGHT // 3
+        
+        # 阶段1: 眼睛睁开 (60帧)
+        if self.life > 240:
+            self.phase = 0
+            self.eye_open = min(1.0, (300 - self.life) / 60)
+            
+            # 绘制巨大的眼睛
+            eye_w = 300 * self.eye_open
+            eye_h = 120 * self.eye_open
+            
+            # 眼眶
+            if eye_h > 5:
+                pygame.draw.ellipse(self.image, self.TRUTH_GOLD, 
+                                  (cx - eye_w//2, cy - eye_h//2, eye_w, eye_h), 5)
+                
+                # 眼白
+                pygame.draw.ellipse(self.image, self.TRUTH_WHITE, 
+                                  (cx - eye_w//2 + 10, cy - eye_h//2 + 5, eye_w - 20, eye_h - 10))
+                
+                # 虹膜
+                iris_r = int(40 * self.eye_open)
+                pygame.draw.circle(self.image, self.TRUTH_GOLD, (cx, cy), iris_r)
+                
+                # 瞳孔
+                pupil_r = int(20 * self.eye_open)
+                pygame.draw.circle(self.image, self.TRUTH_BLACK, (cx, cy), pupil_r)
+                
+                # 高光
+                pygame.draw.circle(self.image, self.TRUTH_WHITE, (cx - 15, cy - 10), int(8 * self.eye_open))
+        
+        # 阶段2: 扫描全屏 (100帧)
+        elif self.life > 140:
+            self.phase = 1
+            self.scan_angle += 6
+            
+            # 保持眼睛
+            eye_w, eye_h = 300, 120
+            pygame.draw.ellipse(self.image, self.TRUTH_GOLD, 
+                              (cx - eye_w//2, cy - eye_h//2, eye_w, eye_h), 5)
+            pygame.draw.ellipse(self.image, self.TRUTH_WHITE, 
+                              (cx - eye_w//2 + 10, cy - eye_h//2 + 5, eye_w - 20, eye_h - 10))
+            pygame.draw.circle(self.image, self.TRUTH_GOLD, (cx, cy), 40)
+            pygame.draw.circle(self.image, self.TRUTH_BLACK, (cx, cy), 20)
+            pygame.draw.circle(self.image, self.TRUTH_WHITE, (cx - 15, cy - 10), 8)
+            
+            # 扫描光束
+            for i in range(3):
+                beam_angle = (self.scan_angle + i * 120) * math.pi / 180
+                beam_len = 600
+                bx = cx + math.cos(beam_angle) * beam_len
+                by = cy + math.sin(beam_angle) * beam_len
+                
+                # 多层光束
+                for w, alpha in [(30, 50), (20, 100), (10, 180), (4, 255)]:
+                    pygame.draw.line(self.image, (*self.TRUTH_GOLD, alpha), (cx, cy), (int(bx), int(by)), w)
+            
+            # 扫描到的敌人被标记
+            for m in list(mobs):
+                mx, my = m.rect.center
+                enemy_angle = math.atan2(my - cy, mx - cx)
+                for i in range(3):
+                    beam_angle = (self.scan_angle + i * 120) * math.pi / 180
+                    angle_diff = abs(enemy_angle - beam_angle)
+                    if angle_diff > math.pi:
+                        angle_diff = 2 * math.pi - angle_diff
+                    if angle_diff < 0.3 and m not in self.judgment_targets:
+                        self.judgment_targets.append(m)
+                        FloatingText(mx, my - 20, "☉揭示☉", self.TRUTH_GOLD)
+        
+        # 阶段3: 审判 (100帧)
+        elif self.life > 40:
+            self.phase = 2
+            progress = (140 - self.life) / 100
+            
+            # 眼睛变红
+            eye_w, eye_h = 300, 120
+            pygame.draw.ellipse(self.image, (255, 100, 50), 
+                              (cx - eye_w//2, cy - eye_h//2, eye_w, eye_h), 5)
+            pygame.draw.ellipse(self.image, self.TRUTH_WHITE, 
+                              (cx - eye_w//2 + 10, cy - eye_h//2 + 5, eye_w - 20, eye_h - 10))
+            pygame.draw.circle(self.image, (255, 100, 50), (cx, cy), 40)
+            pygame.draw.circle(self.image, self.TRUTH_BLACK, (cx, cy), 20)
+            
+            # 对每个标记的敌人发射审判光线
+            for m in self.judgment_targets:
+                if m.alive() and m not in self.hit_enemies:
+                    mx, my = m.rect.center
+                    
+                    # 审判光线
+                    for w, alpha in [(15, 80), (10, 150), (5, 255)]:
+                        pygame.draw.line(self.image, (*self.TRUTH_GOLD, alpha), (cx, cy), (mx, my), w)
+                    
+                    # 目标标记
+                    pygame.draw.circle(self.image, self.TRUTH_GOLD, (mx, my), 30, 3)
+                    pygame.draw.line(self.image, self.TRUTH_GOLD, (mx - 20, my), (mx + 20, my), 2)
+                    pygame.draw.line(self.image, self.TRUTH_GOLD, (mx, my - 20), (mx, my + 20), 2)
+                    
+                    # 持续伤害
+                    if self.life % 10 == 0:
+                        m.hp -= 35
+                        Particle(m.rect.center, self.TRUTH_GOLD)
+            
+            # 最终审判
+            if self.life == 50:
+                for m in self.judgment_targets:
+                    if m.alive():
+                        self.hit_enemies.add(m)
+                        m.hp -= 200
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "真理裁决!", self.TRUTH_GOLD)
+                        for _ in range(5):
+                            Particle(m.rect.center, random.choice([self.TRUTH_GOLD, self.TRUTH_WHITE]))
+        
+        # 阶段4: 眼睛闭合 (40帧)
+        else:
+            self.phase = 3
+            close_progress = (40 - self.life) / 40
+            
+            eye_w = 300 * (1 - close_progress)
+            eye_h = 120 * (1 - close_progress)
+            
+            if eye_h > 5:
+                pygame.draw.ellipse(self.image, self.TRUTH_GOLD, 
+                                  (cx - eye_w//2, cy - eye_h//2, eye_w, eye_h), int(5 * (1 - close_progress)))
+
+
+class TruthYinYangReverse(pygame.sprite.Sprite):
+    """【阴阳逆转】F键大招 - 切换阴阳极性，释放对应属性波动"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180  # 3秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        
+        self.TRUTH_WHITE = (255, 255, 255)
+        self.TRUTH_BLACK = (20, 20, 30)
+        self.TRUTH_GOLD = (255, 215, 0)
+        
+        # 判断当前阴阳状态并逆转
+        if hasattr(owner, 'truth_yin_yang_balance'):
+            self.is_yang = owner.truth_yin_yang_balance >= 0
+            owner.truth_yin_yang_balance = -owner.truth_yin_yang_balance  # 逆转
+        else:
+            self.is_yang = True
+        
+        self.rotation = 0
+        self.wave_radius = 0
+        self.projectiles = []
+        
+        mode_name = "阳极" if self.is_yang else "阴极"
+        mode_color = self.TRUTH_WHITE if self.is_yang else self.TRUTH_BLACK
+        FloatingText(owner.rect.centerx, owner.rect.top - 50, f"◆ {mode_name}逆转 ◆", mode_color)
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = self.owner.rect.centerx, self.owner.rect.centery
+        self.rotation += 8
+        
+        # 太极旋转
+        taiji_r = 80
+        
+        # 阴阳鱼
+        for i in range(2):
+            color = self.TRUTH_WHITE if (i == 0) == self.is_yang else self.TRUTH_BLACK
+            start_angle = self.rotation + i * 180
+            
+            # 半圆
+            pts = [(cx, cy)]
+            for j in range(19):
+                angle = (start_angle + j * 10) * math.pi / 180
+                pts.append((cx + math.cos(angle) * taiji_r, cy + math.sin(angle) * taiji_r))
+            pygame.draw.polygon(self.image, color, pts)
+            
+            # 小圆
+            small_angle = (start_angle + 90) * math.pi / 180
+            sx = cx + math.cos(small_angle) * (taiji_r // 2)
+            sy = cy + math.sin(small_angle) * (taiji_r // 2)
+            pygame.draw.circle(self.image, color, (int(sx), int(sy)), taiji_r // 2)
+            
+            # 鱼眼
+            eye_color = self.TRUTH_BLACK if color == self.TRUTH_WHITE else self.TRUTH_WHITE
+            pygame.draw.circle(self.image, eye_color, (int(sx), int(sy)), taiji_r // 6)
+        
+        # 外圈
+        pygame.draw.circle(self.image, self.TRUTH_GOLD, (cx, cy), taiji_r + 5, 4)
+        
+        # 发射弹幕
+        if self.life % 15 == 0:
+            for i in range(8):
+                angle = self.rotation + i * 45
+                color = self.TRUTH_WHITE if self.is_yang else self.TRUTH_BLACK
+                self.projectiles.append({
+                    'x': cx, 'y': cy,
+                    'angle': angle,
+                    'speed': 10,
+                    'color': color,
+                    'life': 60
+                })
+        
+        # 更新弹幕
+        for proj in self.projectiles[:]:
+            rad = proj['angle'] * math.pi / 180
+            proj['x'] += math.cos(rad) * proj['speed']
+            proj['y'] += math.sin(rad) * proj['speed']
+            proj['life'] -= 1
+            
+            if proj['life'] <= 0:
+                self.projectiles.remove(proj)
+                continue
+            
+            # 绘制
+            px, py = int(proj['x']), int(proj['y'])
+            pygame.draw.circle(self.image, proj['color'], (px, py), 12)
+            pygame.draw.circle(self.image, self.TRUTH_GOLD, (px, py), 12, 2)
+            
+            # 碰撞
+            for m in list(mobs):
+                if math.hypot(m.rect.centerx - px, m.rect.centery - py) < 25:
+                    damage = 80 if self.is_yang else 60
+                    m.hp -= damage
+                    
+                    if self.is_yang:
+                        FloatingText(m.rect.centerx, m.rect.top - 10, "阳!", self.TRUTH_WHITE)
+                    else:
+                        # 阴极：减速
+                        if hasattr(m, 'speed'):
+                            m.speed = max(0.5, m.speed * 0.6)
+                        FloatingText(m.rect.centerx, m.rect.top - 10, "阴!", self.TRUTH_BLACK)
+                    
+                    Particle(m.rect.center, proj['color'])
+                    if proj in self.projectiles:
+                        self.projectiles.remove(proj)
+                    break
+
+
+class TruthAbsoluteJudgment(pygame.sprite.Sprite):
+    """【绝对审判】G键大招 - 对所有敌人执行真理裁决"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180  # 3秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        self.TRUTH_WHITE = (255, 255, 255)
+        self.TRUTH_BLACK = (20, 20, 30)
+        self.TRUTH_GOLD = (255, 215, 0)
+        
+        # 收集所有敌人作为审判目标
+        self.targets = []
+        for m in list(mobs):
+            # 检查是否被标记（增加伤害）
+            is_marked = False
+            if hasattr(owner, 'truth_marked_enemies') and m in owner.truth_marked_enemies:
+                is_marked = True
+            self.targets.append({
+                'enemy': m,
+                'x': m.rect.centerx,
+                'y': m.rect.centery,
+                'marked': is_marked,
+                'judged': False
+            })
+        
+        self.judgment_wave = 0
+        self.symbols = []  # 真言符文
+        
+        # 生成环绕符文
+        for i in range(12):
+            angle = i * 30
+            self.symbols.append({
+                'angle': angle,
+                'dist': 150,
+                'char': ['真', '理', '审', '判', '至', '尊', '洞', '察', '揭', '示', '裁', '决'][i]
+            })
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 50, "★ 绝对审判 ★", self.TRUTH_GOLD)
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = WIDTH // 2, HEIGHT // 2
+        
+        # 背景暗化
+        dark_alpha = min(150, (180 - self.life) * 3)
+        pygame.draw.rect(self.image, (0, 0, 0, dark_alpha), (0, 0, WIDTH, HEIGHT))
+        
+        # 旋转符文环
+        for sym in self.symbols:
+            sym['angle'] += 2
+            rad = sym['angle'] * math.pi / 180
+            sx = cx + math.cos(rad) * sym['dist']
+            sy = cy + math.sin(rad) * sym['dist']
+            
+            # 符文光点
+            pygame.draw.circle(self.image, self.TRUTH_GOLD, (int(sx), int(sy)), 15)
+            pygame.draw.circle(self.image, self.TRUTH_WHITE, (int(sx), int(sy)), 10)
+        
+        # 中央之眼
+        eye_size = 60 + 10 * abs(math.sin(self.life * 0.1))
+        pygame.draw.ellipse(self.image, self.TRUTH_GOLD, 
+                          (cx - eye_size, cy - eye_size//2, eye_size * 2, eye_size), 5)
+        pygame.draw.ellipse(self.image, self.TRUTH_WHITE, 
+                          (cx - eye_size + 5, cy - eye_size//2 + 3, eye_size * 2 - 10, eye_size - 6))
+        pygame.draw.circle(self.image, self.TRUTH_GOLD, (cx, cy), 25)
+        pygame.draw.circle(self.image, self.TRUTH_BLACK, (cx, cy), 15)
+        pygame.draw.circle(self.image, self.TRUTH_WHITE, (cx - 8, cy - 5), 5)
+        
+        # 审判目标
+        self.judgment_wave += 1
+        
+        for i, target in enumerate(self.targets):
+            enemy = target['enemy']
+            if not enemy.alive():
+                continue
+            
+            tx, ty = enemy.rect.centerx, enemy.rect.centery
+            
+            # 瞄准线
+            pygame.draw.line(self.image, (*self.TRUTH_GOLD, 150), (cx, cy), (tx, ty), 2)
+            
+            # 目标环
+            ring_pulse = abs(math.sin(self.life * 0.2 + i))
+            ring_r = 25 + 10 * ring_pulse
+            pygame.draw.circle(self.image, self.TRUTH_GOLD, (tx, ty), int(ring_r), 3)
+            
+            # 标记增强显示
+            if target['marked']:
+                pygame.draw.circle(self.image, (255, 100, 50), (tx, ty), int(ring_r + 10), 2)
+            
+            # 执行审判
+            if not target['judged']:
+                # 按波次审判
+                wave_delay = i * 5
+                if self.judgment_wave > wave_delay and self.judgment_wave <= wave_delay + 30:
+                    # 审判光柱
+                    pillar_h = (self.judgment_wave - wave_delay) * 20
+                    pygame.draw.rect(self.image, (*self.TRUTH_GOLD, 200), 
+                                   (tx - 15, ty - pillar_h, 30, pillar_h))
+                    pygame.draw.rect(self.image, self.TRUTH_WHITE, 
+                                   (tx - 10, ty - pillar_h, 20, pillar_h))
+                    
+                    # 伤害
+                    if (self.judgment_wave - wave_delay) % 10 == 0:
+                        base_damage = 50
+                        if target['marked']:
+                            base_damage = int(base_damage * 1.5)  # 标记增伤
+                        enemy.hp -= base_damage
+                        Particle(enemy.rect.center, self.TRUTH_GOLD)
+                
+                elif self.judgment_wave > wave_delay + 30:
+                    target['judged'] = True
+                    # 最终审判
+                    final_damage = 100
+                    if target['marked']:
+                        final_damage = int(final_damage * 2.0)
+                        FloatingText(tx, ty - 30, "真相裁决!", (255, 100, 50))
+                    else:
+                        FloatingText(tx, ty - 30, "审判!", self.TRUTH_GOLD)
+                    enemy.hp -= final_damage
+                    for _ in range(8):
+                        Particle(enemy.rect.center, random.choice([self.TRUTH_GOLD, self.TRUTH_WHITE]))
