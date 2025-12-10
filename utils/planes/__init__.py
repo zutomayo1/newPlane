@@ -31,8 +31,10 @@
 - skins_gambit.py: Gambit专属涂装 (12种)
 - skins_puppeteer.py: Puppeteer专属涂装 (12种)
 - skins_pandemic.py: Pandemic专属涂装 (12种)
+- skins_omega.py: Omega专属涂装 (12种) [终极机体]
+- skins_genesis.py: Genesis专属涂装 (12种) [终极机体]
 
-所有机体涂装拆分完成！共计 208 种涂装。
+所有机体涂装拆分完成！共计 232 种涂装。
 """
 
 from .base import get_plane_surf, clear_plane_cache
@@ -64,6 +66,8 @@ from .skins_mirage import render_mirage_skin, is_mirage_style, MIRAGE_STYLES
 from .skins_gambit import render_gambit_skin, is_gambit_style, GAMBIT_STYLES
 from .skins_puppeteer import render_puppeteer_skin, is_puppeteer_style, PUPPETEER_STYLES
 from .skins_pandemic import render_pandemic_skin, is_pandemic_style, PANDEMIC_STYLES
+from .skins_omega import render_omega_skin, is_omega_style, OMEGA_STYLES
+from .skins_genesis import render_genesis_skin, is_genesis_style, GENESIS_STYLES
 
 __all__ = [
     'get_plane_surf', 'clear_plane_cache',
@@ -90,5 +94,7 @@ __all__ = [
     'render_mirage_skin', 'is_mirage_style', 'MIRAGE_STYLES',
     'render_gambit_skin', 'is_gambit_style', 'GAMBIT_STYLES',
     'render_puppeteer_skin', 'is_puppeteer_style', 'PUPPETEER_STYLES',
-    'render_pandemic_skin', 'is_pandemic_style', 'PANDEMIC_STYLES'
+    'render_pandemic_skin', 'is_pandemic_style', 'PANDEMIC_STYLES',
+    'render_omega_skin', 'is_omega_style', 'OMEGA_STYLES',
+    'render_genesis_skin', 'is_genesis_style', 'GENESIS_STYLES'
 ]

@@ -237,6 +237,20 @@ def _generate_plane_surf(pid, visual=None, static=False):
             if result:
                 return result
         
+        # 尝试 Omega 专属涂装（终极机体）
+        from .skins_omega import render_omega_skin, is_omega_style
+        if is_omega_style(model_style):
+            result = render_omega_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
+        # 尝试 Genesis 专属涂装（终极机体）
+        from .skins_genesis import render_genesis_skin, is_genesis_style
+        if is_genesis_style(model_style):
+            result = render_genesis_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -265,6 +279,16 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid in ("puppeteer", "pandemic"):
         from .hidden import render_hidden
         render_hidden(s, pid, c, edge_color, t, pulse)
+    
+    # 终极机体 - Omega
+    elif pid == "omega":
+        from .skins_omega import _render_omega_base
+        _render_omega_base(s, t, pulse)
+    
+    # 终极机体 - Genesis
+    elif pid == "genesis":
+        from .skins_genesis import _render_genesis_base
+        _render_genesis_base(s, t, pulse)
     
     else:
         # 默认占位图形

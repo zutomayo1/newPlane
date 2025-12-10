@@ -300,7 +300,9 @@
     "mirage": "mirage_doppelganger",
     "gambit": "gambit_mahjong",
     "puppeteer": "puppeteer_circus",
-    "pandemic": "pandemic_zombie"
+    "pandemic": "pandemic_zombie",
+    "genesis": "legend_nebula",
+    "omega": "epic_magma"
   },
   "unlocked_bullet_themes": {
     "default": true,
