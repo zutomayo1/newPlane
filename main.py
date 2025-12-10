@@ -3977,6 +3977,226 @@ def draw_bullet_preview(surface, theme, x, y, size=60):
             # 铃铛
             pygame.draw.circle(surface, (255, 215, 0), (center_x, center_y - size//2.5), size//18)
         
+        # ========== Puppeteer 子弹预览 ==========
+        elif "thread_weave" in effects or "fate_bind" in effects:
+            # 命运丝线弹：金色细线+小钩
+            # 中心线团
+            pygame.draw.circle(surface, color, (center_x, center_y), size//5)
+            # 散射丝线
+            for i in range(6):
+                angle = (i * 60 + pygame.time.get_ticks() / 100) * 3.14159 / 180
+                x1 = center_x + int(size//5 * math.cos(angle))
+                y1 = center_y + int(size//5 * math.sin(angle))
+                x2 = center_x + int(size//2.2 * math.cos(angle))
+                y2 = center_y + int(size//2.2 * math.sin(angle))
+                pygame.draw.line(surface, (200, 180, 220), (x1, y1), (x2, y2), 1)
+                # 末端小钩
+                hook_angle = angle + 0.5
+                hx = x2 + int(size//15 * math.cos(hook_angle))
+                hy = y2 + int(size//15 * math.sin(hook_angle))
+                pygame.draw.line(surface, (180, 150, 80), (x2, y2), (hx, hy), 2)
+        
+        elif "pierce_soul" in effects or "voodoo_curse" in effects:
+            # 巫毒缝针弹：长针+符文
+            # 针身
+            pygame.draw.line(surface, (180, 180, 200), (center_x, center_y - size//2.5), (center_x, center_y + size//3), 3)
+            # 针眼
+            pygame.draw.circle(surface, (100, 100, 120), (center_x, center_y - size//2.5), size//12)
+            pygame.draw.circle(surface, (60, 60, 80), (center_x, center_y - size//2.5), size//18)
+            # 针尖
+            tip_points = [(center_x, center_y + size//2.5), (center_x - size//15, center_y + size//3), (center_x + size//15, center_y + size//3)]
+            pygame.draw.polygon(surface, (200, 200, 220), tip_points)
+            # 符文光环
+            pygame.draw.circle(surface, color, (center_x, center_y), size//4, 1)
+        
+        elif "puppet_swarm" in effects or "string_burst" in effects:
+            # 迷你木偶弹：小傀儡
+            # 傀儡头
+            pygame.draw.circle(surface, (240, 220, 200), (center_x, center_y - size//6), size//6)
+            # X眼睛
+            eye_size = size//20
+            for dx in [-size//12, size//12]:
+                pygame.draw.line(surface, (80, 40, 120), (center_x + dx - eye_size, center_y - size//6 - eye_size), (center_x + dx + eye_size, center_y - size//6 + eye_size), 2)
+                pygame.draw.line(surface, (80, 40, 120), (center_x + dx - eye_size, center_y - size//6 + eye_size), (center_x + dx + eye_size, center_y - size//6 - eye_size), 2)
+            # 傀儡身体
+            pygame.draw.rect(surface, color, (center_x - size//8, center_y, size//4, size//3), border_radius=2)
+            # 提线
+            pygame.draw.line(surface, (200, 180, 220), (center_x, center_y - size//2.5), (center_x, center_y - size//6 - size//6), 1)
+        
+        elif "control_link" in effects or "master_will" in effects:
+            # 十字控制弹：木制十字架
+            # 竖杆
+            pygame.draw.rect(surface, (180, 150, 80), (center_x - size//16, center_y - size//2.5, size//8, size*2//3))
+            # 横杆
+            pygame.draw.rect(surface, (180, 150, 80), (center_x - size//3, center_y - size//5, size*2//3, size//10))
+            # 金属边框
+            pygame.draw.rect(surface, (200, 170, 100), (center_x - size//16, center_y - size//2.5, size//8, size*2//3), 2)
+            pygame.draw.rect(surface, (200, 170, 100), (center_x - size//3, center_y - size//5, size*2//3, size//10), 2)
+            # 悬挂丝线
+            for dx in [-size//4, 0, size//4]:
+                pygame.draw.line(surface, (200, 180, 220), (center_x + dx, center_y - size//10), (center_x + dx, center_y + size//3), 1)
+        
+        elif "soul_wail" in effects or "ghost_bind" in effects:
+            # 灵魂碎片弹：半透明灵魂
+            temp_surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            # 灵魂形状（波浪边缘）
+            points = []
+            for i in range(12):
+                angle = i * 30 * 3.14159 / 180
+                r = size//3 + size//10 * math.sin(i * 2 + pygame.time.get_ticks() / 200)
+                px = size//2 + int(r * math.cos(angle))
+                py = size//2 + int(r * math.sin(angle))
+                points.append((px, py))
+            pygame.draw.polygon(temp_surf, (*color, 150), points)
+            surface.blit(temp_surf, (x, y))
+            # 哀嚎眼睛
+            pygame.draw.circle(surface, (100, 150, 200), (center_x - size//10, center_y - size//12), size//15)
+            pygame.draw.circle(surface, (100, 150, 200), (center_x + size//10, center_y - size//12), size//15)
+            # 张开的嘴
+            pygame.draw.ellipse(surface, (80, 130, 180), (center_x - size//12, center_y + size//20, size//6, size//8))
+        
+        elif "web_spread" in effects or "sticky_trap" in effects:
+            # 蛛网陷阱弹：蜘蛛网
+            # 同心圆
+            for r in range(size//6, size//2, size//8):
+                pygame.draw.circle(surface, color, (center_x, center_y), r, 1)
+            # 放射线
+            for i in range(8):
+                angle = i * 45 * 3.14159 / 180
+                x1 = center_x
+                y1 = center_y
+                x2 = center_x + int(size//2 * math.cos(angle))
+                y2 = center_y + int(size//2 * math.sin(angle))
+                pygame.draw.line(surface, (200, 200, 210), (x1, y1), (x2, y2), 1)
+            # 中心亮点
+            pygame.draw.circle(surface, (255, 255, 255), (center_x, center_y), size//15)
+        
+        elif "fate_cut" in effects or "life_sever" in effects:
+            # 命运剪刀弹：剪刀形状
+            # 剪刀两片刀刃
+            blade1 = [(center_x - size//20, center_y), (center_x - size//3, center_y - size//2.5), (center_x - size//4, center_y - size//2.5)]
+            blade2 = [(center_x + size//20, center_y), (center_x + size//3, center_y - size//2.5), (center_x + size//4, center_y - size//2.5)]
+            pygame.draw.polygon(surface, (150, 150, 170), blade1)
+            pygame.draw.polygon(surface, (150, 150, 170), blade2)
+            pygame.draw.polygon(surface, (200, 200, 220), blade1, 2)
+            pygame.draw.polygon(surface, (200, 200, 220), blade2, 2)
+            # 中心枢轴
+            pygame.draw.circle(surface, (100, 100, 120), (center_x, center_y), size//10)
+            # 手柄
+            pygame.draw.ellipse(surface, (80, 80, 100), (center_x - size//6, center_y + size//10, size//6, size//4))
+            pygame.draw.ellipse(surface, (80, 80, 100), (center_x, center_y + size//10, size//6, size//4))
+        
+        # ========== Pandemic 子弹预览 ==========
+        elif "spike_attach" in effects or "infect_spread" in effects:
+            # 刺突病毒弹：冠状病毒
+            # 中心球体
+            pygame.draw.circle(surface, color, (center_x, center_y), size//4)
+            pygame.draw.circle(surface, (60, 235, 60), (center_x, center_y), size//5)
+            # 刺突蛋白
+            for i in range(12):
+                angle = i * 30 * 3.14159 / 180
+                x1 = center_x + int(size//4 * math.cos(angle))
+                y1 = center_y + int(size//4 * math.sin(angle))
+                x2 = center_x + int(size//2.5 * math.cos(angle))
+                y2 = center_y + int(size//2.5 * math.sin(angle))
+                pygame.draw.line(surface, (100, 200, 100), (x1, y1), (x2, y2), 2)
+                # 刺突头
+                pygame.draw.circle(surface, (200, 200, 80), (x2, y2), size//18)
+        
+        elif "nerve_poison" in effects or "paralyze" in effects:
+            # 神经毒素弹：毒液滴
+            # 水滴形状
+            drop_points = [(center_x, center_y - size//2.5), (center_x - size//4, center_y + size//8), (center_x, center_y + size//3), (center_x + size//4, center_y + size//8)]
+            pygame.draw.polygon(surface, color, drop_points)
+            pygame.draw.polygon(surface, (200, 100, 220), drop_points, 2)
+            # 内部骷髅
+            pygame.draw.circle(surface, (220, 220, 220), (center_x, center_y - size//12), size//10)
+            pygame.draw.circle(surface, (50, 50, 50), (center_x - size//25, center_y - size//10), size//30)
+            pygame.draw.circle(surface, (50, 50, 50), (center_x + size//25, center_y - size//10), size//30)
+        
+        elif "fungal_growth" in effects or "parasitic_burst" in effects:
+            # 真菌孢子弹：蘑菇云
+            # 蘑菇伞盖
+            pygame.draw.ellipse(surface, color, (center_x - size//3, center_y - size//4, size*2//3, size//3))
+            pygame.draw.ellipse(surface, (170, 120, 100), (center_x - size//3, center_y - size//4, size*2//3, size//3), 2)
+            # 斑点
+            for i in range(4):
+                spot_x = center_x + (i - 2) * size//8
+                spot_y = center_y - size//8
+                pygame.draw.circle(surface, (200, 150, 120), (spot_x, spot_y), size//20)
+            # 菌柄
+            pygame.draw.rect(surface, (180, 140, 110), (center_x - size//12, center_y, size//6, size//3))
+            # 孢子粒子
+            for i in range(5):
+                angle = (i * 72 + pygame.time.get_ticks() / 50) * 3.14159 / 180
+                px = center_x + int(size//2.5 * math.cos(angle))
+                py = center_y + int(size//2.5 * math.sin(angle))
+                pygame.draw.circle(surface, (130, 80, 60), (px, py), size//25)
+        
+        elif "hazard_mark" in effects or "quarantine_zone" in effects:
+            # 生化标志弹：生化危害符号
+            # 中心圆
+            pygame.draw.circle(surface, (40, 40, 40), (center_x, center_y), size//6)
+            pygame.draw.circle(surface, color, (center_x, center_y), size//6, 2)
+            # 三片扇叶
+            for i in range(3):
+                angle = i * 120 * 3.14159 / 180
+                # 扇形
+                arc_points = [(center_x, center_y)]
+                for j in range(-30, 31, 10):
+                    a = angle + j * 3.14159 / 180
+                    px = center_x + int(size//2.5 * math.cos(a))
+                    py = center_y + int(size//2.5 * math.sin(a))
+                    arc_points.append((px, py))
+                pygame.draw.polygon(surface, color, arc_points)
+            # 内圈间隙
+            pygame.draw.circle(surface, (40, 40, 40), (center_x, center_y), size//4)
+        
+        elif "cell_corrupt" in effects or "blood_infect" in effects:
+            # 感染细胞弹：变异血细胞
+            # 细胞轮廓（不规则椭圆）
+            pygame.draw.ellipse(surface, color, (center_x - size//3, center_y - size//4, size*2//3, size//2))
+            pygame.draw.ellipse(surface, (220, 100, 100), (center_x - size//3, center_y - size//4, size*2//3, size//2), 2)
+            # 细胞核
+            pygame.draw.circle(surface, (150, 50, 50), (center_x, center_y), size//6)
+            # 变异斑点
+            for i in range(3):
+                spot_angle = i * 120 * 3.14159 / 180
+                spot_x = center_x + int(size//6 * math.cos(spot_angle))
+                spot_y = center_y + int(size//8 * math.sin(spot_angle))
+                pygame.draw.circle(surface, (100, 40, 40), (spot_x, spot_y), size//15)
+        
+        elif "gene_mutate" in effects or "evolve_adapt" in effects:
+            # 变异株弹：DNA双螺旋
+            # DNA链条
+            for i in range(8):
+                y_pos = center_y - size//2.5 + i * size//6
+                offset = size//6 * math.sin(i * 0.8 + pygame.time.get_ticks() / 200)
+                # 左链
+                pygame.draw.circle(surface, color, (int(center_x - offset), int(y_pos)), size//15)
+                # 右链
+                pygame.draw.circle(surface, (255, 150, 100), (int(center_x + offset), int(y_pos)), size//15)
+                # 碱基对连接
+                if i % 2 == 0:
+                    pygame.draw.line(surface, (150, 200, 150), (int(center_x - offset), int(y_pos)), (int(center_x + offset), int(y_pos)), 2)
+        
+        elif "extinction_touch" in effects or "omega_doom" in effects:
+            # 灭绝病原弹：Ω终末病毒
+            # 黑色核心
+            pygame.draw.circle(surface, (10, 10, 10), (center_x, center_y), size//3)
+            pygame.draw.circle(surface, (50, 0, 0), (center_x, center_y), size//3, 2)
+            # Ω符号（手绘）
+            omega_rect = (center_x - size//6, center_y - size//8, size//3, size//4)
+            pygame.draw.arc(surface, (150, 0, 0), omega_rect, 0, 3.14159, 3)
+            # 底部两脚
+            pygame.draw.line(surface, (150, 0, 0), (center_x - size//6, center_y + size//10), (center_x - size//6, center_y + size//5), 3)
+            pygame.draw.line(surface, (150, 0, 0), (center_x + size//6, center_y + size//10), (center_x + size//6, center_y + size//5), 3)
+            # 死亡光环
+            pulse = abs(math.sin(pygame.time.get_ticks() / 300))
+            temp_surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            pygame.draw.circle(temp_surf, (100, 0, 0, int(100 * pulse)), (size//2, size//2), int(size//2.5))
+            surface.blit(temp_surf, (x, y))
+        
         else:
             # 默认：简单圆形
             pygame.draw.circle(surface, color, (center_x, center_y), size//3)

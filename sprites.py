@@ -7779,6 +7779,358 @@ class Bullet(pygame.sprite.Sprite):
                     alpha = 120 - i * 30
                     pygame.draw.circle(self.image, (255, 255, 255, alpha), (center, center), glow_r, 3)
             self.speed = -17
+        
+        # ========== Puppeteer (牵线木偶师) 子弹涂装 ==========
+        elif "soul_string" in effects or "silk_manipulation" in effects:
+            # 灵魂丝线弹 - 缠绕的提线，发光丝线
+            self.image = pygame.Surface((size*2, size*3), pygame.SRCALPHA)
+            center_x, center_y = size, size * 3 // 2
+            # 多条交织丝线
+            for strand in range(5):
+                strand_offset = (strand - 2) * size//8
+                strand_points = []
+                for i in range(10):
+                    wave = math.sin(i * 0.8 + strand * 0.5) * size//6
+                    px = center_x + strand_offset + wave
+                    py = center_y - size + i * size//5
+                    strand_points.append((int(px), int(py)))
+                if len(strand_points) > 1:
+                    # 发光丝线
+                    pygame.draw.lines(self.image, (200, 150, 220, 180), False, strand_points, 3)
+                    pygame.draw.lines(self.image, color, False, strand_points, 1)
+            # 丝线末端的钩子
+            for hook_x in [center_x - size//4, center_x, center_x + size//4]:
+                hook_points = [(hook_x, center_y + size//2), (hook_x - size//12, center_y + size//2 + size//8), 
+                              (hook_x + size//12, center_y + size//2 + size//8)]
+                pygame.draw.lines(self.image, (180, 130, 200), False, hook_points, 2)
+            # 顶部控制结
+            pygame.draw.circle(self.image, (220, 180, 240), (center_x, center_y - size), size//6)
+            self.speed = -14
+            
+        elif "pierce_soul" in effects or "voodoo_curse" in effects:
+            # 巫毒针弹 - 长针+诅咒符文
+            self.image = pygame.Surface((size*2, size*3), pygame.SRCALPHA)
+            center_x, center_y = size, size * 3 // 2
+            # 长针主体
+            needle_points = [(center_x, center_y - size), (center_x + size//10, center_y + size//2), 
+                            (center_x - size//10, center_y + size//2)]
+            pygame.draw.polygon(self.image, (60, 60, 70), needle_points)
+            pygame.draw.polygon(self.image, color, needle_points, 2)
+            # 针头发光
+            pygame.draw.circle(self.image, (255, 100, 100), (center_x, center_y - size), size//8)
+            # 缠绕的红线
+            for i in range(6):
+                wrap_y = center_y - size//2 + i * size//6
+                wrap_width = size//4 - abs(i - 3) * size//15
+                pygame.draw.arc(self.image, (200, 50, 50), (center_x - wrap_width, wrap_y - size//15, wrap_width*2, size//8), 0, 3.14, 2)
+            # 诅咒符文（小型）
+            rune_y = center_y + size//4
+            pygame.draw.circle(self.image, (150, 50, 80, 150), (center_x, rune_y), size//6, 2)
+            self.speed = -15
+            
+        elif "puppet_swarm" in effects or "string_burst" in effects:
+            # 迷你木偶弹 - 小傀儡形态
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 木偶头部（圆形）
+            pygame.draw.circle(self.image, (240, 220, 200), (center, center - size//4), size//3)
+            pygame.draw.circle(self.image, color, (center, center - size//4), size//3, 2)
+            # X眼睛
+            eye_size = size//10
+            for ex in [center - size//6, center + size//6]:
+                ey = center - size//4
+                pygame.draw.line(self.image, (60, 60, 60), (ex - eye_size, ey - eye_size), (ex + eye_size, ey + eye_size), 2)
+                pygame.draw.line(self.image, (60, 60, 60), (ex - eye_size, ey + eye_size), (ex + eye_size, ey - eye_size), 2)
+            # 木偶身体
+            body_rect = (center - size//4, center, size//2, size//2)
+            pygame.draw.rect(self.image, (220, 200, 180), body_rect)
+            pygame.draw.rect(self.image, color, body_rect, 2)
+            # 悬挂的丝线
+            for string_x in [center - size//6, center, center + size//6]:
+                pygame.draw.line(self.image, (200, 180, 220), (string_x, center - size//2 - size//4), (string_x, center - size//3), 1)
+            self.speed = -13
+            
+        elif "control_link" in effects or "master_will" in effects:
+            # 十字控制弹 - 木制十字架控制器
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 十字架主体
+            cross_color = (180, 150, 80)
+            # 垂直部分
+            pygame.draw.rect(self.image, cross_color, (center - size//10, center - size//2, size//5, size))
+            # 水平部分
+            pygame.draw.rect(self.image, cross_color, (center - size//2.5, center - size//4, size*4//5, size//5))
+            # 木纹
+            pygame.draw.line(self.image, (160, 130, 60), (center, center - size//2), (center, center + size//2), 1)
+            pygame.draw.line(self.image, (160, 130, 60), (center - size//2.5, center - size//8), (center + size//2.5, center - size//8), 1)
+            # 金色边框
+            pygame.draw.rect(self.image, color, (center - size//10, center - size//2, size//5, size), 2)
+            pygame.draw.rect(self.image, color, (center - size//2.5, center - size//4, size*4//5, size//5), 2)
+            # 悬挂的丝线（4条）
+            for i, offset in enumerate([(-size//3, size//4), (size//3, size//4), (-size//6, size//3), (size//6, size//3)]):
+                start_x = center + offset[0]
+                pygame.draw.line(self.image, (220, 200, 180), (start_x, center + size//10), (start_x, center + offset[1] + size//4), 1)
+            self.speed = -14
+            
+        elif "soul_wail" in effects or "ghost_bind" in effects:
+            # 灵魂碎片弹 - 半透明灵魂
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 灵魂主体（半透明）
+            ghost_surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            # 飘动的灵魂形状
+            ghost_points = [(center, center - size//2)]
+            for i in range(8):
+                angle = -0.5 + i * 0.25
+                radius = size//3 + (i % 2) * size//10
+                gx = center + int(radius * math.sin(angle))
+                gy = center - size//4 + i * size//8
+                ghost_points.append((gx, gy))
+            ghost_points.append((center, center + size//2))
+            pygame.draw.polygon(ghost_surf, (150, 200, 255, 150), ghost_points)
+            pygame.draw.polygon(ghost_surf, color, ghost_points, 2)
+            self.image.blit(ghost_surf, (0, 0))
+            # 空洞的眼睛
+            for ex in [center - size//6, center + size//6]:
+                pygame.draw.circle(self.image, (50, 100, 150), (ex, center - size//4), size//10)
+            # 张开的嘴（哀嚎）
+            pygame.draw.ellipse(self.image, (30, 80, 130), (center - size//8, center, size//4, size//6))
+            self.speed = -15
+            
+        elif "web_spread" in effects or "sticky_trap" in effects:
+            # 蛛网陷阱弹 - 球形蛛网
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 蛛网同心圆（3层）
+            for ring in range(3):
+                ring_r = size//4 + ring * size//6
+                pygame.draw.circle(self.image, (220, 220, 230, 200 - ring * 50), (center, center), ring_r, 2)
+            # 蛛网辐射线（8条）
+            for i in range(8):
+                angle = (i * 45) * 3.14159 / 180
+                end_x = center + int(size//2 * math.cos(angle))
+                end_y = center + int(size//2 * math.sin(angle))
+                pygame.draw.line(self.image, color, (center, center), (end_x, end_y), 2)
+            # 中心粘液点
+            pygame.draw.circle(self.image, (200, 200, 220), (center, center), size//8)
+            # 粘性液滴（随机位置）
+            import random
+            random.seed(123)
+            for _ in range(6):
+                drop_angle = random.random() * 6.28
+                drop_r = size//4 + random.randint(0, size//4)
+                dx = center + int(drop_r * math.cos(drop_angle))
+                dy = center + int(drop_r * math.sin(drop_angle))
+                pygame.draw.circle(self.image, (230, 230, 240, 180), (dx, dy), size//15)
+            self.speed = -12
+            
+        elif "fate_cut" in effects or "life_sever" in effects:
+            # 命运剪刀弹 - 剪刀形态
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 剪刀左刃
+            left_blade = [(center - size//8, center - size//2), (center - size//3, center + size//4), 
+                         (center - size//6, center + size//4), (center, center - size//4)]
+            pygame.draw.polygon(self.image, (100, 100, 120), left_blade)
+            pygame.draw.polygon(self.image, color, left_blade, 2)
+            # 剪刀右刃
+            right_blade = [(center + size//8, center - size//2), (center + size//3, center + size//4), 
+                          (center + size//6, center + size//4), (center, center - size//4)]
+            pygame.draw.polygon(self.image, (100, 100, 120), right_blade)
+            pygame.draw.polygon(self.image, color, right_blade, 2)
+            # 铆钉
+            pygame.draw.circle(self.image, (60, 60, 70), (center, center - size//4), size//10)
+            pygame.draw.circle(self.image, (150, 150, 160), (center, center - size//4), size//15)
+            # 刃口发光
+            pygame.draw.line(self.image, (200, 200, 220), (center - size//8, center - size//2), (center - size//3, center + size//4), 1)
+            pygame.draw.line(self.image, (200, 200, 220), (center + size//8, center - size//2), (center + size//3, center + size//4), 1)
+            self.speed = -16
+        
+        # ========== Pandemic (末日瘟神) 子弹涂装 ==========
+        elif "spike_attach" in effects or "infect_spread" in effects:
+            # 刺突病毒弹 - 冠状病毒形态
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 病毒球体
+            pygame.draw.circle(self.image, (80, 200, 80), (center, center), size//3)
+            pygame.draw.circle(self.image, color, (center, center), size//3, 2)
+            # 刺突蛋白（12个）
+            for i in range(12):
+                angle = (i * 30) * 3.14159 / 180
+                spike_base_r = size//3
+                spike_end_r = size//2
+                base_x = center + int(spike_base_r * math.cos(angle))
+                base_y = center + int(spike_base_r * math.sin(angle))
+                end_x = center + int(spike_end_r * math.cos(angle))
+                end_y = center + int(spike_end_r * math.sin(angle))
+                # 刺突杆
+                pygame.draw.line(self.image, (100, 220, 100), (base_x, base_y), (end_x, end_y), 2)
+                # 刺突头（球形）
+                pygame.draw.circle(self.image, (120, 255, 120), (end_x, end_y), size//12)
+            # 中心RNA标记
+            pygame.draw.circle(self.image, (50, 150, 50), (center, center), size//6)
+            self.speed = -14
+            
+        elif "nerve_poison" in effects or "paralyze" in effects:
+            # 神经毒素弹 - 紫色毒液滴
+            self.image = pygame.Surface((size*2, size*3), pygame.SRCALPHA)
+            center_x, center_y = size, size * 3 // 2
+            # 毒液滴形状
+            drop_points = [(center_x, center_y - size)]  # 顶部尖端
+            # 曲线边缘
+            for i in range(10):
+                t = i / 9
+                # 贝塞尔曲线近似
+                bulge = math.sin(t * 3.14159) * size//2
+                dx = center_x + bulge if i < 5 else center_x - bulge + size
+                dy = center_y - size + t * size * 1.5
+                drop_points.append((int(dx), int(dy)))
+            pygame.draw.polygon(self.image, (180, 80, 200), drop_points)
+            pygame.draw.polygon(self.image, color, drop_points, 2)
+            # 毒性气泡
+            for bubble in [(center_x - size//6, center_y - size//4), (center_x + size//8, center_y), (center_x - size//10, center_y + size//4)]:
+                pygame.draw.circle(self.image, (200, 100, 220, 150), bubble, size//10)
+            # 骷髅标记
+            skull_y = center_y - size//3
+            pygame.draw.circle(self.image, (220, 180, 230), (center_x, skull_y), size//8)
+            pygame.draw.circle(self.image, (100, 50, 120), (center_x - size//15, skull_y - size//20), size//25)
+            pygame.draw.circle(self.image, (100, 50, 120), (center_x + size//15, skull_y - size//20), size//25)
+            self.speed = -14
+            
+        elif "fungal_growth" in effects or "parasitic_burst" in effects:
+            # 真菌孢子弹 - 蘑菇孢子云
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 孢子云主体
+            for cloud in range(8):
+                cloud_angle = (cloud * 45) * 3.14159 / 180
+                cloud_r = size//4 + (cloud % 3) * size//10
+                cx = center + int(cloud_r * math.cos(cloud_angle) * 0.5)
+                cy = center + int(cloud_r * math.sin(cloud_angle) * 0.5)
+                cloud_size = size//6 + (cloud % 2) * size//12
+                pygame.draw.circle(self.image, (150, 100, 80, 180), (cx, cy), cloud_size)
+            # 中心蘑菇
+            # 菌柄
+            pygame.draw.rect(self.image, (180, 150, 120), (center - size//12, center, size//6, size//3))
+            # 菌盖
+            pygame.draw.ellipse(self.image, (130, 80, 60), (center - size//4, center - size//6, size//2, size//3))
+            pygame.draw.ellipse(self.image, color, (center - size//4, center - size//6, size//2, size//3), 2)
+            # 斑点
+            for spot in [(center - size//8, center - size//12), (center + size//10, center)]:
+                pygame.draw.circle(self.image, (200, 150, 100), spot, size//15)
+            self.speed = -13
+            
+        elif "hazard_mark" in effects or "quarantine_zone" in effects:
+            # 生化标志弹 - 旋转生化符号
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 背景警示圆
+            pygame.draw.circle(self.image, (255, 200, 0), (center, center), size//2)
+            pygame.draw.circle(self.image, (40, 40, 40), (center, center), size//2, 3)
+            # 生化危害符号
+            pygame.draw.circle(self.image, (40, 40, 40), (center, center), size//8)
+            # 三片扇叶
+            for blade in range(3):
+                blade_angle = (blade * 120 - 90) * 3.14159 / 180
+                # 扇形
+                arc_points = [(center, center)]
+                for arc in range(8):
+                    arc_a = blade_angle - 0.4 + arc * 0.1
+                    arc_r = size//3
+                    ax = center + int(arc_r * math.cos(arc_a))
+                    ay = center + int(arc_r * math.sin(arc_a))
+                    arc_points.append((ax, ay))
+                pygame.draw.polygon(self.image, color, arc_points)
+                # 内切口
+                cut_points = [(center, center)]
+                for cut in range(5):
+                    cut_a = blade_angle - 0.2 + cut * 0.08
+                    cut_r = size//5
+                    cutx = center + int(cut_r * math.cos(cut_a))
+                    cuty = center + int(cut_r * math.sin(cut_a))
+                    cut_points.append((cutx, cuty))
+                pygame.draw.polygon(self.image, (255, 200, 0), cut_points)
+            self.speed = -14
+            
+        elif "cell_corrupt" in effects or "blood_infect" in effects:
+            # 感染细胞弹 - 变异红细胞
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 红细胞形状（双凹圆盘）
+            pygame.draw.ellipse(self.image, (200, 80, 80), (center - size//2, center - size//3, size, size*2//3))
+            # 中心凹陷
+            pygame.draw.ellipse(self.image, (150, 50, 50), (center - size//4, center - size//6, size//2, size//3))
+            pygame.draw.ellipse(self.image, color, (center - size//2, center - size//3, size, size*2//3), 2)
+            # 感染斑点（绿色病变）
+            infection_spots = [(center - size//4, center - size//8), (center + size//6, center), 
+                              (center - size//8, center + size//8), (center + size//4, center - size//6)]
+            for spot in infection_spots:
+                pygame.draw.circle(self.image, (100, 180, 80), spot, size//12)
+            # 变异触须
+            for tendril in range(4):
+                angle = (tendril * 90 + 45) * 3.14159 / 180
+                start_x = center + int(size//3 * math.cos(angle))
+                start_y = center + int(size//5 * math.sin(angle))
+                end_x = center + int(size//2 * math.cos(angle))
+                end_y = center + int(size//3 * math.sin(angle))
+                pygame.draw.line(self.image, (80, 150, 60), (start_x, start_y), (end_x, end_y), 2)
+            self.speed = -14
+            
+        elif "gene_mutate" in effects or "evolve_adapt" in effects:
+            # 变异株弹 - DNA双螺旋
+            self.image = pygame.Surface((size*2, size*3), pygame.SRCALPHA)
+            center_x, center_y = size, size * 3 // 2
+            # DNA双螺旋
+            helix_colors = [(200, 100, 255), (100, 200, 255)]
+            for strand in range(2):
+                strand_offset = 3.14159 if strand == 1 else 0
+                strand_points = []
+                for i in range(15):
+                    t = i / 14
+                    wave_x = math.sin(t * 6.28 + strand_offset) * size//3
+                    py = center_y - size + t * size * 1.5
+                    strand_points.append((int(center_x + wave_x), int(py)))
+                if len(strand_points) > 1:
+                    pygame.draw.lines(self.image, helix_colors[strand], False, strand_points, 3)
+            # 碱基对连接
+            for i in range(0, 15, 2):
+                t = i / 14
+                x1 = center_x + int(math.sin(t * 6.28) * size//3)
+                x2 = center_x + int(math.sin(t * 6.28 + 3.14159) * size//3)
+                y = center_y - size + t * size * 1.5
+                pygame.draw.line(self.image, (150, 150, 200), (int(x1), int(y)), (int(x2), int(y)), 2)
+            # 变异闪光点
+            pygame.draw.circle(self.image, color, (center_x, center_y), size//8)
+            self.speed = -15
+            
+        elif "extinction_touch" in effects or "omega_doom" in effects:
+            # 灭绝病原弹 - Ω终末病毒
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 黑暗核心
+            pygame.draw.circle(self.image, (20, 20, 25), (center, center), size//2)
+            pygame.draw.circle(self.image, (50, 0, 0), (center, center), size//2, 3)
+            # Ω符号
+            omega_points = []
+            for i in range(16):
+                t = i / 15
+                angle = -0.5 + t * 4
+                radius = size//3
+                if i < 14:
+                    ox = center + int(radius * math.cos(angle))
+                    oy = center + int(radius * math.sin(angle) * 0.7)
+                    omega_points.append((ox, oy))
+            if len(omega_points) > 2:
+                pygame.draw.lines(self.image, (150, 0, 0), False, omega_points, 4)
+            # Ω两脚
+            pygame.draw.line(self.image, (150, 0, 0), (center - size//4, center + size//6), (center - size//4, center + size//3), 4)
+            pygame.draw.line(self.image, (150, 0, 0), (center + size//4, center + size//6), (center + size//4, center + size//3), 4)
+            # 死亡光环
+            for ring in range(3):
+                ring_r = size//2 + ring * size//8
+                alpha = 150 - ring * 40
+                pygame.draw.circle(self.image, (100, 0, 0, alpha), (center, center), ring_r, 2)
+            self.speed = -16
             
         else:
             # 默认子弹
@@ -10447,6 +10799,50 @@ class Player(pygame.sprite.Sprite):
                 self.gambit_combo_streak = 0
                 self.gambit_luck_meter = max(0, luck_meter - 3)
         
+        # ========== 21. 牵线木偶师 - 傀儡标记射击 ==========
+        elif pid == "puppeteer":
+            # 发射傀儡丝线子弹，命中敌人叠加傀儡标记
+            for i in range(cnt):
+                offset_x = (i - (cnt-1)/2) * 18
+                string_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                       color=(180, 100, 150), b_type="puppet_string", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                string_bullet.is_puppet_string = True
+                string_bullet.puppet_stack_power = 1  # 每次命中叠加1层标记
+                
+            # 检查并更新傀儡状态
+            if not hasattr(self, 'puppet_enemies'):
+                self.puppet_enemies = {}  # {enemy: {"stacks": int, "controlled": bool}}
+            
+            # 控制的敌人跟随玩家移动方向
+            for enemy, data in list(self.puppet_enemies.items()):
+                if not enemy.alive():
+                    del self.puppet_enemies[enemy]
+                    continue
+                if data.get("controlled"):
+                    # 傀儡敌人跟随玩家方向移动，并对其他敌人造成接触伤害
+                    enemy.puppet_controlled = True
+                    enemy.speedx = getattr(self, 'last_move_x', 0) * 0.5
+                    enemy.speedy = getattr(self, 'last_move_y', 0) * 0.5
+        
+        # ========== 22. 末日瘟神 - 感染子弹 ==========
+        elif pid == "pandemic":
+            # 发射病毒感染子弹
+            for i in range(cnt):
+                offset_x = (i - (cnt-1)/2) * 18
+                virus_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                       color=(100, 200, 80), b_type="virus", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                virus_bullet.is_virus_bullet = True
+                virus_bullet.infection_power = 1  # 感染等级
+            
+            # 初始化感染系统
+            if not hasattr(self, 'infected_enemies'):
+                self.infected_enemies = {}  # {enemy: {"level": int, "damage_stack": float, "timer": int}}
+                self.pandemic_mutation_level = 0  # 变异等级
+                self.pandemic_spread_count = 0  # 传播次数
+            
+            # 处理感染和变异
+            self._update_pandemic_infections()
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -10454,6 +10850,94 @@ class Player(pygame.sprite.Sprite):
             for i in range(cnt):
                 Bullet(start_x + i*20, self.rect.top, color=color, b_type=b_type, 
                        piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+
+    def _update_pandemic_infections(self):
+        """更新末日瘟神的感染系统"""
+        if not hasattr(self, 'infected_enemies'):
+            return
+        
+        # 处理每个感染的敌人
+        for enemy, data in list(self.infected_enemies.items()):
+            if not enemy.alive():
+                # 敌人死亡时传播感染
+                self._spread_infection(enemy, data["level"])
+                del self.infected_enemies[enemy]
+                continue
+            
+            # 累积潜伏伤害
+            data["timer"] += 1
+            base_dmg = self.damage * 0.1 * data["level"]
+            # 变异加成
+            mutation_bonus = 1 + self.pandemic_mutation_level * 0.15
+            data["damage_stack"] += base_dmg * mutation_bonus
+            
+            # 每3秒爆发一次潜伏伤害
+            if data["timer"] >= 180:  # 3秒
+                burst_damage = data["damage_stack"]
+                enemy.hp -= burst_damage
+                FloatingText(enemy.rect.centerx, enemy.rect.top - 10, 
+                           f"☣️{int(burst_damage)}", (150, 255, 100))
+                data["damage_stack"] = 0
+                data["timer"] = 0
+        
+        # 变异进化：每传播5次变异一次
+        if self.pandemic_spread_count >= 5:
+            self.pandemic_spread_count = 0
+            self.pandemic_mutation_level = min(10, self.pandemic_mutation_level + 1)
+            # 随机变异效果
+            mutation_effects = ["damage", "slow", "armor_break", "spread_range"]
+            effect = random.choice(mutation_effects)
+            if not hasattr(self, 'pandemic_mutations'):
+                self.pandemic_mutations = {}
+            self.pandemic_mutations[effect] = self.pandemic_mutations.get(effect, 0) + 1
+            FloatingText(self.rect.centerx, self.rect.top - 30, 
+                       f"🧬变异Lv.{self.pandemic_mutation_level}", (200, 255, 100))
+    
+    def _spread_infection(self, source_enemy, level):
+        """感染传播"""
+        if not hasattr(self, 'pandemic_mutations'):
+            self.pandemic_mutations = {}
+        
+        spread_range = 120 + self.pandemic_mutations.get("spread_range", 0) * 30
+        new_level = min(5, level + 1)
+        
+        for enemy in list(mobs):
+            if enemy == source_enemy or enemy in self.infected_enemies:
+                continue
+            dist = math.hypot(enemy.rect.centerx - source_enemy.rect.centerx,
+                            enemy.rect.centery - source_enemy.rect.centery)
+            if dist < spread_range:
+                self.infected_enemies[enemy] = {
+                    "level": new_level,
+                    "damage_stack": 0,
+                    "timer": 0
+                }
+                self.pandemic_spread_count += 1
+                FloatingText(enemy.rect.centerx, enemy.rect.top - 10, 
+                           "☣️感染!", (100, 255, 80))
+    
+    def _update_puppet_system(self):
+        """更新傀儡师的傀儡系统"""
+        if not hasattr(self, 'puppet_enemies'):
+            return
+        
+        for enemy, data in list(self.puppet_enemies.items()):
+            if not enemy.alive():
+                del self.puppet_enemies[enemy]
+                continue
+            
+            if data.get("controlled"):
+                # 被控制的敌人对其他敌人造成接触伤害
+                for other in list(mobs):
+                    if other == enemy or other in self.puppet_enemies:
+                        continue
+                    dist = math.hypot(enemy.rect.centerx - other.rect.centerx,
+                                    enemy.rect.centery - other.rect.centery)
+                    if dist < 50:
+                        contact_damage = self.damage * 0.5
+                        other.hp -= contact_damage
+                        FloatingText(other.rect.centerx, other.rect.top - 10, 
+                                   f"🎭{int(contact_damage)}", (180, 100, 150))
 
     def spawn_turrets(self):
         """生成固定位置的防御炮塔"""
@@ -10593,6 +11077,14 @@ class Player(pygame.sprite.Sprite):
             elif pid == "gambit":
                 # 【命运轮盘】启动赌博轮盘，随机触发超强效果
                 GambitFortuneWheel(self)
+            
+            elif pid == "puppeteer":
+                # 【全场魅惑】魅惑50%的敌人成为傀儡
+                PuppeteerMassCharm(self)
+            
+            elif pid == "pandemic":
+                # 【零号毒株】全屏感染+变异等级+3
+                PandemicPatientZero(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -11607,7 +12099,9 @@ class Player(pygame.sprite.Sprite):
                 "wormhole": "虫洞链接",
                 "chronos": "现在之锁",
                 "mirage": "万花镜像",
-                "gambit": "骰子审判"
+                "gambit": "骰子审判",
+                "puppeteer": "命运丝网",
+                "pandemic": "强制变异"
             }
             
             pid = self.plane_id
@@ -11701,6 +12195,14 @@ class Player(pygame.sprite.Sprite):
                 # 【骰子审判】投掷巨大骰子决定敌人命运
                 GambitDiceJudgment(self)
             
+            elif pid == "puppeteer":
+                # 【命运丝网】所有敌人连线，伤害传递
+                PuppeteerFateWeb(self)
+            
+            elif pid == "pandemic":
+                # 【强制变异】立即触发5次变异
+                PandemicForceMutation(self)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -11740,7 +12242,9 @@ class Player(pygame.sprite.Sprite):
                 "wormhole": "时空逆流",
                 "chronos": "未来之视",
                 "mirage": "虚实颠倒",
-                "gambit": "全押梭哈"
+                "gambit": "全押梭哈",
+                "puppeteer": "傀儡剧场",
+                "pandemic": "终末审判"
             }
             
             pid = self.plane_id
@@ -11833,6 +12337,14 @@ class Player(pygame.sprite.Sprite):
             elif pid == "gambit":
                 # 【全押梭哈】把所有运气值押注，触发超级效果
                 GambitAllIn(self)
+            
+            elif pid == "puppeteer":
+                # 【傀儡剧场】召唤击杀过的精英敌人复制体为你战斗
+                PuppeteerPuppetTheater(self)
+            
+            elif pid == "pandemic":
+                # 【终末审判】所有感染敌人的潜伏伤害立即爆发，爆发伤害+200%
+                PandemicFinalJudgment(self)
             
             else:
                 # 通用：全屏伤害
@@ -13091,3 +13603,368 @@ class GambitAllIn(pygame.sprite.Sprite):
             owner.gambit_next_crit = True
             
             FloatingText(center_x, center_y + 110, "下次必暴击！", (255, 200, 100))
+
+
+# =====================================================================
+#   Puppeteer (牵线木偶师) 大招实现
+# =====================================================================
+
+class PuppeteerMassCharm(pygame.sprite.Sprite):
+    """【全场魅惑】X键大招 - 魅惑50%的敌人成为傀儡"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180
+        self.phase = 0
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        
+        enemy_bullets.empty()
+        
+        if not hasattr(owner, 'puppet_enemies'):
+            owner.puppet_enemies = {}
+        
+        all_mobs = list(mobs)
+        charm_count = max(1, len(all_mobs) // 2)
+        targets = random.sample(all_mobs, min(charm_count, len(all_mobs))) if all_mobs else []
+        
+        self.charmed_enemies = []
+        for enemy in targets:
+            owner.puppet_enemies[enemy] = {"stacks": 3, "controlled": True}
+            enemy.puppet_controlled = True
+            self.charmed_enemies.append(enemy)
+            FloatingText(enemy.rect.centerx, enemy.rect.top - 20, "🎭魅惑!", (180, 100, 150))
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 40, f"「全场魅惑」×{len(targets)}", (220, 120, 180))
+        
+        self.strings = []
+        for enemy in self.charmed_enemies:
+            self.strings.append({'start': owner.rect.center, 'end': enemy.rect.center, 'alpha': 255})
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        for i, string in enumerate(self.strings):
+            if i < len(self.charmed_enemies) and self.charmed_enemies[i].alive():
+                string['end'] = self.charmed_enemies[i].rect.center
+            string['alpha'] = int(255 * self.life / 180)
+            start, end = string['start'], string['end']
+            mid_x = (start[0] + end[0]) // 2 + int(20 * math.sin(self.life / 10))
+            mid_y = (start[1] + end[1]) // 2
+            pygame.draw.line(self.image, (180, 100, 150, string['alpha']), start, (mid_x, mid_y), 2)
+            pygame.draw.line(self.image, (180, 100, 150, string['alpha']), (mid_x, mid_y), end, 2)
+        
+        for enemy in self.charmed_enemies:
+            if enemy.alive():
+                pygame.draw.circle(self.image, (180, 100, 150, 100), enemy.rect.center, 30, 2)
+                cx, cy = enemy.rect.center
+                pygame.draw.line(self.image, (220, 150, 180), (cx - 15, cy), (cx + 15, cy), 2)
+                pygame.draw.line(self.image, (220, 150, 180), (cx, cy - 15), (cx, cy + 15), 2)
+
+
+class PuppeteerFateWeb(pygame.sprite.Sprite):
+    """【命运丝网】G键大招 - 所有敌人连线，伤害传递"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 240
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        self.web_enemies = list(mobs)
+        self.hp_snapshot = {enemy: enemy.hp for enemy in self.web_enemies}
+        self.transfer_rate = 0.5
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 40, "「命运丝网」", (180, 100, 150))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        for enemy in list(self.web_enemies):
+            if not enemy.alive():
+                self.web_enemies.remove(enemy)
+                death_damage = self.owner.damage * 2
+                for other in self.web_enemies:
+                    if other.alive():
+                        other.hp -= death_damage
+                        FloatingText(other.rect.centerx, other.rect.top - 10, f"🕸️{int(death_damage)}", (180, 100, 150))
+                continue
+            
+            old_hp = self.hp_snapshot.get(enemy, enemy.hp)
+            if enemy.hp < old_hp:
+                damage_taken = old_hp - enemy.hp
+                transfer_damage = damage_taken * self.transfer_rate
+                for other in self.web_enemies:
+                    if other != enemy and other.alive():
+                        other.hp -= transfer_damage
+            self.hp_snapshot[enemy] = enemy.hp
+        
+        pulse = abs(math.sin(self.life / 15))
+        for i, enemy1 in enumerate(self.web_enemies):
+            for enemy2 in self.web_enemies[i+1:]:
+                if enemy1.alive() and enemy2.alive():
+                    alpha = int(150 * pulse)
+                    pygame.draw.line(self.image, (180, 100, 150, alpha), enemy1.rect.center, enemy2.rect.center, 1)
+        
+        for enemy in self.web_enemies:
+            if enemy.alive():
+                pygame.draw.circle(self.image, (220, 150, 180, 200), enemy.rect.center, 8)
+                pygame.draw.circle(self.image, (180, 100, 150), enemy.rect.center, 8, 2)
+
+
+class PuppeteerPuppetTheater(pygame.sprite.Sprite):
+    """【傀儡剧场】C键大招 - 召唤击杀过的敌人复制体为你战斗"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 450
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        self.puppets = []
+        puppet_types = ["chaser", "tank", "sniper"]
+        for i, ptype in enumerate(puppet_types):
+            angle = (i * 120 + 90) * 3.14159 / 180
+            px = owner.rect.centerx + int(100 * math.cos(angle))
+            py = owner.rect.centery + int(100 * math.sin(angle))
+            self.puppets.append({'type': ptype, 'x': px, 'y': py, 'hp': 200, 'fire_timer': 0, 'target': None})
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 40, "「傀儡剧场」", (220, 120, 180))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        owner = self.owner
+        
+        for puppet in self.puppets:
+            angle = (self.puppets.index(puppet) * 120 + self.life) * 3.14159 / 180
+            target_x = owner.rect.centerx + int(80 * math.cos(angle))
+            target_y = owner.rect.centery + int(80 * math.sin(angle))
+            puppet['x'] += (target_x - puppet['x']) * 0.1
+            puppet['y'] += (target_y - puppet['y']) * 0.1
+            px, py = int(puppet['x']), int(puppet['y'])
+            
+            puppet['fire_timer'] -= 1
+            if puppet['fire_timer'] <= 0 and mobs:
+                nearest = min(mobs, key=lambda m: math.hypot(m.rect.centerx - px, m.rect.centery - py))
+                angle_to_target = math.atan2(nearest.rect.centery - py, nearest.rect.centerx - px)
+                angle_deg = angle_to_target * 180 / 3.14159
+                puppet_bullet = Bullet(px, py, angle=angle_deg - 90, color=(180, 100, 150), b_type="puppet_string", piercing=1)
+                puppet_bullet.speed = -12
+                puppet_bullet.damage_mult = 1.5
+                puppet['fire_timer'] = 30
+            
+            pygame.draw.rect(self.image, (180, 100, 150), (px - 3, py - 20, 6, 40))
+            pygame.draw.rect(self.image, (180, 100, 150), (px - 15, py - 5, 30, 6))
+            pygame.draw.circle(self.image, (220, 180, 200), (px, py - 25), 10)
+            pygame.draw.circle(self.image, (180, 100, 150), (px, py - 25), 10, 2)
+            pygame.draw.line(self.image, (100, 50, 80), (px - 4, py - 28), (px + 4, py - 22), 2)
+            pygame.draw.line(self.image, (100, 50, 80), (px + 4, py - 28), (px - 4, py - 22), 2)
+            pygame.draw.line(self.image, (180, 100, 150, 150), owner.rect.center, (px, py - 25), 1)
+
+
+# =====================================================================
+#   Pandemic (末日瘟神) 大招实现
+# =====================================================================
+
+class PandemicPatientZero(pygame.sprite.Sprite):
+    """【零号毒株】X键大招 - 全屏感染+变异等级+3"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 150
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        if not hasattr(owner, 'infected_enemies'):
+            owner.infected_enemies = {}
+            owner.pandemic_mutation_level = 0
+            owner.pandemic_spread_count = 0
+            owner.pandemic_mutations = {}
+        
+        for enemy in mobs:
+            if enemy not in owner.infected_enemies:
+                owner.infected_enemies[enemy] = {"level": 3, "damage_stack": 0, "timer": 0}
+                FloatingText(enemy.rect.centerx, enemy.rect.top - 10, "☣️零号!", (150, 255, 100))
+        
+        owner.pandemic_mutation_level = min(10, owner.pandemic_mutation_level + 3)
+        
+        self.particles = []
+        for _ in range(100):
+            self.particles.append({
+                'x': owner.rect.centerx, 'y': owner.rect.centery,
+                'vx': random.uniform(-8, 8), 'vy': random.uniform(-8, 8),
+                'life': random.randint(60, 120)
+            })
+        
+        FloatingText(owner.rect.centerx, owner.rect.top - 40, f"「零号毒株」变异Lv.{owner.pandemic_mutation_level}", (100, 255, 80))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        for p in self.particles[:]:
+            p['x'] += p['vx']
+            p['y'] += p['vy']
+            p['vx'] *= 0.98
+            p['vy'] *= 0.98
+            p['life'] -= 1
+            if p['life'] <= 0:
+                self.particles.remove(p)
+                continue
+            alpha = int(255 * p['life'] / 120)
+            size = int(3 + p['life'] / 30)
+            pygame.draw.circle(self.image, (100, 255, 80, alpha), (int(p['x']), int(p['y'])), size)
+        
+        for enemy in list(mobs):
+            if hasattr(self.owner, 'infected_enemies') and enemy in self.owner.infected_enemies:
+                pulse = abs(math.sin(self.life / 10))
+                radius = 20 + int(10 * pulse)
+                pygame.draw.circle(self.image, (100, 255, 80, 100), enemy.rect.center, radius, 2)
+                pygame.draw.circle(self.image, (150, 255, 100), enemy.rect.center, 5)
+
+
+class PandemicForceMutation(pygame.sprite.Sprite):
+    """【强制变异】G键大招 - 立即触发5次变异"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.mutation_timer = 0
+        self.mutations_triggered = 0
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        if not hasattr(owner, 'pandemic_mutation_level'):
+            owner.pandemic_mutation_level = 0
+            owner.pandemic_mutations = {}
+        
+        self.helix_phase = 0
+        FloatingText(owner.rect.centerx, owner.rect.top - 40, "「强制变异」", (200, 255, 100))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        self.helix_phase += 0.15
+        
+        self.mutation_timer += 1
+        if self.mutation_timer >= 20 and self.mutations_triggered < 5:
+            self.mutation_timer = 0
+            self.mutations_triggered += 1
+            self.owner.pandemic_mutation_level = min(10, self.owner.pandemic_mutation_level + 1)
+            
+            effects = ["damage", "slow", "armor_break", "spread_range", "dot_power"]
+            effect = random.choice(effects)
+            if not hasattr(self.owner, 'pandemic_mutations'):
+                self.owner.pandemic_mutations = {}
+            self.owner.pandemic_mutations[effect] = self.owner.pandemic_mutations.get(effect, 0) + 1
+            
+            effect_names = {"damage": "伤害+", "slow": "减速+", "armor_break": "破甲+", "spread_range": "传播+", "dot_power": "毒伤+"}
+            FloatingText(self.owner.rect.centerx + random.randint(-50, 50), self.owner.rect.centery - 30, f"🧬{effect_names[effect]}", (150, 255, 100))
+        
+        center_x = WIDTH // 2
+        for i in range(30):
+            y = 100 + i * 20
+            offset = 50 * math.sin(self.helix_phase + i * 0.3)
+            x1, x2 = center_x - offset, center_x + offset
+            pygame.draw.circle(self.image, (100, 255, 80), (int(x1), y), 6)
+            pygame.draw.circle(self.image, (150, 255, 100), (int(x2), y), 6)
+            if i % 2 == 0:
+                pygame.draw.line(self.image, (200, 255, 150), (int(x1), y), (int(x2), y), 2)
+        
+        level = self.owner.pandemic_mutation_level
+        for i in range(level):
+            x = 50 + i * 25
+            pygame.draw.circle(self.image, (100, 255, 80), (x, 50), 8)
+            pygame.draw.circle(self.image, (200, 255, 150), (x, 50), 8, 2)
+
+
+class PandemicFinalJudgment(pygame.sprite.Sprite):
+    """【终末审判】C键大招 - 所有感染敌人的潜伏伤害立即爆发，爆发伤害+200%"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 90
+        self.phase = 0
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        enemy_bullets.empty()
+        
+        self.total_damage = 0
+        self.explosions = []
+        FloatingText(owner.rect.centerx, owner.rect.top - 40, "「终末审判」", (255, 100, 100))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        if self.phase == 0:
+            self.phase = 1
+            if hasattr(self.owner, 'infected_enemies'):
+                for enemy, data in list(self.owner.infected_enemies.items()):
+                    if enemy.alive():
+                        burst_damage = (data["damage_stack"] + self.owner.damage * data["level"]) * 3.0
+                        enemy.hp -= burst_damage
+                        self.total_damage += burst_damage
+                        self.explosions.append({'x': enemy.rect.centerx, 'y': enemy.rect.centery, 'radius': 10, 'max_radius': 60, 'alpha': 255})
+                        FloatingText(enemy.rect.centerx, enemy.rect.top - 20, f"☠️{int(burst_damage)}", (255, 50, 50))
+                        data["damage_stack"] = 0
+                        data["timer"] = 0
+                FloatingText(WIDTH // 2, HEIGHT // 2, f"总爆发伤害: {int(self.total_damage)}", (255, 100, 100))
+        
+        for exp in self.explosions[:]:
+            exp['radius'] += 3
+            exp['alpha'] = int(255 * (1 - exp['radius'] / exp['max_radius']))
+            if exp['radius'] >= exp['max_radius']:
+                self.explosions.remove(exp)
+                continue
+            pygame.draw.circle(self.image, (100, 255, 80, exp['alpha'] // 2), (exp['x'], exp['y']), int(exp['radius']))
+            pygame.draw.circle(self.image, (255, 100, 80, exp['alpha']), (exp['x'], exp['y']), int(exp['radius']), 3)
+            if exp['alpha'] > 100:
+                cx, cy = exp['x'], exp['y']
+                pygame.draw.circle(self.image, (255, 255, 255), (cx, cy - 5), 8)
+                pygame.draw.circle(self.image, (0, 0, 0), (cx - 3, cy - 6), 2)
+                pygame.draw.circle(self.image, (0, 0, 0), (cx + 3, cy - 6), 2)
+                pygame.draw.line(self.image, (0, 0, 0), (cx - 2, cy), (cx + 2, cy), 2)

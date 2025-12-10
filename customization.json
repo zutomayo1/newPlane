@@ -252,7 +252,31 @@
     "gambit_casino_royale": true,
     "gambit_pachinko": true,
     "gambit_fortune_cookie": true,
-    "gambit_probability": true
+    "gambit_probability": true,
+    "puppeteer_gothic": true,
+    "puppeteer_music_box": true,
+    "puppeteer_voodoo": true,
+    "puppeteer_circus": true,
+    "puppeteer_kabuki": true,
+    "puppeteer_clockwork": true,
+    "puppeteer_shadow": true,
+    "puppeteer_marionette": true,
+    "puppeteer_porcelain": true,
+    "puppeteer_nightmare": true,
+    "puppeteer_eden": true,
+    "puppeteer_fate": true,
+    "pandemic_plague": true,
+    "pandemic_biohazard": true,
+    "pandemic_fungal": true,
+    "pandemic_neon_virus": true,
+    "pandemic_zombie": true,
+    "pandemic_parasite": true,
+    "pandemic_radiation": true,
+    "pandemic_coral": true,
+    "pandemic_prion": true,
+    "pandemic_alien": true,
+    "pandemic_chimera": true,
+    "pandemic_omega": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -274,7 +298,9 @@
     "wormhole": "wormhole_monsoon",
     "chronos": "chronos_meteorological",
     "mirage": "mirage_doppelganger",
-    "gambit": "gambit_joker"
+    "gambit": "gambit_joker",
+    "puppeteer": "puppeteer_circus",
+    "pandemic": "common_red"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -440,7 +466,21 @@
     "gambit_coin_flip_bullet": true,
     "gambit_slot_bullet": true,
     "gambit_roulette_bullet": true,
-    "gambit_joker_bullet": true
+    "gambit_joker_bullet": true,
+    "puppeteer_thread_bullet": true,
+    "puppeteer_needle_bullet": true,
+    "puppeteer_marionette_bullet": true,
+    "puppeteer_cross_bullet": true,
+    "puppeteer_soul_bullet": true,
+    "puppeteer_web_bullet": true,
+    "puppeteer_fate_bullet": true,
+    "pandemic_virus_bullet": true,
+    "pandemic_toxin_bullet": true,
+    "pandemic_spore_bullet": true,
+    "pandemic_biohazard_bullet": true,
+    "pandemic_cell_bullet": true,
+    "pandemic_mutation_bullet": true,
+    "pandemic_extinction_bullet": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -461,7 +501,9 @@
     "wormhole": "default",
     "chronos": "chronos_rewind_bullet",
     "mirage": "mirage_holographic_bullet",
-    "gambit": "gambit_joker_bullet"
+    "gambit": "gambit_joker_bullet",
+    "pandemic": "pandemic_mutation_bullet",
+    "puppeteer": "puppeteer_soul_bullet"
   },
   "equipped_wingman_themes": {
     "slot_0": "striker_holy",
