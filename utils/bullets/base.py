@@ -1,0 +1,102 @@
+# -*- coding: utf-8 -*-
+"""
+子弹涂装效果主调度模块
+
+集中管理所有战机的子弹效果渲染，提供统一的 draw_bullet_preview 接口
+"""
+import pygame
+import math
+
+# 导入所有战机的子弹效果模块
+from .striker_bullets import render_striker_bullet
+from .phantom_bullets import render_phantom_bullet
+from .titan_bullets import render_titan_bullet
+from .thunderbird_bullets import render_thunderbird_bullet
+from .viper_bullets import render_viper_bullet
+from .specter_bullets import render_specter_bullet
+from .aurora_bullets import render_aurora_bullet
+from .crimson_bullets import render_crimson_bullet
+from .stalker_bullets import render_stalker_bullet
+from .gaia_bullets import render_gaia_bullet
+from .weaver_bullets import render_weaver_bullet
+from .solar_bullets import render_solar_bullet
+from .arbiter_bullets import render_arbiter_bullet
+from .eclipse_bullets import render_eclipse_bullet
+from .prism_bullets import render_prism_bullet
+from .necro_bullets import render_necro_bullet
+from .wormhole_bullets import render_wormhole_bullet
+from .chronos_bullets import render_chronos_bullet
+from .mirage_bullets import render_mirage_bullet
+from .gambit_bullets import render_gambit_bullet
+from .puppeteer_bullets import render_puppeteer_bullet
+from .pandemic_bullets import render_pandemic_bullet
+
+
+# 渲染函数列表，按优先级顺序排列
+BULLET_RENDERERS = [
+    render_striker_bullet,
+    render_phantom_bullet,
+    render_titan_bullet,
+    render_thunderbird_bullet,
+    render_viper_bullet,
+    render_specter_bullet,
+    render_aurora_bullet,
+    render_crimson_bullet,
+    render_stalker_bullet,
+    render_gaia_bullet,
+    render_weaver_bullet,
+    render_solar_bullet,
+    render_arbiter_bullet,
+    render_eclipse_bullet,
+    render_prism_bullet,
+    render_necro_bullet,
+    render_wormhole_bullet,
+    render_chronos_bullet,
+    render_mirage_bullet,
+    render_gambit_bullet,
+    render_puppeteer_bullet,
+    render_pandemic_bullet,
+]
+
+
+def draw_bullet_preview(surface, theme, x, y, size=60):
+    """
+    绘制子弹预览效果
+    
+    Args:
+        surface: pygame绘图表面
+        theme: 主题字典，包含 'effects' 和 'color' 键
+        x, y: 绘制位置（左上角）
+        size: 预览尺寸
+    """
+    try:
+        effects = theme.get("effects", [])
+        color = theme.get("color", (100, 150, 255))
+        
+        # 计算中心坐标
+        center_x = x + size // 2
+        center_y = y + size // 2
+        
+        # 遍历所有渲染器，找到匹配的效果
+        rendered = False
+        for renderer in BULLET_RENDERERS:
+            if renderer(surface, effects, color, center_x, center_y, size, x, y):
+                rendered = True
+                break
+        
+        # 如果没有匹配的效果，绘制默认圆形
+        if not rendered:
+            pygame.draw.circle(surface, color, (center_x, center_y), size//3)
+            pygame.draw.circle(surface, (255, 255, 255), (center_x, center_y), size//3, 2)
+        
+        # 在周围绘制小光点作为装饰
+        for i in range(3):
+            angle = (i * 120) * 3.14159 / 180
+            px = center_x + int(size//2.2 * math.cos(angle))
+            py = center_y + int(size//2.2 * math.sin(angle))
+            pygame.draw.circle(surface, color, (px, py), 3)
+            pygame.draw.circle(surface, (255, 255, 255), (px, py), 3, 1)
+                
+    except Exception as e:
+        # 渲染失败时显示灰色圆形
+        pygame.draw.circle(surface, (100, 100, 100), (x + size//2, y + size//2), size//4)

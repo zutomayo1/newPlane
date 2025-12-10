@@ -280,14 +280,14 @@
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
-    "phantom": "default",
-    "crimson": "crimson_rose",
-    "titan": "titan_demon",
-    "striker": "default",
-    "thunderbird": "default",
+    "phantom": "phantom_ex5",
+    "crimson": "crimson_ex5",
+    "titan": "titan_ex5",
+    "striker": "striker_ex4",
+    "thunderbird": "thunderbird_storm",
     "viper": "epic_frost",
     "specter": "default",
-    "aurora": "rare_gold",
+    "aurora": "aurora_ex4",
     "stalker": "stalker_drone",
     "gaia": "gaia_elemental",
     "weaver": "default",
@@ -298,9 +298,9 @@
     "wormhole": "wormhole_monsoon",
     "chronos": "chronos_meteorological",
     "mirage": "mirage_doppelganger",
-    "gambit": "gambit_joker",
+    "gambit": "gambit_mahjong",
     "puppeteer": "puppeteer_circus",
-    "pandemic": "common_red"
+    "pandemic": "pandemic_zombie"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -502,7 +502,7 @@
     "chronos": "chronos_rewind_bullet",
     "mirage": "mirage_holographic_bullet",
     "gambit": "gambit_joker_bullet",
-    "pandemic": "pandemic_mutation_bullet",
+    "pandemic": "pandemic_toxin_bullet",
     "puppeteer": "puppeteer_soul_bullet"
   },
   "equipped_wingman_themes": {
