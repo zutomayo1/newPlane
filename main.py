@@ -596,8 +596,8 @@ def draw_settings_ui():
         draw_text(screen, f"{percentage}%", 20, WIDTH//2 + 80, y_pos + 30, color)
     
     # === 其他设置 (左侧列) ===
-    other_y = start_y + 250
-    checkbox_size = 28
+    other_y = start_y + 230
+    checkbox_size = 24
     
     # FPS显示开关
     fps_label = "显示FPS"
@@ -620,7 +620,7 @@ def draw_settings_ui():
     draw_text(screen, fps_label, 22, fps_checkbox.right + 10, fps_checkbox.centery - 17, WHITE, align="left")
     
     # 屏幕震动开关
-    shake_y = other_y + 50
+    shake_y = other_y + 40
     shake_label = "屏幕震动效果"
     shake_enabled = game_settings.get("screen_shake", True)
     shake_checkbox = pygame.Rect(WIDTH//2 - 350, shake_y, checkbox_size, checkbox_size)
@@ -639,7 +639,7 @@ def draw_settings_ui():
     draw_text(screen, shake_label, 22, shake_checkbox.right + 10, shake_checkbox.centery - 17, WHITE, align="left")
     
     # 粒子效果质量 (按钮选择)
-    particle_y = other_y + 100
+    particle_y = other_y + 80
     particle_label = "粒子效果质量"
     particle_quality = game_settings.get("particle_quality", "high")
     quality_options = ["low", "medium", "high"]
@@ -660,7 +660,7 @@ def draw_settings_ui():
         draw_text(screen, quality_names[quality], 18, btn_rect.centerx, btn_rect.centery - 10, WHITE if is_selected else GRAY)
     
     # 伤害数字显示
-    damage_y = other_y + 180
+    damage_y = other_y + 145
     damage_label = "显示伤害数字"
     damage_enabled = game_settings.get("show_damage_numbers", True)
     damage_checkbox = pygame.Rect(WIDTH//2 - 350, damage_y, checkbox_size, checkbox_size)
@@ -677,6 +677,27 @@ def draw_settings_ui():
     
     # 标签 - 紧贴复选框右侧，稍微上移
     draw_text(screen, damage_label, 22, damage_checkbox.right + 10, damage_checkbox.centery - 17, WHITE, align="left")
+    
+    # 射击模式切换 (自动/手动)
+    fire_y = other_y + 180
+    fire_label = "射击模式"
+    auto_fire = game_settings.get("auto_fire", True)
+    fire_mode_options = [True, False]
+    fire_mode_names = {True: "自动射击", False: "手动(空格)"}
+    
+    draw_text(screen, fire_label, 22, WIDTH//2 - 350, fire_y - 10, WHITE, align="left")
+    
+    # 绘制两个选项按钮
+    for i, mode in enumerate(fire_mode_options):
+        btn_x = WIDTH//2 - 350 + i * 110
+        btn_rect = pygame.Rect(btn_x, fire_y + 15, 105, 30)
+        is_selected = (auto_fire == mode)
+        is_hover = btn_rect.collidepoint(mx, my)
+        
+        btn_color = LIME if is_selected else (YELLOW if is_hover else GRAY)
+        pygame.draw.rect(screen, (40, 40, 50) if not is_selected else (0, 80, 0), btn_rect, border_radius=5)
+        pygame.draw.rect(screen, btn_color, btn_rect, 2, border_radius=5)
+        draw_text(screen, fire_mode_names[mode], 18, btn_rect.centerx, btn_rect.centery - 10, WHITE if is_selected else GRAY)
     
     # === 按钮区域 ===
     btn_y = HEIGHT - 60
@@ -715,6 +736,10 @@ def draw_settings_ui():
         'particle_quality_btns': [
             (pygame.Rect(WIDTH//2 - 350 + i * 75, particle_y + 20, 70, 32), quality)
             for i, quality in enumerate(quality_options)
+        ],
+        'fire_mode_btns': [
+            (pygame.Rect(WIDTH//2 - 350 + i * 110, other_y + 180 + 15, 105, 30), mode)
+            for i, mode in enumerate([True, False])
         ],
         'sliders': [
             (pygame.Rect(WIDTH//2 - 350, start_y + 0*75 + 30, slider_width, slider_height), 'master'),
@@ -6779,7 +6804,8 @@ while True:
                             show_fps=game_settings.get("show_fps", True),
                             screen_shake=game_settings.get("screen_shake", True),
                             particle_quality=game_settings.get("particle_quality", "high"),
-                            show_damage_numbers=game_settings.get("show_damage_numbers", True)
+                            show_damage_numbers=game_settings.get("show_damage_numbers", True),
+                            auto_fire=game_settings.get("auto_fire", True)
                         )
                         settings_saved_msg = "设置已保存!"
                         settings_saved_timer = 60
@@ -6794,6 +6820,7 @@ while True:
                         game_settings["screen_shake"] = True
                         game_settings["particle_quality"] = "high"
                         game_settings["show_damage_numbers"] = True
+                        game_settings["auto_fire"] = True
                         settings_saved_msg = "已恢复默认设置!"
                         settings_saved_timer = 60
                         sound_mgr.play("select")
@@ -6828,6 +6855,15 @@ while True:
                                 sound_mgr.play("select")
                                 clicked_quality = True
                                 break
+                        
+                        # 射击模式按钮
+                        if not clicked_quality:
+                            for btn_rect, mode in settings_ui['fire_mode_btns']:
+                                if btn_rect.collidepoint(mx, my):
+                                    game_settings["auto_fire"] = mode
+                                    sound_mgr.play("select")
+                                    clicked_quality = True
+                                    break
                         
                         # 检查滑块点击
                         if not clicked_quality:
@@ -7157,9 +7193,17 @@ while True:
                     draw_text(screen, "按 P 继续 / 方向键+Enter 选择 / TAB 查看面板", 18, WIDTH // 2, HEIGHT - 50, GRAY)
 
             else:
-                # Auto Fire
+                # 射击逻辑：自动或手动
                 if not levelup_paused:
-                    player.shoot()
+                    auto_fire = game_settings.get("auto_fire", True)
+                    if auto_fire:
+                        # 自动射击
+                        player.shoot()
+                    else:
+                        # 手动射击（按住空格键）
+                        keys = pygame.key.get_pressed()
+                        if keys[pygame.K_SPACE]:
+                            player.shoot()
                 
                 if global_time_freeze > 0:
                     global_time_freeze -= 1

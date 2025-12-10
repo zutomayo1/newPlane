@@ -55,7 +55,7 @@ def log_debug(msg):
 # ==============================================================================
 SETTINGS_FILE = "game_settings.json"
 
-def save_settings(background_style=None, master_volume=None, music_volume=None, sfx_volume=None, show_fps=None, screen_shake=None, particle_quality=None, show_damage_numbers=None):
+def save_settings(background_style=None, master_volume=None, music_volume=None, sfx_volume=None, show_fps=None, screen_shake=None, particle_quality=None, show_damage_numbers=None, auto_fire=None):
     """保存游戏设置"""
     # 加载现有设置
     try:
@@ -84,6 +84,8 @@ def save_settings(background_style=None, master_volume=None, music_volume=None, 
         settings["particle_quality"] = particle_quality
     if show_damage_numbers is not None:
         settings["show_damage_numbers"] = show_damage_numbers
+    if auto_fire is not None:
+        settings["auto_fire"] = auto_fire
     
     try:
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
