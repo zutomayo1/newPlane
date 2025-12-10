@@ -4825,7 +4825,56 @@ class Bullet(pygame.sprite.Sprite):
                 # 时间子弹特性
                 self.chrono_freeze_timer = 0  # 时停计时器
                 self.chrono_delayed = False  # 是否延迟爆发
-            else:  # 18. Necro + 默认（紫红幽能，与Specter共用）
+            
+            elif b_type == "mirror":  # 18. Mirage - 幻镜棱镜子弹
+                self.image = pygame.Surface((24, 32), pygame.SRCALPHA)
+                # 三角棱镜形状
+                prism_pts = [(12, 2), (2, 28), (22, 28)]
+                # 半透明填充
+                prism_surf = pygame.Surface((24, 32), pygame.SRCALPHA)
+                pygame.draw.polygon(prism_surf, (*color[:3], 180), prism_pts)
+                self.image.blit(prism_surf, (0, 0))
+                # 边框发光
+                pygame.draw.polygon(self.image, (255, 220, 255), prism_pts, 2)
+                # 内部折射线
+                pygame.draw.line(self.image, (255, 200, 255, 150), (12, 2), (12, 22), 1)
+                # 核心光点
+                pygame.draw.circle(self.image, (255, 255, 255), (12, 12), 4)
+                pygame.draw.circle(self.image, color, (12, 12), 3)
+                self.speed = -18
+                
+            elif b_type == "card":  # 19. Gambit - 扑克牌子弹
+                self.image = pygame.Surface((20, 28), pygame.SRCALPHA)
+                # 卡牌形状
+                card_rect = (2, 2, 16, 24)
+                pygame.draw.rect(self.image, (255, 255, 255), card_rect, border_radius=2)
+                pygame.draw.rect(self.image, (255, 215, 0), card_rect, 2, border_radius=2)
+                # 随机花色（♠♥♦♣）
+                suit = random.choice(['spade', 'heart', 'diamond', 'club'])
+                if suit == 'spade':
+                    # 黑桃
+                    pygame.draw.polygon(self.image, (0, 0, 0), [(10, 6), (6, 14), (14, 14)])
+                    pygame.draw.circle(self.image, (0, 0, 0), (10, 12), 4)
+                    pygame.draw.rect(self.image, (0, 0, 0), (9, 14, 3, 6))
+                elif suit == 'heart':
+                    # 红心
+                    pygame.draw.circle(self.image, (255, 50, 50), (8, 10), 4)
+                    pygame.draw.circle(self.image, (255, 50, 50), (12, 10), 4)
+                    pygame.draw.polygon(self.image, (255, 50, 50), [(4, 11), (10, 20), (16, 11)])
+                elif suit == 'diamond':
+                    # 方块
+                    diamond_pts = [(10, 6), (5, 13), (10, 20), (15, 13)]
+                    pygame.draw.polygon(self.image, (255, 50, 50), diamond_pts)
+                else:
+                    # 梅花
+                    pygame.draw.circle(self.image, (0, 0, 0), (10, 8), 3)
+                    pygame.draw.circle(self.image, (0, 0, 0), (7, 12), 3)
+                    pygame.draw.circle(self.image, (0, 0, 0), (13, 12), 3)
+                    pygame.draw.rect(self.image, (0, 0, 0), (9, 14, 3, 6))
+                self.speed = -16
+                self.card_suit = suit
+                
+            else:  # 20. Necro + 默认（紫红幽能，与Specter共用）
                 self.image = pygame.Surface((18, 42), pygame.SRCALPHA)
                 points = [(9,0), (5,14), (13,28), (9,42)]
                 pygame.draw.lines(self.image, (200, 50, 150), False, points, 5)
@@ -9813,6 +9862,24 @@ class Player(pygame.sprite.Sprite):
         self.chronos_position_history = []  # 位置历史记录（用于回溯）
         self.max_history_length = 180   # 记录3秒历史（60帧/秒 × 3）
         self.chronos_frozen_bullets = []  # 时停的子弹列表
+        
+        # 【幻镜·万华】镜像分身系统
+        self.mirage_mirror_count = 0       # 当前分身数量
+        self.max_mirage_mirrors = 3        # 最大分身数
+        self.mirage_sync_level = 0         # 同步等级（0-5，影响分身伤害）
+        self.active_mirrors = []           # 活跃分身位置列表 [(x, y), ...]
+        self.mirror_duration = 0           # 分身持续时间
+        self.mirror_cooldown = 0           # 召唤冷却
+        self.mirage_refraction_bonus = 0   # 折射加成
+        
+        # 【命运赌徒·艾斯】赌博系统
+        self.gambit_luck_meter = 50        # 运气值（0-100，50为中性）
+        self.gambit_combo_streak = 0       # 连击数
+        self.gambit_jackpot_count = 0      # 累计大奖次数
+        self.gambit_total_rolls = 0        # 总掷骰次数
+        self.gambit_next_crit = False      # 下次必定暴击
+        self.gambit_fortune_wheel_active = False  # 命运轮盘大招是否激活
+        self.gambit_wheel_bonus = 1.0      # 轮盘加成倍率
 
     def update(self):
         # 更新动态飞机模型
@@ -10276,6 +10343,110 @@ class Player(pygame.sprite.Sprite):
                     bullet.is_clock_hand = True
                     bullet.speed = -14
         
+        # ========== 19. 幻镜分身 - 镜像矩阵射击 ==========
+        elif pid == "mirage":
+            # 镜像特性：召唤分身协同射击，分身复制主体攻击形成弹幕矩阵
+            mirror_count = getattr(self, 'mirage_mirror_count', 0)  # 当前分身数量
+            mirror_sync = getattr(self, 'mirage_sync_level', 0)  # 同步等级
+            
+            # 主体射击（三角棱镜弹）
+            for i in range(cnt):
+                offset_x = (i - (cnt-1)/2) * 16
+                
+                # 主弹（紫色棱镜）
+                main_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                       color=(200, 150, 255), b_type="mirror", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                main_bullet.is_mirage_bullet = True
+                main_bullet.is_main_shot = True
+            
+            # 分身射击（每个分身复制一份主体攻击）
+            mirrors = getattr(self, 'active_mirrors', [])
+            for mirror_i, mirror_pos in enumerate(mirrors):
+                if mirror_pos:
+                    # 分身子弹（半透明，伤害略低）
+                    for i in range(cnt):
+                        offset_x = (i - (cnt-1)/2) * 16
+                        mirror_bullet = Bullet(mirror_pos[0] + offset_x, mirror_pos[1] - 20,
+                               color=(220, 180, 255), b_type="mirror", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                        mirror_bullet.is_mirage_bullet = True
+                        mirror_bullet.is_mirror_shot = True
+                        mirror_bullet.damage_mult = 0.5 + mirror_sync * 0.1  # 同步等级越高，分身伤害越高
+                        mirror_bullet.alpha = 180  # 半透明
+            
+            # 高同步时发射折射光线（三个方向）
+            if mirror_sync >= 3:
+                for refract_angle in [-20, 0, 20]:
+                    refract_bullet = Bullet(self.rect.centerx, self.rect.top, angle=refract_angle,
+                           color=(255, 200, 255), b_type="mirror", piercing=self.piercing + 1, homing=homing_value, bullet_theme=self.bullet_theme)
+                    refract_bullet.is_mirage_bullet = True
+                    refract_bullet.is_refract_ray = True
+                    refract_bullet.speed = -16
+        
+        # ========== 20. 命运赌徒 - 随机效果射击 ==========
+        elif pid == "gambit":
+            # 赌徒特性：每次射击随机触发不同效果，可能大赚或小亏
+            luck_meter = getattr(self, 'gambit_luck_meter', 50)  # 运气值（0-100）
+            combo_streak = getattr(self, 'gambit_combo_streak', 0)  # 连击数
+            
+            # 掷骰决定本次射击效果
+            roll = random.randint(1, 100)
+            
+            # 运气值影响掷骰结果
+            adjusted_roll = roll + (luck_meter - 50) // 5  # 运气高时更容易触发好效果
+            
+            # 根据结果决定效果
+            if adjusted_roll >= 95:  # 大奖！暴击连锁
+                # 发射5发高伤害金色子弹
+                for i in range(5):
+                    angle = (i - 2) * 15
+                    jackpot_bullet = Bullet(self.rect.centerx, self.rect.top, angle=angle,
+                           color=(255, 215, 0), b_type="card", piercing=self.piercing + 2, homing=homing_value, bullet_theme=self.bullet_theme)
+                    jackpot_bullet.is_gambit_bullet = True
+                    jackpot_bullet.is_jackpot = True
+                    jackpot_bullet.damage_mult = 3.0  # 三倍伤害
+                    jackpot_bullet.speed = -18
+                # 显示特效
+                if hasattr(self, 'show_gambit_effect'):
+                    self.show_gambit_effect("JACKPOT!", (255, 215, 0))
+            
+            elif adjusted_roll >= 75:  # 好运：双倍子弹
+                for i in range(cnt * 2):
+                    offset_x = (i - (cnt-1)) * 12
+                    lucky_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                           color=(255, 200, 50), b_type="card", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                    lucky_bullet.is_gambit_bullet = True
+                    lucky_bullet.damage_mult = 1.5
+            
+            elif adjusted_roll >= 40:  # 普通：正常射击
+                for i in range(cnt):
+                    offset_x = (i - (cnt-1)/2) * 18
+                    normal_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                           color=(255, 215, 0), b_type="card", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                    normal_bullet.is_gambit_bullet = True
+            
+            elif adjusted_roll >= 15:  # 小霉：子弹减半但追踪
+                half_cnt = max(1, cnt // 2)
+                for i in range(half_cnt):
+                    offset_x = (i - (half_cnt-1)/2) * 18
+                    tracking_bullet = Bullet(self.rect.centerx + offset_x, self.rect.top,
+                           color=(200, 150, 50), b_type="card", piercing=self.piercing, homing=min(1.0, homing_value + 0.5), bullet_theme=self.bullet_theme)
+                    tracking_bullet.is_gambit_bullet = True
+            
+            else:  # 霉运：只发一发但下次必暴击
+                single_bullet = Bullet(self.rect.centerx, self.rect.top,
+                       color=(150, 100, 50), b_type="card", piercing=self.piercing, homing=homing_value, bullet_theme=self.bullet_theme)
+                single_bullet.is_gambit_bullet = True
+                # 设置下次必定暴击
+                self.gambit_next_crit = True
+            
+            # 连击机制：连续好结果增加运气
+            if adjusted_roll >= 75:
+                self.gambit_combo_streak = combo_streak + 1
+                self.gambit_luck_meter = min(100, luck_meter + 5)
+            elif adjusted_roll < 40:
+                self.gambit_combo_streak = 0
+                self.gambit_luck_meter = max(0, luck_meter - 3)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -10414,6 +10585,14 @@ class Player(pygame.sprite.Sprite):
             elif pid == "chronos":
                 # 【过去之影】时间回溯：回到3秒前的位置状态，恢复HP，清除debuff
                 ChronosPastShadow(self)
+            
+            elif pid == "mirage":
+                # 【无限镜界】召唤最大数量分身并全部同时发射强力光束
+                MirageInfinityRealm(self)
+            
+            elif pid == "gambit":
+                # 【命运轮盘】启动赌博轮盘，随机触发超强效果
+                GambitFortuneWheel(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -11426,7 +11605,9 @@ class Player(pygame.sprite.Sprite):
                 "necro": "生命汲取",
                 "void": "虚空撕裂",
                 "wormhole": "虫洞链接",
-                "chronos": "现在之锁"
+                "chronos": "现在之锁",
+                "mirage": "万花镜像",
+                "gambit": "骰子审判"
             }
             
             pid = self.plane_id
@@ -11512,6 +11693,14 @@ class Player(pygame.sprite.Sprite):
                 # 【现在之锁】时间停滞：冻结敌人和子弹，创造时停领域
                 ChronosPresentLock(self)
             
+            elif pid == "mirage":
+                # 【万花镜像】召唤万花筒镜像矩阵，折射攻击
+                MirageKaleidoscope(self)
+            
+            elif pid == "gambit":
+                # 【骰子审判】投掷巨大骰子决定敌人命运
+                GambitDiceJudgment(self)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -11549,7 +11738,9 @@ class Player(pygame.sprite.Sprite):
                 "necro": "灵魂收割",
                 "void": "等离子漩涡",
                 "wormhole": "时空逆流",
-                "chronos": "未来之视"
+                "chronos": "未来之视",
+                "mirage": "虚实颠倒",
+                "gambit": "全押梭哈"
             }
             
             pid = self.plane_id
@@ -11634,6 +11825,14 @@ class Player(pygame.sprite.Sprite):
             elif pid == "chronos":
                 # 【未来之视】预知未来：显示敌人轨迹，自动瞄准，增加伤害
                 ChronosFutureVision(self)
+            
+            elif pid == "mirage":
+                # 【虚实颠倒】与分身交换位置，分身爆炸
+                MirageRealitySwap(self)
+            
+            elif pid == "gambit":
+                # 【全押梭哈】把所有运气值押注，触发超级效果
+                GambitAllIn(self)
             
             else:
                 # 通用：全屏伤害
@@ -12135,3 +12334,760 @@ class ChronosFutureVision(pygame.sprite.Sprite):
             end_y = center_y + math.sin(angle) * 250
             pygame.draw.line(self.image, (255, 255, 100, 80), 
                            (center_x, center_y), (end_x, end_y), 2)
+
+
+class MirageInfinityRealm(pygame.sprite.Sprite):
+    """【无限镜界】幻镜分身大招 - 召唤分身矩阵，全员同时发射光束"""
+    def __init__(self, owner):
+        super().__init__(all_sprites)
+        self.owner = owner
+        self.life = 180  # 3秒持续
+        self.phase = 0  # 0=召唤分身, 1=蓄力, 2=齐射
+        
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        
+        # 清除敌方子弹
+        enemy_bullets.empty()
+        
+        # 生成5个分身位置（五芒星）
+        self.mirrors = []
+        center_x, center_y = owner.rect.centerx, owner.rect.centery
+        for i in range(5):
+            angle = (i * 72 - 90) * 3.14159 / 180
+            mirror_x = center_x + int(150 * math.cos(angle))
+            mirror_y = center_y + int(100 * math.sin(angle))
+            self.mirrors.append({
+                'x': mirror_x, 'y': mirror_y,
+                'alpha': 0, 'beam_active': False
+            })
+        
+        # 更新玩家分身列表
+        owner.active_mirrors = [(m['x'], m['y']) for m in self.mirrors]
+        owner.mirage_mirror_count = 5
+        owner.mirage_sync_level = 5  # 满同步
+        
+        # 显示大招名
+        FloatingText(owner.rect.centerx, owner.rect.top - 40, "「无限镜界」", (220, 180, 255))
+    
+    def update(self):
+        self.life -= 1
+        self.image.fill((0, 0, 0, 0))
+        
+        if self.life <= 0:
+            self.owner.active_mirrors = []
+            self.owner.mirage_mirror_count = 0
+            self.kill()
+            return
+        
+        progress = 1 - self.life / 180
+        
+        # 阶段1：分身出现（0-0.3）
+        if progress < 0.3:
+            spawn_progress = progress / 0.3
+            for mirror in self.mirrors:
+                mirror['alpha'] = int(255 * spawn_progress)
+                # 绘制半透明分身
+                self._draw_mirror(mirror, spawn_progress)
+        
+        # 阶段2：蓄力（0.3-0.5）
+        elif progress < 0.5:
+            charge_progress = (progress - 0.3) / 0.2
+            for mirror in self.mirrors:
+                mirror['alpha'] = 255
+                self._draw_mirror(mirror, 1.0)
+                # 蓄力光环
+                ring_r = int(20 + charge_progress * 30)
+                pygame.draw.circle(self.image, (200, 150, 255, int(150 * charge_progress)), 
+                                 (mirror['x'], mirror['y']), ring_r, 3)
+        
+        # 阶段3：齐射（0.5-1.0）
+        else:
+            beam_progress = (progress - 0.5) / 0.5
+            for i, mirror in enumerate(self.mirrors):
+                self._draw_mirror(mirror, 1.0)
+                # 发射光束
+                beam_len = 600
+                beam_color = (220, 180, 255)
+                beam_width = int(8 + beam_progress * 6)
+                # 光束向上发射
+                pygame.draw.rect(self.image, beam_color, 
+                               (mirror['x'] - beam_width//2, mirror['y'] - beam_len, beam_width, beam_len))
+                # 光束光晕
+                glow_surf = pygame.Surface((beam_width * 3, beam_len), pygame.SRCALPHA)
+                pygame.draw.rect(glow_surf, (*beam_color, 100), (0, 0, beam_width * 3, beam_len))
+                self.image.blit(glow_surf, (mirror['x'] - beam_width * 1.5, mirror['y'] - beam_len))
+                
+                # 造成伤害
+                if self.life % 10 == 0:
+                    beam_rect = pygame.Rect(mirror['x'] - beam_width, 0, beam_width * 2, mirror['y'])
+                    for mob in mobs:
+                        if beam_rect.colliderect(mob.rect):
+                            mob.take_damage(self.owner.damage * 0.8)
+        
+        # 连接线（五芒星）
+        for i in range(5):
+            start = (self.mirrors[i]['x'], self.mirrors[i]['y'])
+            end = (self.mirrors[(i + 2) % 5]['x'], self.mirrors[(i + 2) % 5]['y'])
+            pygame.draw.line(self.image, (200, 150, 255, 150), start, end, 2)
+    
+    def _draw_mirror(self, mirror, scale):
+        """绘制分身"""
+        x, y, alpha = mirror['x'], mirror['y'], mirror['alpha']
+        size = int(30 * scale)
+        # 三角棱镜形状
+        pts = [(x, y - size), (x - size * 0.7, y + size * 0.5), (x + size * 0.7, y + size * 0.5)]
+        mirror_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        pygame.draw.polygon(mirror_surf, (200, 150, 255, alpha), pts)
+        pygame.draw.polygon(mirror_surf, (255, 220, 255, alpha), pts, 2)
+        self.image.blit(mirror_surf, (0, 0))
+
+
+class GambitFortuneWheel(pygame.sprite.Sprite):
+    """【命运轮盘】赌徒大招 - 旋转轮盘，随机触发超强效果"""
+    def __init__(self, owner):
+        super().__init__(all_sprites)
+        self.owner = owner
+        self.life = 150  # 2.5秒
+        self.phase = 0  # 0=轮盘旋转, 1=停止, 2=触发效果
+        self.spin_speed = 20  # 旋转速度
+        self.spin_angle = 0
+        self.result = None  # 最终结果
+        
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        
+        # 清除敌方子弹
+        enemy_bullets.empty()
+        
+        # 6种可能的结果
+        self.outcomes = [
+            {"name": "JACKPOT", "color": (255, 215, 0), "effect": "全屏金币雨，所有敌人受到5倍伤害"},
+            {"name": "TRIPLE", "color": (255, 100, 100), "effect": "三倍伤害持续10秒"},
+            {"name": "SHIELD", "color": (100, 200, 255), "effect": "获得无敌护盾5秒"},
+            {"name": "BURST", "color": (255, 150, 50), "effect": "发射36发全方位子弹"},
+            {"name": "HEAL", "color": (100, 255, 100), "effect": "回复50%最大生命"},
+            {"name": "WILD", "color": (200, 100, 255), "effect": "随机触发以上任意两种"}
+        ]
+        
+        # 随机决定结果（运气值影响概率）
+        luck = owner.gambit_luck_meter
+        if luck >= 80:
+            weights = [30, 25, 15, 15, 10, 5]  # 高运气更容易JACKPOT
+        elif luck >= 50:
+            weights = [15, 20, 20, 20, 15, 10]  # 中等运气均衡
+        else:
+            weights = [5, 15, 25, 20, 25, 10]  # 低运气更容易SHIELD/HEAL
+        
+        self.final_result_idx = random.choices(range(6), weights=weights)[0]
+        
+        # 显示大招名
+        FloatingText(owner.rect.centerx, owner.rect.top - 40, "「命运轮盘」", (255, 215, 0))
+    
+    def update(self):
+        self.life -= 1
+        self.image.fill((0, 0, 0, 0))
+        
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        center_x, center_y = WIDTH // 2, HEIGHT // 2
+        wheel_radius = 150
+        
+        # 阶段1：轮盘旋转（life > 60）
+        if self.life > 60:
+            self.spin_angle += self.spin_speed
+            self.spin_speed = max(2, self.spin_speed - 0.15)  # 逐渐减速
+        
+        # 阶段2：停止并显示结果（life 60-30）
+        elif self.life > 30:
+            if self.result is None:
+                self.result = self.outcomes[self.final_result_idx]
+                FloatingText(center_x, center_y - 50, self.result["name"], self.result["color"])
+        
+        # 阶段3：触发效果（life <= 30）
+        else:
+            if self.life == 30:
+                self._trigger_effect()
+        
+        # 绘制轮盘
+        self._draw_wheel(center_x, center_y, wheel_radius)
+        
+        # 绘制指针
+        pointer_pts = [(center_x, center_y - wheel_radius - 20),
+                      (center_x - 15, center_y - wheel_radius - 40),
+                      (center_x + 15, center_y - wheel_radius - 40)]
+        pygame.draw.polygon(self.image, (255, 215, 0), pointer_pts)
+        pygame.draw.polygon(self.image, (255, 255, 255), pointer_pts, 2)
+    
+    def _draw_wheel(self, cx, cy, radius):
+        """绘制轮盘"""
+        # 6个扇区
+        for i, outcome in enumerate(self.outcomes):
+            start_angle = (i * 60 + self.spin_angle) * 3.14159 / 180
+            end_angle = ((i + 1) * 60 + self.spin_angle) * 3.14159 / 180
+            
+            # 扇形
+            points = [(cx, cy)]
+            for ang in range(int(start_angle * 57.3), int(end_angle * 57.3) + 1, 5):
+                ang_rad = ang * 0.01745
+                points.append((cx + math.cos(ang_rad) * radius, 
+                             cy + math.sin(ang_rad) * radius))
+            if len(points) > 2:
+                pygame.draw.polygon(self.image, outcome["color"], points)
+                pygame.draw.polygon(self.image, (255, 255, 255), points, 2)
+        
+        # 中心圆
+        pygame.draw.circle(self.image, (50, 50, 50), (cx, cy), 30)
+        pygame.draw.circle(self.image, (255, 215, 0), (cx, cy), 30, 3)
+        pygame.draw.circle(self.image, (255, 255, 255), (cx, cy), 15)
+    
+    def _trigger_effect(self):
+        """触发轮盘效果"""
+        result_idx = self.final_result_idx
+        owner = self.owner
+        
+        if result_idx == 0:  # JACKPOT - 全屏金币雨
+            for mob in mobs:
+                mob.take_damage(owner.damage * 5)
+            owner.gambit_luck_meter = 100
+            owner.gambit_jackpot_count += 1
+            # 金币粒子
+            for _ in range(50):
+                x = random.randint(50, WIDTH - 50)
+                y = random.randint(50, HEIGHT - 200)
+                Particle((x, y), (255, 215, 0), mode='spark')
+        
+        elif result_idx == 1:  # TRIPLE - 三倍伤害
+            owner.gambit_wheel_bonus = 3.0
+            # 设置持续时间（通过外部计时）
+        
+        elif result_idx == 2:  # SHIELD - 无敌护盾
+            owner.shield = owner.max_shield * 3
+            owner.invincible_timer = 300  # 5秒无敌
+        
+        elif result_idx == 3:  # BURST - 全方位射击
+            for angle in range(0, 360, 10):
+                bullet = Bullet(owner.rect.centerx, owner.rect.centery, angle=angle,
+                       color=(255, 215, 0), b_type="card", piercing=3)
+                bullet.is_gambit_bullet = True
+                bullet.damage_mult = 2.0
+                bullet.speed = -15
+        
+        elif result_idx == 4:  # HEAL - 回复生命
+            heal_amount = owner.max_hp * 0.5
+            owner.hp = min(owner.max_hp, owner.hp + heal_amount)
+            FloatingText(owner.rect.centerx, owner.rect.centery, f"+{int(heal_amount)} HP", (100, 255, 100))
+        
+        elif result_idx == 5:  # WILD - 随机两种
+            # 触发两种随机效果
+            effects = random.sample([0, 1, 2, 3, 4], 2)
+            for eff in effects:
+                if eff == 0:
+                    for mob in mobs:
+                        mob.take_damage(owner.damage * 3)
+                elif eff == 1:
+                    owner.gambit_wheel_bonus = 2.0
+                elif eff == 2:
+                    owner.shield = owner.max_shield * 2
+                elif eff == 3:
+                    for angle in range(0, 360, 20):
+                        bullet = Bullet(owner.rect.centerx, owner.rect.centery, angle=angle,
+                               color=(200, 100, 255), b_type="card", piercing=2)
+                        bullet.speed = -14
+                elif eff == 4:
+                    owner.hp = min(owner.max_hp, owner.hp + owner.max_hp * 0.3)
+
+
+# ==================== Mirage幻镜系大招（G/C键） ====================
+
+class MirageKaleidoscope(pygame.sprite.Sprite):
+    """【万花镜像】G键第二大招 - 召唤万花筒镜像矩阵，折射攻击覆盖全屏"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 240  # 4秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("zap")
+        
+        # 清除敌方子弹
+        enemy_bullets.empty()
+        
+        # 创建万花筒镜像阵列（8个方向）
+        self.kaleidoscope_mirrors = []
+        center_x, center_y = WIDTH // 2, HEIGHT // 2
+        for i in range(8):
+            angle = i * 45 * 0.01745
+            mirror_x = center_x + int(200 * math.cos(angle))
+            mirror_y = center_y + int(150 * math.sin(angle))
+            self.kaleidoscope_mirrors.append({
+                'x': mirror_x, 'y': mirror_y,
+                'angle': i * 45, 'rotation': 0
+            })
+        
+        # 增加同步等级
+        owner.mirage_sync_level = min(owner.mirage_sync_level + 2, 5)
+        
+        FloatingText(WIDTH // 2, HEIGHT // 2 - 100, "✦ 万花镜界 ✦", (200, 150, 255))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        center_x, center_y = WIDTH // 2, HEIGHT // 2
+        
+        # 旋转万花筒
+        rotation_speed = 2
+        for mirror in self.kaleidoscope_mirrors:
+            mirror['rotation'] += rotation_speed
+        
+        # 绘制万花筒图案
+        for i, mirror in enumerate(self.kaleidoscope_mirrors):
+            mx, my = mirror['x'], mirror['y']
+            rot = mirror['rotation']
+            
+            # 棱镜形状
+            size = 35
+            pts = []
+            for j in range(3):
+                ang = (rot + j * 120) * 0.01745
+                pts.append((mx + math.cos(ang) * size, my + math.sin(ang) * size))
+            pygame.draw.polygon(self.image, (200, 150, 255, 180), pts)
+            pygame.draw.polygon(self.image, (255, 200, 255), pts, 2)
+            
+            # 折射光线
+            if self.life % 8 == 0:
+                for mob in mobs:
+                    if random.random() < 0.3:
+                        # 从镜像发射折射光线
+                        pygame.draw.line(self.image, (220, 180, 255), 
+                                       (mx, my), mob.rect.center, 2)
+                        mob.take_damage(self.owner.damage * 0.4)
+                        Particle(mob.rect.center, (200, 150, 255), mode='spark')
+        
+        # 中心连线形成万花筒图案
+        for i in range(8):
+            start = (self.kaleidoscope_mirrors[i]['x'], self.kaleidoscope_mirrors[i]['y'])
+            end = (self.kaleidoscope_mirrors[(i + 1) % 8]['x'], self.kaleidoscope_mirrors[(i + 1) % 8]['y'])
+            pygame.draw.line(self.image, (180, 120, 255, 150), start, end, 2)
+            # 跨越连线
+            end2 = (self.kaleidoscope_mirrors[(i + 3) % 8]['x'], self.kaleidoscope_mirrors[(i + 3) % 8]['y'])
+            pygame.draw.line(self.image, (220, 150, 255, 100), start, end2, 1)
+        
+        # 中心光环
+        pulse = abs(math.sin(self.life * 0.1)) * 30
+        pygame.draw.circle(self.image, (200, 150, 255, 100), (center_x, center_y), int(50 + pulse), 3)
+
+
+class MirageRealitySwap(pygame.sprite.Sprite):
+    """【虚实颠倒】C键第三大招 - 与所有分身交换位置，分身原位爆炸"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120  # 2秒
+        self.phase = 0  # 0=准备, 1=交换, 2=爆炸
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("blackhole")
+        
+        # 清除敌方子弹
+        enemy_bullets.empty()
+        
+        # 记录当前分身位置（用于爆炸）
+        self.mirror_positions = list(owner.active_mirrors) if owner.active_mirrors else []
+        self.original_pos = (owner.rect.centerx, owner.rect.centery)
+        
+        # 如果没有分身，创建3个临时分身位置
+        if not self.mirror_positions:
+            for i in range(3):
+                angle = (i * 120 - 90) * 0.01745
+                mx = owner.rect.centerx + int(120 * math.cos(angle))
+                my = owner.rect.centery + int(80 * math.sin(angle))
+                self.mirror_positions.append((mx, my))
+        
+        # 选择一个分身位置传送
+        if self.mirror_positions:
+            self.swap_target = random.choice(self.mirror_positions)
+        else:
+            self.swap_target = self.original_pos
+        
+        # 玩家获得短暂无敌
+        owner.invincible_timer = 60
+        
+        FloatingText(WIDTH // 2, HEIGHT // 2 - 100, "★ 虚实颠倒 ★", (255, 200, 255))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        progress = 1 - self.life / 120
+        
+        # 阶段1：虚影闪烁（0-0.3）
+        if progress < 0.3:
+            # 玩家和分身都闪烁
+            if self.life % 4 < 2:
+                for pos in self.mirror_positions:
+                    pygame.draw.circle(self.image, (200, 150, 255, 150), pos, 30)
+        
+        # 阶段2：交换（0.3-0.5）
+        elif progress < 0.5:
+            if self.phase == 0:
+                self.phase = 1
+                # 执行交换
+                self.owner.rect.center = self.swap_target
+                FloatingText(self.owner.rect.centerx, self.owner.rect.centery - 30, "✦", (255, 255, 255))
+        
+        # 阶段3：爆炸（0.5-1.0）
+        else:
+            if self.phase == 1:
+                self.phase = 2
+                # 所有分身位置爆炸
+                for pos in self.mirror_positions:
+                    # 爆炸伤害
+                    for mob in mobs:
+                        dist = math.sqrt((mob.rect.centerx - pos[0])**2 + (mob.rect.centery - pos[1])**2)
+                        if dist < 150:
+                            damage = self.owner.damage * 2 * (1 - dist / 150)
+                            mob.take_damage(damage)
+                    # 爆炸特效
+                    for _ in range(10):
+                        Particle(pos, (200, 150, 255), mode='spark')
+            
+            # 绘制爆炸波纹
+            explosion_progress = (progress - 0.5) / 0.5
+            for pos in self.mirror_positions:
+                ring_radius = int(explosion_progress * 150)
+                alpha = int(200 * (1 - explosion_progress))
+                if alpha > 0:
+                    pygame.draw.circle(self.image, (220, 180, 255, alpha), pos, ring_radius, 4)
+
+
+# ==================== Gambit赌徒系大招（G/C键） ====================
+
+class GambitDiceJudgment(pygame.sprite.Sprite):
+    """【骰子审判】G键第二大招 - 投掷巨大骰子，点数决定敌人命运"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180  # 3秒
+        self.phase = 0  # 0=投掷, 1=滚动, 2=判定
+        self.dice_value = 0
+        self.roll_timer = 60  # 滚动时间
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("powerup")
+        
+        # 清除敌方子弹
+        enemy_bullets.empty()
+        
+        # 骰子位置
+        self.dice_x = WIDTH // 2
+        self.dice_y = HEIGHT // 2
+        self.dice_rotation = 0
+        
+        # 运气影响最终点数
+        luck = owner.gambit_luck_meter
+        if luck >= 80:
+            self.final_value = random.choices([4, 5, 6], weights=[20, 30, 50])[0]
+        elif luck >= 50:
+            self.final_value = random.randint(2, 6)
+        else:
+            self.final_value = random.choices([1, 2, 3, 4, 5, 6], weights=[30, 25, 20, 15, 7, 3])[0]
+        
+        FloatingText(WIDTH // 2, HEIGHT // 2 - 150, "◆ 骰子审判 ◆", (255, 215, 0))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        # 阶段1：滚动（life > 120）
+        if self.life > 120:
+            self.roll_timer -= 1
+            self.dice_rotation += 15
+            self.dice_value = random.randint(1, 6)  # 快速变化
+            
+            # 绘制滚动的骰子
+            self._draw_dice(self.dice_x, self.dice_y, 80, self.dice_value, self.dice_rotation)
+        
+        # 阶段2：减速停止（life 120-90）
+        elif self.life > 90:
+            slow_progress = (120 - self.life) / 30
+            self.dice_rotation += 15 * (1 - slow_progress)
+            
+            # 逐渐显示最终值
+            if random.random() < slow_progress:
+                self.dice_value = self.final_value
+            else:
+                self.dice_value = random.randint(1, 6)
+            
+            self._draw_dice(self.dice_x, self.dice_y, 80, self.dice_value, self.dice_rotation)
+        
+        # 阶段3：判定生效（life <= 90）
+        else:
+            self.dice_value = self.final_value
+            self._draw_dice(self.dice_x, self.dice_y, 80, self.dice_value, 0)
+            
+            # 只在第一帧触发效果
+            if self.life == 90:
+                self._apply_judgment()
+    
+    def _draw_dice(self, x, y, size, value, rotation):
+        """绘制骰子"""
+        # 骰子主体（白色方块）
+        half = size // 2
+        dice_surf = pygame.Surface((size, size), pygame.SRCALPHA)
+        pygame.draw.rect(dice_surf, (255, 255, 255), (0, 0, size, size), border_radius=10)
+        pygame.draw.rect(dice_surf, (200, 200, 200), (0, 0, size, size), 3, border_radius=10)
+        
+        # 点数
+        dot_color = (50, 50, 50)
+        dot_r = size // 10
+        center = size // 2
+        offset = size // 4
+        
+        dot_positions = {
+            1: [(center, center)],
+            2: [(offset, offset), (size - offset, size - offset)],
+            3: [(offset, offset), (center, center), (size - offset, size - offset)],
+            4: [(offset, offset), (offset, size - offset), (size - offset, offset), (size - offset, size - offset)],
+            5: [(offset, offset), (offset, size - offset), (center, center), (size - offset, offset), (size - offset, size - offset)],
+            6: [(offset, offset), (offset, center), (offset, size - offset), (size - offset, offset), (size - offset, center), (size - offset, size - offset)]
+        }
+        
+        for pos in dot_positions.get(value, []):
+            pygame.draw.circle(dice_surf, dot_color, pos, dot_r)
+        
+        # 旋转并绘制
+        rotated = pygame.transform.rotate(dice_surf, rotation)
+        rot_rect = rotated.get_rect(center=(x, y))
+        self.image.blit(rotated, rot_rect)
+        
+        # 光晕效果
+        glow_colors = {1: (255, 0, 0), 2: (255, 100, 0), 3: (255, 200, 0), 
+                      4: (200, 255, 0), 5: (0, 255, 100), 6: (255, 215, 0)}
+        glow_color = glow_colors.get(value, (255, 255, 255))
+        pygame.draw.circle(self.image, (*glow_color, 50), (x, y), size + 20, 5)
+    
+    def _apply_judgment(self):
+        """应用骰子判定效果"""
+        owner = self.owner
+        value = self.final_value
+        
+        FloatingText(self.dice_x, self.dice_y - 60, f"[ {value} ]", (255, 215, 0))
+        
+        if value == 1:  # 蛇眼 - 不幸但获得补偿
+            owner.gambit_luck_meter = min(100, owner.gambit_luck_meter + 30)
+            owner.gambit_next_crit = True
+            FloatingText(self.dice_x, self.dice_y + 60, "蛇眼！下次必暴击！", (255, 100, 100))
+        
+        elif value == 2:  # 小点 - 轻微效果
+            for mob in mobs:
+                mob.take_damage(owner.damage * 0.5)
+            FloatingText(self.dice_x, self.dice_y + 60, "小点...", (255, 150, 100))
+        
+        elif value == 3:  # 中等 - 标准伤害
+            for mob in mobs:
+                mob.take_damage(owner.damage * 1.5)
+            FloatingText(self.dice_x, self.dice_y + 60, "不错！", (255, 200, 100))
+        
+        elif value == 4:  # 好点 - 强化伤害
+            for mob in mobs:
+                mob.take_damage(owner.damage * 2.5)
+            owner.gambit_combo_streak += 1
+            FloatingText(self.dice_x, self.dice_y + 60, "好运！", (200, 255, 100))
+        
+        elif value == 5:  # 大点 - 强力效果
+            for mob in mobs:
+                mob.take_damage(owner.damage * 3.5)
+            owner.gambit_luck_meter = min(100, owner.gambit_luck_meter + 15)
+            FloatingText(self.dice_x, self.dice_y + 60, "大吉！", (100, 255, 100))
+        
+        elif value == 6:  # 豹子 - 超级效果
+            for mob in mobs:
+                mob.take_damage(owner.damage * 5)
+            owner.gambit_jackpot_count += 1
+            owner.gambit_luck_meter = 100
+            owner.hp = min(owner.max_hp, owner.hp + owner.max_hp * 0.3)
+            FloatingText(self.dice_x, self.dice_y + 60, "★ JACKPOT! ★", (255, 215, 0))
+            for _ in range(30):
+                Particle((random.randint(100, WIDTH-100), random.randint(100, HEIGHT-200)), 
+                        (255, 215, 0), mode='spark')
+
+
+class GambitAllIn(pygame.sprite.Sprite):
+    """【全押梭哈】C键第三大招 - 把所有运气值押上，触发超级效果"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180  # 3秒
+        self.phase = 0
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        sound_mgr.play("nuke")
+        
+        # 清除敌方子弹
+        enemy_bullets.empty()
+        
+        # 获取当前运气值并全押
+        self.bet_luck = owner.gambit_luck_meter
+        owner.gambit_luck_meter = 0  # 清空运气值
+        
+        # 根据押注的运气值决定效果强度
+        self.multiplier = 1 + self.bet_luck / 25  # 最高5倍
+        
+        # 随机决定结果（但高运气值增加成功率）
+        success_rate = 0.3 + self.bet_luck / 200  # 30%-80%成功率
+        self.is_success = random.random() < success_rate
+        
+        # 扑克牌展示
+        self.cards = []
+        for i in range(5):
+            self.cards.append({
+                'x': 150 + i * 100,
+                'y': HEIGHT // 2,
+                'suit': random.choice(['♠', '♥', '♦', '♣']),
+                'value': random.choice(['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']),
+                'revealed': False,
+                'flip_time': 30 + i * 15
+            })
+        
+        FloatingText(WIDTH // 2, HEIGHT // 2 - 150, f"★ ALL IN! ({int(self.bet_luck)}) ★", (255, 50, 50))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        progress = 1 - self.life / 180
+        
+        # 阶段1：翻牌（0-0.5）
+        if progress < 0.5:
+            flip_progress = progress / 0.5
+            for i, card in enumerate(self.cards):
+                if 180 - self.life > card['flip_time']:
+                    card['revealed'] = True
+                self._draw_card(card)
+        
+        # 阶段2：判定效果（0.5-1.0）
+        else:
+            # 显示所有牌
+            for card in self.cards:
+                card['revealed'] = True
+                self._draw_card(card)
+            
+            # 首次触发效果
+            if self.phase == 0:
+                self.phase = 1
+                self._apply_result()
+        
+        # 金币粒子效果
+        if self.life % 5 == 0:
+            x = random.randint(100, WIDTH - 100)
+            y = random.randint(50, HEIGHT - 200)
+            Particle((x, y), (255, 215, 0), mode='star')
+    
+    def _draw_card(self, card):
+        """绘制扑克牌"""
+        x, y = card['x'], card['y']
+        w, h = 60, 80
+        
+        if card['revealed']:
+            # 正面
+            pygame.draw.rect(self.image, (255, 255, 255), (x - w//2, y - h//2, w, h), border_radius=5)
+            pygame.draw.rect(self.image, (100, 100, 100), (x - w//2, y - h//2, w, h), 2, border_radius=5)
+            
+            # 花色颜色
+            suit_color = (255, 50, 50) if card['suit'] in ['♥', '♦'] else (50, 50, 50)
+            
+            # 简化显示（花色在中心）
+            # 由于没有字体，用形状表示
+            if card['suit'] == '♠':
+                pts = [(x, y - 15), (x - 12, y + 5), (x + 12, y + 5)]
+                pygame.draw.polygon(self.image, suit_color, pts)
+            elif card['suit'] == '♥':
+                pygame.draw.circle(self.image, suit_color, (x - 6, y - 5), 8)
+                pygame.draw.circle(self.image, suit_color, (x + 6, y - 5), 8)
+                pts = [(x - 12, y - 2), (x, y + 15), (x + 12, y - 2)]
+                pygame.draw.polygon(self.image, suit_color, pts)
+            elif card['suit'] == '♦':
+                pts = [(x, y - 15), (x - 12, y), (x, y + 15), (x + 12, y)]
+                pygame.draw.polygon(self.image, suit_color, pts)
+            else:  # ♣
+                pygame.draw.circle(self.image, suit_color, (x, y - 10), 8)
+                pygame.draw.circle(self.image, suit_color, (x - 8, y + 2), 8)
+                pygame.draw.circle(self.image, suit_color, (x + 8, y + 2), 8)
+        else:
+            # 背面
+            pygame.draw.rect(self.image, (50, 50, 150), (x - w//2, y - h//2, w, h), border_radius=5)
+            pygame.draw.rect(self.image, (255, 215, 0), (x - w//2, y - h//2, w, h), 2, border_radius=5)
+            # 背面花纹
+            pygame.draw.rect(self.image, (70, 70, 180), (x - w//2 + 5, y - h//2 + 5, w - 10, h - 10), border_radius=3)
+    
+    def _apply_result(self):
+        """应用全押结果"""
+        owner = self.owner
+        center_x, center_y = WIDTH // 2, HEIGHT // 2
+        
+        if self.is_success:
+            # 大成功！
+            FloatingText(center_x, center_y + 80, "★ WINNER! ★", (255, 215, 0))
+            
+            # 超级伤害
+            for mob in mobs:
+                mob.take_damage(owner.damage * self.multiplier * 3)
+            
+            # 返还运气值并获得奖励
+            owner.gambit_luck_meter = min(100, self.bet_luck + 30)
+            owner.gambit_jackpot_count += 1
+            
+            # 回复生命
+            owner.hp = min(owner.max_hp, owner.hp + owner.max_hp * 0.4)
+            
+            # 短暂无敌
+            owner.invincible_timer = 180
+            
+            # 发射36发金色子弹
+            for angle in range(0, 360, 10):
+                bullet = Bullet(owner.rect.centerx, owner.rect.centery, angle=angle,
+                       color=(255, 215, 0), b_type="card", piercing=5)
+                bullet.speed = -16
+                bullet.damage_mult = self.multiplier
+            
+            # 金币雨特效
+            for _ in range(50):
+                Particle((random.randint(50, WIDTH-50), random.randint(50, HEIGHT-200)), 
+                        (255, 215, 0), mode='spark')
+        
+        else:
+            # 失败...但不是完全没有
+            FloatingText(center_x, center_y + 80, "惜败...", (150, 150, 150))
+            
+            # 仍然造成一些伤害
+            for mob in mobs:
+                mob.take_damage(owner.damage * 0.5)
+            
+            # 返还部分运气值
+            owner.gambit_luck_meter = self.bet_luck * 0.3
+            
+            # 下次必暴击作为补偿
+            owner.gambit_next_crit = True
+            
+            FloatingText(center_x, center_y + 110, "下次必暴击！", (255, 200, 100))
