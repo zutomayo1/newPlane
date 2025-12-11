@@ -32,6 +32,8 @@ from .puppeteer_bullets import render_puppeteer_bullet
 from .pandemic_bullets import render_pandemic_bullet
 from .omega_bullets import render_omega_bullet
 from .genesis_bullets import render_genesis_bullet
+from .asura_bullets import render_asura_bullet
+from .dragoon_bullets import render_dragoon_bullet
 
 
 # 渲染函数列表，按优先级顺序排列（终极机体优先）
@@ -60,6 +62,8 @@ BULLET_RENDERERS = [
     render_gambit_bullet,
     render_puppeteer_bullet,
     render_pandemic_bullet,
+    render_asura_bullet,
+    render_dragoon_bullet,
 ]
 
 

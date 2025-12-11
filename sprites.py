@@ -4969,6 +4969,110 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.circle(self.image, TRUTH_WHITE, (center - 2, center - 1), 1)
                 
                 self.speed = -26
+            
+            elif b_type == "sword_slash":  # 23. Asura - 修罗·斩龙者（剑气斩击）
+                ASURA_RED = (180, 50, 50)
+                ASURA_CRIMSON = (255, 80, 80)
+                ASURA_GOLD = (255, 200, 100)
+                
+                self.image = pygame.Surface((48, 48), pygame.SRCALPHA)
+                center = 24
+                
+                # 扇形剑气效果
+                # 外层剑气（深红）
+                arc_pts_outer = []
+                for i in range(9):
+                    angle = math.radians(-45 + i * 10)
+                    x = center + int(20 * math.cos(angle))
+                    y = center + int(20 * math.sin(angle))
+                    arc_pts_outer.append((x, y))
+                arc_pts_outer.append((center, center))
+                pygame.draw.polygon(self.image, ASURA_RED, arc_pts_outer)
+                
+                # 中层剑气（鲜红）
+                arc_pts_mid = []
+                for i in range(9):
+                    angle = math.radians(-45 + i * 10)
+                    x = center + int(15 * math.cos(angle))
+                    y = center + int(15 * math.sin(angle))
+                    arc_pts_mid.append((x, y))
+                arc_pts_mid.append((center, center))
+                pygame.draw.polygon(self.image, ASURA_CRIMSON, arc_pts_mid)
+                
+                # 内层剑气（金色核心）
+                arc_pts_inner = []
+                for i in range(9):
+                    angle = math.radians(-45 + i * 10)
+                    x = center + int(8 * math.cos(angle))
+                    y = center + int(8 * math.sin(angle))
+                    arc_pts_inner.append((x, y))
+                arc_pts_inner.append((center, center))
+                pygame.draw.polygon(self.image, ASURA_GOLD, arc_pts_inner)
+                
+                # 剑刃边缘线
+                for offset in [-45, 45]:
+                    angle = math.radians(offset)
+                    x1, y1 = center, center
+                    x2 = center + int(22 * math.cos(angle))
+                    y2 = center + int(22 * math.sin(angle))
+                    pygame.draw.line(self.image, (255, 255, 255), (x1, y1), (x2, y2), 2)
+                
+                # 核心发光点
+                pygame.draw.circle(self.image, (255, 255, 255), (center, center), 3)
+                
+                self.speed = -28
+            
+            elif b_type == "lance_thrust":  # 24. Dragoon - 龙骑士·雷因哈特（枪刺突击）
+                DRAGOON_BLUE = (100, 150, 220)
+                DRAGOON_LIGHT = (180, 210, 255)
+                DRAGOON_WHITE = (255, 255, 255)
+                
+                self.image = pygame.Surface((20, 56), pygame.SRCALPHA)
+                center_x = 10
+                
+                # 长枪主体（上到下）
+                # 枪尖（锐利三角形）
+                tip_pts = [
+                    (center_x, 0),
+                    (center_x - 6, 14),
+                    (center_x + 6, 14)
+                ]
+                pygame.draw.polygon(self.image, DRAGOON_WHITE, tip_pts)
+                pygame.draw.polygon(self.image, DRAGOON_BLUE, tip_pts, 2)
+                
+                # 枪刃装饰
+                blade_pts = [
+                    (center_x - 8, 14),
+                    (center_x - 4, 10),
+                    (center_x, 14),
+                    (center_x + 4, 10),
+                    (center_x + 8, 14),
+                    (center_x + 4, 18),
+                    (center_x - 4, 18)
+                ]
+                pygame.draw.polygon(self.image, DRAGOON_BLUE, blade_pts)
+                
+                # 枪杆
+                pygame.draw.rect(self.image, DRAGOON_LIGHT, (center_x - 3, 18, 6, 32))
+                pygame.draw.rect(self.image, DRAGOON_BLUE, (center_x - 3, 18, 6, 32), 1)
+                
+                # 枪杆装饰环
+                for y in [24, 34, 44]:
+                    pygame.draw.rect(self.image, DRAGOON_BLUE, (center_x - 4, y, 8, 3))
+                
+                # 能量光芒（枪尖周围）
+                for angle in [-30, 0, 30]:
+                    rad = math.radians(angle - 90)
+                    x1 = center_x + int(4 * math.cos(rad))
+                    y1 = 8 + int(4 * math.sin(rad))
+                    x2 = center_x + int(10 * math.cos(rad))
+                    y2 = 8 + int(10 * math.sin(rad))
+                    pygame.draw.line(self.image, (200, 230, 255), (x1, y1), (x2, y2), 1)
+                
+                # 核心发光
+                pygame.draw.circle(self.image, DRAGOON_WHITE, (center_x, 10), 2)
+                
+                self.speed = -24
                 
             else:  # 默认（紫红幽能，与Specter共用）
                 self.image = pygame.Surface((18, 42), pygame.SRCALPHA)
@@ -11598,6 +11702,60 @@ class Player(pygame.sprite.Sprite):
                 if data["timer"] <= 0:
                     del self.truth_marked_enemies[enemy]
         
+        # ========== 26. 修罗·斩龙者 - 六道剑气轮斩 ==========
+        elif pid == "asura":
+            # 初始化剑气轮转角度
+            if not hasattr(self, 'asura_spin_angle'):
+                self.asura_spin_angle = 0
+            
+            base_damage = self.damage * 1.0
+            cx, cy = self.rect.centerx, self.rect.top
+            
+            # 6道剑气，轮转发射（每次射击转动60度）
+            for i in range(6):
+                angle = self.asura_spin_angle + i * 60
+                rad = math.radians(angle - 90)
+                offset_x = math.cos(rad) * 20
+                offset_y = math.sin(rad) * 10
+                # 只发射前方180度范围内的剑气
+                if -90 <= (angle % 360 - 180) <= 90 or angle % 360 < 90 or angle % 360 > 270:
+                    fire_angle = (angle % 360) - 180  # 转换为发射角度
+                    if -60 <= fire_angle <= 60:  # 前方120度扇形
+                        SwordQi(cx + offset_x, cy + offset_y, 
+                               color=(255, 80 + i*20, 80), 
+                               damage=base_damage, 
+                               angle=fire_angle * 0.5)
+            
+            # 轮转角度递增
+            self.asura_spin_angle = (self.asura_spin_angle + 30) % 360
+        
+        # ========== 27. 龙骑士·雷因哈特 - 龙牙连刺 ==========
+        elif pid == "dragoon":
+            # 初始化连刺计数
+            if not hasattr(self, 'dragoon_thrust_count'):
+                self.dragoon_thrust_count = 0
+            
+            base_damage = self.damage * 1.2
+            cx, cy = self.rect.centerx, self.rect.top
+            
+            # 交替发射模式：单刺 -> 双刺 -> 三连刺 -> 循环
+            pattern = self.dragoon_thrust_count % 6
+            
+            if pattern < 2:
+                # 单刺：中央一道强力枪气
+                LanceQi(cx, cy, color=(150, 200, 255), damage=base_damage * 1.5)
+            elif pattern < 4:
+                # 双刺：左右交叉
+                offset = 25 if pattern == 2 else -25
+                LanceQi(cx + offset, cy, color=(100, 180, 255), damage=base_damage * 1.2)
+            else:
+                # 三连刺：快速三发
+                for i in range(3):
+                    LanceQi(cx + (i-1) * 18, cy - i * 8, 
+                           color=(180, 220, 255), damage=base_damage * 0.9)
+            
+            self.dragoon_thrust_count += 1
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -11852,6 +12010,14 @@ class Player(pygame.sprite.Sprite):
             elif pid == "truth":
                 # 【真理显现】全知之眼审视一切，揭示并制裁所有敌人
                 TruthRevelation(self)
+            
+            elif pid == "asura":
+                # 【六臂天斩】召唤六只巨大剑臂进行全屏斩击
+                AsuraSixArmSlash(self)
+            
+            elif pid == "dragoon":
+                # 【天龙俯冲】从天而降的强力突刺
+                DragoonSkyDive(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -12985,6 +13151,14 @@ class Player(pygame.sprite.Sprite):
                 # 【阴阳逆转】切换阴阳极性，释放对应属性波动
                 TruthYinYangReverse(self)
             
+            elif pid == "asura":
+                # 【怒火焚天】进入狂暴状态，全屏剑气风暴
+                AsuraRageMode(self)
+            
+            elif pid == "dragoon":
+                # 【万枪齐发】召唤无数长枪从天而降
+                DragoonLanceStorm(self)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -13029,7 +13203,9 @@ class Player(pygame.sprite.Sprite):
                 "pandemic": "终末审判",
                 "omega": "属性共鸣",
                 "genesis": "新星诞生",
-                "truth": "绝对审判"
+                "truth": "绝对审判",
+                "asura": "斩龙绝杀",
+                "dragoon": "龙魂冲锋"
             }
             
             pid = self.plane_id
@@ -13142,6 +13318,14 @@ class Player(pygame.sprite.Sprite):
             elif pid == "truth":
                 # 【绝对审判】对所有标记敌人执行真理裁决
                 TruthAbsoluteJudgment(self)
+            
+            elif pid == "asura":
+                # 【斩龙绝杀】汇聚所有剑意进行一击必杀
+                AsuraDragonSlayer(self)
+            
+            elif pid == "dragoon":
+                # 【龙魂冲锋】化身巨龙进行贯穿冲锋
+                DragoonDragonCharge(self)
             
             else:
                 # 通用：全屏伤害
@@ -16075,3 +16259,505 @@ class TruthAbsoluteJudgment(pygame.sprite.Sprite):
                     enemy.hp -= final_damage
                     for _ in range(8):
                         Particle(enemy.rect.center, random.choice([self.TRUTH_GOLD, self.TRUTH_WHITE]))
+
+# ========== ����ն���� ���� ==========
+
+class AsuraSixArmSlash(pygame.sprite.Sprite):
+    """����������ն - �ٻ���ֻ�޴󽣱۽���ȫ��ն�� (V��)"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 90
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.hit_enemies = {}
+        self.ASURA_RED = (180, 50, 50)
+        self.ASURA_CRIMSON = (255, 80, 80)
+        self.ASURA_GOLD = (255, 200, 100)
+        self.arms = []
+        for i in range(6):
+            self.arms.append({'angle': i * 60, 'length': 0, 'max_length': 350, 'phase': 'extend', 'slash_angle': 0, 'color': self.ASURA_RED if i % 2 == 0 else self.ASURA_CRIMSON})
+        sound_mgr.play("laser")
+        if hasattr(owner, 'asura_sword_qi'):
+            owner.asura_sword_qi = min(owner.asura_sword_qi_max, owner.asura_sword_qi + 30)
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = self.owner.rect.center
+        eye_pulse = math.sin(self.life * 0.3) * 10 + 50
+        pygame.draw.circle(self.image, self.ASURA_GOLD, (cx, cy), int(eye_pulse), 3)
+        pygame.draw.circle(self.image, self.ASURA_CRIMSON, (cx, cy), int(eye_pulse * 0.7), 2)
+        pygame.draw.circle(self.image, (255, 255, 255), (cx, cy), 8)
+        for arm in self.arms:
+            if arm['phase'] == 'extend':
+                arm['length'] = min(arm['max_length'], arm['length'] + 20)
+                if arm['length'] >= arm['max_length']: arm['phase'] = 'slash'
+            elif arm['phase'] == 'slash':
+                arm['slash_angle'] += 8
+                if arm['slash_angle'] >= 90: arm['phase'] = 'retract'
+            elif arm['phase'] == 'retract':
+                arm['length'] = max(0, arm['length'] - 15)
+            base_angle = arm['angle'] + arm['slash_angle']
+            rad = math.radians(base_angle)
+            tip_x = cx + math.cos(rad) * arm['length']
+            tip_y = cy + math.sin(rad) * arm['length']
+            points = []
+            for t in range(int(arm['length'] // 10) + 1):
+                prog = t / max(1, arm['length'] // 10)
+                r = arm['length'] * prog
+                px = cx + math.cos(rad) * r
+                py = cy + math.sin(rad) * r
+                points.append((px, py))
+            if len(points) > 2:
+                pygame.draw.lines(self.image, arm['color'], False, points, 8)
+                pygame.draw.lines(self.image, (255, 200, 180), False, points, 4)
+                pygame.draw.lines(self.image, (255, 255, 255), False, points, 2)
+            pygame.draw.circle(self.image, self.ASURA_GOLD, (int(tip_x), int(tip_y)), 10)
+            pygame.draw.circle(self.image, (255, 255, 255), (int(tip_x), int(tip_y)), 5)
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                if dist < arm['length']:
+                    angle_to_enemy = math.degrees(math.atan2(m.rect.centery - cy, m.rect.centerx - cx))
+                    angle_diff = abs((angle_to_enemy - base_angle + 180) % 360 - 180)
+                    if angle_diff < 20:
+                        if m not in self.hit_enemies: self.hit_enemies[m] = 0
+                        self.hit_enemies[m] += 1
+                        if self.hit_enemies[m] % 3 == 1:
+                            m.hp -= 180
+                            FloatingText(m.rect.centerx, m.rect.top - 20, "ն!", self.ASURA_GOLD)
+                            Particle(m.rect.center, arm['color'])
+        if self.life % 5 == 0:
+            for arm in self.arms:
+                rad = math.radians(arm['angle'] + arm['slash_angle'])
+                for dist in range(50, int(arm['length']), 50):
+                    px = cx + math.cos(rad) * dist
+                    py = cy + math.sin(rad) * dist
+                    Particle((px, py), self.ASURA_RED)
+
+
+class AsuraRageMode(pygame.sprite.Sprite):
+    """����ŭ����� - �����״̬��ȫ�������籩 (F��)"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 120
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.ASURA_RED = (180, 50, 50)
+        self.ASURA_CRIMSON = (255, 80, 80)
+        self.ASURA_GOLD = (255, 200, 100)
+        self.sword_waves = []
+        self.wave_timer = 0
+        sound_mgr.play("nuke")
+        if hasattr(owner, 'asura_rage_mode'):
+            owner.asura_rage_mode = True
+            owner.asura_rage_timer = 300
+            owner.asura_sword_qi = owner.asura_sword_qi_max
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = self.owner.rect.center
+        rage_intensity = (120 - self.life) / 120
+        for r in range(3):
+            ring_r = 100 + r * 80 + int(math.sin(self.life * 0.2) * 20)
+            alpha = int(100 * (1 - r * 0.3) * rage_intensity)
+            ring_surf = pygame.Surface((ring_r * 2, ring_r * 2), pygame.SRCALPHA)
+            pygame.draw.circle(ring_surf, (*self.ASURA_RED, alpha), (ring_r, ring_r), ring_r, 5)
+            self.image.blit(ring_surf, (cx - ring_r, cy - ring_r))
+        self.wave_timer += 1
+        if self.wave_timer >= 8:
+            self.wave_timer = 0
+            for i in range(12):
+                angle = i * 30 + random.randint(-10, 10)
+                self.sword_waves.append({'x': cx, 'y': cy, 'angle': angle, 'speed': 15 + random.randint(0, 5), 'life': 40, 'size': random.randint(30, 50)})
+        for wave in self.sword_waves[:]:
+            wave['life'] -= 1
+            if wave['life'] <= 0: self.sword_waves.remove(wave); continue
+            rad = math.radians(wave['angle'])
+            wave['x'] += math.cos(rad) * wave['speed']
+            wave['y'] += math.sin(rad) * wave['speed']
+            wx, wy = int(wave['x']), int(wave['y'])
+            wave_pts = []
+            for t in range(5):
+                prog = t / 4
+                dist = wave['size'] * (1 - prog)
+                px = wx - math.cos(rad) * dist
+                py = wy - math.sin(rad) * dist
+                wave_pts.append((int(px), int(py)))
+            if len(wave_pts) > 1:
+                pygame.draw.lines(self.image, self.ASURA_CRIMSON, False, wave_pts, 6)
+                pygame.draw.lines(self.image, self.ASURA_GOLD, False, wave_pts, 3)
+            for m in list(mobs):
+                if math.hypot(m.rect.centerx - wx, m.rect.centery - wy) < 40:
+                    m.hp -= 60
+                    Particle(m.rect.center, self.ASURA_CRIMSON)
+        mark_size = 60 + int(math.sin(self.life * 0.5) * 10)
+        pygame.draw.circle(self.image, self.ASURA_GOLD, (cx, cy), mark_size, 4)
+        for i in range(6):
+            angle = i * 60 + self.life * 3
+            rad = math.radians(angle)
+            px = cx + math.cos(rad) * mark_size
+            py = cy + math.sin(rad) * mark_size
+            pygame.draw.circle(self.image, (255, 255, 255), (int(px), int(py)), 8)
+
+
+class AsuraDragonSlayer(pygame.sprite.Sprite):
+    """����ն����ɱ - ������н������һ����ɱ (G��)"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 100
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.ASURA_RED = (180, 50, 50)
+        self.ASURA_CRIMSON = (255, 80, 80)
+        self.ASURA_GOLD = (255, 200, 100)
+        self.slash_targets = []
+        self.slash_lines = []
+        sound_mgr.play("nuke")
+        for m in list(mobs):
+            self.slash_targets.append({'enemy': m, 'x': m.rect.centerx, 'y': m.rect.centery, 'marked': False, 'slashed': False})
+        if hasattr(owner, 'asura_sword_qi'):
+            self.qi_bonus = owner.asura_sword_qi / 100
+            owner.asura_sword_qi = 0
+        else:
+            self.qi_bonus = 0.5
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = self.owner.rect.center
+        if self.life > 70:
+            charge_prog = (100 - self.life) / 30
+            for target in self.slash_targets:
+                if target['enemy'].alive():
+                    target['x'] = target['enemy'].rect.centerx
+                    target['y'] = target['enemy'].rect.centery
+                line_alpha = int(200 * charge_prog)
+                tx, ty = target['x'], target['y']
+                pygame.draw.line(self.image, (*self.ASURA_RED, min(255, line_alpha)), (cx, cy), (tx, ty), 2)
+                if not target['marked']:
+                    mark_r = 40 - int(30 * charge_prog)
+                    pygame.draw.circle(self.image, self.ASURA_CRIMSON, (tx, ty), mark_r, 2)
+                    if charge_prog >= 0.9:
+                        target['marked'] = True
+                        FloatingText(tx, ty - 20, "����", self.ASURA_GOLD)
+            charge_r = int(100 * charge_prog)
+            pygame.draw.circle(self.image, self.ASURA_GOLD, (cx, cy), charge_r, 3)
+            pygame.draw.circle(self.image, (255, 255, 255), (cx, cy), int(charge_r * 0.5))
+        elif self.life > 30:
+            for i, target in enumerate(self.slash_targets):
+                if target['slashed']: continue
+                delay = i * 2
+                if (70 - self.life) < delay: continue
+                tx, ty = target['x'], target['y']
+                slash_dist = math.hypot(tx - cx, ty - cy)
+                current_dist = slash_dist * min(1.0, (70 - self.life - delay) / 10)
+                angle = math.atan2(ty - cy, tx - cx)
+                sx = cx + math.cos(angle) * current_dist
+                sy = cy + math.sin(angle) * current_dist
+                pygame.draw.line(self.image, self.ASURA_GOLD, (cx, cy), (sx, sy), 4)
+                pygame.draw.line(self.image, (255, 255, 255), (cx, cy), (sx, sy), 2)
+                pygame.draw.circle(self.image, self.ASURA_CRIMSON, (int(sx), int(sy)), 15)
+                if current_dist >= slash_dist - 20:
+                    target['slashed'] = True
+                    self.slash_lines.append({'x1': cx, 'y1': cy, 'x2': tx, 'y2': ty, 'life': 30})
+                    if target['enemy'].alive():
+                        damage = int(500 * (1 + self.qi_bonus))
+                        target['enemy'].hp -= damage
+                        FloatingText(tx, ty - 30, "ն��!", self.ASURA_GOLD)
+                        for _ in range(10): Particle((tx, ty), self.ASURA_CRIMSON)
+        else:
+            for line in self.slash_lines[:]:
+                line['life'] -= 1
+                if line['life'] <= 0: self.slash_lines.remove(line); continue
+                alpha = int(255 * (line['life'] / 30))
+                pygame.draw.line(self.image, (*self.ASURA_RED, alpha), (line['x1'], line['y1']), (line['x2'], line['y2']), 3)
+            if self.life == 29:
+                for _ in range(30): Particle(self.owner.rect.center, random.choice([self.ASURA_RED, self.ASURA_CRIMSON, self.ASURA_GOLD]))
+
+
+# ========== ����ʿ������� ���� ==========
+
+class DragoonSkyDive(pygame.sprite.Sprite):
+    """����ʿ�������� - ���������ǿ��ͻ�� (V��)"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 80
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.DRAGOON_BLUE = (100, 150, 220)
+        self.DRAGOON_LIGHT = (180, 210, 255)
+        self.DRAGOON_WHITE = (255, 255, 255)
+        self.DRAGOON_GOLD = (255, 220, 150)
+        self.dive_y = 0
+        self.impact_wave = 0
+        self.hit_enemies = set()
+        self.start_x = owner.rect.centerx
+        self.start_y = owner.rect.centery
+        sound_mgr.play("laser")
+        if hasattr(owner, 'dragoon_sky_dive'):
+            owner.dragoon_sky_dive = True
+            owner.dragoon_dive_timer = 180
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        self.image.fill((0, 0, 0, 0))
+        if self.life > 60:
+            rise_prog = (80 - self.life) / 20
+            self.dive_y = -200 * rise_prog
+            cx = self.start_x
+            cy = self.start_y + self.dive_y
+            for r in range(3):
+                ring_r = 30 + r * 20
+                alpha = int(200 * (1 - r * 0.3))
+                pygame.draw.circle(self.image, (*self.DRAGOON_LIGHT, alpha), (cx, int(cy)), ring_r, 2)
+            for i in range(5):
+                trail_y = cy + i * 30
+                trail_alpha = int(200 * (1 - i * 0.2))
+                pygame.draw.circle(self.image, (*self.DRAGOON_BLUE, trail_alpha), (cx, int(trail_y)), 15 - i * 2)
+        elif self.life > 20:
+            dive_prog = (60 - self.life) / 40
+            self.dive_y = -200 + 400 * dive_prog
+            cx = self.start_x
+            cy = self.start_y + self.dive_y
+            lance_len = 150
+            pygame.draw.polygon(self.image, self.DRAGOON_GOLD, [(cx, cy - lance_len), (cx - 15, cy), (cx + 15, cy)])
+            pygame.draw.polygon(self.image, self.DRAGOON_WHITE, [(cx, cy - lance_len + 20), (cx - 8, cy - 10), (cx + 8, cy - 10)])
+            for i in range(10):
+                line_x = cx + random.randint(-50, 50)
+                line_y = cy - random.randint(50, 200)
+                pygame.draw.line(self.image, self.DRAGOON_LIGHT, (line_x, line_y), (line_x, line_y + 50), 2)
+            for m in list(mobs):
+                if m in self.hit_enemies: continue
+                if abs(m.rect.centerx - cx) < 60 and abs(m.rect.centery - cy) < 100:
+                    m.hp -= 300
+                    self.hit_enemies.add(m)
+                    FloatingText(m.rect.centerx, m.rect.top - 20, "ͻ��!", self.DRAGOON_GOLD)
+                    for _ in range(8): Particle(m.rect.center, self.DRAGOON_LIGHT)
+        else:
+            self.impact_wave += 15
+            cx = self.start_x
+            cy = self.start_y + 200
+            wave_alpha = int(200 * (self.life / 20))
+            pygame.draw.circle(self.image, (*self.DRAGOON_GOLD, wave_alpha), (cx, int(cy)), self.impact_wave, 5)
+            pygame.draw.circle(self.image, (*self.DRAGOON_WHITE, wave_alpha // 2), (cx, int(cy)), self.impact_wave + 20, 3)
+            for m in list(mobs):
+                dist = math.hypot(m.rect.centerx - cx, m.rect.centery - cy)
+                if abs(dist - self.impact_wave) < 30 and m not in self.hit_enemies:
+                    m.hp -= 150
+                    self.hit_enemies.add(m)
+                    Particle(m.rect.center, self.DRAGOON_LIGHT)
+
+
+class DragoonLanceStorm(pygame.sprite.Sprite):
+    """����ʿ��ǹ�뷢 - �ٻ�������ǹ������� (F��)"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 100
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.DRAGOON_BLUE = (100, 150, 220)
+        self.DRAGOON_LIGHT = (180, 210, 255)
+        self.DRAGOON_WHITE = (255, 255, 255)
+        self.DRAGOON_GOLD = (255, 220, 150)
+        self.lances = []
+        self.spawn_timer = 0
+        sound_mgr.play("nuke")
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        self.image.fill((0, 0, 0, 0))
+        self.spawn_timer += 1
+        if self.spawn_timer >= 5 and self.life > 30:
+            self.spawn_timer = 0
+            for _ in range(random.randint(3, 5)):
+                if mobs and random.random() < 0.7:
+                    target = random.choice(list(mobs))
+                    tx, ty = target.rect.centerx, target.rect.centery
+                else:
+                    tx = random.randint(50, WIDTH - 50)
+                    ty = random.randint(100, HEIGHT - 100)
+                self.lances.append({'x': tx + random.randint(-30, 30), 'y': -50, 'target_y': ty, 'speed': random.randint(15, 25), 'hit': False, 'impact_life': 0})
+        for lance in self.lances[:]:
+            if lance['hit']:
+                lance['impact_life'] -= 1
+                if lance['impact_life'] <= 0: self.lances.remove(lance); continue
+                alpha = int(255 * (lance['impact_life'] / 15))
+                pygame.draw.circle(self.image, (*self.DRAGOON_GOLD, alpha), (int(lance['x']), int(lance['target_y'])), 20 - lance['impact_life'])
+            else:
+                lance['y'] += lance['speed']
+                lx, ly = int(lance['x']), int(lance['y'])
+                pygame.draw.polygon(self.image, self.DRAGOON_WHITE, [(lx, ly - 40), (lx - 5, ly), (lx + 5, ly)])
+                pygame.draw.polygon(self.image, self.DRAGOON_BLUE, [(lx, ly - 40), (lx - 5, ly), (lx + 5, ly)], 2)
+                for i in range(3):
+                    trail_alpha = int(150 * (1 - i * 0.3))
+                    pygame.draw.line(self.image, (*self.DRAGOON_LIGHT, trail_alpha), (lx, ly - 40 - i * 20), (lx, ly - 40 - i * 20 - 15), 2)
+                if lance['y'] >= lance['target_y']:
+                    lance['hit'] = True
+                    lance['impact_life'] = 15
+                    for m in list(mobs):
+                        dist = math.hypot(m.rect.centerx - lance['x'], m.rect.centery - lance['target_y'])
+                        if dist < 50:
+                            m.hp -= 120
+                            FloatingText(m.rect.centerx, m.rect.top - 15, "��!", self.DRAGOON_LIGHT)
+                            Particle(m.rect.center, self.DRAGOON_BLUE)
+
+
+class DragoonDragonCharge(pygame.sprite.Sprite):
+    """����ʿ������ - �����������йᴩ��� (G��)"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 90
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        self.DRAGOON_BLUE = (100, 150, 220)
+        self.DRAGOON_LIGHT = (180, 210, 255)
+        self.DRAGOON_WHITE = (255, 255, 255)
+        self.DRAGOON_GOLD = (255, 220, 150)
+        self.rush_progress = 0
+        self.hit_enemies = set()
+        self.dragon_trail = []
+        sound_mgr.play("nuke")
+        if hasattr(owner, 'dragoon_lance_level'):
+            owner.dragoon_lance_level = min(owner.dragoon_max_lance_level, owner.dragoon_lance_level + 2)
+        
+    def update(self):
+        self.life -= 1
+        if self.life <= 0: self.kill(); return
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = self.owner.rect.center
+        if self.life > 70:
+            charge_prog = (90 - self.life) / 20
+            dragon_r = int(150 * charge_prog)
+            for i in range(3):
+                ring_alpha = int(150 * (1 - i * 0.3) * charge_prog)
+                r = dragon_r + i * 30
+                pygame.draw.circle(self.image, (*self.DRAGOON_LIGHT, ring_alpha), (cx, cy), r, 3)
+            eye_y = cy - int(50 * charge_prog)
+            pygame.draw.circle(self.image, self.DRAGOON_GOLD, (cx - 30, eye_y), 10)
+            pygame.draw.circle(self.image, self.DRAGOON_GOLD, (cx + 30, eye_y), 10)
+            pygame.draw.circle(self.image, (255, 255, 255), (cx - 30, eye_y), 5)
+            pygame.draw.circle(self.image, (255, 255, 255), (cx + 30, eye_y), 5)
+            if self.life == 71: FloatingText(cx, cy - 80, "�������", self.DRAGOON_GOLD)
+        elif self.life > 20:
+            self.rush_progress += 20
+            rush_y = cy - self.rush_progress
+            self.dragon_trail.append({'x': cx, 'y': rush_y, 'life': 20})
+            head_y = max(-100, rush_y)
+            pygame.draw.polygon(self.image, self.DRAGOON_GOLD, [(cx, head_y - 50), (cx - 40, head_y + 20), (cx + 40, head_y + 20)])
+            pygame.draw.polygon(self.image, self.DRAGOON_WHITE, [(cx, head_y - 30), (cx - 20, head_y + 10), (cx + 20, head_y + 10)])
+            pygame.draw.polygon(self.image, self.DRAGOON_LIGHT, [(cx - 30, head_y), (cx - 50, head_y - 40), (cx - 20, head_y - 10)])
+            pygame.draw.polygon(self.image, self.DRAGOON_LIGHT, [(cx + 30, head_y), (cx + 50, head_y - 40), (cx + 20, head_y - 10)])
+            for trail in self.dragon_trail[:]:
+                trail['life'] -= 1
+                if trail['life'] <= 0: self.dragon_trail.remove(trail); continue
+                alpha = int(200 * (trail['life'] / 20))
+                size = int(40 * (trail['life'] / 20))
+                pygame.draw.ellipse(self.image, (*self.DRAGOON_BLUE, alpha), (trail['x'] - size, trail['y'] - size//2, size*2, size))
+            for m in list(mobs):
+                if m in self.hit_enemies: continue
+                if abs(m.rect.centerx - cx) < 80:
+                    if m.rect.centery <= cy and m.rect.centery >= rush_y - 50:
+                        m.hp -= 400
+                        self.hit_enemies.add(m)
+                        FloatingText(m.rect.centerx, m.rect.top - 30, "����!", self.DRAGOON_GOLD)
+                        for _ in range(12): Particle(m.rect.center, self.DRAGOON_LIGHT)
+        else:
+            fade_alpha = int(200 * (self.life / 20))
+            for trail in self.dragon_trail[:]:
+                trail['life'] -= 1
+                if trail['life'] <= 0: self.dragon_trail.remove(trail); continue
+                alpha = min(fade_alpha, int(150 * (trail['life'] / 20)))
+                size = int(30 * (trail['life'] / 20))
+                pygame.draw.ellipse(self.image, (*self.DRAGOON_GOLD, alpha), (trail['x'] - size, trail['y'] - size//2, size*2, size))
+            if self.life == 19:
+                FloatingText(cx, cy - 50, "龙影归来!", self.DRAGOON_GOLD)
+                if hasattr(self.owner, 'hp'): self.owner.hp = min(getattr(self.owner, 'max_hp', 200), self.owner.hp + 30)
+
+
+# ============================================================================
+# 剑气/枪气子弹系统 - Asura 修罗剑气 和 Dragoon 龙骑枪气
+# ============================================================================
+
+class SwordQi(pygame.sprite.Sprite):
+    """修罗剑气 - 向前飞行的剑形弹幕"""
+    
+    def __init__(self, x, y, color=(255, 80, 80), damage=30, angle=0):
+        super().__init__()
+        all_sprites.add(self)
+        bullets.add(self)
+        
+        self.damage = damage
+        self.piercing = 2
+        self.is_enemy = False
+        
+        # 创建剑气图像
+        self.image = pygame.Surface((10, 40), pygame.SRCALPHA)
+        pygame.draw.polygon(self.image, color, [(5, 0), (0, 35), (10, 35)])
+        pygame.draw.polygon(self.image, (255, 255, 255), [(5, 5), (3, 30), (7, 30)])
+        
+        # 旋转
+        if angle != 0:
+            self.image = pygame.transform.rotate(self.image, -angle)
+        
+        self.rect = self.image.get_rect(center=(x, y))
+        
+        # 速度
+        rad = math.radians(angle - 90)
+        self.vx = math.cos(rad) * 12
+        self.vy = math.sin(rad) * 12
+    
+    def update(self):
+        self.rect.x += self.vx
+        self.rect.y += self.vy
+        if self.rect.bottom < -50 or self.rect.top > HEIGHT + 50:
+            self.kill()
+        if self.rect.right < -50 or self.rect.left > WIDTH + 50:
+            self.kill()
+
+
+class LanceQi(pygame.sprite.Sprite):
+    """龙骑枪气 - 向前飞行的枪形弹幕"""
+    
+    def __init__(self, x, y, color=(150, 200, 255), damage=40):
+        super().__init__()
+        all_sprites.add(self)
+        bullets.add(self)
+        
+        self.damage = damage
+        self.piercing = 3
+        self.is_enemy = False
+        
+        # 创建枪气图像
+        self.image = pygame.Surface((8, 50), pygame.SRCALPHA)
+        # 枪头
+        pygame.draw.polygon(self.image, color, [(4, 0), (0, 15), (8, 15)])
+        # 枪身
+        pygame.draw.rect(self.image, color, (2, 15, 4, 35))
+        pygame.draw.rect(self.image, (255, 255, 255), (3, 15, 2, 35))
+        
+        self.rect = self.image.get_rect(midbottom=(x, y))
+        self.vy = -14
+    
+    def update(self):
+        self.rect.y += self.vy
+        if self.rect.bottom < -50:
+            self.kill()
+

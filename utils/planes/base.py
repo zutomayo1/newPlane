@@ -258,6 +258,20 @@ def _generate_plane_surf(pid, visual=None, static=False):
             if result:
                 return result
         
+        # 尝试 Asura 专属涂装（近战机体）
+        from .skins_asura import render_asura_skin, is_asura_style
+        if is_asura_style(model_style):
+            result = render_asura_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
+        # 尝试 Dragoon 专属涂装（近战机体）
+        from .skins_dragoon import render_dragoon_skin, is_dragoon_style
+        if is_dragoon_style(model_style):
+            result = render_dragoon_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -301,6 +315,16 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid == "truth":
         from .skins_truth import _render_truth_base
         _render_truth_base(s, t, pulse)
+    
+    # 近战机体 - Asura
+    elif pid == "asura":
+        from .skins_asura import _render_asura_base
+        _render_asura_base(s, t, pulse)
+    
+    # 近战机体 - Dragoon
+    elif pid == "dragoon":
+        from .skins_dragoon import _render_dragoon_base
+        _render_dragoon_base(s, t, pulse)
     
     else:
         # 默认占位图形

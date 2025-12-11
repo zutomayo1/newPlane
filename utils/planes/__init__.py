@@ -34,8 +34,10 @@
 - skins_omega.py: Omega专属涂装 (12种) [终极机体]
 - skins_genesis.py: Genesis专属涂装 (12种) [终极机体]
 - skins_truth.py: Truth专属涂装 (10种) [终极机体]
+- skins_asura.py: Asura专属涂装 (10种) [近战机体]
+- skins_dragoon.py: Dragoon专属涂装 (10种) [近战机体]
 
-所有机体涂装拆分完成！共计 242 种涂装。
+所有机体涂装拆分完成！共计 262 种涂装。
 """
 
 from .base import get_plane_surf, clear_plane_cache
@@ -70,6 +72,8 @@ from .skins_pandemic import render_pandemic_skin, is_pandemic_style, PANDEMIC_ST
 from .skins_omega import render_omega_skin, is_omega_style, OMEGA_STYLES
 from .skins_genesis import render_genesis_skin, is_genesis_style, GENESIS_STYLES
 from .skins_truth import render_truth_skin, is_truth_style, TRUTH_STYLES
+from .skins_asura import render_asura_skin, is_asura_style, ASURA_STYLES
+from .skins_dragoon import render_dragoon_skin, is_dragoon_style, DRAGOON_STYLES
 
 __all__ = [
     'get_plane_surf', 'clear_plane_cache',
@@ -99,5 +103,7 @@ __all__ = [
     'render_pandemic_skin', 'is_pandemic_style', 'PANDEMIC_STYLES',
     'render_omega_skin', 'is_omega_style', 'OMEGA_STYLES',
     'render_genesis_skin', 'is_genesis_style', 'GENESIS_STYLES',
-    'render_truth_skin', 'is_truth_style', 'TRUTH_STYLES'
+    'render_truth_skin', 'is_truth_style', 'TRUTH_STYLES',
+    'render_asura_skin', 'is_asura_style', 'ASURA_STYLES',
+    'render_dragoon_skin', 'is_dragoon_style', 'DRAGOON_STYLES'
 ]

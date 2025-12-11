@@ -28,8 +28,13 @@
 - omega_bullets.py: Omega子弹涂装 [终极机体]
 - genesis_bullets.py: Genesis子弹涂装 [终极机体]
 - truth_bullets.py: Truth子弹涂装 [终极机体]
+- asura_bullets.py: Asura子弹涂装 [近战机体]
+- dragoon_bullets.py: Dragoon子弹涂装 [近战机体]
 """
 
 from .base import draw_bullet_preview
+from .asura_bullets import render_asura_bullet, ASURA_BULLET_THEMES
+from .dragoon_bullets import render_dragoon_bullet, DRAGOON_BULLET_THEMES
 
-__all__ = ['draw_bullet_preview']
+__all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
+           'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES']

@@ -8122,6 +8122,7 @@ while True:
                     for m, hit_bullets in hits.items():
                         for b in hit_bullets:
                             if b.is_enemy: continue
+                            if getattr(b, 'is_melee', False): continue  # 跳过近战武器，它们自己处理碰撞
                             dmg = player.damage
                             
                             # 【霓虹突击者】超载伤害加成
