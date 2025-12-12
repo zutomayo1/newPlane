@@ -10577,6 +10577,7 @@ class Player(pygame.sprite.Sprite):
         self.hp = self.max_hp
         self.damage = self.plane_data["damage"]
         self.shoot_delay = self.plane_data["delay"]
+        self.ult_charge_rate = self.plane_data.get("ult_charge_rate", 1.0)  # 大招充能速率倍率
         
         # 属性
         self.xp = 0
@@ -11846,6 +11847,77 @@ class Player(pygame.sprite.Sprite):
             all_sprites.add(shot)
             bullets.add(shot)
         
+        # ========== 34. 棘刺藤骨·荆穹 - 骨蔓鞭射击 ==========
+        elif pid == "thornvine":
+            from utils.bullets.thornvine_bullets import BoneWhip
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 发射骨蔓鞭（弧线飞行的多节鞭）
+            whip = BoneWhip(cx, cy, base_damage, owner=self)
+            all_sprites.add(whip)
+            bullets.add(whip)
+        
+        # ========== 35. 浮游刃环·星镰 - 环刃巡航 ==========
+        elif pid == "starblade":
+            from utils.bullets.starblade_bullets import RingBlade
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 发射环刃（悬停扫割后召回）
+            blade = RingBlade(cx, cy, base_damage, owner=self)
+            all_sprites.add(blade)
+            bullets.add(blade)
+        
+        # ========== 36. 酸蚀喷溅·腐沼 - 抛物酸囊 ==========
+        elif pid == "acidswamp":
+            from utils.bullets.acidswamp_bullets import AcidBlob
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 目标位置 - 前方随机
+            target_x = cx + random.randint(-60, 60)
+            target_y = random.randint(100, 350)
+            
+            # 发射抛物酸囊
+            blob = AcidBlob(cx, cy, target_x, target_y, base_damage, owner=self)
+            all_sprites.add(blob)
+            bullets.add(blob)
+        
+        # ========== 37. 晶簇射流·晶瀑 - 晶簇扇喷 ==========
+        elif pid == "crystalfall":
+            from utils.bullets.crystalfall_bullets import CrystalArrow
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 3枚扇形散射的晶矢
+            for i in range(3):
+                angle = -90 + (i - 1) * 20  # -110, -90, -70 度
+                angle += random.uniform(-5, 5)
+                arrow = CrystalArrow(cx, cy, angle, base_damage, owner=self)
+                all_sprites.add(arrow)
+                bullets.add(arrow)
+        
+        # ========== 38. 孢子幕炮·菌幕 - 抛物孢子壳 ==========
+        elif pid == "sporeveil":
+            from utils.bullets.sporeveil_bullets import SporeShell
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 目标位置 - 前方
+            target_x = cx + random.randint(-40, 40)
+            target_y = random.randint(150, 350)
+            
+            # 发射孢子壳
+            shell = SporeShell(cx, cy, target_x, target_y, base_damage, owner=self)
+            all_sprites.add(shell)
+            bullets.add(shell)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -12137,6 +12209,31 @@ class Player(pygame.sprite.Sprite):
                 # 【绝杀狙击】处决所有被标记的敌人
                 from utils.bullets.darkstring_bullets import DeathSniperUlt
                 DeathSniperUlt(self)
+            
+            elif pid == "thornvine":
+                # 【荆棘风暴】释放5波藤骨鞭旋风
+                from utils.bullets.thornvine_bullets import ThornStorm
+                ThornStorm(self)
+            
+            elif pid == "starblade":
+                # 【刃环风暴】召唤7个环刃不同高度横扫
+                from utils.bullets.starblade_bullets import BladeStorm
+                BladeStorm(self)
+            
+            elif pid == "acidswamp":
+                # 【酸液洪流】释放12枚酸囊覆盖全场
+                from utils.bullets.acidswamp_bullets import AcidFlood
+                AcidFlood(self)
+            
+            elif pid == "crystalfall":
+                # 【晶暴射流】5波8箭晶簇覆盖全场
+                from utils.bullets.crystalfall_bullets import CrystalStorm
+                CrystalStorm(self)
+            
+            elif pid == "sporeveil":
+                # 【孢子绽放】释放6个大型孢子云幕
+                from utils.bullets.sporeveil_bullets import SporeBloom
+                SporeBloom(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸

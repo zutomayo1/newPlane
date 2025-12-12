@@ -8375,7 +8375,9 @@ while True:
                                 sound_mgr.play("hit")
                             
                             # 【新】战斗充能：每次伤害敌人时充能大招
-                            ult_charge_gain = dmg / 10  # 伤害值的10%转化为大招能量
+                            # 获取机体专属充能速率倍率（部分机体有加速充能）
+                            ult_charge_rate = getattr(player, 'ult_charge_rate', 1.0)
+                            ult_charge_gain = (dmg / 10) * ult_charge_rate  # 伤害值的10%转化为大招能量，乘以充能速率
                             player.ult_charge = min(player.max_ult_charge, player.ult_charge + ult_charge_gain)
                             # 【新】同时充能第二大招（G键）
                             player.ult2_charge = min(player.max_ult2_charge, player.ult2_charge + ult_charge_gain * 0.8)

@@ -35,6 +35,12 @@ from .genesis_bullets import render_genesis_bullet
 from .asura_bullets import render_asura_bullet
 from .dragoon_bullets import render_dragoon_bullet
 from .origami_bullets import render_origami_bullet
+# 导入新机体子弹效果模块
+from .thornvine_bullets import render_thornvine_bullet
+from .starblade_bullets import render_starblade_bullet
+from .acidswamp_bullets import render_acidswamp_bullet
+from .crystalfall_bullets import render_crystalfall_bullet
+from .sporeveil_bullets import render_sporeveil_bullet
 
 
 # 渲染函数列表，按优先级顺序排列（终极机体优先）
@@ -66,6 +72,12 @@ BULLET_RENDERERS = [
     render_asura_bullet,
     render_dragoon_bullet,
     render_origami_bullet,    # [特殊机体] Origami 折纸鹤·零式
+    # 新增5个机体的子弹渲染
+    render_thornvine_bullet,   # 棘刺藤骨·荆穹
+    render_starblade_bullet,   # 浮游刃环·星镰
+    render_acidswamp_bullet,   # 酸蚀喷溅·腐沼
+    render_crystalfall_bullet, # 晶簇射流·晶瀑
+    render_sporeveil_bullet,   # 孢子幕炮·菌幕
 ]
 
 

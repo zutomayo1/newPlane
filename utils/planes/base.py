@@ -314,6 +314,41 @@ def _generate_plane_surf(pid, visual=None, static=False):
             if result:
                 return result
         
+        # 尝试 Thornvine 专属涂装（藤骨机体）
+        from .skins_thornvine import render_thornvine_skin, is_thornvine_style
+        if is_thornvine_style(model_style):
+            result = render_thornvine_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
+        # 尝试 Starblade 专属涂装（环刃机体）
+        from .skins_starblade import render_starblade_skin, is_starblade_style
+        if is_starblade_style(model_style):
+            result = render_starblade_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
+        # 尝试 Acidswamp 专属涂装（酸沼机体）
+        from .skins_acidswamp import render_acidswamp_skin, is_acidswamp_style
+        if is_acidswamp_style(model_style):
+            result = render_acidswamp_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
+        # 尝试 Crystalfall 专属涂装（晶瀑机体）
+        from .skins_crystalfall import render_crystalfall_skin, is_crystalfall_style
+        if is_crystalfall_style(model_style):
+            result = render_crystalfall_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
+        # 尝试 Sporeveil 专属涂装（菌幕机体）
+        from .skins_sporeveil import render_sporeveil_skin, is_sporeveil_style
+        if is_sporeveil_style(model_style):
+            result = render_sporeveil_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -397,6 +432,31 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid == "darkstring":
         from .skins_darkstring import _render_darkstring_base
         _render_darkstring_base(s, t, pulse)
+    
+    # 藤骨机体 - Thornvine
+    elif pid == "thornvine":
+        from .skins_thornvine import _render_thornvine_base
+        _render_thornvine_base(s, t, pulse)
+    
+    # 环刃机体 - Starblade
+    elif pid == "starblade":
+        from .skins_starblade import _render_starblade_base
+        _render_starblade_base(s, t, pulse)
+    
+    # 酸沼机体 - Acidswamp
+    elif pid == "acidswamp":
+        from .skins_acidswamp import _render_acidswamp_base
+        _render_acidswamp_base(s, t, pulse)
+    
+    # 晶瀑机体 - Crystalfall
+    elif pid == "crystalfall":
+        from .skins_crystalfall import _render_crystalfall_base
+        _render_crystalfall_base(s, t, pulse)
+    
+    # 菌幕机体 - Sporeveil
+    elif pid == "sporeveil":
+        from .skins_sporeveil import _render_sporeveil_base
+        _render_sporeveil_base(s, t, pulse)
     
     else:
         # 默认占位图形

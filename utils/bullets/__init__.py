@@ -31,13 +31,26 @@
 - asura_bullets.py: Asura子弹涂装 [近战机体]
 - dragoon_bullets.py: Dragoon子弹涂装 [近战机体]
 - origami_bullets.py: Origami子弹涂装 [折纸鹤机体]
+- thornvine_bullets.py: Thornvine子弹涂装 [棘刺藤骨]
+- starblade_bullets.py: Starblade子弹涂装 [浮游刃环]
+- acidswamp_bullets.py: Acidswamp子弹涂装 [酸蚀喷溅]
+- crystalfall_bullets.py: Crystalfall子弹涂装 [晶簇射流]
+- sporeveil_bullets.py: Sporeveil子弹涂装 [孢子幕炮]
 """
 
 from .base import draw_bullet_preview
 from .asura_bullets import render_asura_bullet, ASURA_BULLET_THEMES
 from .dragoon_bullets import render_dragoon_bullet, DRAGOON_BULLET_THEMES
 from .origami_bullets import OrigamiBlade, OrigamiCrane, FeatherWall, CraneBullet
+from .thornvine_bullets import render_thornvine_bullet
+from .starblade_bullets import render_starblade_bullet
+from .acidswamp_bullets import render_acidswamp_bullet
+from .crystalfall_bullets import render_crystalfall_bullet
+from .sporeveil_bullets import render_sporeveil_bullet
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
-           'OrigamiBlade', 'OrigamiCrane', 'FeatherWall', 'CraneBullet']
+           'OrigamiBlade', 'OrigamiCrane', 'FeatherWall', 'CraneBullet',
+           'render_thornvine_bullet', 'render_starblade_bullet',
+           'render_acidswamp_bullet', 'render_crystalfall_bullet',
+           'render_sporeveil_bullet']
