@@ -10541,11 +10541,13 @@ class Player(pygame.sprite.Sprite):
         
         # 获取装备的子弹涂装
         self.bullet_theme = None
+        self.bullet_theme_id = None  # 保存涂装ID
         try:
             from customization import customization_manager, BULLET_THEMES
             equipped_bullet_id = customization_manager.get_equipped_theme(plane_id, bullet=True)
             if equipped_bullet_id and equipped_bullet_id in BULLET_THEMES:
                 self.bullet_theme = BULLET_THEMES[equipped_bullet_id]
+                self.bullet_theme_id = equipped_bullet_id  # 保存ID用于自定义子弹类
         except:
             pass  # 如果导入失败或没有涂装，使用默认子弹
         
@@ -11756,6 +11758,28 @@ class Player(pygame.sprite.Sprite):
             
             self.dragoon_thrust_count += 1
         
+        # ========== 28. 折纸鹤·零式 - 千羽散 ==========
+        elif pid == "origami":
+            from utils.bullets.origami_bullets import OrigamiBlade
+            
+            # 5枚扇形散射的折纸刃
+            blade_count = 5
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 扇形角度范围（-70° 到 -110°，即向上发射的扇形）
+            angle_start = -110
+            angle_end = -70
+            angle_step = (angle_end - angle_start) / (blade_count - 1)
+            
+            for i in range(blade_count):
+                angle = angle_start + i * angle_step
+                # 每个刃略微随机偏移增加散射感
+                angle += random.uniform(-3, 3)
+                blade = OrigamiBlade(cx, cy, angle, base_damage, owner=self, bounce_count=3)
+                all_sprites.add(blade)
+                bullets.add(blade)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -12018,6 +12042,10 @@ class Player(pygame.sprite.Sprite):
             elif pid == "dragoon":
                 # 【天龙俯冲】从天而降的强力突刺
                 DragoonSkyDive(self)
+            
+            elif pid == "origami":
+                # 【纸鹤群】召唤7只AI纸鹤无人机协同作战
+                OrigamiCraneSwarm(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -13159,6 +13187,10 @@ class Player(pygame.sprite.Sprite):
                 # 【万枪齐发】召唤无数长枪从天而降
                 DragoonLanceStorm(self)
             
+            elif pid == "origami":
+                # 【千羽护盾】召唤1000根羽毛形成切割墙
+                OrigamiFeatherShield(self)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -13205,7 +13237,8 @@ class Player(pygame.sprite.Sprite):
                 "genesis": "新星诞生",
                 "truth": "绝对审判",
                 "asura": "斩龙绝杀",
-                "dragoon": "龙魂冲锋"
+                "dragoon": "龙魂冲锋",
+                "origami": "千羽护盾"
             }
             
             pid = self.plane_id
@@ -16761,3 +16794,235 @@ class LanceQi(pygame.sprite.Sprite):
         if self.rect.bottom < -50:
             self.kill()
 
+
+# ============================================================================
+# 折纸鹤·零式大招 - 纸鹤群 & 千羽护盾
+# ============================================================================
+
+class OrigamiCraneSwarm(pygame.sprite.Sprite):
+    """折纸鹤大招 - 纸鹤群：召唤7只AI纸鹤无人机 (V键)"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 360  # 6秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        
+        # 颜色
+        self.ORIGAMI_WHITE = (245, 245, 250)
+        self.ORIGAMI_RAINBOW = [(255, 100, 100), (255, 200, 100), (255, 255, 100),
+                                (100, 255, 100), (100, 200, 255), (100, 100, 255), (200, 100, 255)]
+        
+        # 生成7只纸鹤
+        self.cranes = []
+        cx, cy = owner.rect.center
+        for i in range(7):
+            angle = (i / 7) * math.pi * 2
+            spawn_x = cx + math.cos(angle) * 80
+            spawn_y = cy - 30 + math.sin(angle) * 40
+            crane = {
+                'x': float(spawn_x),
+                'y': float(spawn_y),
+                'target_x': spawn_x,
+                'target_y': spawn_y,
+                'wing_angle': random.uniform(0, math.pi * 2),
+                'color_idx': i,
+                'fire_timer': random.randint(0, 30),
+                'alpha': 0  # 渐入
+            }
+            self.cranes.append(crane)
+        
+        self.spawn_effect = 30  # 召唤特效持续时间
+        sound_mgr.play("laser")
+        FloatingText(cx, cy - 60, "纸鹤群!", (255, 255, 255))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        # 召唤特效
+        if self.spawn_effect > 0:
+            self.spawn_effect -= 1
+            cx, cy = self.owner.rect.center
+            for i in range(7):
+                ring_alpha = int(200 * (self.spawn_effect / 30))
+                ring_r = int((30 - self.spawn_effect) * 3)
+                pygame.draw.circle(self.image, (*self.ORIGAMI_RAINBOW[i], ring_alpha), 
+                                  (int(self.cranes[i]['x']), int(self.cranes[i]['y'])), ring_r, 2)
+        
+        # 更新和绘制纸鹤
+        for i, crane in enumerate(self.cranes):
+            # 渐入/渐出效果
+            if self.life > 300:
+                crane['alpha'] = min(255, crane['alpha'] + 15)
+            elif self.life < 60:
+                crane['alpha'] = int(255 * (self.life / 60))
+            
+            # 跟随玩家阵型
+            if self.owner and hasattr(self.owner, 'rect'):
+                formation_angle = (i / 7) * math.pi * 2 + (360 - self.life) * 0.02
+                formation_r = 60 + math.sin((360 - self.life) * 0.05) * 15
+                crane['target_x'] = self.owner.rect.centerx + math.cos(formation_angle) * formation_r
+                crane['target_y'] = self.owner.rect.centery - 30 + math.sin(formation_angle) * formation_r * 0.5
+            
+            # 平滑移动
+            crane['x'] += (crane['target_x'] - crane['x']) * 0.12
+            crane['y'] += (crane['target_y'] - crane['y']) * 0.12
+            
+            # 翅膀动画
+            crane['wing_angle'] += 0.25
+            wing_offset = math.sin(crane['wing_angle']) * 4
+            
+            # 绘制纸鹤
+            cx, cy = int(crane['x']), int(crane['y'])
+            color = (*self.ORIGAMI_RAINBOW[i], crane['alpha'])
+            white = (*self.ORIGAMI_WHITE, crane['alpha'])
+            
+            # 机身
+            body = [(cx, cy - 12), (cx - 8, cy), (cx, cy + 6), (cx + 8, cy)]
+            pygame.draw.polygon(self.image, white[:3], body)
+            
+            # 左翅
+            left_wing = [(cx - 8, cy), (cx - 22 - wing_offset, cy - 3), (cx - 18 - wing_offset, cy + 5)]
+            pygame.draw.polygon(self.image, white[:3], left_wing)
+            
+            # 右翅
+            right_wing = [(cx + 8, cy), (cx + 22 + wing_offset, cy - 3), (cx + 18 + wing_offset, cy + 5)]
+            pygame.draw.polygon(self.image, white[:3], right_wing)
+            
+            # 折痕（彩虹色）
+            pygame.draw.line(self.image, color[:3], (cx, cy - 10), (cx, cy + 4), 1)
+            pygame.draw.line(self.image, color[:3], (cx - 6, cy), (cx - 18 - wing_offset, cy + 2), 1)
+            pygame.draw.line(self.image, color[:3], (cx + 6, cy), (cx + 18 + wing_offset, cy + 2), 1)
+            
+            # 攻击逻辑
+            crane['fire_timer'] += 1
+            if crane['fire_timer'] >= 40 and crane['alpha'] > 200:  # 0.67秒攻击一次
+                crane['fire_timer'] = 0
+                # 寻找最近敌人
+                if mobs:
+                    nearest = None
+                    nearest_dist = 999999
+                    for m in mobs:
+                        dist = math.hypot(m.rect.centerx - crane['x'], m.rect.centery - crane['y'])
+                        if dist < nearest_dist:
+                            nearest_dist = dist
+                            nearest = m
+                    
+                    if nearest:
+                        # 发射小型纸镖
+                        from utils.bullets.origami_bullets import CraneBullet
+                        crane_dmg = int(self.owner.damage * 0.35)
+                        bullet = CraneBullet(crane['x'], crane['y'], 
+                                           nearest.rect.centerx, nearest.rect.centery, crane_dmg)
+                        all_sprites.add(bullet)
+                        bullets.add(bullet)
+
+
+class OrigamiFeatherShield(pygame.sprite.Sprite):
+    """折纸鹤大招 - 千羽护盾：1000根羽毛形成切割墙 (F键)"""
+    def __init__(self, owner):
+        super().__init__()
+        all_sprites.add(self)
+        self.owner = owner
+        self.life = 180  # 3秒
+        self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+        
+        # 颜色
+        self.feather_count = 100  # 简化为100根，每根代表10根
+        self.feathers = []
+        
+        # 生成羽毛 - 水平切割墙
+        cx, cy = owner.rect.centerx, owner.rect.centery - 80
+        wall_width = 350
+        for i in range(self.feather_count):
+            fx = cx - wall_width // 2 + (i / self.feather_count) * wall_width
+            fy = cy + random.uniform(-15, 15)
+            self.feathers.append({
+                'x': float(fx),
+                'y': float(fy),
+                'base_x': fx - cx,  # 相对于中心的位置
+                'angle': random.uniform(-20, 20),
+                'phase': random.uniform(0, math.pi * 2),
+                'hue': (i * 3.6) % 360  # 虹彩
+            })
+        
+        self.wall_y = cy
+        self.hit_cooldown = {}
+        self.damage = owner.damage * 0.8
+        
+        sound_mgr.play("nuke")
+        FloatingText(cx, cy - 40, "千羽护盾!", (255, 255, 255))
+    
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        
+        self.image.fill((0, 0, 0, 0))
+        
+        # 计算透明度（淡出）
+        alpha = 255 if self.life > 30 else int(255 * (self.life / 30))
+        
+        # 跟随玩家
+        cx = self.owner.rect.centerx
+        cy = self.owner.rect.centery - 80
+        
+        # 更新和绘制羽毛
+        for i, f in enumerate(self.feathers):
+            # 位置跟随玩家
+            f['x'] = cx + f['base_x']
+            f['y'] = cy + math.sin(f['phase'] + (180 - self.life) * 0.1) * 8
+            
+            # 虹彩颜色
+            hue = (f['hue'] + (180 - self.life) * 2) % 360
+            r = int(200 + 55 * math.sin(math.radians(hue)))
+            g = int(200 + 55 * math.sin(math.radians(hue + 120)))
+            b = int(200 + 55 * math.sin(math.radians(hue + 240)))
+            color = (r, g, b, alpha)
+            
+            # 羽毛形状
+            angle = f['angle'] + math.sin((180 - self.life) * 0.05 + i * 0.1) * 15
+            rad = math.radians(angle)
+            length = 15
+            
+            fx, fy = int(f['x']), int(f['y'])
+            points = [
+                (fx + math.cos(rad) * length, fy + math.sin(rad) * length),
+                (fx + math.cos(rad + math.pi/2) * 2, fy + math.sin(rad + math.pi/2) * 2),
+                (fx - math.cos(rad) * length * 0.4, fy - math.sin(rad) * length * 0.4),
+                (fx - math.cos(rad + math.pi/2) * 2, fy - math.sin(rad + math.pi/2) * 2)
+            ]
+            
+            pygame.draw.polygon(self.image, color[:3], points)
+        
+        # 伤害检测 - 水平墙
+        wall_rect = pygame.Rect(cx - 180, cy - 20, 360, 40)
+        
+        for enemy_id in list(self.hit_cooldown.keys()):
+            self.hit_cooldown[enemy_id] -= 1
+            if self.hit_cooldown[enemy_id] <= 0:
+                del self.hit_cooldown[enemy_id]
+        
+        for m in list(mobs):
+            if m.rect.colliderect(wall_rect):
+                enemy_id = id(m)
+                if enemy_id not in self.hit_cooldown:
+                    m.hp -= self.damage
+                    self.hit_cooldown[enemy_id] = 12  # 冷却
+                    # 击中特效
+                    for _ in range(3):
+                        Particle(m.rect.center, (255, 255, 255))
+        
+        # 清除敌弹
+        for eb in list(enemy_bullets):
+            if eb.rect.colliderect(wall_rect):
+                eb.kill()
+                Particle((eb.rect.centerx, eb.rect.centery), (200, 220, 255))

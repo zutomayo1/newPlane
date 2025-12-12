@@ -330,7 +330,19 @@
     "dragoon_dragon": true,
     "dragoon_royal": true,
     "dragoon_valkyrie": true,
-    "dragoon_divine": true
+    "dragoon_divine": true,
+    "origami_default": true,
+    "origami_golden_crane": true,
+    "origami_shadow_crane": true,
+    "origami_sakura_crane": true,
+    "origami_cyber_crane": true,
+    "origami_phoenix_crane": true,
+    "origami_ice_crane": true,
+    "origami_jade_crane": true,
+    "origami_master": true,
+    "origami_celestial_crane": true,
+    "origami_void_crane": true,
+    "origami_festival_crane": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -359,7 +371,8 @@
     "omega": "common_red",
     "truth": "truth_judgment",
     "asura": "asura_divine",
-    "dragoon": "dragoon_divine"
+    "dragoon": "dragoon_divine",
+    "origami": "origami_phoenix_crane"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -593,7 +606,14 @@
     "dragoon_lance_dragon": true,
     "dragoon_lance_royal": true,
     "dragoon_lance_valkyrie": true,
-    "dragoon_lance_divine": true
+    "dragoon_lance_divine": true,
+    "origami_default": true,
+    "origami_golden": true,
+    "origami_shadow": true,
+    "origami_sakura": true,
+    "origami_cyber": true,
+    "origami_phoenix": true,
+    "origami_ice": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -621,7 +641,8 @@
     "omega": "omega_aurora_bullet",
     "truth": "truth_rune_bullet",
     "asura": "asura_blade_void",
-    "dragoon": "dragoon_lance_divine"
+    "dragoon": "dragoon_lance_divine",
+    "origami": "origami_ice"
   },
   "equipped_wingman_themes": {
     "slot_0": "striker_holy",

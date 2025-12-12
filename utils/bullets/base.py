@@ -34,6 +34,7 @@ from .omega_bullets import render_omega_bullet
 from .genesis_bullets import render_genesis_bullet
 from .asura_bullets import render_asura_bullet
 from .dragoon_bullets import render_dragoon_bullet
+from .origami_bullets import render_origami_bullet
 
 
 # 渲染函数列表，按优先级顺序排列（终极机体优先）
@@ -64,6 +65,7 @@ BULLET_RENDERERS = [
     render_pandemic_bullet,
     render_asura_bullet,
     render_dragoon_bullet,
+    render_origami_bullet,    # [特殊机体] Origami 折纸鹤·零式
 ]
 
 

@@ -272,6 +272,13 @@ def _generate_plane_surf(pid, visual=None, static=False):
             if result:
                 return result
         
+        # 尝试 Origami 专属涂装（折纸鹤机体）
+        from .skins_origami import render_origami_skin, is_origami_style
+        if is_origami_style(model_style):
+            result = render_origami_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -325,6 +332,11 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid == "dragoon":
         from .skins_dragoon import _render_dragoon_base
         _render_dragoon_base(s, t, pulse)
+    
+    # 折纸鹤机体 - Origami
+    elif pid == "origami":
+        from .skins_origami import _render_origami_base
+        _render_origami_base(s, t, pulse)
     
     else:
         # 默认占位图形
