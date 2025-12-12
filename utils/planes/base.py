@@ -279,6 +279,41 @@ def _generate_plane_surf(pid, visual=None, static=False):
             if result:
                 return result
         
+        # 尝试 Helios 专属涂装（远程狙击机体）
+        from .skins_helios import render_helios_skin, is_helios_style
+        if is_helios_style(model_style):
+            result = render_helios_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
+        # 尝试 Frostflare 专属涂装（远程狙击机体）
+        from .skins_frostflare import render_frostflare_skin, is_frostflare_style
+        if is_frostflare_style(model_style):
+            result = render_frostflare_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
+        # 尝试 Nova 专属涂装（远程狙击机体）
+        from .skins_nova import render_nova_skin, is_nova_style
+        if is_nova_style(model_style):
+            result = render_nova_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
+        # 尝试 Spectrum 专属涂装（远程狙击机体）
+        from .skins_spectrum import render_spectrum_skin, is_spectrum_style
+        if is_spectrum_style(model_style):
+            result = render_spectrum_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
+        # 尝试 Darkstring 专属涂装（远程狙击机体）
+        from .skins_darkstring import render_darkstring_skin, is_darkstring_style
+        if is_darkstring_style(model_style):
+            result = render_darkstring_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -337,6 +372,31 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid == "origami":
         from .skins_origami import _render_origami_base
         _render_origami_base(s, t, pulse)
+    
+    # 远程狙击机体 - Helios
+    elif pid == "helios":
+        from .skins_helios import _render_helios_base
+        _render_helios_base(s, t, pulse)
+    
+    # 远程狙击机体 - Frostflare
+    elif pid == "frostflare":
+        from .skins_frostflare import _render_frostflare_base
+        _render_frostflare_base(s, t, pulse)
+    
+    # 远程狙击机体 - Nova
+    elif pid == "nova":
+        from .skins_nova import _render_nova_base
+        _render_nova_base(s, t, pulse)
+    
+    # 远程狙击机体 - Spectrum
+    elif pid == "spectrum":
+        from .skins_spectrum import _render_spectrum_base
+        _render_spectrum_base(s, t, pulse)
+    
+    # 远程狙击机体 - Darkstring
+    elif pid == "darkstring":
+        from .skins_darkstring import _render_darkstring_base
+        _render_darkstring_base(s, t, pulse)
     
     else:
         # 默认占位图形

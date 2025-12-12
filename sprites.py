@@ -11780,6 +11780,72 @@ class Player(pygame.sprite.Sprite):
                 all_sprites.add(blade)
                 bullets.add(blade)
         
+        # ========== 29. 星渊火陨·赫利俄斯 - 抛物线陨石 ==========
+        elif pid == "helios":
+            from utils.bullets.helios_bullets import MeteorBullet
+            
+            # 抛物线火雨弹 - 随机落点
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top
+            
+            # 目标位置 - 屏幕前方随机
+            target_x = cx + random.randint(-80, 80)
+            target_y = random.randint(100, 400)
+            
+            meteor = MeteorBullet(cx, cy, target_x, target_y, base_damage, owner=self)
+            all_sprites.add(meteor)
+            bullets.add(meteor)
+        
+        # ========== 30. 极昼寒界·霜曜 - 极寒激光 ==========
+        elif pid == "frostflare":
+            from utils.bullets.frostflare_bullets import FrostLaser
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 发射极寒激光
+            laser = FrostLaser(cx, cy, base_damage, owner=self)
+            all_sprites.add(laser)
+            bullets.add(laser)
+        
+        # ========== 31. 苍穹轨断·诺娃 - 电磁轨道弹 ==========
+        elif pid == "nova":
+            from utils.bullets.nova_bullets import RailgunBullet
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 检查是否蓄力（简化版，蓄力由射击间隔体现）
+            bullet = RailgunBullet(cx, cy, base_damage, owner=self, charged=False)
+            all_sprites.add(bullet)
+            bullets.add(bullet)
+        
+        # ========== 32. 天幕虹裂·光谱 - 7道彩虹光束 ==========
+        elif pid == "spectrum":
+            from utils.bullets.spectrum_bullets import RainbowBeam
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 7道并行彩虹光束
+            for i in range(7):
+                angle = -90 + (i - 3) * 8  # 扇形展开
+                beam = RainbowBeam(cx, cy, angle, base_damage, i, owner=self)
+                all_sprites.add(beam)
+                bullets.add(beam)
+        
+        # ========== 33. 幽影穿心·冥弦 - 标记弹 ==========
+        elif pid == "darkstring":
+            from utils.bullets.darkstring_bullets import MarkShot
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 发射标记弹
+            shot = MarkShot(cx, cy, base_damage, owner=self)
+            all_sprites.add(shot)
+            bullets.add(shot)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -12046,6 +12112,31 @@ class Player(pygame.sprite.Sprite):
             elif pid == "origami":
                 # 【纸鹤群】召唤7只AI纸鹤无人机协同作战
                 OrigamiCraneSwarm(self)
+            
+            elif pid == "helios":
+                # 【流星群】召唤7颗陨石覆盖全场
+                from utils.bullets.helios_bullets import MeteorShower
+                MeteorShower(self)
+            
+            elif pid == "frostflare":
+                # 【零度射线】发射跟踪冻结射线
+                from utils.bullets.frostflare_bullets import ZeroDegreeRay
+                ZeroDegreeRay(self)
+            
+            elif pid == "nova":
+                # 【充能击穿】发射3发超级轨道弹
+                from utils.bullets.nova_bullets import ChargePierceUlt
+                ChargePierceUlt(self)
+            
+            elif pid == "spectrum":
+                # 【光谱叠加】全屏横扫彩虹弹幕
+                from utils.bullets.spectrum_bullets import SpectrumStackUlt
+                SpectrumStackUlt(self)
+            
+            elif pid == "darkstring":
+                # 【绝杀狙击】处决所有被标记的敌人
+                from utils.bullets.darkstring_bullets import DeathSniperUlt
+                DeathSniperUlt(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -13191,6 +13282,68 @@ class Player(pygame.sprite.Sprite):
                 # 【千羽护盾】召唤1000根羽毛形成切割墙
                 OrigamiFeatherShield(self)
             
+            elif pid == "helios":
+                # 【日冕风暴】在自身周围生成多个燃烧区
+                from utils.bullets.helios_bullets import BurnZone
+                for i in range(5):
+                    offset_x = random.randint(-100, 100)
+                    offset_y = random.randint(-80, 80)
+                    zone = BurnZone(
+                        self.rect.centerx + offset_x,
+                        self.rect.centery + offset_y,
+                        self.damage * 2,
+                        duration=180
+                    )
+                    bullets.add(zone)
+                    all_sprites.add(zone)
+            
+            elif pid == "frostflare":
+                # 【极寒护盾】瞬间冻结周围敌人
+                for enemy in mobs:
+                    if hasattr(enemy, 'rect'):
+                        dist = math.sqrt((enemy.rect.centerx - self.rect.centerx)**2 + 
+                                        (enemy.rect.centery - self.rect.centery)**2)
+                        if dist < 200:
+                            enemy.frozen_timer = getattr(enemy, 'frozen_timer', 0) + 180  # 3秒冻结
+                            for _ in range(5):
+                                Particle(enemy.rect.center, (150, 200, 255), mode='spark')
+            
+            elif pid == "nova":
+                # 【电磁脉冲】释放EMP波清弹并眩晕敌人
+                enemy_bullets.empty()
+                for enemy in mobs:
+                    if hasattr(enemy, 'rect'):
+                        enemy.stun_timer = getattr(enemy, 'stun_timer', 0) + 120
+                        Particle(enemy.rect.center, (200, 200, 255), mode='shockwave')
+                Particle(self.rect.center, (150, 180, 255), mode='shockwave')
+            
+            elif pid == "spectrum":
+                # 【光谱增幅】临时增加攻击力，释放彩虹冲击波
+                self.spectrum_amp_timer = getattr(self, 'spectrum_amp_timer', 0) + 300  # 5秒增幅
+                self.spectrum_amp_mult = 1.5
+                rainbow_colors = [(255, 0, 0), (255, 127, 0), (255, 255, 0), (0, 255, 0), (0, 0, 255), (75, 0, 130), (148, 0, 211)]
+                # 更多视觉效果
+                for i in range(7):
+                    for j in range(3):
+                        Particle(self.rect.center, rainbow_colors[i], mode='spark')
+                # 释放一圈彩虹子弹
+                from utils.bullets.spectrum_bullets import RainbowBeam
+                for i in range(14):
+                    angle = i * (360 / 14) - 90
+                    beam = RainbowBeam(self.rect.centerx, self.rect.centery, angle, self.damage * 1.5, i % 7, owner=self)
+                    all_sprites.add(beam)
+                    bullets.add(beam)
+            
+            elif pid == "darkstring":
+                # 【死亡标记】标记所有可见敌人
+                from utils.bullets.darkstring_bullets import DeathMark
+                for enemy in mobs:
+                    if hasattr(enemy, 'rect') and not getattr(enemy, 'death_mark', False):
+                        enemy.death_mark = True
+                        enemy.death_mark_timer = 300  # 5秒标记
+                        mark = DeathMark(enemy)
+                        all_sprites.add(mark)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -13238,7 +13391,12 @@ class Player(pygame.sprite.Sprite):
                 "truth": "绝对审判",
                 "asura": "斩龙绝杀",
                 "dragoon": "龙魂冲锋",
-                "origami": "千羽护盾"
+                "origami": "千羽护盾",
+                "helios": "太阳坠落",
+                "frostflare": "绝对零度",
+                "nova": "轨道炮击",
+                "spectrum": "虹光终焉",
+                "darkstring": "命运终结"
             }
             
             pid = self.plane_id
@@ -13359,6 +13517,35 @@ class Player(pygame.sprite.Sprite):
             elif pid == "dragoon":
                 # 【龙魂冲锋】化身巨龙进行贯穿冲锋
                 DragoonDragonCharge(self)
+            
+            elif pid == "origami":
+                # 【千羽护盾】召唤纸鹤护盾反弹子弹
+                OrigamiFeatherShield(self)
+            
+            elif pid == "helios":
+                # 【太阳坠落】召唤巨型陨石从天而降
+                from utils.bullets.helios_bullets import SunFall
+                SunFall(self)
+            
+            elif pid == "frostflare":
+                # 【绝对零度】全屏冻结所有敌人
+                from utils.bullets.frostflare_bullets import AbsoluteZero
+                AbsoluteZero(self)
+            
+            elif pid == "nova":
+                # 【轨道炮击】召唤卫星轨道炮轰炸
+                from utils.bullets.nova_bullets import OrbitalStrike
+                OrbitalStrike(self)
+            
+            elif pid == "spectrum":
+                # 【虹光终焉】释放全屏彩虹爆发
+                from utils.bullets.spectrum_bullets import RainbowApocalypse
+                RainbowApocalypse(self)
+            
+            elif pid == "darkstring":
+                # 【命运终结】所有标记敌人立即死亡
+                from utils.bullets.darkstring_bullets import FateEnder
+                FateEnder(self)
             
             else:
                 # 通用：全屏伤害
