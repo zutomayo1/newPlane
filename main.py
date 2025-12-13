@@ -2880,6 +2880,8 @@ def handle_plane_customization_click(mx, my):
     """处理机体涂装点击事件"""
     global customization_selected_plane, customization_msg, customization_msg_timer, game_state
     
+    print(f"[DEBUG] handle_plane_customization_click called: mx={mx}, my={my}, tab={customization_tab}, plane={customization_selected_plane}")
+    
     # 返回按钮
     back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 80, 120, 50)
     if back_btn.collidepoint(mx, my):
@@ -2903,7 +2905,7 @@ def handle_plane_customization_click(mx, my):
     
     # 涂装按钮点击
     if customization_selected_plane:
-        categories = [None, "common", "rare", "epic", "legendary", "exclusive"]
+        categories = [None, "common", "rare", "epic", "legendary", "exclusive", "bullet"]
         filtered_themes = []
         
         if customization_tab == 6:  # 子弹标签
@@ -2925,11 +2927,13 @@ def handle_plane_customization_click(mx, my):
                         filtered_themes.append((tid, theme, False))
         
         theme_y_start = 180
+        theme_list_area = pygame.Rect(330, 100, 600, HEIGHT - 180)
+        list_view_rect = pygame.Rect(theme_list_area.x, theme_y_start, theme_list_area.width, theme_list_area.height - (theme_y_start - theme_list_area.y))
         
         for i, (theme_id, theme, is_bullet) in enumerate(filtered_themes):
             card_rect = pygame.Rect(350, theme_y_start + i * 100 - customization_scroll_y, 560, 90)
             
-            if card_rect.bottom < 100 or card_rect.top > HEIGHT - 80:
+            if card_rect.bottom < list_view_rect.top or card_rect.top > list_view_rect.bottom:
                 continue
             
             # 根据涂装类型检查解锁状态
@@ -2942,7 +2946,10 @@ def handle_plane_customization_click(mx, my):
             btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
             
             if btn_rect.collidepoint(mx, my):
+                print(f"[DEBUG] 点击涂装按钮: theme_id={theme_id}, plane={customization_selected_plane}")
+                print(f"[DEBUG] is_bullet={is_bullet}, is_unlocked={is_unlocked}")
                 exclusive_plane = theme.get("exclusive_plane")
+                print(f"[DEBUG] exclusive_plane={exclusive_plane}")
                 if exclusive_plane and exclusive_plane != customization_selected_plane:
                     customization_msg = f"该涂装仅限 {PLANES[exclusive_plane]['name']} 使用"
                     customization_msg_timer = 120
@@ -2950,7 +2957,9 @@ def handle_plane_customization_click(mx, my):
                     continue
 
                 if is_unlocked:
-                    success, msg = customization_manager.equip_theme(customization_selected_plane, theme_id)
+                    print(f"[DEBUG] 调用 equip_theme: plane={customization_selected_plane}, theme={theme_id}, is_bullet={is_bullet}")
+                    success, msg = customization_manager.equip_theme(customization_selected_plane, theme_id, bullet=is_bullet)
+                    print(f"[DEBUG] equip_theme 返回: success={success}, msg={msg}")
                     customization_msg = msg
                     customization_msg_timer = 120
                     sound_mgr.play("powerup" if success else "warning")
@@ -3276,6 +3285,13 @@ def draw_plane_customization_ui():
             else:
                 is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
             is_equipped = customization_manager.get_equipped_theme(customization_selected_plane, bullet=is_bullet) == theme_id
+            
+            # 调试：每隔一段时间打印一次装备状态
+            if theme_id == "crystalfall_void":
+                current_equipped = customization_manager.get_equipped_theme(customization_selected_plane, bullet=is_bullet)
+                if pygame.time.get_ticks() % 3000 < 50:  # 每3秒打印一次
+                    print(f"[DEBUG-UI] crystalfall_void: current_equipped={current_equipped}, is_equipped={is_equipped}")
+            
             h = card_rect.collidepoint(mx, my)
             
             # 背景颜色

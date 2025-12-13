@@ -10627,10 +10627,25 @@ class CustomizationManager:
         
         return False, "涂装不存在"
     
-    def equip_theme(self, plane_id, theme_id):
-        """为飞机装备涂装（自动区分机体涂装和子弹涂装）"""
+    def equip_theme(self, plane_id, theme_id, bullet=None):
+        """为飞机装备涂装
+        
+        Args:
+            plane_id: 飞机ID
+            theme_id: 涂装ID
+            bullet: 是否为子弹涂装。如果为None则自动判断（优先机体涂装）
+        """
         # 判断是机体涂装还是子弹涂装
-        is_bullet = theme_id in BULLET_THEMES
+        if bullet is None:
+            # 优先检查是否为机体涂装，避免命名冲突时错误识别
+            if theme_id in PAINT_THEMES:
+                is_bullet = False
+            elif theme_id in BULLET_THEMES:
+                is_bullet = True
+            else:
+                return False, "涂装不存在"
+        else:
+            is_bullet = bullet
         
         # 根据涂装类型检查解锁状态
         if is_bullet:
