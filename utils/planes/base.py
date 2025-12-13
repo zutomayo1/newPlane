@@ -356,6 +356,13 @@ def _generate_plane_surf(pid, visual=None, static=False):
             if result:
                 return result
         
+        # 尝试 Turu 专属涂装（巨石核拳·图鲁）
+        from .skins_turu import render_turu_skin, is_turu_style
+        if is_turu_style(model_style):
+            result = render_turu_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -469,6 +476,11 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid == "cthulhu":
         from .skins_cthulhu import _render_cthulhu_base
         _render_cthulhu_base(s, t, pulse)
+    
+    # 巨石核拳 - Turu
+    elif pid == "turu":
+        from .skins_turu import _render_turu_base
+        _render_turu_base(s, t, pulse)
     
     else:
         # 默认占位图形

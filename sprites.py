@@ -12426,6 +12426,56 @@ class Player(pygame.sprite.Sprite):
                 all_sprites.add(eye)
                 bullets.add(eye)
         
+        # ========== 40. 巨石核拳·图鲁 - 岩核飞拳+穿透+AOE ==========
+        elif pid == "turu":
+            from utils.bullets.turu_bullets import RockFist
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 初始化巨石充能系统
+            if not hasattr(self, 'rock_charge'):
+                self.rock_charge = 0
+            if not hasattr(self, 'armor_mode'):
+                self.armor_mode = True  # True=有甲, False=卸甲状态
+            if not hasattr(self, 'unarmor_timer'):
+                self.unarmor_timer = 0
+            if not hasattr(self, 'base_speed'):
+                self.base_speed = self.speed
+            if not hasattr(self, 'base_damage'):
+                self.base_damage_turu = self.damage
+            
+            # 卸甲状态更新
+            if not self.armor_mode:
+                self.unarmor_timer -= 1
+                if self.unarmor_timer <= 0:
+                    # 恢复有甲状态
+                    self.armor_mode = True
+                    self.speed = self.base_speed
+                    self.damage = self.base_damage_turu
+                    # 提示
+                    if hasattr(self, 'rect'):
+                        from sprites import FloatingText
+                        FloatingText(self.rect.centerx, self.rect.top - 30, "🛡️ 护甲恢复", (120, 115, 110))
+            
+            # 巨石充能满4格时自动触发卸甲强化
+            if self.rock_charge >= 4 and self.armor_mode:
+                self.armor_mode = False
+                self.unarmor_timer = 300  # 5秒卸甲状态（60fps * 5）
+                self.rock_charge = 0  # 消耗充能
+                # 卸甲强化效果：速度+50%，伤害+80%
+                self.speed = self.base_speed * 1.5
+                self.damage = int(self.base_damage_turu * 1.8)
+                # 提示
+                if hasattr(self, 'rect'):
+                    from sprites import FloatingText
+                    FloatingText(self.rect.centerx, self.rect.top - 30, "⚡ 卸甲强化!", (255, 120, 40))
+            
+            # 发射岩核飞拳（卸甲状态伤害已提升）
+            fist = RockFist(cx, cy, self.damage, owner=self, bullet_theme=self.bullet_theme)
+            all_sprites.add(fist)
+            bullets.add(fist)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -12747,6 +12797,11 @@ class Player(pygame.sprite.Sprite):
                 # 【月蚀降临】三段大招：月虹解放→星骸召唤→月蚀降临
                 from utils.bullets.cthulhu_bullets import EclipseDescent
                 EclipseDescent(self)
+            
+            elif pid == "turu":
+                # 【岩拳暴雨】2秒内连射6枚巨型岩核拳
+                from utils.bullets.turu_bullets import RockFistBarrage
+                RockFistBarrage(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -13767,7 +13822,8 @@ class Player(pygame.sprite.Sprite):
                 "omega": "元素轮转",
                 "genesis": "星辰陨落",
                 "truth": "阴阳逆转",
-                "cthulhu": "深渊触手"
+                "cthulhu": "深渊触手",
+                "turu": "巨石护盾"
             }
             
             pid = self.plane_id
@@ -13960,6 +14016,11 @@ class Player(pygame.sprite.Sprite):
                 from utils.bullets.cthulhu_bullets import AbyssalTentacles
                 AbyssalTentacles(self)
             
+            elif pid == "turu":
+                # 【巨石护盾】展开环形岩壁抵挡弹幕
+                from utils.bullets.turu_bullets import RockShield
+                RockShield(self)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -14013,7 +14074,8 @@ class Player(pygame.sprite.Sprite):
                 "nova": "轨道炮击",
                 "spectrum": "虹光终焉",
                 "darkstring": "命运终结",
-                "cthulhu": "疯狂领域"
+                "cthulhu": "疯狂领域",
+                "turu": "图鲁跃砸"
             }
             
             pid = self.plane_id
@@ -14168,6 +14230,11 @@ class Player(pygame.sprite.Sprite):
                 # 【疯狂领域】释放精神污染波动，敌人SAN值归零后混乱
                 from utils.bullets.cthulhu_bullets import MadnessAura
                 MadnessAura(self)
+            
+            elif pid == "turu":
+                # 【图鲁跃砸】远程定位跳跃砸地，震荡波击飞+减速
+                from utils.bullets.turu_bullets import TuruLeapSlam
+                TuruLeapSlam(self)
             
             else:
                 # 通用：全屏伤害

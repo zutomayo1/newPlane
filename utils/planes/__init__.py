@@ -43,8 +43,9 @@
 - skins_spectrum.py: Spectrum专属涂装 (12种) [远程狙击机体]
 - skins_darkstring.py: Darkstring专属涂装 (12种) [远程狙击机体]
 - skins_cthulhu.py: Cthulhu专属涂装 (12种) [月蚀星骸·克苏鲁]
+- skins_turu.py: Turu专属涂装 (12种) [巨石核拳·图鲁]
 
-所有机体涂装拆分完成！共计 339 种涂装。
+所有机体涂装拆分完成！共计 351 种涂装。
 """
 
 from .base import get_plane_surf, clear_plane_cache
@@ -88,6 +89,7 @@ from .skins_nova import render_nova_skin, is_nova_style, NOVA_STYLES
 from .skins_spectrum import render_spectrum_skin, is_spectrum_style, SPECTRUM_STYLES
 from .skins_darkstring import render_darkstring_skin, is_darkstring_style, DARKSTRING_STYLES
 from .skins_cthulhu import render_cthulhu_skin, is_cthulhu_style, CTHULHU_STYLES
+from .skins_turu import render_turu_skin, is_turu_style, TURU_STYLES
 
 __all__ = [
     'get_plane_surf', 'clear_plane_cache',
@@ -126,5 +128,6 @@ __all__ = [
     'render_nova_skin', 'is_nova_style', 'NOVA_STYLES',
     'render_spectrum_skin', 'is_spectrum_style', 'SPECTRUM_STYLES',
     'render_darkstring_skin', 'is_darkstring_style', 'DARKSTRING_STYLES',
-    'render_cthulhu_skin', 'is_cthulhu_style', 'CTHULHU_STYLES'
+    'render_cthulhu_skin', 'is_cthulhu_style', 'CTHULHU_STYLES',
+    'render_turu_skin', 'is_turu_style', 'TURU_STYLES'
 ]
