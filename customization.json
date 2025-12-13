@@ -462,14 +462,26 @@
     "sporeveil_ember": true,
     "sporeveil_void": true,
     "sporeveil_crystal": true,
-    "sporeveil_rainbow": true
+    "sporeveil_rainbow": true,
+    "cthulhu_default": true,
+    "cthulhu_abyss": true,
+    "cthulhu_bloodmoon": true,
+    "cthulhu_void": true,
+    "cthulhu_starfall": true,
+    "cthulhu_cosmos": true,
+    "cthulhu_nightmare": true,
+    "cthulhu_aurora": true,
+    "cthulhu_eldritch": true,
+    "cthulhu_eclipse": true,
+    "cthulhu_dreamland": true,
+    "cthulhu_primordial": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
     "phantom": "phantom_ex5",
     "crimson": "crimson_ex5",
     "titan": "titan_ex5",
-    "striker": "striker_ex4",
+    "striker": "striker_ex",
     "thunderbird": "thunderbird_ex",
     "viper": "epic_frost",
     "specter": "specter_ex2",
@@ -495,14 +507,15 @@
     "origami": "origami_phoenix_crane",
     "helios": "helios_red_giant",
     "frostflare": "frostflare_default",
-    "spectrum": "spectrum_chaos_spectrum",
+    "spectrum": "spectrum_deep_ocean",
     "darkstring": "darkstring_blood_moon",
     "nova": "nova_magnetic_north",
     "thornvine": "thornvine_spectral",
     "starblade": "starblade_golden",
     "acidswamp": "acidswamp_venom",
     "crystalfall": "crystalfall_default",
-    "sporeveil": "sporeveil_rainbow"
+    "sporeveil": "sporeveil_rainbow",
+    "cthulhu": "cthulhu_void"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -788,7 +801,19 @@
     "sporeveil_toxic": true,
     "sporeveil_biolume": true,
     "sporeveil_ember": true,
-    "sporeveil_void": true
+    "sporeveil_void": true,
+    "cthulhu_moon_laser": true,
+    "cthulhu_moon_eye": true,
+    "cthulhu_eldritch_horror": true,
+    "cthulhu_blood_tentacle": true,
+    "cthulhu_madness_orb": true,
+    "cthulhu_abyssal_maw": true,
+    "cthulhu_nightmare_shard": true,
+    "cthulhu_cosmic_worm": true,
+    "cthulhu_ritual_sigil": true,
+    "cthulhu_deep_one_spawn": true,
+    "cthulhu_shoggoth_blob": true,
+    "cthulhu_yog_bubble": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -827,7 +852,8 @@
     "starblade": "starblade_blood",
     "acidswamp": "acidswamp_nuclear",
     "crystalfall": "crystalfall_void",
-    "sporeveil": "sporeveil_biolume"
+    "sporeveil": "sporeveil_biolume",
+    "cthulhu": "cthulhu_cosmic_worm"
   },
   "equipped_wingman_themes": {
     "slot_0": "striker_holy",

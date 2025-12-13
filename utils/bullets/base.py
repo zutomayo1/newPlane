@@ -41,6 +41,7 @@ from .starblade_bullets import render_starblade_bullet
 from .acidswamp_bullets import render_acidswamp_bullet
 from .crystalfall_bullets import render_crystalfall_bullet
 from .sporeveil_bullets import render_sporeveil_bullet
+from .cthulhu_bullets import render_cthulhu_bullet  # 月蚀星骸·克苏鲁
 
 
 # 渲染函数列表，按优先级顺序排列（终极机体优先）
@@ -78,6 +79,7 @@ BULLET_RENDERERS = [
     render_acidswamp_bullet,   # 酸蚀喷溅·腐沼
     render_crystalfall_bullet, # 晶簇射流·晶瀑
     render_sporeveil_bullet,   # 孢子幕炮·菌幕
+    render_cthulhu_bullet,     # [终极机体] 月蚀星骸·克苏鲁
 ]
 
 

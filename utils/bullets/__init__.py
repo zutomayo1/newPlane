@@ -36,6 +36,7 @@
 - acidswamp_bullets.py: Acidswamp子弹涂装 [酸蚀喷溅]
 - crystalfall_bullets.py: Crystalfall子弹涂装 [晶簇射流]
 - sporeveil_bullets.py: Sporeveil子弹涂装 [孢子幕炮]
+- cthulhu_bullets.py: Cthulhu子弹涂装 [月蚀星骸·克苏鲁]
 """
 
 from .base import draw_bullet_preview
@@ -47,10 +48,11 @@ from .starblade_bullets import render_starblade_bullet
 from .acidswamp_bullets import render_acidswamp_bullet
 from .crystalfall_bullets import render_crystalfall_bullet
 from .sporeveil_bullets import render_sporeveil_bullet
+from .cthulhu_bullets import render_cthulhu_bullet, CTHULHU_BULLET_THEMES
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
            'OrigamiBlade', 'OrigamiCrane', 'FeatherWall', 'CraneBullet',
            'render_thornvine_bullet', 'render_starblade_bullet',
            'render_acidswamp_bullet', 'render_crystalfall_bullet',
-           'render_sporeveil_bullet']
+           'render_sporeveil_bullet', 'render_cthulhu_bullet', 'CTHULHU_BULLET_THEMES']

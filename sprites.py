@@ -8718,6 +8718,178 @@ class Bullet(pygame.sprite.Sprite):
             pygame.draw.circle(self.image, (255, 215, 0), (center, center), size//8)
             pygame.draw.circle(self.image, (20, 20, 30), (center, center), size//16)
             self.speed = -16
+        
+        # ========== Cthulhu 克苏鲁专属子弹形状 ==========
+        elif "moon_laser" in effects:
+            # 月虹激光
+            self.image = pygame.Surface((size, size*2), pygame.SRCALPHA)
+            cx = size // 2
+            # 激光核心
+            pygame.draw.rect(self.image, (100, 150, 220), (cx - 3, 0, 6, size*2))
+            pygame.draw.rect(self.image, (255, 255, 255), (cx - 1, 0, 2, size*2))
+            # 边缘
+            pygame.draw.line(self.image, (160, 100, 200), (cx - 4, 0), (cx - 4, size*2), 1)
+            pygame.draw.line(self.image, (160, 100, 200), (cx + 4, 0), (cx + 4, size*2), 1)
+            self.speed = -16
+            
+        elif "moon_eye" in effects:
+            # 月能眼珠
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 眼白
+            pygame.draw.ellipse(self.image, (220, 210, 200), (center - size//2, center - size//4, size, size//2))
+            # 虹膜
+            pygame.draw.circle(self.image, (80, 150, 130), (center, center), size//4)
+            # 瞳孔
+            pygame.draw.ellipse(self.image, (10, 15, 10), (center - 2, center - size//6, 4, size//3))
+            # 高光
+            pygame.draw.circle(self.image, (255, 255, 255), (center - size//8, center - size//10), 2)
+            self.speed = -14
+            
+        elif "eldritch_horror" in effects:
+            # 远古恐惧 - 非欧几何
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 不规则多边形
+            points = []
+            for i in range(7):
+                angle = (i * 360 / 7) * math.pi / 180
+                r = size // 2 + (i % 2) * size // 6
+                px = center + int(r * math.cos(angle))
+                py = center + int(r * math.sin(angle))
+                points.append((px, py))
+            pygame.draw.polygon(self.image, (60, 50, 70), points)
+            pygame.draw.polygon(self.image, (160, 100, 200), points, 1)
+            # 眼睛
+            pygame.draw.circle(self.image, (200, 200, 180), (center, center), 3)
+            pygame.draw.circle(self.image, (10, 10, 10), (center, center), 1)
+            self.speed = -13
+            
+        elif "blood_tentacle" in effects:
+            # 血肉触手
+            self.image = pygame.Surface((size, size*2), pygame.SRCALPHA)
+            cx = size // 2
+            # 主体
+            pygame.draw.line(self.image, (150, 60, 80), (cx, 0), (cx, size*2), 6)
+            pygame.draw.line(self.image, (200, 100, 120), (cx, 0), (cx, size*2), 2)
+            # 吸盘
+            for i in range(3):
+                y = size // 2 + i * size // 2
+                pygame.draw.circle(self.image, (100, 40, 60), (cx + 4, y), 3)
+            self.speed = -12
+            
+        elif "madness_orb" in effects:
+            # 疯狂之眸
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 光晕
+            pygame.draw.circle(self.image, (180, 100, 200, 80), (center, center), size//2)
+            # 核心
+            pygame.draw.circle(self.image, (200, 180, 220), (center, center), size//3)
+            pygame.draw.circle(self.image, (160, 80, 200), (center, center), size//4)
+            # 眼
+            pygame.draw.circle(self.image, (10, 10, 15), (center, center), 2)
+            self.speed = -14
+            
+        elif "abyssal_maw" in effects:
+            # 深渊巨口
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 嘴巴
+            pygame.draw.ellipse(self.image, (30, 20, 40), (center - size//2, center - size//3, size, size*2//3))
+            # 牙齿
+            for i in [-3, 0, 3]:
+                pygame.draw.polygon(self.image, (220, 220, 200),
+                                   [(center + i - 2, center - size//3),
+                                    (center + i + 2, center - size//3),
+                                    (center + i, center)])
+            self.speed = -11
+            
+        elif "nightmare_shard" in effects:
+            # 噩梦碎片
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 五角碎片
+            points = []
+            for i in range(5):
+                angle = (i * 72 - 90) * math.pi / 180
+                r = size // 2 if i % 2 == 0 else size // 4
+                px = center + int(r * math.cos(angle))
+                py = center + int(r * math.sin(angle))
+                points.append((px, py))
+            pygame.draw.polygon(self.image, (40, 20, 50), points)
+            pygame.draw.polygon(self.image, (180, 100, 200), points, 1)
+            self.speed = -15
+            
+        elif "cosmic_worm" in effects:
+            # 宇宙蠕虫
+            self.image = pygame.Surface((size, size*3), pygame.SRCALPHA)
+            cx = size // 2
+            # 虫体
+            for i in range(8):
+                y = i * size // 3
+                thickness = max(2, 5 - i // 2)
+                pygame.draw.circle(self.image, (160 - i*10, 120 - i*8, 140 - i*8), (cx, y), thickness)
+            self.speed = -13
+            
+        elif "ritual_sigil" in effects:
+            # 仪式符文
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 外环
+            pygame.draw.circle(self.image, (180, 140, 80), (center, center), size//2, 1)
+            # 五芒星
+            star_points = []
+            for i in [0, 2, 4, 1, 3]:
+                angle = (i * 72 - 90) * math.pi / 180
+                px = center + int(size//2 * 0.8 * math.cos(angle))
+                py = center + int(size//2 * 0.8 * math.sin(angle))
+                star_points.append((px, py))
+            pygame.draw.lines(self.image, (200, 160, 100), True, star_points, 1)
+            self.speed = -14
+            
+        elif "deep_one_spawn" in effects:
+            # 深潜者幼体
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 卵囊
+            pygame.draw.ellipse(self.image, (60, 120, 100, 180), (center - size//3, center - size//2, size*2//3, size))
+            pygame.draw.ellipse(self.image, (40, 80, 60), (center - size//3, center - size//2, size*2//3, size), 1)
+            # 胚胎
+            pygame.draw.circle(self.image, (80, 150, 130), (center, center), 3)
+            self.speed = -12
+            
+        elif "shoggoth_blob" in effects:
+            # 修格斯残块
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 不定形
+            points = []
+            for i in range(10):
+                angle = (i * 36) * math.pi / 180
+                r = size // 2 + random.randint(-3, 3)
+                px = center + int(r * math.cos(angle))
+                py = center + int(r * math.sin(angle))
+                points.append((px, py))
+            pygame.draw.polygon(self.image, (30, 35, 30), points)
+            # 眼睛
+            for _ in range(3):
+                ex = center + random.randint(-5, 5)
+                ey = center + random.randint(-5, 5)
+                pygame.draw.circle(self.image, (180, 180, 160), (ex, ey), 2)
+            self.speed = -10
+            
+        elif "yog_bubble" in effects:
+            # 犹格泡沫
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            # 泡沫层
+            for i in range(3):
+                pygame.draw.circle(self.image, (200, 200, 220, 150 - i*40), (center, center), size//2 - i*3, 1)
+            # 核心
+            pygame.draw.circle(self.image, (200, 200, 220), (center, center), size//4)
+            pygame.draw.circle(self.image, (100, 120, 150), (center, center), size//6)
+            self.speed = -13
             
         else:
             # 默认子弹
@@ -9524,6 +9696,303 @@ class Bullet(pygame.sprite.Sprite):
                     pygame.draw.circle(new_image, (*secondary[:3], 120), (rx, ry), 2)
             
             new_image.blit(self._base_image, (7, 7))
+            self._update_bullet_image(new_image)
+        
+        # ========== Cthulhu 克苏鲁专属子弹效果 ==========
+        elif "moon_laser" in effects:
+            # 月虹激光 - 蓝紫色贯穿光束
+            pulse = 0.8 + 0.2 * abs(math.sin(t * 3))
+            new_image = pygame.Surface((base_w + 12, base_h + 20), pygame.SRCALPHA)
+            cx, cy = (base_w + 12) // 2, (base_h + 20) // 2
+            
+            # 多层光晕
+            for i in range(4):
+                layer_alpha = int(150 * pulse * (1 - i * 0.2))
+                layer_w = 6 + i * 3
+                pygame.draw.rect(new_image, (100, 150, 220, layer_alpha),
+                               (cx - layer_w // 2, 0, layer_w, base_h + 16))
+            
+            # 月虹边缘
+            pygame.draw.line(new_image, (160, 100, 200, 180), (cx - 4, 0), (cx - 4, base_h + 16), 2)
+            pygame.draw.line(new_image, (160, 100, 200, 180), (cx + 4, 0), (cx + 4, base_h + 16), 2)
+            
+            new_image.blit(self._base_image, (6, 0))
+            self._update_bullet_image(new_image)
+            
+        elif "moon_eye" in effects:
+            # 月能眼珠 - 诡异追踪眼球
+            blink = abs(math.sin(t * 2))
+            new_image = pygame.Surface((base_w + 16, base_h + 16), pygame.SRCALPHA)
+            cx, cy = (base_w + 16) // 2, (base_h + 16) // 2
+            
+            # 眼白
+            eye_h = int(8 * blink) if blink > 0.3 else 3
+            pygame.draw.ellipse(new_image, (220, 210, 200), (cx - 8, cy - eye_h // 2, 16, eye_h))
+            
+            # 虹膜（追踪动画）
+            if blink > 0.3:
+                look_x = int(math.sin(t) * 2)
+                pygame.draw.circle(new_image, (80, 150, 130), (cx + look_x, cy), 4)
+                # 竖瞳
+                pygame.draw.ellipse(new_image, (10, 15, 10), (cx + look_x - 1, cy - 3, 2, 6))
+            
+            # 血丝
+            for i in range(4):
+                angle = i * 90 + self.timer * 2
+                bx = cx + int(math.cos(math.radians(angle)) * 6)
+                by = cy + int(math.sin(math.radians(angle)) * 3)
+                pygame.draw.line(new_image, (180, 50, 50, 100), (cx, cy), (bx, by), 1)
+            
+            self._update_bullet_image(new_image)
+            
+        elif "eldritch_horror" in effects:
+            # 远古恐惧 - 非欧几何扭曲
+            warp = math.sin(t * 2)
+            new_image = pygame.Surface((base_w + 16, base_h + 16), pygame.SRCALPHA)
+            cx, cy = (base_w + 16) // 2, (base_h + 16) // 2
+            
+            # 扭曲的多边形
+            points = []
+            for i in range(7):
+                angle = i * (360 / 7) + self.timer * 3
+                r = 6 + int(warp * 3) + (i % 2) * 2
+                px = cx + int(math.cos(math.radians(angle)) * r)
+                py = cy + int(math.sin(math.radians(angle)) * r)
+                points.append((px, py))
+            pygame.draw.polygon(new_image, (60, 50, 70), points)
+            pygame.draw.polygon(new_image, (160, 100, 200), points, 1)
+            
+            # 小眼睛
+            for i in range(3):
+                ex = cx + int(math.cos(t + i * 2) * 3)
+                ey = cy + int(math.sin(t + i * 2) * 3)
+                pygame.draw.circle(new_image, (200, 200, 180), (ex, ey), 2)
+                pygame.draw.circle(new_image, (10, 10, 10), (ex, ey), 1)
+            
+            self._update_bullet_image(new_image)
+            
+        elif "blood_tentacle" in effects:
+            # 血肉触手 - 蠕动吸盘
+            wave = math.sin(t * 4)
+            new_image = pygame.Surface((base_w + 14, base_h + 20), pygame.SRCALPHA)
+            cx = (base_w + 14) // 2
+            
+            # 触手主体
+            points = []
+            for i in range(8):
+                y = i * 3
+                x_offset = int(wave * 3 * math.sin(i * 0.8))
+                points.append((cx + x_offset, y))
+            if len(points) >= 2:
+                pygame.draw.lines(new_image, (150, 60, 80), False, points, 6)
+                pygame.draw.lines(new_image, (200, 100, 120), False, points, 2)
+            
+            # 吸盘
+            for i in range(2, 7, 2):
+                sy = i * 3
+                sx = cx + int(wave * 3 * math.sin(i * 0.8))
+                pygame.draw.circle(new_image, (100, 40, 60), (sx + 4, sy), 3)
+                pygame.draw.circle(new_image, (60, 20, 30), (sx + 4, sy), 2)
+            
+            self._update_bullet_image(new_image)
+            
+        elif "madness_orb" in effects:
+            # 疯狂之眸 - SAN值归零球
+            pulse = 0.7 + 0.3 * abs(math.sin(t * 2.5))
+            color_shift = self.timer * 0.1
+            new_image = pygame.Surface((base_w + 16, base_h + 16), pygame.SRCALPHA)
+            cx, cy = (base_w + 16) // 2, (base_h + 16) // 2
+            
+            # 诡异颜色脉动
+            r = int(160 + math.sin(color_shift) * 40)
+            g = int(80 + math.cos(color_shift * 0.7) * 40)
+            b = int(200 + math.sin(color_shift * 1.3) * 30)
+            
+            # 光晕
+            for i in range(3):
+                glow_r = int(8 * pulse) - i * 2
+                if glow_r > 0:
+                    pygame.draw.circle(new_image, (r, g, b, 100 - i * 30), (cx, cy), glow_r)
+            
+            # 核心眼
+            pygame.draw.circle(new_image, (200, 180, 220), (cx, cy), 5)
+            pygame.draw.circle(new_image, (r, g, b), (cx, cy), 3)
+            pygame.draw.circle(new_image, (10, 10, 15), (cx, cy), 1)
+            
+            self._update_bullet_image(new_image)
+            
+        elif "abyssal_maw" in effects:
+            # 深渊巨口 - 獠牙利齿
+            chomp = abs(math.sin(t * 5)) * 0.5 + 0.5
+            new_image = pygame.Surface((base_w + 16, base_h + 16), pygame.SRCALPHA)
+            cx, cy = (base_w + 16) // 2, (base_h + 16) // 2
+            
+            # 嘴巴
+            mouth_h = int(10 * chomp)
+            pygame.draw.ellipse(new_image, (30, 20, 40), (cx - 8, cy - mouth_h // 2, 16, mouth_h))
+            
+            # 獠牙
+            if chomp > 0.4:
+                # 上牙
+                for i in [-4, 0, 4]:
+                    pygame.draw.polygon(new_image, (220, 220, 200),
+                                       [(cx + i - 2, cy - mouth_h // 2),
+                                        (cx + i + 2, cy - mouth_h // 2),
+                                        (cx + i, cy)])
+                # 下牙
+                for i in [-3, 3]:
+                    pygame.draw.polygon(new_image, (200, 200, 180),
+                                       [(cx + i - 1, cy + mouth_h // 2),
+                                        (cx + i + 1, cy + mouth_h // 2),
+                                        (cx + i, cy)])
+            
+            # 舌头
+            pygame.draw.ellipse(new_image, (150, 50, 80), (cx - 3, cy, 6, 4))
+            
+            self._update_bullet_image(new_image)
+            
+        elif "nightmare_shard" in effects:
+            # 噩梦碎片 - 恐惧结晶
+            spin = self.timer * 5
+            new_image = pygame.Surface((base_w + 14, base_h + 14), pygame.SRCALPHA)
+            cx, cy = (base_w + 14) // 2, (base_h + 14) // 2
+            
+            # 旋转碎片
+            points = []
+            for i in range(5):
+                angle = spin + i * 72
+                r = 7 if i % 2 == 0 else 4
+                px = cx + int(math.cos(math.radians(angle)) * r)
+                py = cy + int(math.sin(math.radians(angle)) * r)
+                points.append((px, py))
+            pygame.draw.polygon(new_image, (40, 20, 50), points)
+            pygame.draw.polygon(new_image, (180, 100, 200), points, 1)
+            
+            # 内部恐惧之眼
+            pygame.draw.circle(new_image, (100, 80, 120), (cx, cy), 2)
+            
+            self._update_bullet_image(new_image)
+            
+        elif "cosmic_worm" in effects:
+            # 宇宙蠕虫 - S形扭动
+            wave = math.sin(t * 4)
+            new_image = pygame.Surface((base_w + 12, base_h + 24), pygame.SRCALPHA)
+            cx = (base_w + 12) // 2
+            
+            # 虫体
+            segments = []
+            for i in range(10):
+                y = i * 2 + 2
+                x_offset = int(math.sin(t * 3 + i * 0.5) * 4)
+                segments.append((cx + x_offset, y))
+            
+            # 身体渐变
+            for i in range(len(segments) - 1):
+                thickness = max(2, 5 - i // 2)
+                prog = i / len(segments)
+                r = int(160 - prog * 60)
+                g = int(120 - prog * 40)
+                b = int(140 - prog * 40)
+                pygame.draw.line(new_image, (r, g, b), segments[i], segments[i + 1], thickness)
+            
+            # 头部
+            if len(segments) > 0:
+                pygame.draw.circle(new_image, (180, 140, 160), segments[0], 3)
+            
+            self._update_bullet_image(new_image)
+            
+        elif "ritual_sigil" in effects:
+            # 仪式符文 - 旋转召唤阵
+            spin = self.timer * 2
+            new_image = pygame.Surface((base_w + 16, base_h + 16), pygame.SRCALPHA)
+            cx, cy = (base_w + 16) // 2, (base_h + 16) // 2
+            
+            # 外环
+            pygame.draw.circle(new_image, (180, 140, 80), (cx, cy), 7, 1)
+            
+            # 五芒星
+            star_points = []
+            star_order = [0, 2, 4, 1, 3]
+            for i in star_order:
+                angle = spin + i * 72 - 90
+                px = cx + int(math.cos(math.radians(angle)) * 6)
+                py = cy + int(math.sin(math.radians(angle)) * 6)
+                star_points.append((px, py))
+            if len(star_points) >= 5:
+                pygame.draw.lines(new_image, (200, 160, 100), True, star_points, 1)
+            
+            # 中心符号
+            pygame.draw.circle(new_image, (220, 180, 120), (cx, cy), 2)
+            
+            self._update_bullet_image(new_image)
+            
+        elif "deep_one_spawn" in effects:
+            # 深潜者幼体 - 鱼人卵囊
+            pulse = 0.8 + 0.2 * abs(math.sin(t * 3))
+            new_image = pygame.Surface((base_w + 14, base_h + 14), pygame.SRCALPHA)
+            cx, cy = (base_w + 14) // 2, (base_h + 14) // 2
+            
+            # 卵囊外壳
+            pygame.draw.ellipse(new_image, (60, 120, 100, 180), (cx - 6, cy - 7, 12, 14))
+            pygame.draw.ellipse(new_image, (40, 80, 60), (cx - 6, cy - 7, 12, 14), 1)
+            
+            # 内部胚胎
+            embryo_y = cy + int(math.sin(t * 2) * 2)
+            pygame.draw.circle(new_image, (80, 150, 130), (cx, embryo_y), 3)
+            # 眼睛
+            pygame.draw.circle(new_image, (10, 10, 10), (cx - 1, embryo_y - 1), 1)
+            pygame.draw.circle(new_image, (10, 10, 10), (cx + 1, embryo_y - 1), 1)
+            
+            self._update_bullet_image(new_image)
+            
+        elif "shoggoth_blob" in effects:
+            # 修格斯残块 - 不定形变化
+            new_image = pygame.Surface((base_w + 18, base_h + 18), pygame.SRCALPHA)
+            cx, cy = (base_w + 18) // 2, (base_h + 18) // 2
+            
+            # 不定形主体
+            points = []
+            for i in range(12):
+                angle = i * 30 + self.timer * 2
+                r = 6 + int(math.sin(t * 3 + i) * 3)
+                px = cx + int(math.cos(math.radians(angle)) * r)
+                py = cy + int(math.sin(math.radians(angle)) * r)
+                points.append((px, py))
+            pygame.draw.polygon(new_image, (30, 35, 30), points)
+            pygame.draw.polygon(new_image, (50, 60, 50), points, 1)
+            
+            # 随机眼睛
+            for i in range(4):
+                ex = cx + int(math.cos(t + i * 1.5) * 4)
+                ey = cy + int(math.sin(t * 0.8 + i * 1.5) * 4)
+                pygame.draw.circle(new_image, (180, 180, 160), (ex, ey), 2)
+                pygame.draw.circle(new_image, (10, 10, 10), (ex, ey), 1)
+            
+            self._update_bullet_image(new_image)
+            
+        elif "yog_bubble" in effects:
+            # 犹格泡沫 - 时空气泡
+            pulse = 0.7 + 0.3 * abs(math.sin(t * 2))
+            new_image = pygame.Surface((base_w + 16, base_h + 16), pygame.SRCALPHA)
+            cx, cy = (base_w + 16) // 2, (base_h + 16) // 2
+            
+            # 多层泡沫
+            for i in range(3):
+                bubble_r = int((8 - i * 2) * pulse)
+                alpha = 150 - i * 40
+                pygame.draw.circle(new_image, (200, 200, 220, alpha), (cx, cy), bubble_r, 1)
+            
+            # 核心（全知之眼）
+            pygame.draw.circle(new_image, (200, 200, 220), (cx, cy), 4)
+            pygame.draw.circle(new_image, (100, 120, 150), (cx, cy), 2)
+            
+            # 无限符号
+            inf_phase = self.timer * 0.1
+            for j in range(8):
+                ix = cx + int(math.cos(inf_phase + j * 0.8) * 2)
+                iy = cy + int(math.sin((inf_phase + j * 0.8) * 2) * 1)
+                pygame.draw.circle(new_image, (255, 255, 255, 100), (ix, iy), 1)
+            
             self._update_bullet_image(new_image)
             
         # ========== 默认效果 ==========
@@ -10545,9 +11014,23 @@ class Player(pygame.sprite.Sprite):
         try:
             from customization import customization_manager, BULLET_THEMES
             equipped_bullet_id = customization_manager.get_equipped_theme(plane_id, bullet=True)
+            
+            # 如果没有装备涂装或装备的是默认涂装，尝试使用该机体的免费专属涂装
+            if not equipped_bullet_id or equipped_bullet_id == "default":
+                # 查找该机体的免费专属涂装
+                for theme_id, theme_data in BULLET_THEMES.items():
+                    if (theme_data.get('exclusive_plane') == plane_id and 
+                        theme_data.get('cost', 0) == 0 and
+                        theme_data.get('color')):  # 确保有颜色定义
+                        equipped_bullet_id = theme_id
+                        break
+            
             if equipped_bullet_id and equipped_bullet_id in BULLET_THEMES:
-                self.bullet_theme = BULLET_THEMES[equipped_bullet_id]
-                self.bullet_theme_id = equipped_bullet_id  # 保存ID用于自定义子弹类
+                theme = BULLET_THEMES[equipped_bullet_id]
+                # 确保涂装有有效的颜色
+                if theme.get('color'):
+                    self.bullet_theme = theme
+                    self.bullet_theme_id = equipped_bullet_id
         except:
             pass  # 如果导入失败或没有涂装，使用默认子弹
         
@@ -11918,6 +12401,31 @@ class Player(pygame.sprite.Sprite):
             all_sprites.add(shell)
             bullets.add(shell)
         
+        # ========== 39. 月蚀星骸·克苏鲁 - 月虹激光+月眼+蚀印 ==========
+        elif pid == "cthulhu":
+            from utils.bullets.cthulhu_bullets import MoonLaser, MoonEye
+            
+            base_damage = self.damage
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 初始化蚀印计数器
+            if not hasattr(self, 'eclipse_mark_counter'):
+                self.eclipse_mark_counter = 0
+            
+            # 主武器：月虹激光 - 贯穿全屏（传递子弹涂装）
+            laser = MoonLaser(cx, cy, base_damage, owner=self, bullet_theme=self.bullet_theme)
+            all_sprites.add(laser)
+            bullets.add(laser)
+            
+            # 每3发激光生成一个月眼
+            self.eclipse_mark_counter += 1
+            if self.eclipse_mark_counter >= 3:
+                self.eclipse_mark_counter = 0
+                # 月眼 - 追踪最近敌人（传递子弹涂装）
+                eye = MoonEye(cx, cy, base_damage * 0.6, owner=self, bullet_theme=self.bullet_theme)
+                all_sprites.add(eye)
+                bullets.add(eye)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -12234,6 +12742,11 @@ class Player(pygame.sprite.Sprite):
                 # 【孢子绽放】释放6个大型孢子云幕
                 from utils.bullets.sporeveil_bullets import SporeBloom
                 SporeBloom(self)
+            
+            elif pid == "cthulhu":
+                # 【月蚀降临】三段大招：月虹解放→星骸召唤→月蚀降临
+                from utils.bullets.cthulhu_bullets import EclipseDescent
+                EclipseDescent(self)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -13253,7 +13766,8 @@ class Player(pygame.sprite.Sprite):
                 "pandemic": "强制变异",
                 "omega": "元素轮转",
                 "genesis": "星辰陨落",
-                "truth": "阴阳逆转"
+                "truth": "阴阳逆转",
+                "cthulhu": "深渊触手"
             }
             
             pid = self.plane_id
@@ -13441,6 +13955,11 @@ class Player(pygame.sprite.Sprite):
                         mark = DeathMark(enemy)
                         all_sprites.add(mark)
             
+            elif pid == "cthulhu":
+                # 【深渊触手】从屏幕边缘伸出12条巨型触手抓取敌人
+                from utils.bullets.cthulhu_bullets import AbyssalTentacles
+                AbyssalTentacles(self)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -13493,7 +14012,8 @@ class Player(pygame.sprite.Sprite):
                 "frostflare": "绝对零度",
                 "nova": "轨道炮击",
                 "spectrum": "虹光终焉",
-                "darkstring": "命运终结"
+                "darkstring": "命运终结",
+                "cthulhu": "疯狂领域"
             }
             
             pid = self.plane_id
@@ -13643,6 +14163,11 @@ class Player(pygame.sprite.Sprite):
                 # 【命运终结】所有标记敌人立即死亡
                 from utils.bullets.darkstring_bullets import FateEnder
                 FateEnder(self)
+            
+            elif pid == "cthulhu":
+                # 【疯狂领域】释放精神污染波动，敌人SAN值归零后混乱
+                from utils.bullets.cthulhu_bullets import MadnessAura
+                MadnessAura(self)
             
             else:
                 # 通用：全屏伤害
