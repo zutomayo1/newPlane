@@ -52,7 +52,7 @@ STARADIA_BULLET_THEMES = {
         "particle": (190, 130, 210),
         "glow": (210, 160, 230),
     },
-    "aurora": {
+    "aurora_weaver": {
         # 极光圣辉 - 青绿紫
         "rainbow": (100, 255, 220),
         "gold": (100, 255, 150),
@@ -61,14 +61,14 @@ STARADIA_BULLET_THEMES = {
         "particle": (100, 200, 255),
         "glow": (150, 255, 220),
     },
-    "celestial": {
-        # 天界使者 - 星辰银蓝
-        "rainbow": (220, 230, 255),
-        "gold": (100, 150, 255),
-        "beam": (180, 200, 255),
-        "trail": (200, 210, 255),
-        "particle": (230, 240, 255),
-        "glow": (200, 220, 255),
+    "sakura": {
+        # 樱花仙子 - 粉色樱花
+        "rainbow": (255, 183, 197),
+        "gold": (255, 130, 160),
+        "beam": (255, 200, 210),
+        "trail": (255, 170, 190),
+        "particle": (255, 220, 230),
+        "glow": (255, 190, 200),
     },
     "dawn": {
         # 黎明曙光 - 橙粉金
@@ -161,7 +161,7 @@ STARADIA_BULLET_THEMES = {
         "particle": (190, 130, 210),
         "glow": (210, 160, 230),
     },
-    "aurora_wave": {
+    "aurora_weaver_wave": {
         # 极光波纹 - 青绿紫
         "rainbow": (100, 255, 220),
         "gold": (100, 255, 150),
@@ -170,14 +170,14 @@ STARADIA_BULLET_THEMES = {
         "particle": (100, 200, 255),
         "glow": (150, 255, 220),
     },
-    "celestial_arrow": {
-        # 天界箭矢 - 星辰银蓝
-        "rainbow": (220, 230, 255),
-        "gold": (100, 150, 255),
-        "beam": (180, 200, 255),
-        "trail": (200, 210, 255),
-        "particle": (230, 240, 255),
-        "glow": (200, 220, 255),
+    "sakura_petal": {
+        # 樱花花瓣 - 粉色樱花
+        "rainbow": (255, 183, 197),
+        "gold": (255, 130, 160),
+        "beam": (255, 200, 210),
+        "trail": (255, 170, 190),
+        "particle": (255, 220, 230),
+        "glow": (255, 190, 200),
     },
     "dawn_ray": {
         # 黎明光线 - 橙粉金

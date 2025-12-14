@@ -491,8 +491,7 @@
     "staradia_empress": true,
     "staradia_prismatic": true,
     "staradia_twilight": true,
-    "staradia_aurora": true,
-    "staradia_celestial": true,
+    "staradia_aurora_weaver": true,
     "staradia_dawn": true,
     "staradia_moonlight": true,
     "staradia_rainbow_fury": true,
@@ -510,7 +509,8 @@
     "duke_blood_moon": true,
     "duke_tropical": true,
     "duke_frost": true,
-    "duke_golden": true
+    "duke_golden": true,
+    "staradia_sakura": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -521,7 +521,7 @@
     "thunderbird": "thunderbird_ex",
     "viper": "epic_frost",
     "specter": "specter_ex2",
-    "aurora": "aurora_ex4",
+    "aurora": "aurora_celestial",
     "stalker": "stalker_drone",
     "gaia": "gaia_elemental",
     "weaver": "default",
@@ -558,7 +558,7 @@
     "crysthorn": "default",
     "cthulhu": "cthulhu_void",
     "turu": "turu_ice",
-    "staradia": "staradia_default",
+    "staradia": "staradia_ethereal",
     "dukefishron": "duke_phantom"
   },
   "unlocked_bullet_themes": {
@@ -904,8 +904,8 @@
     "staradia_empress_bullet": true,
     "staradia_prismatic_bullet": true,
     "staradia_twilight_bullet": true,
-    "staradia_aurora_bullet": true,
-    "staradia_celestial_bullet": true,
+    "staradia_aurora_weaver_bullet": true,
+    "staradia_sakura_bullet": true,
     "staradia_dawn_bullet": true,
     "staradia_moonlight_bullet": true,
     "staradia_rainbow_fury_bullet": true,
@@ -916,8 +916,8 @@
     "staradia_empress_blade": true,
     "staradia_prismatic_lance": true,
     "staradia_twilight_star": true,
-    "staradia_aurora_wave": true,
-    "staradia_celestial_arrow": true,
+    "staradia_aurora_weaver_wave": true,
+    "staradia_sakura_petal": true,
     "staradia_dawn_ray": true,
     "staradia_moonlight_petal": true,
     "staradia_fury_crash": true,
@@ -980,7 +980,7 @@
     "sporeblight": "sporeblight_bullet_toxic",
     "graceweave": "graceweave_bullet_frost",
     "turu": "turu_volcanic_fist",
-    "staradia": "staradia_solar_dance",
+    "staradia": "staradia_void_rift",
     "dukefishron": "duke_blood_fang"
   },
   "equipped_wingman_themes": {

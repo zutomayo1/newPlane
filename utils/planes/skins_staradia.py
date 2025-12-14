@@ -14,9 +14,9 @@ STARADIA_STYLES = [
     "default",           # 虹辉原典 - 六翼棱镜光羽+优雅舞姿
     "empress",           # 圣光女皇 - 纯白棱镜+金色光环(白昼形态)
     "prismatic",         # 棱镜幻蝶 - 全彩虹循环+蝶翼折射
-    "twilight",          # 暮霭女神 - 薄暮紫+落日金渐变
-    "aurora",            # 极光织女 - 极光绿+星辰蓝幕布
-    "celestial",         # 星穹使者 - 星辰银+天界蓝星座
+    "twilight",          # 暮霽女神 - 薄暮紫+落日金渐变
+    "aurora_weaver",     # 极光织女 - 极光绿+星辰蓝幕布
+    "sakura",            # 樱花仙子 - 粉色樱花+浮游花瓣
     "dawn",              # 曙光破晓 - 朝霞橙+黎明粉希望
     "moonlight",         # 月华仙子 - 冷月银+柔光蓝樱吹雪
     "rainbow_fury",      # 虹怒天罚 - 暴怒彩虹+秒杀形态
@@ -52,8 +52,8 @@ def render_staradia_skin(s, cx, cy, model_style, size, t):
         "empress": _render_staradia_empress,
         "prismatic": _render_staradia_prismatic,
         "twilight": _render_staradia_twilight,
-        "aurora": _render_staradia_aurora,
-        "celestial": _render_staradia_celestial,
+        "aurora_weaver": _render_staradia_aurora,
+        "sakura": _render_staradia_sakura,
         "dawn": _render_staradia_dawn,
         "moonlight": _render_staradia_moonlight,
         "rainbow_fury": _render_staradia_rainbow_fury,
@@ -571,10 +571,10 @@ def _render_staradia_aurora(s, t, pulse):
         pygame.draw.circle(glow_surf, (*star_blue, 45 - i * 12), (60, 60), 48 - i * 10)
         s.blit(glow_surf, (0, 0))
     
-    # 极光翅膀（流动效果）
+    # 极光翅膀（流动效果，左右对称布局）
     wing_colors = [aurora_green, aurora_blue, arctic_cyan]
-    for angle, idx in [(55, 0), (125, 1), (25, 2), (155, 3), (0, 4), (180, 5)]:
-        _draw_prismatic_wing(s, 60, 60, angle, t, idx, wing_colors, 24)
+    for angle, idx, size in [(65, 0, 28), (115, 1, 28), (35, 2, 24), (145, 3, 24), (5, 4, 20), (175, 5, 20)]:
+        _draw_prismatic_wing(s, 60, 60, angle, t, idx, wing_colors, size)
     
     # 女皇身姿
     _draw_empress_body(s, 60, 60, t, aurora_green, star_blue, 27)
@@ -601,93 +601,140 @@ def _render_staradia_aurora(s, t, pulse):
     _draw_floating_stars(s, 60, 60, t, 10, arctic_cyan, (35, 50))
 
 
-def _render_staradia_celestial(s, t, pulse):
-    """6. 星穹使者 - 星辰银+天界蓝星座"""
-    star_silver = (220, 230, 255)
-    celestial_blue = (100, 150, 255)
-    heaven_blue = (200, 220, 255)
-    constellation_white = (240, 245, 255)
+def _render_staradia_sakura(s, t, pulse):
+    """樱花仙子 - 粉色樱花飘落+温柔光辉"""
+    # 樱花粉系配色
+    sakura_pink = (255, 183, 197)
+    sakura_deep = (255, 130, 160)
+    petal_white = (255, 240, 245)
+    branch_brown = (139, 90, 70)
+    gold_center = (255, 220, 150)
     
-    # 星空背景
-    star_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-    for i in range(30):
-        sx = random.Random(i + 100).randint(10, 110)
-        sy = random.Random(i + 200).randint(10, 110)
-        twinkle = abs(math.sin(t * 2 + i * 0.7))
-        if twinkle > 0.3:
-            pygame.draw.circle(star_surf, (*constellation_white, int(150 * twinkle)), (sx, sy), 1)
-    s.blit(star_surf, (0, 0))
+    cx, cy = 60, 60
     
-    # 星座连线（围绕女皇的星座图案）
-    constellation_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-    star_points = []
-    for i in range(8):
-        angle = i * 45 * 0.01745 + t * 0.3
-        dist = 38 + abs(math.sin(t + i)) * 5
-        star_points.append((
-            int(60 + math.cos(angle) * dist),
-            int(60 + math.sin(angle) * dist)
-        ))
+    # === 淡粉背景光晕 ===
+    for r in range(50, 15, -10):
+        alpha = 25 + (50 - r) // 2
+        glow = pygame.Surface((120, 120), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (*sakura_pink, alpha), (cx, cy), r)
+        s.blit(glow, (0, 0))
     
-    # 绘制星座连线
-    for i in range(len(star_points)):
-        pygame.draw.line(constellation_surf, (*celestial_blue, 120), 
-                        star_points[i], star_points[(i + 1) % len(star_points)], 1)
-        pygame.draw.circle(constellation_surf, constellation_white, star_points[i], 3)
-    s.blit(constellation_surf, (0, 0))
-    
-    # 天界光晕
-    for i in range(3):
-        glow_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-        pygame.draw.circle(glow_surf, (*celestial_blue, 40 - i * 10), (60, 60), 50 - i * 12)
-        s.blit(glow_surf, (0, 0))
-    
-    # 星辰翅膀
-    wing_colors = [star_silver, celestial_blue, heaven_blue]
-    for angle, idx in [(60, 0), (30, 1), (120, 2), (150, 3), (2, 4), (178, 5)]:
-        _draw_prismatic_wing(s, 60, 60, angle, t, idx, wing_colors, 22)
-    
-    # 女皇身姿
-    _draw_empress_body(s, 60, 60, t, star_silver, celestial_blue, 28)
-    
-    # 星冠
-    for i in range(7):
-        if i % 2 == 0:
-            crown_angle = (-72 + i * 24) * 0.01745
-            crown_x = 60 + math.cos(crown_angle) * 10
-            crown_y = 27 + math.sin(crown_angle) * 6
-            # 绘制五角星
-            star_points = []
-            for j in range(5):
-                star_angle = crown_angle + j * 72 * 0.01745
-                star_r = 4 if j % 2 == 0 else 2
-                star_points.append((
-                    int(crown_x + math.cos(star_angle) * star_r),
-                    int(crown_y + math.sin(star_angle) * star_r)
-                ))
-            pygame.draw.polygon(s, constellation_white, star_points)
-    
-    # 星辰核心
-    pygame.draw.circle(s, celestial_blue, (60, 60), int(9 + pulse * 3))
-    pygame.draw.circle(s, constellation_white, (60, 60), 4)
-    
-    # 流星雨轨迹
-    for i in range(4):
-        meteor_phase = (t + i * 0.7) % 2
-        meteor_angle = (30 + i * 80) * 0.01745
-        meteor_start = 20
-        meteor_dist = meteor_start + meteor_phase * 50
-        mx = 60 + math.cos(meteor_angle) * meteor_dist
-        my = 60 + math.sin(meteor_angle) * meteor_dist
-        meteor_alpha = int(200 * (1 - meteor_phase / 2))
-        meteor_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-        # 流星尾迹
+    # === 飘落的樱花花瓣 ===
+    for i in range(12):
+        rng = random.Random(i * 31)
+        # 花瓣轨迹 - 缓慢飘落+左右摇曳
+        base_x = rng.randint(15, 105)
+        fall_speed = 0.3 + rng.random() * 0.2
+        sway = math.sin(t * 2 + i * 0.8) * 8
+        
+        petal_y = ((t * 20 * fall_speed + i * 30) % 120)
+        petal_x = base_x + sway
+        
+        # 花瓣旋转角度
+        rot = t * 2 + i * 0.5
+        
+        # 绘制樱花花瓣（5瓣花形）
+        petal_size = 4 + rng.random() * 2
+        petal_color = sakura_pink if i % 2 else petal_white
+        
+        # 简化的花瓣形状
+        points = []
         for j in range(5):
-            tail_x = mx - math.cos(meteor_angle) * j * 3
-            tail_y = my - math.sin(meteor_angle) * j * 3
-            pygame.draw.circle(meteor_surf, (*constellation_white, meteor_alpha - j * 30), 
-                             (int(tail_x), int(tail_y)), 2 - j // 2)
-        s.blit(meteor_surf, (0, 0))
+            angle = rot + j * 72 * 0.01745
+            r_size = petal_size if j % 2 == 0 else petal_size * 0.5
+            points.append((
+                int(petal_x + math.cos(angle) * r_size),
+                int(petal_y + math.sin(angle) * r_size)
+            ))
+        if len(points) >= 3:
+            pygame.draw.polygon(s, (*petal_color, 180), points)
+    
+    # === 樱花树枝装饰 ===
+    # 左上角树枝
+    pygame.draw.line(s, branch_brown, (10, 10), (35, 35), 2)
+    pygame.draw.line(s, branch_brown, (25, 15), (35, 30), 1)
+    # 右上角树枝
+    pygame.draw.line(s, branch_brown, (110, 10), (85, 35), 2)
+    pygame.draw.line(s, branch_brown, (95, 15), (85, 30), 1)
+    
+    # 树枝上的小花
+    for bx, by in [(32, 32), (88, 32), (20, 18), (100, 18)]:
+        pygame.draw.circle(s, sakura_pink, (bx, by), 4)
+        pygame.draw.circle(s, petal_white, (bx, by), 2)
+        pygame.draw.circle(s, gold_center, (bx, by), 1)
+    
+    # === 主体 - 樱花精灵翼膀（放大+辉光） ===
+    wing_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+
+    # 背景翼光晕，先打底再叠加形状
+    for r, alpha in [(42, 55), (32, 70)]:
+        pygame.draw.circle(wing_surf, (*sakura_pink, alpha), (cx - 22, cy), r)
+        pygame.draw.circle(wing_surf, (*sakura_pink, alpha), (cx + 22, cy), r)
+
+    # 左翼 - 大号花瓣翼
+    left_wing = [
+        (cx - 12, cy - 8),
+        (cx - 45, cy - 25),
+        (cx - 65, cy + 0),
+        (cx - 48, cy + 24),
+        (cx - 20, cy + 14),
+    ]
+    pygame.draw.polygon(wing_surf, sakura_pink, left_wing)
+    pygame.draw.polygon(wing_surf, sakura_deep, left_wing, 2)
+
+    # 右翼 - 对称花瓣翼
+    right_wing = [
+        (cx + 12, cy - 8),
+        (cx + 45, cy - 25),
+        (cx + 65, cy + 0),
+        (cx + 48, cy + 24),
+        (cx + 20, cy + 14),
+    ]
+    pygame.draw.polygon(wing_surf, sakura_pink, right_wing)
+    pygame.draw.polygon(wing_surf, sakura_deep, right_wing, 2)
+
+    # 翼膀亮斑与渐变
+    for wx, wy, radius, alpha in [(-45, -10, 8, 130), (-55, 8, 10, 100), (45, -10, 8, 130), (55, 8, 10, 100)]:
+        pygame.draw.circle(wing_surf, (*petal_white, alpha), (cx + wx, cy + wy), radius)
+
+    s.blit(wing_surf, (0, 0))
+    
+    # === 精灵身体 ===
+    # 身体椭圆
+    body_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+    pygame.draw.ellipse(body_surf, sakura_deep, (cx - 10, cy - 20, 20, 35))
+    pygame.draw.ellipse(body_surf, sakura_pink, (cx - 8, cy - 18, 16, 30))
+    s.blit(body_surf, (0, 0))
+    
+    # 头部
+    pygame.draw.circle(s, petal_white, (cx, cy - 22), 8)
+    pygame.draw.circle(s, sakura_pink, (cx, cy - 22), 6)
+    
+    # 樱花发饰
+    pygame.draw.circle(s, sakura_deep, (cx - 5, cy - 28), 3)
+    pygame.draw.circle(s, sakura_deep, (cx + 5, cy - 28), 3)
+    pygame.draw.circle(s, gold_center, (cx - 5, cy - 28), 1)
+    pygame.draw.circle(s, gold_center, (cx + 5, cy - 28), 1)
+    
+    # === 能量核心 - 樱花形状 ===
+    core_size = 10 + pulse * 3
+    # 绘制5瓣樱花核心
+    for i in range(5):
+        petal_angle = (i * 72 - 90) * 0.01745 + t * 0.5
+        px = cx + math.cos(petal_angle) * core_size * 0.7
+        py = cy + math.sin(petal_angle) * core_size * 0.7
+        pygame.draw.circle(s, sakura_pink, (int(px), int(py)), int(core_size * 0.4))
+    pygame.draw.circle(s, gold_center, (cx, cy), int(core_size * 0.3))
+    pygame.draw.circle(s, petal_white, (cx, cy), int(core_size * 0.15))
+    
+    # === 飘散的光点 ===
+    for i in range(6):
+        sparkle_angle = (i * 60 + t * 30) * 0.01745
+        sparkle_dist = 35 + math.sin(t * 2 + i) * 5
+        sx = cx + math.cos(sparkle_angle) * sparkle_dist
+        sy = cy + math.sin(sparkle_angle) * sparkle_dist
+        sparkle_alpha = int(150 + 50 * math.sin(t * 4 + i * 1.2))
+        pygame.draw.circle(s, (*petal_white, sparkle_alpha), (int(sx), int(sy)), 2)
 
 
 def _render_staradia_dawn(s, t, pulse):
@@ -1063,119 +1110,100 @@ def _render_staradia_solar_flare(s, t, pulse):
 
 def _render_staradia_void_empress(s, t, pulse):
     """12. 虚渊暗皇 - 虚空紫+堕落女皇"""
-    void_purple = (80, 30, 120)
-    abyss_black = (40, 20, 60)
-    dark_violet = (120, 40, 100)
-    corrupt_pink = (150, 60, 120)
-    rift_colors = [(100, 50, 130), (60, 30, 90), (140, 60, 140)]
+    # 提亮颜色，增加可见度
+    void_purple = (120, 60, 180)       # 更亮的紫色
+    abyss_black = (60, 30, 90)         # 更亮的暗色
+    dark_violet = (180, 80, 160)       # 更亮的紫罗兰
+    corrupt_pink = (220, 100, 180)     # 更亮的粉色
+    rift_colors = [(160, 90, 200), (100, 60, 150), (200, 100, 200)]
     
-    # 全屏暗影渐变背景
-    dark_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-    for i in range(60):
-        darkness = int(120 - i * 1.5)
-        pygame.draw.circle(dark_surf, (15 + i//3, 5 + i//4, 25 + i//3, darkness), (60, 60), 60 - i)
-    s.blit(dark_surf, (0, 0))
+    # 虚空漩涡背景（多层扭曲）
+    for vortex_layer in range(3):
+        vortex_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+        direction = 1 if vortex_layer % 2 == 0 else -1
+        for i in range(30):
+            angle = (i * 12 + t * 80 * direction + vortex_layer * 90) * 0.01745
+            dist = 20 + i * 1.5 + vortex_layer * 5
+            vx = 60 + math.cos(angle) * dist
+            vy = 60 + math.sin(angle) * dist
+            alpha = 220 - i * 5 - vortex_layer * 30
+            size = 5 - vortex_layer
+            pygame.draw.circle(vortex_surf, (*void_purple, max(50, alpha)), (int(vx), int(vy)), size)
+        s.blit(vortex_surf, (0, 0))
     
-    # 虚空裂隙（背景层）
+    # 虚空裂隙（更醒目）
     rift_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
     for i in range(12):
-        rift_angle = (i * 30 + t * 15) * 0.01745
-        rift_start_x = 60 + math.cos(rift_angle) * 10
-        rift_start_y = 60 + math.sin(rift_angle) * 10
-        rift_end_x = 60 + math.cos(rift_angle) * 55
-        rift_end_y = 60 + math.sin(rift_angle) * 55
-        
-        # 扭曲裂隙
-        rift_points = [(int(rift_start_x), int(rift_start_y))]
+        rift_angle = (i * 30 + t * 25) * 0.01745
+        rift_points = [(60, 60)]
         for j in range(5):
-            progress = (j + 1) / 5
-            twist = math.sin(t * 3 + i + j) * 8
-            px = rift_start_x + (rift_end_x - rift_start_x) * progress
-            py = rift_start_y + (rift_end_y - rift_start_y) * progress
-            perpendicular = rift_angle + 1.57
-            px += math.cos(perpendicular) * twist
-            py += math.sin(perpendicular) * twist
-            rift_points.append((int(px), int(py)))
-        
-        pygame.draw.lines(rift_surf, (*corrupt_pink, 180), False, rift_points, 3)
-        pygame.draw.lines(rift_surf, (*dark_violet, 100), False, rift_points, 1)
+            dist = 18 + j * 10
+            offset = math.sin(j * 2.5 + t * 4) * 8
+            rift_points.append((
+                int(60 + math.cos(rift_angle) * dist + math.cos(rift_angle + 1.57) * offset),
+                int(60 + math.sin(rift_angle) * dist + math.sin(rift_angle + 1.57) * offset)
+            ))
+        pygame.draw.lines(rift_surf, (*corrupt_pink, 255), False, rift_points, 3)
+        pygame.draw.lines(rift_surf, (*dark_violet, 180), False, rift_points, 1)
     s.blit(rift_surf, (0, 0))
     
-    # 虚空能量环（环绕）
+    # 虚空能量球（环绕）- 更大更亮
     for i in range(6):
-        orb_angle = (i * 60 + t * 40) * 0.01745
-        orb_dist = 35 + abs(math.sin(t * 2 + i)) * 6
+        orb_angle = (i * 60 + t * 50) * 0.01745
+        orb_dist = 38 + abs(math.sin(t * 3 + i)) * 8
         orb_x = 60 + math.cos(orb_angle) * orb_dist
         orb_y = 60 + math.sin(orb_angle) * orb_dist
-        
-        # 能量球
-        for layer in range(3):
-            orb_r = 6 - layer * 2
-            orb_alpha = 200 - layer * 50
-            orb_color = [void_purple, corrupt_pink, abyss_black][layer]
-            pygame.draw.circle(s, (*orb_color, orb_alpha) if layer < 2 else orb_color, 
-                             (int(orb_x), int(orb_y)), orb_r)
+        orb_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+        pygame.draw.circle(orb_surf, (*void_purple, 180), (int(orb_x), int(orb_y)), 10)
+        pygame.draw.circle(orb_surf, (*corrupt_pink, 255), (int(orb_x), int(orb_y)), 6)
+        pygame.draw.circle(orb_surf, (255, 200, 255), (int(orb_x), int(orb_y)), 3)
+        s.blit(orb_surf, (0, 0))
     
-    # 虚空光晕（柔和扩散）
-    for i in range(5):
+    # 虚空光晕 - 更亮
+    for i in range(3):
         glow_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
-        glow_alpha = 50 - i * 8
-        glow_r = 45 - i * 7
-        pygame.draw.circle(glow_surf, (*void_purple, glow_alpha), (60, 60), glow_r)
+        pygame.draw.circle(glow_surf, (*void_purple, 80 - i * 20), (60, 60), 50 - i * 12)
         s.blit(glow_surf, (0, 0))
     
-    # 堕落之翼（扭曲形态）- 先绘制翅膀
-    for angle, idx in [(58, 0), (122, 1), (28, 2), (152, 3), (358, 4), (182, 5)]:
+    # 堕落之翼（扭曲形态，左右对称布局）
+    for angle, idx, size in [(65, 0, 28), (115, 1, 28), (35, 2, 24), (145, 3, 24), (5, 4, 20), (175, 5, 20)]:
+        # 扭曲效果
         twisted_angle = angle + math.sin(t * 2 + idx) * 12
-        _draw_prismatic_wing(s, 60, 60, twisted_angle, t, idx, rift_colors, 24)
+        _draw_prismatic_wing(s, 60, 60, twisted_angle, t, idx, rift_colors, size)
     
-    # 女皇身姿（暗黑形态）- 主体部分
+    # 女皇身姿（暗黑形态）
     _draw_empress_body(s, 60, 60, t, void_purple, dark_violet, 28)
     
     # 虚渊之冠（倒刺王冠）
     for i in range(7):
         thorn_angle = (-75 + i * 25) * 0.01745
-        thorn_length = 8 + (2 if i % 2 == 0 else 0)
-        thorn_x = 60 + math.cos(thorn_angle) * 14
-        thorn_y = 28
-        
-        # 倒刺三角
+        thorn_length = 9 + (3 if i % 2 == 0 else 0)
+        thorn_x = 60 + math.cos(thorn_angle) * 13
+        thorn_y = 26
+        # 倒刺
         thorn_points = [
             (int(thorn_x), int(thorn_y - thorn_length)),
-            (int(thorn_x + 2), int(thorn_y)),
-            (int(thorn_x - 2), int(thorn_y))
+            (int(thorn_x + 2), int(thorn_y - 2)),
+            (int(thorn_x - 2), int(thorn_y - 2))
         ]
         pygame.draw.polygon(s, dark_violet, thorn_points)
         pygame.draw.polygon(s, corrupt_pink, thorn_points, 1)
     
-    # 虚空核心（小型脉冲）
-    core_r = int(4 + pulse * 2)
-    pygame.draw.circle(s, void_purple, (60, 60), core_r)
-    pygame.draw.circle(s, dark_violet, (60, 60), max(2, core_r - 2))
+    # 虚空核心（漩涡）- 更醒目
+    vortex_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+    for i in range(15):
+        vortex_angle = (i * 24 + t * 80) * 0.01745
+        vortex_dist = i * 2
+        vortex_x = 60 + math.cos(vortex_angle) * vortex_dist
+        vortex_y = 60 + math.sin(vortex_angle) * vortex_dist
+        vortex_alpha = 255 - i * 12
+        pygame.draw.circle(vortex_surf, (*corrupt_pink, max(80, vortex_alpha)), 
+                          (int(vortex_x), int(vortex_y)), max(1, 4 - i // 5))
+    s.blit(vortex_surf, (0, 0))
     
-    # 虚空触手（从边缘伸出）
-    for i in range(6):
-        tentacle_angle = (i * 60 + t * 15) * 0.01745
-        tentacle_base_x = 60 + math.cos(tentacle_angle) * 48
-        tentacle_base_y = 60 + math.sin(tentacle_angle) * 48
-        
-        # 触手段落
-        tentacle_points = [(int(tentacle_base_x), int(tentacle_base_y))]
-        for j in range(3):
-            seg_angle = tentacle_angle + math.pi + math.sin(t * 2.5 + i + j * 0.5) * 0.4
-            seg_dist = (j + 1) * 7
-            seg_x = tentacle_base_x + math.cos(seg_angle) * seg_dist
-            seg_y = tentacle_base_y + math.sin(seg_angle) * seg_dist
-            tentacle_points.append((int(seg_x), int(seg_y)))
-        
-        # 绘制触手
-        if len(tentacle_points) > 1:
-            pygame.draw.lines(s, corrupt_pink, False, tentacle_points, 3)
-            # 触手吸盘
-            for point in tentacle_points[1:]:
-                pygame.draw.circle(s, abyss_black, point, 2)
-                pygame.draw.circle(s, dark_violet, point, 1)
-
+    # 中心核心亮点
+    pygame.draw.circle(s, corrupt_pink, (60, 60), int(8 + pulse * 2))
+    pygame.draw.circle(s, (255, 200, 255), (60, 60), 4)
 
 
 def _render_staradia_base(s, t, pulse):
