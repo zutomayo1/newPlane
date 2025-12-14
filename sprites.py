@@ -11679,6 +11679,29 @@ class Player(pygame.sprite.Sprite):
                     return "abyss"
         return "default"
 
+    def _get_oro_style(self):
+        """获取Oro涂装样式名称，从bullet_theme_id中提取"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            # 格式: "oro_xxx_chain" -> 提取 "xxx"
+            # 例如: "oro_crimson_chain" -> "crimson"
+            #       "oro_void_chain" -> "void"
+            #       "oro_default_chain" -> "default"
+            if theme_id.startswith("oro_"):
+                rest = theme_id[4:]  # 移除 "oro_" 前缀
+                # 移除 "_chain" 后缀如果有
+                if rest.endswith("_chain"):
+                    rest = rest[:-6]
+                # 检查各种涂装
+                style_map = {
+                    "default": "default", "crimson": "crimson", "void": "void",
+                    "inferno": "inferno", "frost": "frost", "toxic": "toxic",
+                    "royal": "royal", "phantom": "phantom", "blood": "blood",
+                    "cosmic": "cosmic", "abyss": "abyss", "golden": "golden"
+                }
+                return style_map.get(rest, "default")
+        return "default"
+
     def _fire_main_gun(self):
         """根据机体ID释放不同的射击模式"""
         pid = self.plane_id
@@ -12856,6 +12879,48 @@ class Player(pygame.sprite.Sprite):
                 domain = GravityDomain(domain_x, domain_y, owner=self, style=style)
                 all_sprites.add(domain)
         
+        # ========== 44. 终噬星链·奥罗 - 虚空链弹+链节+激光栅 ==========
+        elif pid == "oro":
+            from utils.bullets.oro_bullets import VoidChainBullet, ChainNode, LaserGrid
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 获取涂装样式
+            style = self._get_oro_style()
+            
+            # 初始化奥罗系统
+            if not hasattr(self, 'oro_chain_stacks'):
+                self.oro_chain_stacks = 0  # 链节叠层
+            if not hasattr(self, 'oro_laser_timer'):
+                self.oro_laser_timer = 0  # 激光栅冷却
+            if not hasattr(self, 'oro_void_energy'):
+                self.oro_void_energy = 0  # 虚空能量
+            
+            # 发射主弹 - 虚空链弹（1.6屏超远距离）
+            main_bullet = VoidChainBullet(cx, cy, self.damage, owner=self, style=style)
+            all_sprites.add(main_bullet)
+            bullets.add(main_bullet)
+            
+            # 每6发释放链节（驻场3秒，减少生成频率）
+            self.oro_chain_stacks += 1
+            if self.oro_chain_stacks >= 6:
+                self.oro_chain_stacks = 0
+                # 在弹道中间位置放置链节
+                node_y = cy - 200
+                node = ChainNode(cx, node_y, self.damage * 0.5, owner=self, style=style)
+                all_sprites.add(node)
+                bullets.add(node)
+            
+            # 激光栅冷却（每2.5秒发射一次十字激光）
+            self.oro_laser_timer += 1
+            if self.oro_laser_timer >= 150:  # 2.5秒冷却
+                self.oro_laser_timer = 0
+                # 在前方发射激光栅
+                laser_y = cy - 150
+                laser = LaserGrid(cx, laser_y, self.damage * 0.3, owner=self, style=style)
+                all_sprites.add(laser)
+                bullets.add(laser)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -13203,6 +13268,13 @@ class Player(pygame.sprite.Sprite):
                 from utils.bullets.slime_bullets import StarStompSkill
                 style = self._get_slime_style()
                 skill = StarStompSkill(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                all_sprites.add(skill)
+            
+            elif pid == "oro":
+                # 【宇宙坍缩·维度网格】F技能：节段解离飞向四边，构建激光网格向中心收缩
+                from utils.bullets.oro_bullets import DimensionGridSkill
+                style = self._get_oro_style()
+                skill = DimensionGridSkill(self.rect.centerx, self.rect.centery, self.damage * 3, owner=self, style=style)
                 all_sprites.add(skill)
             
             else:
@@ -14448,6 +14520,13 @@ class Player(pygame.sprite.Sprite):
                 skill = AstralCrystalSkill(self.rect.centerx, self.rect.centery, owner=self, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "oro":
+                # 【弑神冲袭·现实撕裂】G技能：极速Z字冲撞，无敌状态，留下时空裂痕
+                from utils.bullets.oro_bullets import GodSlayerSkill
+                style = self._get_oro_style()
+                skill = GodSlayerSkill(self.rect.centerx, self.rect.centery, self.damage * 5, owner=self, style=style)
+                all_sprites.add(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -14688,6 +14767,13 @@ class Player(pygame.sprite.Sprite):
                 from utils.bullets.slime_bullets import AureusSpawnSkill
                 style = self._get_slime_style()
                 skill = AureusSpawnSkill(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                all_sprites.add(skill)
+            
+            elif pid == "oro":
+                # 【视界线·衬尾蛇】C技能：螺旋形成光环，中心擕开微型黑洞吞噬一切
+                from utils.bullets.oro_bullets import OuroborosSkill
+                style = self._get_oro_style()
+                skill = OuroborosSkill(self.rect.centerx, self.rect.centery, self.damage * 4, owner=self, style=style)
                 all_sprites.add(skill)
             
             else:

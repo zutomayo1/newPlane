@@ -522,7 +522,19 @@
     "slime_flame": true,
     "slime_phantom": true,
     "slime_rainbow": true,
-    "slime_abyss": true
+    "slime_abyss": true,
+    "oro_default": true,
+    "oro_crimson": true,
+    "oro_void": true,
+    "oro_inferno": true,
+    "oro_frost": true,
+    "oro_toxic": true,
+    "oro_royal": true,
+    "oro_phantom": true,
+    "oro_blood": true,
+    "oro_cosmic": true,
+    "oro_abyss": true,
+    "oro_golden": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -572,7 +584,8 @@
     "turu": "turu_ice",
     "staradia": "staradia_ethereal",
     "dukefishron": "duke_phantom",
-    "slime": "slime_ice"
+    "slime": "slime_royal",
+    "oro": "oro_toxic"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -959,7 +972,19 @@
     "slime_flame_gel": true,
     "slime_phantom_gel": true,
     "slime_rainbow_gel": true,
-    "slime_abyss_gel": true
+    "slime_abyss_gel": true,
+    "oro_default_chain": true,
+    "oro_crimson_chain": true,
+    "oro_void_chain": true,
+    "oro_inferno_chain": true,
+    "oro_frost_chain": true,
+    "oro_toxic_chain": true,
+    "oro_royal_chain": true,
+    "oro_phantom_chain": true,
+    "oro_blood_chain": true,
+    "oro_cosmic_chain": true,
+    "oro_abyss_chain": true,
+    "oro_golden_chain": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -1008,7 +1033,8 @@
     "staradia": "staradia_void_rift",
     "dukefishron": "duke_blood_fang",
     "slime": "slime_star_gel",
-    "cthulhu": "cthulhu_ritual_sigil"
+    "cthulhu": "cthulhu_ritual_sigil",
+    "oro": "oro_void_chain"
   },
   "equipped_wingman_themes": {
     "slot_0": "gambit_blackjack",

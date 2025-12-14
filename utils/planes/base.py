@@ -385,6 +385,14 @@ def _generate_plane_surf(pid, visual=None, static=False):
             draw_slime(s, c, 10, 10, 100, 100, frame, model_style)
             return s
         
+        # 尝试 Oro 专属涂装（终噬星链·奥罗）
+        from .skins_oro import render_oro_skin, is_oro_style
+        if is_oro_style(model_style):
+            frame = int(t * 60) if not static else 0
+            from .skins_oro import draw_oro
+            draw_oro(s, c, 10, 10, 100, 100, frame, model_style)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     

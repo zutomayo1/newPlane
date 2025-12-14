@@ -47,6 +47,7 @@
 - skins_staradia.py: Staradia专属涂装 (12种) [辉耀天女·斯塔德]
 - skins_dukefishron.py: DukeFishron专属涂装 (6种) [深渊龙鱼·猪公爵]
 - skins_slime.py: Slime专属涂装 (12种) [末世星凝·史莱姆]
+- skins_oro.py: Oro专属涂装 (12种) [终噬星链·奥罗]
 
 所有机体涂装拆分完成！共计 381 种涂装。
 """
@@ -96,6 +97,7 @@ from .skins_turu import render_turu_skin, is_turu_style, TURU_STYLES
 from .skins_staradia import render_staradia_skin, is_staradia_style, STARADIA_STYLES
 from .skins_dukefishron import draw_duke
 from .skins_slime import draw_slime, is_slime_style, render_slime_skin, SLIME_STYLES
+from .skins_oro import draw_oro, is_oro_style, render_oro_skin, ORO_STYLES
 
 # DukeFishron样式定义 - 12个高质量涂装（带duke_前缀避免冲突）
 DUKEFISHRON_STYLES = [
@@ -150,5 +152,6 @@ __all__ = [
     'render_turu_skin', 'is_turu_style', 'TURU_STYLES',
     'render_staradia_skin', 'is_staradia_style', 'STARADIA_STYLES',
     'render_dukefishron_skin', 'is_dukefishron_style', 'DUKEFISHRON_STYLES', 'draw_duke',
-    'render_slime_skin', 'is_slime_style', 'SLIME_STYLES', 'draw_slime'
+    'render_slime_skin', 'is_slime_style', 'SLIME_STYLES', 'draw_slime',
+    'render_oro_skin', 'is_oro_style', 'ORO_STYLES', 'draw_oro'
 ]

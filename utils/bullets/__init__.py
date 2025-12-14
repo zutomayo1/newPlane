@@ -60,6 +60,10 @@ from .slime_bullets import (SLIME_BULLET_THEMES, StarGelBullet, GravityDomain,
                             MiniStarGelBullet, GelCoreBullet, StarGelPickup,
                             StarStompSkill, AstralCrystalSkill, AureusSpawnSkill,
                             StarSlimeDownEffect)
+from .oro_bullets import (ORO_BULLET_THEMES, VoidChainBullet, ChainNode, LaserGrid,
+                          ChainExplosion, VoidCorePickup, DimensionGridSkill, ShatterEffect,
+                          GodSlayerSkill, RealityRift, OuroborosSkill,
+                          render_oro_bullet_preview)
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
@@ -75,4 +79,7 @@ __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES',
            'DragonFishTsunami', 'TsunamiWall', 'DukeKillEffect', 'spawn_duke_kill_effect',
            'SLIME_BULLET_THEMES', 'StarGelBullet', 'GravityDomain', 'MiniStarGelBullet',
            'GelCoreBullet', 'StarGelPickup', 'StarStompSkill', 'AstralCrystalSkill',
-           'AureusSpawnSkill', 'StarSlimeDownEffect']
+           'AureusSpawnSkill', 'StarSlimeDownEffect',
+           'ORO_BULLET_THEMES', 'VoidChainBullet', 'ChainNode', 'LaserGrid',
+           'ChainExplosion', 'VoidCorePickup', 'DimensionGridSkill', 'ShatterEffect',
+           'GodSlayerSkill', 'RealityRift', 'OuroborosSkill', 'render_oro_bullet_preview']

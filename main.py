@@ -4923,7 +4923,14 @@ def draw_top_hud():
         "necro": "生命汲取", "void": "虚空撕裂", "wormhole": "虫洞链接",
         "chronos": "时光冻结", "mirage": "幻影分身", "gambit": "爆裂连锁",
         "puppeteer": "偶线操控", "pandemic": "病毒变异",
-        "omega": "七曜轮转", "genesis": "毁灭之形"
+        "omega": "七曜轮转", "genesis": "毁灭之形",
+        "truth": "真言审判", "asura": "六臂天刑", "dragoon": "龙骑冲锋",
+        "origami": "纸鹤群舞", "helios": "流星轰炸", "frostflare": "极寒风暴",
+        "nova": "充能穿甲", "spectrum": "光谱叠加", "darkstring": "暗影标记",
+        "thornvine": "荆棘缠绕", "starblade": "星刃回旋", "acidswamp": "酸沼扩散",
+        "crystalfall": "晶簇连锁", "sporeveil": "孢子繁殖",
+        "cthulhu": "月蚀审判", "turu": "岩拳连击", "staradia": "皇辉残影",
+        "dukefishron": "鲨龙追踪", "slime": "星炎水晶", "oro": "弑神冲袭"
     }
     ult2_name = ult2_names.get(player.plane_id, '次级技能')
     ult2_y = bar1_y + bar1_h + 3
@@ -4988,7 +4995,14 @@ def draw_top_hud():
         "necro": "灵魂收割", "void": "等离子漩涡", "wormhole": "时空逆流",
         "chronos": "时空回溯", "mirage": "全息影印", "gambit": "命运翻转",
         "puppeteer": "人偶军团", "pandemic": "全球感染",
-        "omega": "元素融合", "genesis": "创世大爆炸"
+        "omega": "元素融合", "genesis": "创世大爆炸",
+        "truth": "天启裁决", "asura": "修罗怒斩", "dragoon": "苍龙天翔",
+        "origami": "千羽化形", "helios": "流星群", "frostflare": "绝对零度",
+        "nova": "毁灭射线", "spectrum": "七彩极光", "darkstring": "绝杀狙击",
+        "thornvine": "骨蔓分裂", "starblade": "星镰乱舞", "acidswamp": "腐蚀大潮",
+        "crystalfall": "晶瀑倾泻", "sporeveil": "菌海爆发",
+        "cthulhu": "星骸剥离", "turu": "巨石核爆", "staradia": "皇辉领域",
+        "dukefishron": "海啸滑翔", "slime": "星凝子体", "oro": "衔尾蛇"
     }
     ult3_name = ult3_names.get(player.plane_id, '终极技能')
     ult3_y = bar2_y + bar2_h + 3

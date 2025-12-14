@@ -160,6 +160,67 @@ from .slime_bullets import (SLIME_BULLET_THEMES, StarGelBullet, GravityDomain,
 
 ---
 
+## Bug #003: 子弹渲染方法中变量作用域错误导致游戏画面卡死
+
+### 问题描述
+选择 Oro（维度吞噬者·神杀）机体后点击出击，游戏画面停留在选择机体界面，但游戏实际已经开始（能听到子弹发射声音）。
+
+### 具体表现
+- 用户选择 Oro 机体，点击"出击"按钮
+- 控制台显示 `reset_game完成，切换到游戏状态`
+- 画面仍停留在选择机体界面
+- 但能听到子弹发射的声音，说明游戏逻辑已在运行
+- 无错误信息输出到控制台（异常被静默吞掉）
+
+### 根本原因
+**变量作用域错误**：在 `VoidChainBullet._render()` 方法中，有一行代码被错误地放在了 `else` 块外面：
+
+```python
+# 问题代码位置：oro_bullets.py 第425行
+        # 默认：链节形状
+        else:
+            ...
+            core_r = 4 + int(abs(math.sin(t * 3)) * 2)
+            pygame.draw.circle(self.image, pulse_col, (cx, cy), core_r)
+        pygame.draw.circle(self.image, (255, 255, 255), (cx, cy), core_r // 2)  # ← 错误！在else外面
+```
+
+当子弹类型为 beam、orb、missile 等非默认类型时：
+1. 代码进入对应的 `if/elif` 分支
+2. 不会进入 `else` 分支，因此 `core_r` 变量不会被定义
+3. 但最后一行 `pygame.draw.circle(..., core_r // 2)` 仍会执行
+4. 导致 `UnboundLocalError: cannot access local variable 'core_r'`
+
+由于渲染异常发生在 sprite 的 `draw()` 方法内部，pygame 没有正确处理，导致：
+- 游戏逻辑继续运行（能听到声音）
+- 但渲染循环失败，画面不更新
+
+### 解决方案
+将该行代码移入 `else` 块内部：
+
+```python
+# 修复后
+        else:
+            ...
+            core_r = 4 + int(abs(math.sin(t * 3)) * 2)
+            pygame.draw.circle(self.image, pulse_col, (cx, cy), core_r)
+            pygame.draw.circle(self.image, (255, 255, 255), (cx, cy), core_r // 2)  # ← 现在正确在else内部
+```
+
+### 预防措施
+1. **检查多分支代码的缩进**：确保共用变量在所有分支中都有定义，或只在定义它的分支内使用
+2. **添加渲染异常捕获**：在 sprite 的 `_render()` 方法中使用 try-except 包裹，避免单个 sprite 渲染失败导致整个游戏卡死
+3. **单元测试渲染方法**：对每种子弹类型单独调用 `_render()` 测试，确保不会抛出异常
+4. **代码审查时重点关注 if/elif/else 块后的代码**：确认是否应该在块内还是块外
+
+### 相关文件
+- `utils/bullets/oro_bullets.py` - `VoidChainBullet._render()` 方法，第266-425行
+
+### 修复日期
+2025年12月14日
+
+---
+
 ## Bug 模板
 
 ### 问题描述
