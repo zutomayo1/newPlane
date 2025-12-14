@@ -486,7 +486,19 @@
     "turu_volcanic": true,
     "turu_diamond": true,
     "turu_rusty": true,
-    "turu_golden": true
+    "turu_golden": true,
+    "staradia_default": true,
+    "staradia_empress": true,
+    "staradia_prismatic": true,
+    "staradia_twilight": true,
+    "staradia_aurora": true,
+    "staradia_celestial": true,
+    "staradia_dawn": true,
+    "staradia_moonlight": true,
+    "staradia_rainbow_fury": true,
+    "staradia_ethereal": true,
+    "staradia_solar_flare": true,
+    "staradia_void_empress": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -508,8 +520,8 @@
     "wormhole": "wormhole_monsoon",
     "chronos": "chronos_meteorological",
     "mirage": "mirage_doppelganger",
-    "gambit": "gambit_mahjong",
-    "puppeteer": "puppeteer_circus",
+    "gambit": "gambit_pachinko",
+    "puppeteer": "puppeteer_porcelain",
     "pandemic": "pandemic_zombie",
     "genesis": "genesis_phoenix",
     "omega": "common_red",
@@ -533,7 +545,8 @@
     "starring": "default",
     "crysthorn": "default",
     "cthulhu": "cthulhu_void",
-    "turu": "turu_volcanic"
+    "turu": "turu_ice",
+    "staradia": "staradia_prismatic"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -873,7 +886,31 @@
     "turu_volcanic_fist": true,
     "turu_diamond_fist": true,
     "turu_rusty_fist": true,
-    "turu_golden_fist": true
+    "turu_golden_fist": true,
+    "staradia_default_bullet": true,
+    "staradia_empress_bullet": true,
+    "staradia_prismatic_bullet": true,
+    "staradia_twilight_bullet": true,
+    "staradia_aurora_bullet": true,
+    "staradia_celestial_bullet": true,
+    "staradia_dawn_bullet": true,
+    "staradia_moonlight_bullet": true,
+    "staradia_rainbow_fury_bullet": true,
+    "staradia_ethereal_bullet": true,
+    "staradia_solar_flare_bullet": true,
+    "staradia_void_empress_bullet": true,
+    "staradia_rainbow_shuttle": true,
+    "staradia_empress_blade": true,
+    "staradia_prismatic_lance": true,
+    "staradia_twilight_star": true,
+    "staradia_aurora_wave": true,
+    "staradia_celestial_arrow": true,
+    "staradia_dawn_ray": true,
+    "staradia_moonlight_petal": true,
+    "staradia_fury_crash": true,
+    "staradia_dream_bubble": true,
+    "staradia_solar_dance": true,
+    "staradia_void_rift": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -918,10 +955,11 @@
     "starring": "starring_bullet_flame",
     "sporeblight": "sporeblight_bullet_toxic",
     "graceweave": "graceweave_bullet_frost",
-    "turu": "turu_volcanic_fist"
+    "turu": "turu_volcanic_fist",
+    "staradia": "staradia_solar_dance"
   },
   "equipped_wingman_themes": {
-    "slot_0": "striker_holy",
+    "slot_0": "gambit_blackjack",
     "slot_1": "viper_serpent_god",
     "slot_2": "aurora_rainbow",
     "slot_3": "chronos_meteorological"

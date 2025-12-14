@@ -5103,6 +5103,163 @@ class Bullet(pygame.sprite.Sprite):
         color = theme.get("color", self.color)
         size = 24  # 子弹基础尺寸
         
+        # ========== Staradia 辉耀天女·斯塔德 子弹形状 (12种独特设计) ==========
+        staradia_effects = [
+            "rainbow_trail", "prismatic_shimmer", "blade_slash", "prism_shatter",
+            "prismatic_split", "spiral_drill", "twilight_gradient", "sunset_trail",
+            "aurora_ripple", "polar_light", "constellation_trail", "meteor_shower",
+            "dawn_break", "hope_light", "petal_dance", "moon_scatter",
+            "fury_explosion", "instant_kill", "dream_float", "starlight_burst",
+            "solar_spin", "flame_dance", "void_tear", "space_rend"
+        ]
+        if any(effect in effects for effect in staradia_effects):
+            self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
+            center = size
+            
+            # 1. 虚空裂隙 - 暗紫撕裂形态
+            if "void_tear" in effects or "space_rend" in effects:
+                pygame.draw.circle(self.image, (80, 30, 120, 200), (center, center), size//3)
+                for i in range(6):
+                    angle = i * math.pi / 3
+                    spike_len = size//2.5
+                    sx = center + int(math.cos(angle) * spike_len)
+                    sy = center + int(math.sin(angle) * spike_len)
+                    pygame.draw.line(self.image, (120, 40, 100), (center, center), (sx, sy), 2)
+                pygame.draw.circle(self.image, (100, 50, 150, 100), (center, center), size//2.5, 2)
+                pygame.draw.circle(self.image, (150, 80, 180), (center, center), 3)
+            
+            # 2. 女皇光剑 - 白色月牙刀刃
+            elif "blade_slash" in effects or "prism_shatter" in effects:
+                pygame.draw.arc(self.image, (255, 255, 255), (center-size//2, center-size//2, size, size), 0.5, 2.6, 6)
+                pygame.draw.arc(self.image, (*color, 200), (center-size//2+2, center-size//2+2, size-4, size-4), 0.5, 2.6, 3)
+                # 棱镜碎片
+                for i in range(4):
+                    px = center + int(math.cos(i * 1.5) * size//3)
+                    py = center + int(math.sin(i * 1.5) * size//3)
+                    pygame.draw.circle(self.image, (255, 200, 255, 150), (px, py), 2)
+            
+            # 3. 棱镜光枪 - 彩虹长矛
+            elif "prismatic_split" in effects or "spiral_drill" in effects:
+                lance_pts = [(center, center - size), (center + size//4, center + size//2), (center - size//4, center + size//2)]
+                pygame.draw.polygon(self.image, (*color, 220), lance_pts)
+                pygame.draw.polygon(self.image, (255, 255, 255), lance_pts, 2)
+                # 彩虹条纹
+                rainbow = [(255,100,100), (255,255,100), (100,255,100), (100,255,255), (100,100,255), (255,100,255)]
+                for i, rc in enumerate(rainbow):
+                    y = center - size//2 + i * size//6
+                    pygame.draw.line(self.image, rc, (center - size//6, y), (center + size//6, y), 2)
+            
+            # 4. 暮星流矢 - 紫金渐变流星箭
+            elif "twilight_gradient" in effects or "sunset_trail" in effects:
+                arrow_pts = [(center, center - size*3//4), (center + size//3, center + size//3), (center, center), (center - size//3, center + size//3)]
+                pygame.draw.polygon(self.image, (180, 100, 220, 220), arrow_pts)
+                pygame.draw.polygon(self.image, (255, 200, 100), arrow_pts, 2)
+                # 金色尾焰
+                for i in range(3):
+                    pygame.draw.circle(self.image, (255, 200, 100, 150 - i*40), (center, center + size//3 + i*4), 3-i)
+            
+            # 5. 极光涟漪 - 青绿波纹环
+            elif "aurora_ripple" in effects or "polar_light" in effects:
+                for i in range(4):
+                    r = size//3 + i * 3
+                    alpha = 180 - i * 40
+                    pygame.draw.circle(self.image, (*color, alpha), (center, center), r, 2)
+                pygame.draw.circle(self.image, (200, 255, 240), (center, center), size//5)
+            
+            # 6. 星矢天箭 - 星座连线箭
+            elif "constellation_trail" in effects or "meteor_shower" in effects:
+                # 箭头
+                arrow_pts = [(center, center - size*2//3), (center + size//4, center + size//4), (center - size//4, center + size//4)]
+                pygame.draw.polygon(self.image, (*color, 220), arrow_pts)
+                # 星座点
+                stars = [(center, center - size//2), (center + size//4, center - size//4), (center - size//4, center)]
+                for sx, sy in stars:
+                    pygame.draw.circle(self.image, (255, 255, 255), (int(sx), int(sy)), 2)
+                # 连线
+                pygame.draw.lines(self.image, (150, 180, 255, 120), False, stars, 1)
+            
+            # 7. 曙光破晓 - 金橙光束
+            elif "dawn_break" in effects or "hope_light" in effects:
+                # 光芒主体
+                beam_pts = [(center, center - size*3//4), (center + size//5, center + size//3), (center - size//5, center + size//3)]
+                pygame.draw.polygon(self.image, (255, 180, 100, 220), beam_pts)
+                # 放射光芒
+                for i in range(5):
+                    angle = -math.pi/2 + (i - 2) * 0.3
+                    rx = center + int(math.cos(angle) * size//2)
+                    ry = center - size//4 + int(math.sin(angle) * size//3)
+                    pygame.draw.line(self.image, (255, 220, 150, 150), (center, center - size//4), (rx, ry), 2)
+            
+            # 8. 月华花瓣 - 樱花瓣形
+            elif "petal_dance" in effects or "moon_scatter" in effects:
+                # 花瓣形状
+                petal_pts = [(center, center - size//2), (center + size//3, center), (center, center + size//3), (center - size//3, center)]
+                pygame.draw.polygon(self.image, (255, 220, 240, 200), petal_pts)
+                pygame.draw.polygon(self.image, (255, 180, 200), petal_pts, 2)
+                # 中心
+                pygame.draw.circle(self.image, (255, 200, 220), (center, center), size//6)
+            
+            # 9. 虹怒轰击 - 愤怒爆发球
+            elif "fury_explosion" in effects or "instant_kill" in effects:
+                # 核心
+                pygame.draw.circle(self.image, (255, 80, 120), (center, center), size//2.5)
+                pygame.draw.circle(self.image, (255, 200, 50), (center, center), size//4)
+                # 爆发尖刺
+                for i in range(8):
+                    angle = i * math.pi / 4
+                    sx = center + int(math.cos(angle) * size//1.8)
+                    sy = center + int(math.sin(angle) * size//1.8)
+                    pygame.draw.line(self.image, (255, 100, 100), (center, center), (sx, sy), 3)
+                pygame.draw.circle(self.image, (255, 255, 200), (center, center), size//6)
+            
+            # 10. 梦境泡沫 - 淡紫泡泡
+            elif "dream_float" in effects or "starlight_burst" in effects:
+                # 多层泡泡
+                pygame.draw.circle(self.image, (220, 180, 255, 80), (center, center), size//2)
+                pygame.draw.circle(self.image, (230, 200, 255, 120), (center, center), size//2.5)
+                pygame.draw.circle(self.image, (240, 220, 255, 180), (center, center), size//3.5)
+                # 高光
+                pygame.draw.circle(self.image, (255, 255, 255, 200), (center - size//6, center - size//6), size//8)
+                pygame.draw.circle(self.image, (220, 180, 255), (center, center), size//2, 2)
+            
+            # 11. 太阳舞步 - 旋转太阳轮
+            elif "solar_spin" in effects or "flame_dance" in effects:
+                # 太阳核心
+                pygame.draw.circle(self.image, (255, 200, 50), (center, center), size//3)
+                pygame.draw.circle(self.image, (255, 255, 150), (center, center), size//5)
+                # 火焰光芒
+                for i in range(8):
+                    angle = i * math.pi / 4
+                    inner_r = size//3
+                    outer_r = size//1.8
+                    ix = center + int(math.cos(angle) * inner_r)
+                    iy = center + int(math.sin(angle) * inner_r)
+                    ox = center + int(math.cos(angle) * outer_r)
+                    oy = center + int(math.sin(angle) * outer_r)
+                    pygame.draw.line(self.image, (255, 120, 30), (ix, iy), (ox, oy), 3)
+                    pygame.draw.line(self.image, (255, 200, 80), (ix, iy), (ox, oy), 1)
+            
+            # 默认: 月虹光梭 - 菱形
+            else:
+                # 外层光晕
+                for i in range(3):
+                    glow_r = size//2 + 3 - i * 2
+                    glow_alpha = 60 - i * 15
+                    pygame.draw.circle(self.image, (*color, glow_alpha), (center, center), glow_r)
+                # 菱形主体
+                diamond_h = int(size * 0.7)
+                diamond_w = int(size * 0.4)
+                diamond_points = [(center, center - diamond_h), (center + diamond_w, center), (center, center + diamond_h), (center - diamond_w, center)]
+                pygame.draw.polygon(self.image, (*color, 220), diamond_points)
+                inner_scale = 0.6
+                inner_pts = [(center + (px - center) * inner_scale, center + (py - center) * inner_scale) for px, py in diamond_points]
+                pygame.draw.polygon(self.image, (255, 215, 120), inner_pts)
+                pygame.draw.circle(self.image, (255, 215, 120), (center, center - diamond_h), 3)
+                pygame.draw.circle(self.image, (255, 255, 255), (center, center - diamond_h), 2)
+            
+            self.speed = -20
+            return
+        
         if "gear_rotate" in effects:
             # 机械齿轮：六边形
             self.image = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
@@ -11436,6 +11593,18 @@ class Player(pygame.sprite.Sprite):
         # 【改动】副武器现在由僚机使用，玩家只使用主武器
         # 副武器逻辑已转移到 wingman.py 中的 Wingman 类
 
+    def _get_staradia_style(self):
+        """获取Staradia涂装样式名称，从bullet_theme_id中提取"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            # 格式: "staradia_xxx" -> 提取 "xxx"
+            # 例如: "staradia_void_rift" -> "void_rift"
+            #       "staradia_prismatic" -> "prismatic"
+            #       "staradia_void_empress" -> "void_empress"
+            if theme_id.startswith("staradia_"):
+                return theme_id[9:]  # 移除 "staradia_" 前缀
+        return "default"
+
     def _fire_main_gun(self):
         """根据机体ID释放不同的射击模式"""
         pid = self.plane_id
@@ -12476,6 +12645,54 @@ class Player(pygame.sprite.Sprite):
             all_sprites.add(fist)
             bullets.add(fist)
         
+        # ========== 41. 辉耀天女·斯塔德 - 月虹光梭+辉耀残痕 ==========
+        elif pid == "staradia":
+            from utils.bullets.staradia_bullets import MoonRainbowShuttle, RadiantRemnant
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 初始化皇辉升格系统
+            if not hasattr(self, 'radiant_stacks'):
+                self.radiant_stacks = 0  # 皇辉层数 0-5
+            if not hasattr(self, 'radiant_domain_active'):
+                self.radiant_domain_active = False  # 皇辉领域激活
+            if not hasattr(self, 'radiant_domain_timer'):
+                self.radiant_domain_timer = 0  # 皇辉领域持续时间
+            if not hasattr(self, 'remnant_timer'):
+                self.remnant_timer = 0  # 残痕生成计时
+            if not hasattr(self, 'remnant_count'):
+                self.remnant_count = 0  # 当前残影数量
+            
+            # 皇辉层数提供伤害加成：每层+10%
+            radiant_mult = 1.0 + self.radiant_stacks * 0.10
+            base_damage = int(self.damage * radiant_mult)
+            
+            # 获取涂装样式
+            style = self._get_staradia_style()
+            
+            # 皇辉领域激活时的增强效果
+            enhanced = self.radiant_domain_active
+            
+            # 发射3发月虹光梭（皇辉领域+1发）
+            shuttle_count = 4 if enhanced else 3
+            for i in range(shuttle_count):
+                offset_x = (i - (shuttle_count - 1) / 2) * 25
+                shuttle = MoonRainbowShuttle(cx + offset_x, cy, base_damage, owner=self, style=style)
+                all_sprites.add(shuttle)
+                bullets.add(shuttle)
+            
+            # 每5发子弹生成一个辉耀残痕（皇辉领域时每3发）
+            self.remnant_timer += 1
+            remnant_interval = 3 if enhanced else 5
+            if self.remnant_timer >= remnant_interval:
+                self.remnant_timer = 0
+                # 在玩家前方随机位置生成残痕
+                remnant_x = cx + random.randint(-80, 80)
+                remnant_y = cy - random.randint(50, 150)
+                remnant = RadiantRemnant(remnant_x, remnant_y, owner=self, enhanced=enhanced, style=style)
+                all_sprites.add(remnant)
+                self.remnant_count += 1  # 增加残影计数
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -12802,6 +13019,14 @@ class Player(pygame.sprite.Sprite):
                 # 【岩拳暴雨】2秒内连射6枚巨型岩核拳
                 from utils.bullets.turu_bullets import RockFistBarrage
                 RockFistBarrage(self)
+            
+            elif pid == "staradia":
+                # 【皇辉暴雨】2秒内连续9道皇辉束
+                from utils.bullets.staradia_bullets import RadiantStorm
+                # 提取涂装样式
+                style = self._get_staradia_style()
+                storm = RadiantStorm(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                all_sprites.add(storm)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -13823,7 +14048,8 @@ class Player(pygame.sprite.Sprite):
                 "genesis": "星辰陨落",
                 "truth": "阴阳逆转",
                 "cthulhu": "深渊触手",
-                "turu": "巨石护盾"
+                "turu": "巨石护盾",
+                "staradia": "月虹轨道炮"
             }
             
             pid = self.plane_id
@@ -14021,6 +14247,13 @@ class Player(pygame.sprite.Sprite):
                 from utils.bullets.turu_bullets import RockShield
                 RockShield(self)
             
+            elif pid == "staradia":
+                # 【月虹轨道炮】全屏彩虹光柱贯穿
+                from utils.bullets.staradia_bullets import MoonRainbowRail
+                style = self._get_staradia_style()
+                rail = MoonRainbowRail(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                all_sprites.add(rail)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -14029,6 +14262,8 @@ class Player(pygame.sprite.Sprite):
 
     def use_tertiary_ultimate(self):
         """第三大招（C键释放）"""
+        pid = self.plane_id
+        
         # 冷却检查
         if self.ult3_cooldown > 0:
             return  # 冷却中，无法释放
@@ -14075,7 +14310,8 @@ class Player(pygame.sprite.Sprite):
                 "spectrum": "虹光终焉",
                 "darkstring": "命运终结",
                 "cthulhu": "疯狂领域",
-                "turu": "图鲁跃砸"
+                "turu": "图鲁跃砸",
+                "staradia": "皇辉领域"
             }
             
             pid = self.plane_id
@@ -14235,6 +14471,14 @@ class Player(pygame.sprite.Sprite):
                 # 【图鲁跃砸】远程定位跳跃砸地，震荡波击飞+减速
                 from utils.bullets.turu_bullets import TuruLeapSlam
                 TuruLeapSlam(self)
+            
+            elif pid == "staradia":
+                # 【皇辉领域】C技能正常充能，皇辉层数提供伤害加成
+                from utils.bullets.staradia_bullets import RadiantDomain
+                style = self._get_staradia_style()
+                domain = RadiantDomain(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                all_sprites.add(domain)
+                self.radiant_domain_timer = 360  # 6秒领域持续
             
             else:
                 # 通用：全屏伤害

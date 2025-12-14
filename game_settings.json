@@ -5,7 +5,7 @@
   "sfx_volume": 0.8,
   "show_fps": true,
   "screen_shake": true,
-  "particle_quality": "high",
+  "particle_quality": "low",
   "show_damage_numbers": true,
   "auto_fire": true
 }

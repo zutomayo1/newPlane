@@ -44,8 +44,9 @@
 - skins_darkstring.py: Darkstring专属涂装 (12种) [远程狙击机体]
 - skins_cthulhu.py: Cthulhu专属涂装 (12种) [月蚀星骸·克苏鲁]
 - skins_turu.py: Turu专属涂装 (12种) [巨石核拳·图鲁]
+- skins_staradia.py: Staradia专属涂装 (12种) [辉耀天女·斯塔德]
 
-所有机体涂装拆分完成！共计 351 种涂装。
+所有机体涂装拆分完成！共计 363 种涂装。
 """
 
 from .base import get_plane_surf, clear_plane_cache
@@ -90,6 +91,7 @@ from .skins_spectrum import render_spectrum_skin, is_spectrum_style, SPECTRUM_ST
 from .skins_darkstring import render_darkstring_skin, is_darkstring_style, DARKSTRING_STYLES
 from .skins_cthulhu import render_cthulhu_skin, is_cthulhu_style, CTHULHU_STYLES
 from .skins_turu import render_turu_skin, is_turu_style, TURU_STYLES
+from .skins_staradia import render_staradia_skin, is_staradia_style, STARADIA_STYLES
 
 __all__ = [
     'get_plane_surf', 'clear_plane_cache',
@@ -129,5 +131,6 @@ __all__ = [
     'render_spectrum_skin', 'is_spectrum_style', 'SPECTRUM_STYLES',
     'render_darkstring_skin', 'is_darkstring_style', 'DARKSTRING_STYLES',
     'render_cthulhu_skin', 'is_cthulhu_style', 'CTHULHU_STYLES',
-    'render_turu_skin', 'is_turu_style', 'TURU_STYLES'
+    'render_turu_skin', 'is_turu_style', 'TURU_STYLES',
+    'render_staradia_skin', 'is_staradia_style', 'STARADIA_STYLES'
 ]

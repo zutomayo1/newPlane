@@ -4566,6 +4566,56 @@ def draw_top_hud():
         draw_text(screen, "时流", 16, label_x, bar_y + bar_gap*3 - 1, chronos_color, glow=True, align='left')
         draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
     
+    # 【辉耀天女·斯塔德】皇辉层数显示 - 被动伤害加成
+    if hasattr(player, 'plane_id') and player.plane_id == "staradia":
+        radiant_stacks = getattr(player, 'radiant_stacks', 0)
+        max_stacks = 5
+        domain_active = getattr(player, 'radiant_domain_active', False)
+        remnants = getattr(player, 'remnant_count', 0)  # 残影数量
+        bar_pct = (radiant_stacks / max_stacks) * 100
+        
+        # 能量条颜色 - 七彩渐变配色
+        t = pygame.time.get_ticks() / 1000
+        if domain_active:
+            # 领域激活 - 炫目的彩虹金色闪烁
+            flash = abs(math.sin(pygame.time.get_ticks() / 50))
+            hue_shift = (pygame.time.get_ticks() / 20) % 360
+            r = int(200 + 55 * abs(math.sin(math.radians(hue_shift))))
+            g = int(180 + 75 * abs(math.sin(math.radians(hue_shift + 120))))
+            b = int(150 + 105 * abs(math.sin(math.radians(hue_shift + 240))))
+            radiant_color = (min(255, r), min(255, g), min(255, b))
+        elif radiant_stacks >= 5:
+            # 满层 - 金色闪烁 (最大加成)
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            radiant_color = (int(255), int(200 + 55 * flash), int(100 * flash))
+        elif radiant_stacks >= 3:
+            # 3层以上 - 暖金色
+            radiant_color = (255, int(180 + 40 * (radiant_stacks/max_stacks)), int(80 + 40 * (radiant_stacks/max_stacks)))
+        else:
+            # 低层数 - 淡金到亮金渐变
+            radiant_color = (int(180 + 75 * (radiant_stacks/max_stacks)), int(150 + 50 * (radiant_stacks/max_stacks)), int(80 + 40 * (radiant_stacks/max_stacks))) if radiant_stacks > 0 else (160, 130, 70)
+        
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, radiant_color, 
+                       bg_color=(40, 30, 15), tilt=tilt, border_color=radiant_color, border_width=1)
+        
+        # 状态文本 - 皇辉是被动加成
+        if domain_active:
+            domain_timer = getattr(player, 'radiant_domain_timer', 0)
+            status_text = f"★领域激活★ ({domain_timer//60}s)"
+        else:
+            buff_pct = int(radiant_stacks * 10)  # 每层10%伤害加成
+            if radiant_stacks >= 5:
+                status_text = f"{radiant_stacks}/{max_stacks} (+{buff_pct}%伤害) ★MAX"
+            else:
+                status_text = f"{radiant_stacks}/{max_stacks} (+{buff_pct}%伤害)"
+        
+        # 显示残影数量
+        if remnants > 0:
+            status_text += f" 残影:{remnants}"
+        
+        draw_text(screen, "皇辉", 16, label_x, bar_y + bar_gap*3 - 1, radiant_color, glow=True, align='left')
+        draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+    
     # ===== 顶部右侧：积分和时间（创意特效面板） =====
     score_value_x = WIDTH - 24  # 数值右对齐位置
     score_y = 12
@@ -8554,6 +8604,13 @@ while True:
                                 if hasattr(player, 'plane_id') and player.plane_id == "necro":
                                     if hasattr(player, 'gain_necro_soul'):
                                         player.gain_necro_soul(m.rect.center)
+                                
+                                # 【辉耀天女】击杀彩虹碎裂特效
+                                if hasattr(player, 'plane_id') and player.plane_id == "staradia":
+                                    from utils.bullets.staradia_bullets import spawn_rainbow_crash
+                                    style = getattr(player, 'model_style', 'default')
+                                    enemy_size = max(m.rect.width, m.rect.height)
+                                    spawn_rainbow_crash(m.rect.centerx, m.rect.centery, enemy_size, style)
                                 
                                 # ========== 成就系统：记录击杀 ==========
                                 if player and hasattr(player, 'achievement_manager'):

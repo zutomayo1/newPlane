@@ -43,6 +43,7 @@ from .crystalfall_bullets import render_crystalfall_bullet
 from .sporeveil_bullets import render_sporeveil_bullet
 from .cthulhu_bullets import render_cthulhu_bullet  # 月蚀星骸·克苏鲁
 from .turu_bullets import render_turu_bullet  # 巨石核拳·图鲁
+from .staradia_bullets import render_staradia_bullet_preview  # 辉耀天女·斯塔德
 
 
 # 渲染函数列表，按优先级顺序排列（终极机体优先）
@@ -82,6 +83,7 @@ BULLET_RENDERERS = [
     render_sporeveil_bullet,   # 孢子幕炮·菌幕
     render_cthulhu_bullet,     # [终极机体] 月蚀星骸·克苏鲁
     render_turu_bullet,        # [终极机体] 巨石核拳·图鲁
+    render_staradia_bullet_preview,  # [至尊机体] 辉耀天女·斯塔德
 ]
 
 

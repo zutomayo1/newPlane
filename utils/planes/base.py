@@ -363,6 +363,12 @@ def _generate_plane_surf(pid, visual=None, static=False):
             if result:
                 return result
         
+        # 尝试 Staradia 专属涂装（辉耀天女·斯塔德）
+        from .skins_staradia import render_staradia_skin, is_staradia_style
+        if is_staradia_style(model_style):
+            render_staradia_skin(s, 60, 60, model_style, 30, t)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -481,6 +487,11 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid == "turu":
         from .skins_turu import _render_turu_base
         _render_turu_base(s, t, pulse)
+    
+    # 辉耀天女 - Staradia
+    elif pid == "staradia":
+        from .skins_staradia import _render_staradia_base
+        _render_staradia_base(s, t, pulse)
     
     else:
         # 默认占位图形
