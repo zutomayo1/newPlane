@@ -40,6 +40,7 @@
 - turu_bullets.py: Turu子弹涂装 [巨石核拳·图鲁]
 - staradia_bullets.py: Staradia子弹涂装 [辉耀天女·斯塔德]
 - dukefishron_bullets.py: DukeFishron子弹涂装 [深渊龙鱼·猪公爵]
+- slime_bullets.py: Slime子弹涂装 [末世星凝·史莱姆]
 """
 
 from .base import draw_bullet_preview
@@ -55,6 +56,10 @@ from .cthulhu_bullets import render_cthulhu_bullet, CTHULHU_BULLET_THEMES
 from .turu_bullets import render_turu_bullet
 from .staradia_bullets import render_staradia_bullet, STARADIA_BULLET_THEMES, MoonRainbowShuttle, RadiantRemnant, MoonlightBullet, RadiantBeam, RadiantStorm, MoonRainbowRail, RadiantDomain, RainbowCrash, spawn_rainbow_crash
 from .dukefishron_bullets import DUKE_BULLET_THEMES, AbyssSpear, SharkTornado, MiniSharkBullet, AbyssBubblePickup, WaveTrail, SharkTornadoStorm, AbyssBubbleStorm, DragonFishTsunami, TsunamiWall, DukeKillEffect, spawn_duke_kill_effect
+from .slime_bullets import (SLIME_BULLET_THEMES, StarGelBullet, GravityDomain, 
+                            MiniStarGelBullet, GelCoreBullet, StarGelPickup,
+                            StarStompSkill, AstralCrystalSkill, AureusSpawnSkill,
+                            StarSlimeDownEffect)
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
@@ -67,4 +72,7 @@ __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES',
            'RadiantStorm', 'MoonRainbowRail', 'RadiantDomain', 'RainbowCrash', 'spawn_rainbow_crash',
            'DUKE_BULLET_THEMES', 'AbyssSpear', 'SharkTornado', 'MiniSharkBullet', 
            'AbyssBubblePickup', 'WaveTrail', 'SharkTornadoStorm', 'AbyssBubbleStorm',
-           'DragonFishTsunami', 'TsunamiWall', 'DukeKillEffect', 'spawn_duke_kill_effect']
+           'DragonFishTsunami', 'TsunamiWall', 'DukeKillEffect', 'spawn_duke_kill_effect',
+           'SLIME_BULLET_THEMES', 'StarGelBullet', 'GravityDomain', 'MiniStarGelBullet',
+           'GelCoreBullet', 'StarGelPickup', 'StarStompSkill', 'AstralCrystalSkill',
+           'AureusSpawnSkill', 'StarSlimeDownEffect']

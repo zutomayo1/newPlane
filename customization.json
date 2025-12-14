@@ -510,7 +510,19 @@
     "duke_tropical": true,
     "duke_frost": true,
     "duke_golden": true,
-    "staradia_sakura": true
+    "staradia_sakura": true,
+    "slime_default": true,
+    "slime_cosmic": true,
+    "slime_void": true,
+    "slime_crystal": true,
+    "slime_toxic": true,
+    "slime_royal": true,
+    "slime_blood": true,
+    "slime_ice": true,
+    "slime_flame": true,
+    "slime_phantom": true,
+    "slime_rainbow": true,
+    "slime_abyss": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -556,10 +568,11 @@
     "galestorm": "default",
     "starring": "default",
     "crysthorn": "default",
-    "cthulhu": "cthulhu_void",
+    "cthulhu": "cthulhu_starfall",
     "turu": "turu_ice",
     "staradia": "staradia_ethereal",
-    "dukefishron": "duke_phantom"
+    "dukefishron": "duke_phantom",
+    "slime": "slime_ice"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -934,7 +947,19 @@
     "duke_blood_fang": true,
     "duke_tropical_burst": true,
     "duke_frost_shard": true,
-    "duke_imperial_gold": true
+    "duke_imperial_gold": true,
+    "slime_star_gel": true,
+    "slime_cosmic_gel": true,
+    "slime_void_gel": true,
+    "slime_crystal_gel": true,
+    "slime_toxic_gel": true,
+    "slime_royal_gel": true,
+    "slime_blood_gel": true,
+    "slime_ice_gel": true,
+    "slime_flame_gel": true,
+    "slime_phantom_gel": true,
+    "slime_rainbow_gel": true,
+    "slime_abyss_gel": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -981,7 +1006,9 @@
     "graceweave": "graceweave_bullet_frost",
     "turu": "turu_volcanic_fist",
     "staradia": "staradia_void_rift",
-    "dukefishron": "duke_blood_fang"
+    "dukefishron": "duke_blood_fang",
+    "slime": "slime_star_gel",
+    "cthulhu": "cthulhu_ritual_sigil"
   },
   "equipped_wingman_themes": {
     "slot_0": "gambit_blackjack",

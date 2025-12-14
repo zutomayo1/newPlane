@@ -45,6 +45,7 @@ from .cthulhu_bullets import render_cthulhu_bullet  # 月蚀星骸·克苏鲁
 from .turu_bullets import render_turu_bullet  # 巨石核拳·图鲁
 from .staradia_bullets import render_staradia_bullet_preview  # 辉耀天女·斯塔德
 from .dukefishron_bullets import render_dukefishron_bullet_preview  # 深渊龙鱼·猪公爵
+from .slime_bullets import render_slime_bullet_preview  # 末世星凝·史莱姆
 
 
 # 渲染函数列表，按优先级顺序排列（终极机体优先）
@@ -86,10 +87,11 @@ BULLET_RENDERERS = [
     render_turu_bullet,        # [终极机体] 巨石核拳·图鲁
     render_staradia_bullet_preview,  # [至尊机体] 辉耀天女·斯塔德
     render_dukefishron_bullet_preview,  # [至尊机体] 深渊龙鱼·猪公爵
+    render_slime_bullet_preview,  # [至尊机体] 末世星凝·史莱姆
 ]
 
 
-def draw_bullet_preview(surface, theme, x, y, size=60):
+def draw_bullet_preview(surface, theme, x, y, size=60, plane_id=None):
     """
     绘制子弹预览效果
     
@@ -98,6 +100,7 @@ def draw_bullet_preview(surface, theme, x, y, size=60):
         theme: 主题字典，包含 'effects' 和 'color' 键
         x, y: 绘制位置（左上角）
         size: 预览尺寸
+        plane_id: 机体ID，用于判断是否渲染该机体的默认子弹样式
     """
     try:
         effects = theme.get("effects", [])
@@ -110,9 +113,16 @@ def draw_bullet_preview(surface, theme, x, y, size=60):
         # 遍历所有渲染器，找到匹配的效果
         rendered = False
         for renderer in BULLET_RENDERERS:
-            if renderer(surface, effects, color, center_x, center_y, size, x, y):
-                rendered = True
-                break
+            # 尝试传入plane_id参数（新版渲染器支持）
+            try:
+                if renderer(surface, effects, color, center_x, center_y, size, x, y, plane_id=plane_id):
+                    rendered = True
+                    break
+            except TypeError:
+                # 旧版渲染器不支持plane_id参数
+                if renderer(surface, effects, color, center_x, center_y, size, x, y):
+                    rendered = True
+                    break
         
         # 如果没有匹配的效果，绘制默认圆形
         if not rendered:

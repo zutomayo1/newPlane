@@ -271,10 +271,10 @@ def create_shockwave(pos, color, count=10):
         if should_spawn_particle():
             Particle(pos, color, mode="shockwave")
 
-def draw_bullet_preview(surface, theme, x, y, size=60):
+def draw_bullet_preview(surface, theme, x, y, size=60, plane_id=None):
     """绘制子弹涂装预览 - 已模块化到 utils/bullets/"""
     from utils.bullets import draw_bullet_preview as _draw_bullet_preview
-    _draw_bullet_preview(surface, theme, x, y, size)
+    _draw_bullet_preview(surface, theme, x, y, size, plane_id)
 
 def reset_game():
     global player, boss, score, item_manager, room_manager
@@ -3329,7 +3329,7 @@ def draw_plane_customization_ui():
             # 预览图（简化版本，不使用缓存）
             if is_bullet:
                 # 子弹涂装预览
-                draw_bullet_preview(screen, theme, card_rect.x + 10, card_rect.y + 15, 60)
+                draw_bullet_preview(screen, theme, card_rect.x + 10, card_rect.y + 15, 60, plane_id=customization_selected_plane)
             else:
                 # 机体涂装预览
                 if theme_id == "default":
@@ -3413,7 +3413,7 @@ def draw_plane_customization_ui():
             preview_size = 120
             preview_x = preview_area.centerx - preview_size // 2
             preview_y = preview_area.y + 50
-            draw_bullet_preview(screen, theme, preview_x, preview_y, preview_size)
+            draw_bullet_preview(screen, theme, preview_x, preview_y, preview_size, plane_id=customization_selected_plane)
             
             # 显示涂装名称
             draw_text(screen, theme.get("name", "标准子弹"), 16, preview_area.centerx, preview_area.bottom - 30, CYAN)

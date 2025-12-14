@@ -11639,6 +11639,46 @@ class Player(pygame.sprite.Sprite):
                     return "golden"
         return "default"
 
+    def _get_slime_style(self):
+        """获取Slime涂装样式名称，从bullet_theme_id中提取"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            # 格式: "slime_xxx_gel" -> 提取 "xxx"
+            # 例如: "slime_cosmic_gel" -> "cosmic"
+            #       "slime_void_gel" -> "void"
+            #       "slime_star_gel" -> "default"
+            if theme_id.startswith("slime_"):
+                rest = theme_id[6:]  # 移除 "slime_" 前缀
+                # 移除 "_gel" 后缀如果有
+                if rest.endswith("_gel"):
+                    rest = rest[:-4]
+                # 检查各种涂装
+                if rest == "star":
+                    return "default"
+                elif rest == "cosmic":
+                    return "cosmic"
+                elif rest == "void":
+                    return "void"
+                elif rest == "crystal":
+                    return "crystal"
+                elif rest == "toxic":
+                    return "toxic"
+                elif rest == "royal":
+                    return "royal"
+                elif rest == "blood":
+                    return "blood"
+                elif rest == "ice":
+                    return "ice"
+                elif rest == "flame":
+                    return "flame"
+                elif rest == "phantom":
+                    return "phantom"
+                elif rest == "rainbow":
+                    return "rainbow"
+                elif rest == "abyss":
+                    return "abyss"
+        return "default"
+
     def _fire_main_gun(self):
         """根据机体ID释放不同的射击模式"""
         pid = self.plane_id
@@ -12774,6 +12814,48 @@ class Player(pygame.sprite.Sprite):
                 all_sprites.add(spear)
                 bullets.add(spear)
         
+        # ========== 43. 末世星凝·史莱姆 - 星凝弹+凝胶子核+重力域 ==========
+        elif pid == "slime":
+            from utils.bullets.slime_bullets import StarGelBullet, MiniStarGelBullet, GravityDomain
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 获取涂装样式
+            style = self._get_slime_style()
+            
+            # 初始化史莱姆系统
+            if not hasattr(self, 'slime_gel_stacks'):
+                self.slime_gel_stacks = 0  # 星凝叠层
+            if not hasattr(self, 'slime_domain_timer'):
+                self.slime_domain_timer = 0  # 重力域冷却
+            if not hasattr(self, 'slime_burst_ready'):
+                self.slime_burst_ready = False  # 爆发准备
+            
+            # 发射主弹 - 星凝弹
+            main_bullet = StarGelBullet(cx, cy, self.damage, owner=self, style=style)
+            all_sprites.add(main_bullet)
+            bullets.add(main_bullet)
+            
+            # 每3发释放凝胶子核
+            self.slime_gel_stacks += 1
+            if self.slime_gel_stacks >= 3:
+                self.slime_gel_stacks = 0
+                # 左右各发射一枚凝胶子核
+                for offset in [-25, 25]:
+                    mini = MiniStarGelBullet(cx + offset, cy + 10, self.damage * 0.4, owner=self, style=style)
+                    all_sprites.add(mini)
+                    bullets.add(mini)
+            
+            # 重力域冷却（每2秒可放置一个）
+            self.slime_domain_timer += 1
+            if self.slime_domain_timer >= 120:  # 2秒冷却
+                self.slime_domain_timer = 0
+                # 在前方随机位置放置重力域
+                domain_x = cx + random.randint(-60, 60)
+                domain_y = cy - random.randint(80, 150)
+                domain = GravityDomain(domain_x, domain_y, owner=self, style=style)
+                all_sprites.add(domain)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -13115,6 +13197,13 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_duke_style()
                 storm = SharkTornadoStorm(owner=self, style=style)
                 all_sprites.add(storm)
+            
+            elif pid == "slime":
+                # 【星陨踩踏】跃起后猛砸，落地360度激光散射（参考Aureus跳跃踩踏）
+                from utils.bullets.slime_bullets import StarStompSkill
+                style = self._get_slime_style()
+                skill = StarStompSkill(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                all_sprites.add(skill)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -14138,7 +14227,8 @@ class Player(pygame.sprite.Sprite):
                 "cthulhu": "深渊触手",
                 "turu": "巨石护盾",
                 "staradia": "月虹轨道炮",
-                "dukefishron": "深渊泡风暴"
+                "dukefishron": "深渊泡风暴",
+                "slime": "星炎水晶"
             }
             
             pid = self.plane_id
@@ -14351,6 +14441,13 @@ class Player(pygame.sprite.Sprite):
                                         owner=self, style=style)
                 all_sprites.add(storm)
             
+            elif pid == "slime":
+                # 【星炎水晶】发射追踪水晶弹，延迟追踪后加速冲刺（参考Aureus星炎水晶）
+                from utils.bullets.slime_bullets import AstralCrystalSkill
+                style = self._get_slime_style()
+                skill = AstralCrystalSkill(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                all_sprites.add(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -14409,7 +14506,8 @@ class Player(pygame.sprite.Sprite):
                 "cthulhu": "疯狂领域",
                 "turu": "图鲁跃砸",
                 "staradia": "皇辉领域",
-                "dukefishron": "龙鱼海啸"
+                "dukefishron": "龙鱼海啸",
+                "slime": "星凝子体"
             }
             
             pid = self.plane_id
@@ -14584,6 +14682,13 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_duke_style()
                 tsunami = DragonFishTsunami(owner=self, style=style)
                 all_sprites.add(tsunami)
+            
+            elif pid == "slime":
+                # 【星凝子体】传送+召唤自爆子体（参考Aureus Spawn）
+                from utils.bullets.slime_bullets import AureusSpawnSkill
+                style = self._get_slime_style()
+                skill = AureusSpawnSkill(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                all_sprites.add(skill)
             
             else:
                 # 通用：全屏伤害

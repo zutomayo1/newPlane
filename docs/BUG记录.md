@@ -97,6 +97,69 @@ success, msg = customization_manager.equip_theme(
 
 ---
 
+## Bug #002: 模块导出类名不匹配导致涂装界面卡死
+
+### 问题描述
+在涂装界面点击子弹选项时，整个界面卡死无响应。
+
+### 具体表现
+- 用户进入涂装界面，选择史莱姆机体
+- 点击子弹涂装选项
+- 界面完全卡死，无法操作
+- 无错误提示，程序无响应
+
+### 根本原因
+**模块导出与实际类名不匹配**：在重写史莱姆机体的三个终极技能后，类名发生了变化，但 `utils/bullets/__init__.py` 中的导出语句没有同步更新。
+
+旧类名（已删除）：
+- `StarGelRainSkill`
+- `GravityVortexSkill`
+- `ApocalypseStarfallSkill`
+- `ApocalypseDomain`
+
+新类名（实际存在）：
+- `StarStompSkill`
+- `AstralCrystalSkill`
+- `AureusSpawnSkill`
+
+当涂装界面尝试加载 bullets 模块时，Python 抛出 `ImportError`：
+```
+ImportError: cannot import name 'StarGelRainSkill' from 'utils.bullets.slime_bullets'
+```
+
+由于导入失败发生在模块加载阶段，错误没有被正确捕获，导致界面卡死。
+
+### 解决方案
+更新 `utils/bullets/__init__.py` 中的导出语句，使用正确的类名：
+
+```python
+# 修复前（错误）
+from .slime_bullets import (SLIME_BULLET_THEMES, StarGelBullet, GravityDomain, 
+                            MiniStarGelBullet, GelCoreBullet, StarGelPickup,
+                            StarGelRainSkill, GravityVortexSkill, 
+                            ApocalypseStarfallSkill, ApocalypseDomain)
+
+# 修复后（正确）
+from .slime_bullets import (SLIME_BULLET_THEMES, StarGelBullet, GravityDomain, 
+                            MiniStarGelBullet, GelCoreBullet, StarGelPickup,
+                            StarStompSkill, AstralCrystalSkill, AureusSpawnSkill,
+                            StarSlimeDownEffect)
+```
+
+### 预防措施
+1. **重命名类时同步更新所有引用**：使用 IDE 的"重命名符号"功能，或在重命名后全局搜索旧类名
+2. **在 `__init__.py` 修改后测试导入**：运行 `python -c "from utils.bullets import *"` 验证导入成功
+3. **添加模块加载的异常处理**：在涂装界面加载模块时使用 try-except，避免静默卡死
+
+### 相关文件
+- `utils/bullets/__init__.py` - 模块导出定义
+- `utils/bullets/slime_bullets.py` - 史莱姆子弹类定义
+
+### 修复日期
+2025年12月14日
+
+---
+
 ## Bug 模板
 
 ### 问题描述
