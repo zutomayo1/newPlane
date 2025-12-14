@@ -369,6 +369,14 @@ def _generate_plane_surf(pid, visual=None, static=False):
             render_staradia_skin(s, 60, 60, model_style, 30, t)
             return s
         
+        # 尝试 DukeFishron 专属涂装（深渊龙鱼·猪公爵）
+        from .skins_dukefishron import draw_duke
+        from . import is_dukefishron_style
+        if is_dukefishron_style(model_style):
+            frame = int(t * 60) if not static else 0
+            draw_duke(s, c, 10, 10, 100, 100, frame, model_style)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -492,6 +500,12 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid == "staradia":
         from .skins_staradia import _render_staradia_base
         _render_staradia_base(s, t, pulse)
+    
+    # 深渊龙鱼 - DukeFishron
+    elif pid == "dukefishron":
+        from .skins_dukefishron import draw_duke
+        frame = int(t * 60) if t > 0 else 0
+        draw_duke(s, c, 10, 10, 100, 100, frame, "default")
     
     else:
         # 默认占位图形

@@ -498,7 +498,19 @@
     "staradia_rainbow_fury": true,
     "staradia_ethereal": true,
     "staradia_solar_flare": true,
-    "staradia_void_empress": true
+    "staradia_void_empress": true,
+    "duke_default": true,
+    "duke_abyss": true,
+    "duke_rage": true,
+    "duke_storm": true,
+    "duke_coral": true,
+    "duke_void_sea": true,
+    "duke_tsunami": true,
+    "duke_phantom": true,
+    "duke_blood_moon": true,
+    "duke_tropical": true,
+    "duke_frost": true,
+    "duke_golden": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -546,7 +558,8 @@
     "crysthorn": "default",
     "cthulhu": "cthulhu_void",
     "turu": "turu_ice",
-    "staradia": "staradia_prismatic"
+    "staradia": "staradia_default",
+    "dukefishron": "duke_phantom"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -910,7 +923,18 @@
     "staradia_fury_crash": true,
     "staradia_dream_bubble": true,
     "staradia_solar_dance": true,
-    "staradia_void_rift": true
+    "staradia_void_rift": true,
+    "duke_default": true,
+    "duke_abyss_spear": true,
+    "duke_shark_missile": true,
+    "duke_bubble_bomb": true,
+    "duke_tornado_blast": true,
+    "duke_tsunami_wave": true,
+    "duke_phantom_pierce": true,
+    "duke_blood_fang": true,
+    "duke_tropical_burst": true,
+    "duke_frost_shard": true,
+    "duke_imperial_gold": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -956,7 +980,8 @@
     "sporeblight": "sporeblight_bullet_toxic",
     "graceweave": "graceweave_bullet_frost",
     "turu": "turu_volcanic_fist",
-    "staradia": "staradia_solar_dance"
+    "staradia": "staradia_solar_dance",
+    "dukefishron": "duke_blood_fang"
   },
   "equipped_wingman_themes": {
     "slot_0": "gambit_blackjack",

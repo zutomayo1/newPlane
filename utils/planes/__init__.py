@@ -45,8 +45,9 @@
 - skins_cthulhu.py: Cthulhu专属涂装 (12种) [月蚀星骸·克苏鲁]
 - skins_turu.py: Turu专属涂装 (12种) [巨石核拳·图鲁]
 - skins_staradia.py: Staradia专属涂装 (12种) [辉耀天女·斯塔德]
+- skins_dukefishron.py: DukeFishron专属涂装 (6种) [深渊龙鱼·猪公爵]
 
-所有机体涂装拆分完成！共计 363 种涂装。
+所有机体涂装拆分完成！共计 369 种涂装。
 """
 
 from .base import get_plane_surf, clear_plane_cache
@@ -92,6 +93,19 @@ from .skins_darkstring import render_darkstring_skin, is_darkstring_style, DARKS
 from .skins_cthulhu import render_cthulhu_skin, is_cthulhu_style, CTHULHU_STYLES
 from .skins_turu import render_turu_skin, is_turu_style, TURU_STYLES
 from .skins_staradia import render_staradia_skin, is_staradia_style, STARADIA_STYLES
+from .skins_dukefishron import draw_duke
+
+# DukeFishron样式定义 - 12个高质量涂装（带duke_前缀避免冲突）
+DUKEFISHRON_STYLES = [
+    "duke_default", "duke_abyss", "duke_rage", "duke_storm", "duke_coral", "duke_void_sea",
+    "duke_tsunami", "duke_phantom", "duke_blood_moon", "duke_tropical", "duke_frost", "duke_golden"
+]
+
+def is_dukefishron_style(style):
+    return style in DUKEFISHRON_STYLES
+
+def render_dukefishron_skin(surface, color, x, y, w, h, frame, style):
+    draw_duke(surface, color, x, y, w, h, frame, style)
 
 __all__ = [
     'get_plane_surf', 'clear_plane_cache',
@@ -132,5 +146,6 @@ __all__ = [
     'render_darkstring_skin', 'is_darkstring_style', 'DARKSTRING_STYLES',
     'render_cthulhu_skin', 'is_cthulhu_style', 'CTHULHU_STYLES',
     'render_turu_skin', 'is_turu_style', 'TURU_STYLES',
-    'render_staradia_skin', 'is_staradia_style', 'STARADIA_STYLES'
+    'render_staradia_skin', 'is_staradia_style', 'STARADIA_STYLES',
+    'render_dukefishron_skin', 'is_dukefishron_style', 'DUKEFISHRON_STYLES', 'draw_duke'
 ]

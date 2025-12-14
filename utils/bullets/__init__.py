@@ -39,6 +39,7 @@
 - cthulhu_bullets.py: Cthulhu子弹涂装 [月蚀星骸·克苏鲁]
 - turu_bullets.py: Turu子弹涂装 [巨石核拳·图鲁]
 - staradia_bullets.py: Staradia子弹涂装 [辉耀天女·斯塔德]
+- dukefishron_bullets.py: DukeFishron子弹涂装 [深渊龙鱼·猪公爵]
 """
 
 from .base import draw_bullet_preview
@@ -53,6 +54,7 @@ from .sporeveil_bullets import render_sporeveil_bullet
 from .cthulhu_bullets import render_cthulhu_bullet, CTHULHU_BULLET_THEMES
 from .turu_bullets import render_turu_bullet
 from .staradia_bullets import render_staradia_bullet, STARADIA_BULLET_THEMES, MoonRainbowShuttle, RadiantRemnant, MoonlightBullet, RadiantBeam, RadiantStorm, MoonRainbowRail, RadiantDomain, RainbowCrash, spawn_rainbow_crash
+from .dukefishron_bullets import DUKE_BULLET_THEMES, AbyssSpear, SharkTornado, MiniSharkBullet, AbyssBubblePickup, WaveTrail, SharkTornadoStorm, AbyssBubbleStorm, DragonFishTsunami, TsunamiWall, DukeKillEffect, spawn_duke_kill_effect
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
@@ -62,4 +64,7 @@ __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES',
            'render_sporeveil_bullet', 'render_cthulhu_bullet', 'CTHULHU_BULLET_THEMES',
            'render_turu_bullet', 'render_staradia_bullet', 'STARADIA_BULLET_THEMES',
            'MoonRainbowShuttle', 'RadiantRemnant', 'MoonlightBullet', 'RadiantBeam',
-           'RadiantStorm', 'MoonRainbowRail', 'RadiantDomain', 'RainbowCrash', 'spawn_rainbow_crash']
+           'RadiantStorm', 'MoonRainbowRail', 'RadiantDomain', 'RainbowCrash', 'spawn_rainbow_crash',
+           'DUKE_BULLET_THEMES', 'AbyssSpear', 'SharkTornado', 'MiniSharkBullet', 
+           'AbyssBubblePickup', 'WaveTrail', 'SharkTornadoStorm', 'AbyssBubbleStorm',
+           'DragonFishTsunami', 'TsunamiWall', 'DukeKillEffect', 'spawn_duke_kill_effect']

@@ -4616,6 +4616,42 @@ def draw_top_hud():
         draw_text(screen, "皇辉", 16, label_x, bar_y + bar_gap*3 - 1, radiant_color, glow=True, align='left')
         draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
     
+    # 【深渊龙鱼·猪公爵】龙卷/深渊泡状态显示
+    if hasattr(player, 'plane_id') and player.plane_id == "dukefishron":
+        active_tornados = len(getattr(player, 'active_tornados', []))
+        refract_ready = getattr(player, 'duke_refract_ready', False)
+        tsunami_active = getattr(player, 'duke_tsunami_active', False)
+        
+        # 龙卷数量条
+        max_tornados = 5
+        bar_pct = (min(active_tornados, max_tornados) / max_tornados) * 100
+        
+        # 配色 - 深海蓝+龙鱼粉
+        if tsunami_active:
+            # 海啸激活 - 闪烁蓝白
+            flash = abs(math.sin(pygame.time.get_ticks() / 50))
+            duke_color = (int(80 + 175 * flash), int(150 + 105 * flash), int(200 + 55 * flash))
+        elif active_tornados >= 3:
+            # 多龙卷 - 亮蓝
+            duke_color = (30, 100, 220)
+        else:
+            # 普通 - 深海蓝
+            duke_color = (30, 80, 180)
+        
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, duke_color, 
+                       bg_color=(10, 20, 40), tilt=tilt, border_color=(255, 120, 180), border_width=1)
+        
+        # 状态文本
+        if tsunami_active:
+            status_text = "★海啸滑翔★"
+        else:
+            status_text = f"龙卷x{active_tornados}"
+            if refract_ready:
+                status_text += " 🫧折射"
+        
+        draw_text(screen, "深渊", 16, label_x, bar_y + bar_gap*3 - 1, (255, 120, 180), glow=True, align='left')
+        draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+    
     # ===== 顶部右侧：积分和时间（创意特效面板） =====
     score_value_x = WIDTH - 24  # 数值右对齐位置
     score_y = 12
@@ -8611,6 +8647,12 @@ while True:
                                     style = getattr(player, 'model_style', 'default')
                                     enemy_size = max(m.rect.width, m.rect.height)
                                     spawn_rainbow_crash(m.rect.centerx, m.rect.centery, enemy_size, style)
+                                
+                                # 【深渊龙鱼·猪公爵】击杀深海漩涡特效
+                                if hasattr(player, 'plane_id') and player.plane_id == "dukefishron":
+                                    from utils.bullets.dukefishron_bullets import spawn_duke_kill_effect
+                                    enemy_size = max(m.rect.width, m.rect.height) / 50.0
+                                    spawn_duke_kill_effect(m.rect.centerx, m.rect.centery, enemy_size)
                                 
                                 # ========== 成就系统：记录击杀 ==========
                                 if player and hasattr(player, 'achievement_manager'):

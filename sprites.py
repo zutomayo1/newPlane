@@ -11605,6 +11605,40 @@ class Player(pygame.sprite.Sprite):
                 return theme_id[9:]  # 移除 "staradia_" 前缀
         return "default"
 
+    def _get_duke_style(self):
+        """获取Duke Fishron涂装样式名称，从bullet_theme_id中提取"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            # 格式: "duke_xxx" -> 提取 "xxx" 对应涂装
+            # 例如: "duke_abyss_spear" -> "abyss"
+            #       "duke_default" -> "default"
+            if theme_id.startswith("duke_"):
+                rest = theme_id[5:]  # 移除 "duke_" 前缀
+                # 检查各种模式匹配
+                if rest.startswith("abyss"):
+                    return "abyss"
+                elif rest.startswith("rage"):
+                    return "rage"
+                elif rest.startswith("storm"):
+                    return "storm"
+                elif rest.startswith("coral"):
+                    return "coral"
+                elif rest.startswith("void"):
+                    return "void_sea"
+                elif rest.startswith("tsunami"):
+                    return "tsunami"
+                elif rest.startswith("phantom"):
+                    return "phantom"
+                elif rest.startswith("blood"):
+                    return "blood_moon"
+                elif rest.startswith("tropical"):
+                    return "tropical"
+                elif rest.startswith("frost"):
+                    return "frost"
+                elif rest.startswith("golden") or rest.startswith("imperial"):
+                    return "golden"
+        return "default"
+
     def _fire_main_gun(self):
         """根据机体ID释放不同的射击模式"""
         pid = self.plane_id
@@ -12693,6 +12727,53 @@ class Player(pygame.sprite.Sprite):
                 all_sprites.add(remnant)
                 self.remnant_count += 1  # 增加残影计数
         
+        # ========== 42. 深渊龙鱼·猪公爵 - 深渊水矛+鲨龙卷 ==========
+        elif pid == "dukefishron":
+            from utils.bullets.dukefishron_bullets import AbyssSpear, SharkTornado
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 初始化猪公爵系统
+            if not hasattr(self, 'active_tornados'):
+                self.active_tornados = []  # 当前活跃的鲨龙卷
+            if not hasattr(self, 'duke_refract_ready'):
+                self.duke_refract_ready = False  # 折射泡准备
+            if not hasattr(self, 'duke_dive_charge'):
+                self.duke_dive_charge = 0  # 俯冲充能
+            if not hasattr(self, 'duke_tsunami_active'):
+                self.duke_tsunami_active = False  # 海啸激活
+            if not hasattr(self, 'duke_tsunami_speed_bonus'):
+                self.duke_tsunami_speed_bonus = 0  # 海啸速度加成
+            
+            # 获取涂装样式
+            style = self._get_duke_style()
+            
+            # 检查是否有活跃龙卷可激活爆炸
+            if self.active_tornados:
+                # 激活最老的龙卷爆炸
+                oldest = self.active_tornados[0]
+                if oldest and hasattr(oldest, 'activate_explosion'):
+                    oldest.activate_explosion()
+                    # 龙卷爆炸不发射新水矛
+                    return
+            
+            # 发射深渊水矛
+            is_refract = self.duke_refract_ready
+            if is_refract:
+                self.duke_refract_ready = False
+                # 折射泡模式：发射折射水矛
+                spear = AbyssSpear(cx, cy, self.damage, owner=self, style=style, is_refract=True)
+                all_sprites.add(spear)
+                bullets.add(spear)
+                # 提示
+                from sprites import FloatingText
+                FloatingText(cx, cy - 30, "🫧折射!", (100, 180, 255))
+            else:
+                # 普通水矛
+                spear = AbyssSpear(cx, cy, self.damage, owner=self, style=style, is_refract=False)
+                all_sprites.add(spear)
+                bullets.add(spear)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -12822,13 +12903,13 @@ class Player(pygame.sprite.Sprite):
             self.turrets.append(turret)
 
     def use_ultimate(self):
-        # 【新】冷却检查
+        # 冷却检查
         if self.ult_cooldown > 0:
             return  # 冷却中，无法释放
         
         if self.ult_charge >= 100:
             self.ult_charge -= 100
-            # 【新】设置冷却计时
+            # 设置冷却计时
             self.ult_cooldown = self.ult_max_cooldown
             
             name = self.plane_data["ult_name"]
@@ -13026,6 +13107,13 @@ class Player(pygame.sprite.Sprite):
                 # 提取涂装样式
                 style = self._get_staradia_style()
                 storm = RadiantStorm(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                all_sprites.add(storm)
+            
+            elif pid == "dukefishron":
+                # 【鲨龙卷暴雨】2秒内连续生成7道鲨龙卷
+                from utils.bullets.dukefishron_bullets import SharkTornadoStorm
+                style = self._get_duke_style()
+                storm = SharkTornadoStorm(owner=self, style=style)
                 all_sprites.add(storm)
             
             else:
@@ -14049,7 +14137,8 @@ class Player(pygame.sprite.Sprite):
                 "truth": "阴阳逆转",
                 "cthulhu": "深渊触手",
                 "turu": "巨石护盾",
-                "staradia": "月虹轨道炮"
+                "staradia": "月虹轨道炮",
+                "dukefishron": "深渊泡风暴"
             }
             
             pid = self.plane_id
@@ -14254,6 +14343,14 @@ class Player(pygame.sprite.Sprite):
                 rail = MoonRainbowRail(self.rect.centerx, self.rect.centery, owner=self, style=style)
                 all_sprites.add(rail)
             
+            elif pid == "dukefishron":
+                # 【深渊泡风暴】减速区域+追踪弹
+                from utils.bullets.dukefishron_bullets import AbyssBubbleStorm
+                style = self._get_duke_style()
+                storm = AbyssBubbleStorm(self.rect.centerx, self.rect.centery - 100, 
+                                        owner=self, style=style)
+                all_sprites.add(storm)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -14311,7 +14408,8 @@ class Player(pygame.sprite.Sprite):
                 "darkstring": "命运终结",
                 "cthulhu": "疯狂领域",
                 "turu": "图鲁跃砸",
-                "staradia": "皇辉领域"
+                "staradia": "皇辉领域",
+                "dukefishron": "龙鱼海啸"
             }
             
             pid = self.plane_id
@@ -14479,6 +14577,13 @@ class Player(pygame.sprite.Sprite):
                 domain = RadiantDomain(self.rect.centerx, self.rect.centery, owner=self, style=style)
                 all_sprites.add(domain)
                 self.radiant_domain_timer = 360  # 6秒领域持续
+            
+            elif pid == "dukefishron":
+                # 【龙鱼海啸】3屏滑翔+海啸墙
+                from utils.bullets.dukefishron_bullets import DragonFishTsunami
+                style = self._get_duke_style()
+                tsunami = DragonFishTsunami(owner=self, style=style)
+                all_sprites.add(tsunami)
             
             else:
                 # 通用：全屏伤害
