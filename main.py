@@ -4930,7 +4930,8 @@ def draw_top_hud():
         "thornvine": "荆棘缠绕", "starblade": "星刃回旋", "acidswamp": "酸沼扩散",
         "crystalfall": "晶簇连锁", "sporeveil": "孢子繁殖",
         "cthulhu": "月蚀审判", "turu": "岩拳连击", "staradia": "皇辉残影",
-        "dukefishron": "鲨龙追踪", "slime": "星炎水晶", "oro": "弑神冲袭"
+        "dukefishron": "鲨龙追踪", "slime": "星炎水晶", "oro": "弑神冲袭",
+        "yharon": "龙群盛宴"
     }
     ult2_name = ult2_names.get(player.plane_id, '次级技能')
     ult2_y = bar1_y + bar1_h + 3
@@ -5002,7 +5003,8 @@ def draw_top_hud():
         "thornvine": "骨蔓分裂", "starblade": "星镰乱舞", "acidswamp": "腐蚀大潮",
         "crystalfall": "晶瀑倾泻", "sporeveil": "菌海爆发",
         "cthulhu": "星骸剥离", "turu": "巨石核爆", "staradia": "皇辉领域",
-        "dukefishron": "海啸滑翔", "slime": "星凝子体", "oro": "衔尾蛇"
+        "dukefishron": "海啸滑翔", "slime": "星凝子体", "oro": "衔尾蛇",
+        "yharon": "宿敌升天"
     }
     ult3_name = ult3_names.get(player.plane_id, '终极技能')
     ult3_y = bar2_y + bar2_h + 3

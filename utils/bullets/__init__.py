@@ -41,6 +41,8 @@
 - staradia_bullets.py: Staradia子弹涂装 [辉耀天女·斯塔德]
 - dukefishron_bullets.py: DukeFishron子弹涂装 [深渊龙鱼·猪公爵]
 - slime_bullets.py: Slime子弹涂装 [末世星凝·史莱姆]
+- oro_bullets.py: Oro子弹涂装 [终噬星链·奥罗]
+- yharon_bullets.py: Yharon子弹涂装 [狱炎神龙·犽戎]
 """
 
 from .base import draw_bullet_preview
@@ -64,6 +66,11 @@ from .oro_bullets import (ORO_BULLET_THEMES, VoidChainBullet, ChainNode, LaserGr
                           ChainExplosion, VoidCorePickup, DimensionGridSkill, ShatterEffect,
                           GodSlayerSkill, RealityRift, OuroborosSkill,
                           render_oro_bullet_preview)
+from .yharon_bullets import (YHARON_THEMES, FlareStreamBullet, EmberSpark, BorderDrone,
+                             BorderBullet, DragonDashSkill, DraconicTornado, JungleBreath,
+                             PoisonCloud, GigaNukeSkill, DraconicSwarmSkill, Bumblebirb,
+                             BumblebirbBullet, EnemyAscendedSkill, HellFirePillar,
+                             render_yharon_bullet_preview)
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
@@ -82,4 +89,9 @@ __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES',
            'AureusSpawnSkill', 'StarSlimeDownEffect',
            'ORO_BULLET_THEMES', 'VoidChainBullet', 'ChainNode', 'LaserGrid',
            'ChainExplosion', 'VoidCorePickup', 'DimensionGridSkill', 'ShatterEffect',
-           'GodSlayerSkill', 'RealityRift', 'OuroborosSkill', 'render_oro_bullet_preview']
+           'GodSlayerSkill', 'RealityRift', 'OuroborosSkill', 'render_oro_bullet_preview',
+           'YHARON_THEMES', 'FlareStreamBullet', 'EmberSpark', 'BorderDrone',
+           'BorderBullet', 'DragonDashSkill', 'DraconicTornado', 'JungleBreath',
+           'PoisonCloud', 'GigaNukeSkill', 'DraconicSwarmSkill', 'Bumblebirb',
+           'BumblebirbBullet', 'EnemyAscendedSkill', 'HellFirePillar',
+           'render_yharon_bullet_preview']

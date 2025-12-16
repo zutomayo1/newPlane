@@ -534,7 +534,20 @@
     "oro_blood": true,
     "oro_cosmic": true,
     "oro_abyss": true,
-    "oro_golden": true
+    "oro_golden": true,
+    "yharon_default": true,
+    "yharon_pharaoh": true,
+    "yharon_galleon": true,
+    "yharon_trojan": true,
+    "yharon_sashimi": true,
+    "yharon_candy": true,
+    "yharon_pizza": true,
+    "yharon_surgeon": true,
+    "yharon_jackpot": true,
+    "yharon_office": true,
+    "yharon_storm": true,
+    "yharon_hive": true,
+    "yharon_geode": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -580,12 +593,13 @@
     "galestorm": "default",
     "starring": "default",
     "crysthorn": "default",
-    "cthulhu": "cthulhu_starfall",
-    "turu": "turu_ice",
-    "staradia": "staradia_ethereal",
-    "dukefishron": "duke_phantom",
-    "slime": "slime_royal",
-    "oro": "oro_toxic"
+    "cthulhu": "cthulhu_default",
+    "turu": "turu_crystal",
+    "staradia": "staradia_prismatic",
+    "dukefishron": "duke_coral",
+    "slime": "slime_cosmic",
+    "oro": "oro_blood",
+    "yharon": "yharon_storm"
   },
   "unlocked_bullet_themes": {
     "default": true,

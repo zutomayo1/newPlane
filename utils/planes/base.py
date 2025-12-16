@@ -393,6 +393,14 @@ def _generate_plane_surf(pid, visual=None, static=False):
             draw_oro(s, c, 10, 10, 100, 100, frame, model_style)
             return s
         
+        # 尝试 Yharon 专属涂装（狱炎神龙·犽戎）
+        from .skins_yharon import render_yharon_skin, is_yharon_style
+        if is_yharon_style(model_style):
+            frame = int(t * 60) if not static else 0
+            from .skins_yharon import draw_yharon
+            draw_yharon(s, c, 10, 10, 100, 100, frame, model_style)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -521,7 +529,25 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid == "dukefishron":
         from .skins_dukefishron import draw_duke
         frame = int(t * 60) if t > 0 else 0
-        draw_duke(s, c, 10, 10, 100, 100, frame, "default")
+        draw_duke(s, c, 10, 10, 100, 100, frame, "duke_default")
+    
+    # 末世星凝 - Slime
+    elif pid == "slime":
+        from .skins_slime import draw_slime
+        frame = int(t * 60) if t > 0 else 0
+        draw_slime(s, c, 10, 10, 100, 100, frame, "default")
+    
+    # 终噬星链 - Oro
+    elif pid == "oro":
+        from .skins_oro import draw_oro
+        frame = int(t * 60) if t > 0 else 0
+        draw_oro(s, c, 10, 10, 100, 100, frame, "default")
+    
+    # 狱炎神龙 - Yharon
+    elif pid == "yharon":
+        from .skins_yharon import draw_yharon
+        frame = int(t * 60) if t > 0 else 0
+        draw_yharon(s, c, 10, 10, 100, 100, frame, "yharon_default")
     
     else:
         # 默认占位图形

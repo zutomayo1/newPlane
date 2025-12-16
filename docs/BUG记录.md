@@ -243,3 +243,81 @@ from .slime_bullets import (SLIME_BULLET_THEMES, StarGelBullet, GravityDomain,
 
 ### 修复日期
 [记录修复日期]
+
+---
+
+## Bug #003: Pygame Alpha值越界导致涂装渲染失败
+
+### 问题描述
+部分涂装在预览时显示为"红色圆圈"并一闪一闪，实际机体图形没有正确渲染。
+
+### 具体表现
+- 火山领主（turu_volcanic）涂装预览显示红色圆圈闪烁
+- 黄金图鲁（turu_golden）涂装预览显示红色圆圈
+- 克苏鲁深渊凝视（cthulhu_abyss）涂装预览显示红色圆圈闪烁
+- 控制台无明显错误（错误被 pygame 静默处理或在特定帧才触发）
+
+### 根本原因
+**Alpha 值计算溢出**：pygame 的 `draw.circle()` 等函数要求颜色参数的 alpha 值必须在 0-255 范围内。当动态计算的 alpha 值超出范围时，pygame 抛出 `ValueError: invalid color argument`。
+
+#### 问题代码示例
+
+**turu_volcanic (火山领主)**:
+```python
+# 问题1: ring_alpha 最大可达 270 (120 + 4*25 + 1*50)
+ring_alpha = int(120 + ring * 25 + eruption * 50)  # 当 ring=4, eruption=1
+
+# 问题2: p_alpha 可能为负数
+p_alpha = int((1.2 - p_age) * 220)  # 当 p_age ≈ 1.2 时
+```
+
+**turu_golden (黄金图鲁)**:
+```python
+# ring_alpha 最大可达 260 (200 + 3*20)
+ring_alpha = int(200 + ring * 20)  # 当 ring=3
+```
+
+**cthulhu_abyss (深渊凝视)**:
+```python
+# 当 flicker=0.25, g=2 时: 15 - 30 = -15 (负数)
+pygame.draw.circle(glow_surf, (*col, int(60 * flicker) - g * 15), ...)
+```
+
+### 解决方案
+使用 `max(0, min(255, value))` 确保所有 alpha 值在有效范围内：
+
+```python
+# 修复后的代码
+ring_alpha = min(255, int(120 + ring * 20 + eruption * 40))
+p_alpha = max(0, min(255, int((1.2 - p_age) * 220)))
+glow_alpha = max(0, min(255, int(60 * flicker) - g * 15))
+if glow_alpha > 0:
+    pygame.draw.circle(...)
+```
+
+### 预防措施
+1. **Alpha 值计算规范**：所有动态计算的 alpha 值必须使用边界检查
+   ```python
+   alpha = max(0, min(255, calculated_alpha))
+   ```
+
+2. **代码审查清单**：检查所有涉及以下模式的代码
+   - `int(base + variable * multiplier)` 可能超过 255
+   - `int((max_value - variable) * multiplier)` 可能为负
+   - `base - variable * step` 减法可能为负
+
+3. **单元测试**：对每个涂装渲染函数进行多时间点测试
+   ```python
+   for t in [0.0, 0.1, 0.5, 0.8, 1.0, 2.0]:
+       try:
+           render_function(surface, t, pulse)
+       except ValueError as e:
+           print(f"t={t}: {e}")
+   ```
+
+### 相关文件
+- `utils/planes/skins_turu.py`: _render_turu_volcanic, _render_turu_golden
+- `utils/planes/skins_cthulhu.py`: draw_cthulhu_abyss
+
+### 修复日期
+2025年12月16日

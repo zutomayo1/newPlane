@@ -11702,6 +11702,29 @@ class Player(pygame.sprite.Sprite):
                 return style_map.get(rest, "default")
         return "default"
 
+    def _get_yharon_style(self):
+        """获取Yharon涂装样式名称，从bullet_theme_id中提取"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            # 格式: "yharon_xxx_flare" -> 提取 "xxx"
+            # 例如: "yharon_inferno_flare" -> "inferno"
+            #       "yharon_solar_flare" -> "solar"
+            #       "yharon_default_flare" -> "default"
+            if theme_id.startswith("yharon_"):
+                rest = theme_id[7:]  # 移除 "yharon_" 前缀
+                # 移除 "_flare" 后缀如果有
+                if rest.endswith("_flare"):
+                    rest = rest[:-6]
+                # 检查各种涂装
+                style_map = {
+                    "default": "default", "inferno": "inferno", "solar": "solar",
+                    "jungle": "jungle", "eclipse": "eclipse", "frost": "frost",
+                    "storm": "storm", "bloodmoon": "bloodmoon", "void": "void",
+                    "providence": "providence", "exo": "exo", "calamitas": "calamitas"
+                }
+                return style_map.get(rest, "default")
+        return "default"
+
     def _fire_main_gun(self):
         """根据机体ID释放不同的射击模式"""
         pid = self.plane_id
@@ -12921,6 +12944,45 @@ class Player(pygame.sprite.Sprite):
                 all_sprites.add(laser)
                 bullets.add(laser)
         
+        # ========== 45. 狱炎神龙·犽戎 - 日耀喷流+浮游炮+龙息 ==========
+        elif pid == "yharon":
+            from utils.bullets.yharon_bullets import (FlareStreamBullet, BorderDrone, 
+                                                      JungleBreath)
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            
+            # 获取涂装样式
+            style = self._get_yharon_style()
+            
+            # 初始化犽戎系统
+            if not hasattr(self, 'yharon_border_drones'):
+                # 创建炼狱边界浮游炮
+                self.yharon_border_drones = []
+                for side in ["left", "right"]:
+                    drone = BorderDrone(self, side, style)
+                    self.yharon_border_drones.append(drone)
+            if not hasattr(self, 'yharon_kill_count'):
+                self.yharon_kill_count = 0  # 击杀计数（每10杀触发丛林龙息）
+            if not hasattr(self, 'yharon_fire_timer'):
+                self.yharon_fire_timer = 0  # 浮游炮开火计时
+            if not hasattr(self, 'is_firing'):
+                self.is_firing = False
+            
+            self.is_firing = True  # 标记正在开火
+            
+            # 发射主弹 - 日耀喷流（双发扇形）
+            for angle_offset in [-8, 8]:
+                bullet = FlareStreamBullet(cx, cy, self.damage, angle=-90 + angle_offset, 
+                                          owner=self, style=style)
+            
+            # 浮游炮辅助射击
+            self.yharon_fire_timer += 1
+            if self.yharon_fire_timer >= 10:  # 每10帧浮游炮辅助开火
+                self.yharon_fire_timer = 0
+                for drone in self.yharon_border_drones:
+                    if drone.alive():
+                        drone.fire_assist()
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -13275,6 +13337,13 @@ class Player(pygame.sprite.Sprite):
                 from utils.bullets.oro_bullets import DimensionGridSkill
                 style = self._get_oro_style()
                 skill = DimensionGridSkill(self.rect.centerx, self.rect.centery, self.damage * 3, owner=self, style=style)
+                all_sprites.add(skill)
+            
+            elif pid == "yharon":
+                # 【千兆核爆】F技能：火柱从四周收缩推挤敌人，中心引爆
+                from utils.bullets.yharon_bullets import GigaNukeSkill
+                style = self._get_yharon_style()
+                skill = GigaNukeSkill(self.rect.centerx, self.rect.centery, self.damage * 3, owner=self, style=style)
                 all_sprites.add(skill)
             
             else:
@@ -14527,6 +14596,13 @@ class Player(pygame.sprite.Sprite):
                 skill = GodSlayerSkill(self.rect.centerx, self.rect.centery, self.damage * 5, owner=self, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "yharon":
+                # 【龙群盛宴】G技能：召唤两只机械大黄蜂僚机
+                from utils.bullets.yharon_bullets import DraconicSwarmSkill
+                style = self._get_yharon_style()
+                skill = DraconicSwarmSkill(self.rect.centerx, self.rect.centery, self.damage * 2, owner=self, style=style)
+                all_sprites.add(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -14774,6 +14850,13 @@ class Player(pygame.sprite.Sprite):
                 from utils.bullets.oro_bullets import OuroborosSkill
                 style = self._get_oro_style()
                 skill = OuroborosSkill(self.rect.centerx, self.rect.centery, self.damage * 4, owner=self, style=style)
+                all_sprites.add(skill)
+            
+            elif pid == "yharon":
+                # 【魔君之证·宿敌升天】C技能：巨龙笼罩，天降地狱火柱
+                from utils.bullets.yharon_bullets import EnemyAscendedSkill
+                style = self._get_yharon_style()
+                skill = EnemyAscendedSkill(self.rect.centerx, self.rect.centery, self.damage * 4, owner=self, style=style)
                 all_sprites.add(skill)
             
             else:
