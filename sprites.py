@@ -13485,7 +13485,7 @@ class Player(pygame.sprite.Sprite):
                 # 【饱和轰炸】F技能：瘟疫炸弹波浪式覆盖全屏
                 from utils.bullets.goliath_bullets import CarpetBombingSkill
                 style = self._get_goliath_style()
-                skill = CarpetBombingSkill(self.rect.centerx, self.rect.centery, self.damage * 2.5, owner=self, style=style)
+                skill = CarpetBombingSkill(owner=self, damage=self.damage * 2.5, style=style)
                 all_sprites.add(skill)
             
             else:
@@ -14755,7 +14755,7 @@ class Player(pygame.sprite.Sprite):
                 # 【瘟疫核弹】G技能：投下巨型核弹，蘑菇云清屏
                 from utils.bullets.goliath_bullets import PlagueNukeSkill
                 style = self._get_goliath_style()
-                skill = PlagueNukeSkill(self.rect.centerx, self.rect.centery, self.damage * 4, owner=self, style=style)
+                skill = PlagueNukeSkill(owner=self, damage=self.damage * 4, style=style)
                 all_sprites.add(skill)
             
             else:
@@ -15024,7 +15024,7 @@ class Player(pygame.sprite.Sprite):
                 # 【盖亚之死】C技能：15秒废土领域，敌人HP上限-50%+大幅减速
                 from utils.bullets.goliath_bullets import DeathOfGaiaSkill
                 style = self._get_goliath_style()
-                skill = DeathOfGaiaSkill(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                skill = DeathOfGaiaSkill(owner=self, damage=self.damage * 3, style=style)
                 all_sprites.add(skill)
             
             else:
