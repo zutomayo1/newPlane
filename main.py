@@ -7916,6 +7916,23 @@ while True:
                         
                         all_sprites.update()
                         
+                        # 【至尊灾厄】擦弹检测 - 敌弹接近但未命中时增加暴怒值
+                        if hasattr(player, 'plane_id') and player.plane_id == "sepulcher":
+                            graze_radius = getattr(player, 'sepulcher_graze_radius', 80)
+                            core_radius = 15  # 核心判定点半径
+                            px, py = player.rect.center
+                            for eb in enemy_bullets:
+                                if hasattr(eb, 'sepulcher_grazed'):
+                                    continue  # 已擦过的不再计算
+                                dist = math.hypot(eb.rect.centerx - px, eb.rect.centery - py)
+                                if core_radius < dist < graze_radius:
+                                    # 擦弹成功
+                                    eb.sepulcher_grazed = True
+                                    if hasattr(player, '_add_sepulcher_fury'):
+                                        player._add_sepulcher_fury(5)  # 每次擦弹+5暴怒
+                                    # 擦弹特效
+                                    Particle((eb.rect.centerx, eb.rect.centery), (220, 20, 60))
+                        
                         # 【统计】时间计数和连击衰减
                         player.stats['time_played'] += 1
                         if player.stats['combo_timer'] > 0:
@@ -8678,6 +8695,12 @@ while True:
                                     from utils.bullets.dukefishron_bullets import spawn_duke_kill_effect
                                     enemy_size = max(m.rect.width, m.rect.height) / 50.0
                                     spawn_duke_kill_effect(m.rect.centerx, m.rect.centery, enemy_size)
+                                
+                                # 【至尊灾厄】击杀触发墓穴亡魂
+                                if hasattr(player, 'plane_id') and player.plane_id == "sepulcher":
+                                    from utils.bullets.sepulcher_bullets import SepulcherSkull
+                                    style = player._get_sepulcher_style() if hasattr(player, '_get_sepulcher_style') else "sepulcher_default"
+                                    SepulcherSkull(m.rect.centerx, m.rect.centery, player.damage * 0.8, player, style)
                                 
                                 # ========== 成就系统：记录击杀 ==========
                                 if player and hasattr(player, 'achievement_manager'):

@@ -11243,6 +11243,18 @@ class Player(pygame.sprite.Sprite):
         self.goliath_dash_cooldown = 0    # 冲锋冷却
         self.goliath_invincible = 0       # 瘟疫冲锋无敌帧计时器
         
+        # ========== 【Sepulcher 至尊灾厄】系统 ==========
+        self.sepulcher_fury = 0           # 暴怒值 (0-100)
+        self.sepulcher_max_fury = 100     # 最大暴怒值
+        self.sepulcher_fury_active = False  # 暴怒激活状态
+        self.sepulcher_fury_timer = 0     # 暴怒持续时间
+        self.sepulcher_charge_timer = 0   # 双子魔君蓄力计时
+        self.sepulcher_brothers_active = False  # 双子魔君是否激活
+        self.sepulcher_skull_tail = None  # 骷髅尾巴实例
+        self.sepulcher_aura = None        # 灾厄力场实例
+        self.sepulcher_halo = None        # 魔法阵光环实例
+        self.sepulcher_graze_radius = 80  # 擦弹检测半径
+        
         self.ult_charge = 0
         self.max_ult_charge = 100  # 主大招：只能储存1次
         self.ult_cooldown = 0  # 【新】大招冷却计时器
@@ -11813,6 +11825,83 @@ class Player(pygame.sprite.Sprite):
             if model_style.startswith('goliath_'):
                 return model_style
         return "goliath_default"
+
+    def _get_sepulcher_style(self):
+        """获取Sepulcher涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("sepulcher_"):
+                if theme_id == "sepulcher_brimstone_bolt":
+                    return "sepulcher_default"
+                if theme_id.endswith("_bolt"):
+                    return theme_id[:-5]
+                return theme_id
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('sepulcher_'):
+                return model_style
+        return "sepulcher_default"
+
+    def _init_sepulcher_systems(self):
+        """初始化Sepulcher的特殊系统"""
+        from utils.bullets.sepulcher_bullets import SkullTail, CalamityAura, MagicHalo
+        style = self._get_sepulcher_style()
+        self.sepulcher_skull_tail = SkullTail(self, style)
+        self.sepulcher_aura = CalamityAura(self, style)
+        self.sepulcher_halo = MagicHalo(self, style)
+
+    def _update_sepulcher_systems(self):
+        """更新Sepulcher的特殊系统"""
+        # 更新暴怒计时器
+        if self.sepulcher_fury_active:
+            self.sepulcher_fury_timer -= 1
+            if self.sepulcher_fury_timer <= 0:
+                self.sepulcher_fury_active = False
+                self.sepulcher_fury = 0
+        
+        # 更新骷髅尾巴
+        if self.sepulcher_skull_tail:
+            self.sepulcher_skull_tail.update()
+        
+        # 更新光环
+        if self.sepulcher_aura:
+            self.sepulcher_aura.update()
+        
+        # 更新魔法阵（随暴怒值旋转加速）
+        if self.sepulcher_halo:
+            fury_ratio = self.sepulcher_fury / self.sepulcher_max_fury
+            self.sepulcher_halo.update(fury_ratio)
+
+    def _add_sepulcher_fury(self, amount):
+        """增加暴怒值（擦弹时调用）"""
+        if self.sepulcher_fury_active:
+            return  # 暴怒激活时不再积累
+        
+        self.sepulcher_fury = min(self.sepulcher_max_fury, self.sepulcher_fury + amount)
+        
+        # 暴怒值满，激活暴怒状态
+        if self.sepulcher_fury >= self.sepulcher_max_fury:
+            self.sepulcher_fury_active = True
+            self.sepulcher_fury_timer = 300  # 5秒
+            FloatingText(self.rect.centerx, self.rect.top - 30, "💀暴怒激活!", (220, 20, 60))
+        
+        # 擦弹闪烁效果
+        if self.sepulcher_aura:
+            self.sepulcher_aura.flash()
+
+    def _render_sepulcher_effects(self, surface):
+        """渲染Sepulcher的特效"""
+        # 渲染骷髅尾巴
+        if self.sepulcher_skull_tail:
+            self.sepulcher_skull_tail.render(surface)
+        
+        # 渲染灾厄力场
+        if self.sepulcher_aura:
+            self.sepulcher_aura.render(surface)
+        
+        # 渲染魔法阵光环
+        if self.sepulcher_halo:
+            self.sepulcher_halo.render(surface)
 
     def _trigger_plague_dash(self, direction):
         """【Goliath 瘟疫冲锋】双击触发的高机动动作"""
@@ -13207,6 +13296,38 @@ class Player(pygame.sprite.Sprite):
             # 主武器：瘟疫巡航导弹（爆炸后留下毒云）
             PlagueMissileBullet(cx, cy, self.damage, angle=-90, owner=self, style=style)
         
+        # ========== 48. 至尊灾厄·终末王座 - 硫磺火矢+骷髅尾巴 ==========
+        elif pid == "sepulcher":
+            from utils.bullets.sepulcher_bullets import (BrimstoneBolt, TheBrothersSkill,
+                                                         SkullTail, CalamityAura, MagicHalo)
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_sepulcher_style()
+            
+            # 初始化Sepulcher系统
+            if not hasattr(self, 'sepulcher_initialized') or not self.sepulcher_initialized:
+                self._init_sepulcher_systems()
+                self.sepulcher_initialized = True
+            
+            # 更新Sepulcher系统
+            self._update_sepulcher_systems()
+            
+            # 暴怒状态下射速提升50%
+            fire_rate_mult = 1.5 if self.sepulcher_fury_active else 1.0
+            
+            # 主武器：硫磺火矢（折射激光）
+            # 高频双发
+            BrimstoneBolt(cx - 15, cy, self.damage, angle=-90, owner=self, style=style)
+            BrimstoneBolt(cx + 15, cy, self.damage, angle=-90, owner=self, style=style)
+            
+            # 暴怒状态额外射击
+            if self.sepulcher_fury_active:
+                import random
+                for _ in range(2):
+                    offset = random.randint(-30, 30)
+                    BrimstoneBolt(cx + offset, cy, self.damage * 0.6, 
+                                 angle=-90 + random.randint(-10, 10), owner=self, style=style)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -13582,6 +13703,16 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_goliath_style()
                 skill = CarpetBombingSkill(owner=self, damage=self.damage * 2.5, style=style)
                 all_sprites.add(skill)
+            
+            elif pid == "sepulcher":
+                # 【狱火方阵】F技能：火墙缩圈+骷髅反弹绞杀
+                from utils.bullets.sepulcher_bullets import InfernalBoxSkill
+                style = self._get_sepulcher_style()
+                skill = InfernalBoxSkill(owner=self, damage=self.damage * 3, style=style)
+                # skill有自己的render方法，需要特殊处理
+                if not hasattr(self, 'sepulcher_active_skills'):
+                    self.sepulcher_active_skills = []
+                self.sepulcher_active_skills.append(skill)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -14853,6 +14984,15 @@ class Player(pygame.sprite.Sprite):
                 skill = PlagueNukeSkill(owner=self, damage=self.damage * 4, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "sepulcher":
+                # 【天降灾厄】G技能：硫磺火球暴雨全屏轰炸
+                from utils.bullets.sepulcher_bullets import RainOfCalamitySkill
+                style = self._get_sepulcher_style()
+                skill = RainOfCalamitySkill(owner=self, damage=self.damage * 2.5, style=style)
+                if not hasattr(self, 'sepulcher_active_skills'):
+                    self.sepulcher_active_skills = []
+                self.sepulcher_active_skills.append(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -15121,6 +15261,15 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_goliath_style()
                 skill = DeathOfGaiaSkill(owner=self, damage=self.damage * 3, style=style)
                 all_sprites.add(skill)
+            
+            elif pid == "sepulcher":
+                # 【湮灭之眼】C技能：1/3屏宽毁灭光束持续5秒
+                from utils.bullets.sepulcher_bullets import EyeOfOblivionSkill
+                style = self._get_sepulcher_style()
+                skill = EyeOfOblivionSkill(owner=self, damage=self.damage * 5, style=style)
+                if not hasattr(self, 'sepulcher_active_skills'):
+                    self.sepulcher_active_skills = []
+                self.sepulcher_active_skills.append(skill)
             
             else:
                 # 通用：全屏伤害

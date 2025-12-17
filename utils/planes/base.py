@@ -417,6 +417,14 @@ def _generate_plane_surf(pid, visual=None, static=False):
             draw_goliath(s, c, 10, 10, 100, 100, frame, model_style)
             return s
         
+        # 尝试 Sepulcher 专属涂装（至尊灾厄·终末王座）
+        if model_style and model_style.startswith("sepulcher_"):
+            frame = int(t * 60) if not static else 0
+            from .skins_sepulcher import get_sepulcher_theme
+            theme = get_sepulcher_theme(model_style)
+            _draw_sepulcher_preview(s, c, 10, 10, 100, 100, frame, theme)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -577,12 +585,37 @@ def _generate_plane_surf(pid, visual=None, static=False):
         frame = int(t * 60) if t > 0 else 0
         draw_goliath(s, c, 10, 10, 100, 100, frame, "goliath_default")
     
+    # 至尊灾厄 - Sepulcher
+    elif pid == "sepulcher":
+        from .skins_sepulcher import get_sepulcher_theme
+        frame = int(t * 60) if t > 0 else 0
+        theme = get_sepulcher_theme("sepulcher_default")
+        _draw_sepulcher_preview(s, c, 10, 10, 100, 100, frame, theme)
+    
     else:
         # 默认占位图形
         pygame.draw.circle(s, c, (60, 60), 30)
         pygame.draw.circle(s, edge_color, (60, 60), 30, 2)
     
     return s
+
+
+def _draw_sepulcher_preview(surface, color, x, y, w, h, frame, theme):
+    """
+    绘制至尊灾厄·终末王座的预览图
+    调用skins_sepulcher的完整绘制函数
+    """
+    from utils.planes.skins_sepulcher import draw_sepulcher
+    
+    # 根据theme反查style
+    style = "sepulcher_default"
+    from utils.planes.skins_sepulcher import SEPULCHER_THEMES
+    for key, val in SEPULCHER_THEMES.items():
+        if val.get("armor") == theme.get("armor") and val.get("core") == theme.get("core"):
+            style = key
+            break
+    
+    draw_sepulcher(surface, color, x, y, w, h, frame, style)
 
 
 def clear_plane_cache():

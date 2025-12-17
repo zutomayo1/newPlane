@@ -571,7 +571,19 @@
     "goliath_refinery": true,
     "goliath_hive": true,
     "goliath_xenomorph": true,
-    "goliath_crimson": true
+    "goliath_crimson": true,
+    "sepulcher_default": true,
+    "sepulcher_brimstone": true,
+    "sepulcher_witch": true,
+    "sepulcher_bloodmoon": true,
+    "sepulcher_void": true,
+    "sepulcher_magma": true,
+    "sepulcher_souleater": true,
+    "sepulcher_apocalypse": true,
+    "sepulcher_frost": true,
+    "sepulcher_shadow": true,
+    "sepulcher_seraph": true,
+    "sepulcher_quantum": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -625,7 +637,8 @@
     "oro": "oro_default",
     "yharon": "yharon_trojan",
     "providence": "providence_abyss",
-    "goliath": "goliath_refinery"
+    "goliath": "goliath_refinery",
+    "sepulcher": "sepulcher_void"
   },
   "unlocked_bullet_themes": {
     "default": true,
