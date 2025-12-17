@@ -409,6 +409,14 @@ def _generate_plane_surf(pid, visual=None, static=False):
             draw_providence(s, c, 10, 10, 100, 100, frame, model_style)
             return s
         
+        # 尝试 Goliath 专属涂装（瘟疫使者·歌莉娅）
+        from .skins_goliath import is_goliath_style
+        if is_goliath_style(model_style):
+            frame = int(t * 60) if not static else 0
+            from .skins_goliath import draw_goliath
+            draw_goliath(s, c, 10, 10, 100, 100, frame, model_style)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -562,6 +570,12 @@ def _generate_plane_surf(pid, visual=None, static=False):
         from .skins_providence import draw_providence
         frame = int(t * 60) if t > 0 else 0
         draw_providence(s, c, 10, 10, 100, 100, frame, "providence_default")
+    
+    # 瘟疫使者 - Goliath
+    elif pid == "goliath":
+        from .skins_goliath import draw_goliath
+        frame = int(t * 60) if t > 0 else 0
+        draw_goliath(s, c, 10, 10, 100, 100, frame, "goliath_default")
     
     else:
         # 默认占位图形
