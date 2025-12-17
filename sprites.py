@@ -11745,6 +11745,24 @@ class Player(pygame.sprite.Sprite):
                 return model_style
         return "providence_default"
 
+    def _get_goliath_style(self):
+        """获取Goliath涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("goliath_"):
+                # "goliath_xxx_missile" -> "goliath_xxx"
+                if theme_id == "goliath_plague_missile":
+                    return "goliath_default"
+                if theme_id.endswith("_missile"):
+                    return theme_id[:-8]  # 去掉 "_missile"
+                return theme_id
+        # 从visual中获取model_style
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('goliath_'):
+                return model_style
+        return "goliath_default"
+
     def _fire_main_gun(self):
         """根据机体ID释放不同的射击模式"""
         pid = self.plane_id
@@ -13058,6 +13076,42 @@ class Player(pygame.sprite.Sprite):
                 ProfanedSpearBullet(cx - 15, cy, self.damage * 0.7, angle=-90, owner=self, style=style)
                 ProfanedSpearBullet(cx + 15, cy, self.damage * 0.7, angle=-90, owner=self, style=style)
         
+        # ========== 47. 瘟疫使者·歌莉娅 - 瘟疫导弹+无人机 ==========
+        elif pid == "goliath":
+            from utils.bullets.goliath_bullets import (PlagueMissileBullet, PlagueDrone, PlagueCloud)
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_goliath_style()
+            
+            # 初始化瘟疫系统
+            if not hasattr(self, 'goliath_drones'):
+                self.goliath_drones = []
+                self.goliath_drone_timer = 0
+                self.goliath_cloud_timer = 0
+            
+            # 更新无人机
+            self.goliath_drones = [d for d in self.goliath_drones if d.alive()]
+            self.goliath_drone_timer += 1
+            
+            # 每2秒生成一只瘟疫无人机（最多3只）
+            if self.goliath_drone_timer >= 120 and len(self.goliath_drones) < 3:
+                self.goliath_drone_timer = 0
+                drone = PlagueDrone(cx, cy, self.damage * 0.3, owner=self, style=style)
+                self.goliath_drones.append(drone)
+            
+            # 主武器：瘟疫巡航导弹（爆炸后留下毒云）
+            PlagueMissileBullet(cx, cy, self.damage, angle=-90, owner=self, style=style)
+            
+            # 毒云残留效果：每秒生成环境毒云
+            self.goliath_cloud_timer += 1
+            if self.goliath_cloud_timer >= 60:
+                self.goliath_cloud_timer = 0
+                # 在随机位置生成毒云
+                import random
+                cloud_x = cx + random.randint(-50, 50)
+                cloud_y = cy - random.randint(30, 80)
+                PlagueCloud(cloud_x, cloud_y, self.damage * 0.1, owner=self, style=style)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -13426,6 +13480,13 @@ class Player(pygame.sprite.Sprite):
                 from utils.bullets.providence_bullets import create_molten_rain
                 style = self._get_providence_style()
                 create_molten_rain(self, self.damage * 2, style, count=20)
+            
+            elif pid == "goliath":
+                # 【饱和轰炸】F技能：瘟疫炸弹波浪式覆盖全屏
+                from utils.bullets.goliath_bullets import CarpetBombingSkill
+                style = self._get_goliath_style()
+                skill = CarpetBombingSkill(self.rect.centerx, self.rect.centery, self.damage * 2.5, owner=self, style=style)
+                all_sprites.add(skill)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -14690,6 +14751,13 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_providence_style()
                 skill = create_holy_ray(self, self.damage * 2, style)
             
+            elif pid == "goliath":
+                # 【瘟疫核弹】G技能：投下巨型核弹，蘑菇云清屏
+                from utils.bullets.goliath_bullets import PlagueNukeSkill
+                style = self._get_goliath_style()
+                skill = PlagueNukeSkill(self.rect.centerx, self.rect.centery, self.damage * 4, owner=self, style=style)
+                all_sprites.add(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -14951,6 +15019,13 @@ class Player(pygame.sprite.Sprite):
                 from utils.bullets.providence_bullets import create_supernova
                 style = self._get_providence_style()
                 skill = create_supernova(self, self.damage * 3, style)
+            
+            elif pid == "goliath":
+                # 【盖亚之死】C技能：15秒废土领域，敌人HP上限-50%+大幅减速
+                from utils.bullets.goliath_bullets import DeathOfGaiaSkill
+                style = self._get_goliath_style()
+                skill = DeathOfGaiaSkill(self.rect.centerx, self.rect.centery, owner=self, style=style)
+                all_sprites.add(skill)
             
             else:
                 # 通用：全屏伤害
