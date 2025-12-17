@@ -8472,6 +8472,14 @@ while True:
                                 if hasattr(player, 'spawn_aurora_orb'):
                                     player.spawn_aurora_orb(b.rect.center)
                             
+                            # 【瘟疫使者】每10次命中生成毒云
+                            if hasattr(player, 'plane_id') and player.plane_id == "goliath":
+                                if player.stats['hits'] % 10 == 0:
+                                    from utils.bullets.goliath_bullets import PlagueCloud
+                                    style = player._get_goliath_style() if hasattr(player, '_get_goliath_style') else "goliath_default"
+                                    cloud = PlagueCloud(m.rect.centerx, m.rect.centery, player.damage * 0.3, player, style, duration=180)
+                                    FloatingText(m.rect.centerx, m.rect.centery - 20, "瘟疫爆发!", (57, 255, 20))
+                            
                             # ===== 增强打击感（优化版） =====
                             # 1. 屏幕震动（基于伤害）- 减弱
                             shake_intensity = max(0, min(1, int(dmg / 80)))  # 减少震动强度

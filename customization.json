@@ -559,7 +559,19 @@
     "providence_storm": true,
     "providence_blood": true,
     "providence_gold": true,
-    "providence_aurora": true
+    "providence_aurora": true,
+    "goliath_default": true,
+    "goliath_nuclear": true,
+    "goliath_desert": true,
+    "goliath_arctic": true,
+    "goliath_necrosis": true,
+    "goliath_pandemic": true,
+    "goliath_spore": true,
+    "goliath_chemical": true,
+    "goliath_refinery": true,
+    "goliath_hive": true,
+    "goliath_xenomorph": true,
+    "goliath_crimson": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -612,7 +624,8 @@
     "slime": "slime_void",
     "oro": "oro_default",
     "yharon": "yharon_trojan",
-    "providence": "providence_aurora"
+    "providence": "providence_abyss",
+    "goliath": "goliath_refinery"
   },
   "unlocked_bullet_themes": {
     "default": true,
