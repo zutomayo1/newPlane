@@ -11241,6 +11241,7 @@ class Player(pygame.sprite.Sprite):
         self.goliath_tap_timer = 0        # 双击窗口计时器
         self.goliath_double_tap_window = 18  # 18帧内视为双击（约0.3秒）
         self.goliath_dash_cooldown = 0    # 冲锋冷却
+        self.goliath_invincible = 0       # 瘟疫冲锋无敌帧计时器
         
         self.ult_charge = 0
         self.max_ult_charge = 100  # 主大招：只能储存1次
@@ -11519,6 +11520,9 @@ class Player(pygame.sprite.Sprite):
             # 更新冷却
             if self.goliath_dash_cooldown > 0:
                 self.goliath_dash_cooldown -= 1
+            # 更新无敌帧
+            if self.goliath_invincible > 0:
+                self.goliath_invincible -= 1
             
             # 检测当前按下的方向键
             current_key = None
@@ -11846,6 +11850,9 @@ class Player(pygame.sprite.Sprite):
         
         # 扣除能量
         self.dash_energy = max(0, self.dash_energy - 30)
+        
+        # 设置无敌帧（15帧约0.25秒）
+        self.goliath_invincible = 15
         
         # 音效
         sound_mgr.play("dash")

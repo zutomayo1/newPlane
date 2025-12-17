@@ -8775,6 +8775,14 @@ while True:
                         hits = pygame.sprite.spritecollide(player, mobs, False, pygame.sprite.collide_circle)
                         hits.extend(pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle))
                         if hits:
+                            # 【瘟疫使者·歌莉娅】瘟疫冲锋无敌帧检查
+                            if hasattr(player, 'plane_id') and player.plane_id == "goliath":
+                                if getattr(player, 'goliath_invincible', 0) > 0:
+                                    FloatingText(player.rect.centerx, player.rect.top, "无敌!", (57, 255, 20))
+                                    for _ in range(3):
+                                        Particle(player.rect.center, (57, 255, 20))
+                                    continue  # 免疫伤害
+                            
                             # 【虚空幻影】相位无敌检查
                             if hasattr(player, 'plane_id') and player.plane_id == "phantom":
                                 if getattr(player, 'phantom_intangible', False):
