@@ -401,6 +401,14 @@ def _generate_plane_surf(pid, visual=None, static=False):
             draw_yharon(s, c, 10, 10, 100, 100, frame, model_style)
             return s
         
+        # 尝试 Providence 专属涂装（亵渎天神·普罗维登斯）
+        from .skins_providence import render_providence_skin, is_providence_style
+        if is_providence_style(model_style):
+            frame = int(t * 60) if not static else 0
+            from .skins_providence import draw_providence
+            draw_providence(s, c, 10, 10, 100, 100, frame, model_style)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -548,6 +556,12 @@ def _generate_plane_surf(pid, visual=None, static=False):
         from .skins_yharon import draw_yharon
         frame = int(t * 60) if t > 0 else 0
         draw_yharon(s, c, 10, 10, 100, 100, frame, "yharon_default")
+    
+    # 亵渎天神 - Providence
+    elif pid == "providence":
+        from .skins_providence import draw_providence
+        frame = int(t * 60) if t > 0 else 0
+        draw_providence(s, c, 10, 10, 100, 100, frame, "providence_default")
     
     else:
         # 默认占位图形

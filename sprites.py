@@ -11725,6 +11725,26 @@ class Player(pygame.sprite.Sprite):
                 return style_map.get(rest, "default")
         return "default"
 
+    def _get_providence_style(self):
+        """获取Providence涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("providence_"):
+                # 涂装ID到样式的映射
+                # "providence_xxx_shard" -> "providence_xxx"
+                # 特殊情况: "providence_holy_shard" -> "providence_default"
+                if theme_id == "providence_holy_shard":
+                    return "providence_default"
+                if theme_id.endswith("_shard"):
+                    return theme_id[:-6]  # 去掉 "_shard"
+                return theme_id
+        # 从visual中获取model_style
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('providence_'):
+                return model_style
+        return "providence_default"
+
     def _fire_main_gun(self):
         """根据机体ID释放不同的射击模式"""
         pid = self.plane_id
@@ -12983,6 +13003,61 @@ class Player(pygame.sprite.Sprite):
                     if drone.alive():
                         drone.fire_assist()
         
+        # ========== 46. 亵渎天神·普罗维登斯 - 神圣碎片+亵渎之矛 ==========
+        elif pid == "providence":
+            from utils.bullets.providence_bullets import (HolyShardBullet, ProfanedSpearBullet,
+                                                          HealerGuardian, CocoonShield)
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_providence_style()
+            
+            # 初始化茧化模式系统
+            if not hasattr(self, 'cocoon_mode_active'):
+                self.cocoon_mode_active = False
+                self.cocoon_shield = None
+                self.cocoon_guardians = []
+                self.providence_stationary_timer = 0
+                self.last_pos = (self.rect.x, self.rect.y)
+            
+            # 检测静止状态（茧化模式）
+            if (self.rect.x, self.rect.y) == self.last_pos:
+                self.providence_stationary_timer += 1
+                if self.providence_stationary_timer >= 60 and not self.cocoon_mode_active:  # 静止1秒触发
+                    self.cocoon_mode_active = True
+                    # 创建护盾和守卫
+                    self.cocoon_shield = CocoonShield(self, style)
+                    for i in range(4):
+                        g = HealerGuardian(self, i, 4, style)
+                        self.cocoon_guardians.append(g)
+            else:
+                self.providence_stationary_timer = 0
+                if self.cocoon_mode_active:
+                    self.cocoon_mode_active = False
+                    if self.cocoon_shield:
+                        self.cocoon_shield.deactivate()
+                    for g in self.cocoon_guardians:
+                        if g.alive():
+                            g.kill()
+                    self.cocoon_guardians = []
+            
+            self.last_pos = (self.rect.x, self.rect.y)
+            
+            # 茧化模式时恢复生命
+            if self.cocoon_mode_active:
+                self.hp = min(self.max_hp, self.hp + self.max_hp * 0.03 / 60)  # 3% HP/秒
+            
+            # 主武器：神圣碎片（悬停炸弹）
+            HolyShardBullet(cx, cy, self.damage, angle=-90, owner=self, style=style)
+            
+            # 副武器：亵渎之矛（每3发穿透矛）
+            if not hasattr(self, 'providence_spear_counter'):
+                self.providence_spear_counter = 0
+            self.providence_spear_counter += 1
+            if self.providence_spear_counter >= 3:
+                self.providence_spear_counter = 0
+                ProfanedSpearBullet(cx - 15, cy, self.damage * 0.7, angle=-90, owner=self, style=style)
+                ProfanedSpearBullet(cx + 15, cy, self.damage * 0.7, angle=-90, owner=self, style=style)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -13345,6 +13420,12 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_yharon_style()
                 skill = GigaNukeSkill(self.rect.centerx, self.rect.centery, self.damage * 3, owner=self, style=style)
                 all_sprites.add(skill)
+            
+            elif pid == "providence":
+                # 【熔融之雨】F技能：天降熔岩球，覆盖全屏
+                from utils.bullets.providence_bullets import create_molten_rain
+                style = self._get_providence_style()
+                create_molten_rain(self, self.damage * 2, style, count=20)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -14603,6 +14684,12 @@ class Player(pygame.sprite.Sprite):
                 skill = DraconicSwarmSkill(self.rect.centerx, self.rect.centery, self.damage * 2, owner=self, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "providence":
+                # 【神圣射线】G技能：扇形扫射激光
+                from utils.bullets.providence_bullets import create_holy_ray
+                style = self._get_providence_style()
+                skill = create_holy_ray(self, self.damage * 2, style)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -14858,6 +14945,12 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_yharon_style()
                 skill = EnemyAscendedSkill(self.rect.centerx, self.rect.centery, self.damage * 4, owner=self, style=style)
                 all_sprites.add(skill)
+            
+            elif pid == "providence":
+                # 【超新星爆发】C技能：360度星辰弹幕+时停效果
+                from utils.bullets.providence_bullets import create_supernova
+                style = self._get_providence_style()
+                skill = create_supernova(self, self.damage * 3, style)
             
             else:
                 # 通用：全屏伤害

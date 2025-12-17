@@ -246,7 +246,7 @@ from .slime_bullets import (SLIME_BULLET_THEMES, StarGelBullet, GravityDomain,
 
 ---
 
-## Bug #003: Pygame Alpha值越界导致涂装渲染失败
+## Bug #004: Pygame Alpha值越界导致涂装渲染失败
 
 ### 问题描述
 部分涂装在预览时显示为"红色圆圈"并一闪一闪，实际机体图形没有正确渲染。

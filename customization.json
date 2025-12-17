@@ -547,7 +547,19 @@
     "yharon_office": true,
     "yharon_storm": true,
     "yharon_hive": true,
-    "yharon_geode": true
+    "yharon_geode": true,
+    "providence_default": true,
+    "providence_night": true,
+    "providence_abyss": true,
+    "providence_crystal": true,
+    "providence_magma": true,
+    "providence_frost": true,
+    "providence_void": true,
+    "providence_nature": true,
+    "providence_storm": true,
+    "providence_blood": true,
+    "providence_gold": true,
+    "providence_aurora": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -597,9 +609,10 @@
     "turu": "turu_crystal",
     "staradia": "staradia_prismatic",
     "dukefishron": "duke_coral",
-    "slime": "slime_cosmic",
-    "oro": "oro_blood",
-    "yharon": "yharon_storm"
+    "slime": "slime_void",
+    "oro": "oro_default",
+    "yharon": "yharon_trojan",
+    "providence": "providence_aurora"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -998,7 +1011,19 @@
     "oro_blood_chain": true,
     "oro_cosmic_chain": true,
     "oro_abyss_chain": true,
-    "oro_golden_chain": true
+    "oro_golden_chain": true,
+    "providence_holy_shard": true,
+    "providence_night_shard": true,
+    "providence_abyss_shard": true,
+    "providence_crystal_shard": true,
+    "providence_magma_shard": true,
+    "providence_frost_shard": true,
+    "providence_void_shard": true,
+    "providence_nature_shard": true,
+    "providence_storm_shard": true,
+    "providence_blood_shard": true,
+    "providence_gold_shard": true,
+    "providence_aurora_shard": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",
@@ -1048,7 +1073,8 @@
     "dukefishron": "duke_blood_fang",
     "slime": "slime_star_gel",
     "cthulhu": "cthulhu_ritual_sigil",
-    "oro": "oro_void_chain"
+    "oro": "oro_void_chain",
+    "providence": "providence_abyss_shard"
   },
   "equipped_wingman_themes": {
     "slot_0": "gambit_blackjack",

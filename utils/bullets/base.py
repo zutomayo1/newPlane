@@ -46,6 +46,7 @@ from .turu_bullets import render_turu_bullet  # 巨石核拳·图鲁
 from .staradia_bullets import render_staradia_bullet_preview  # 辉耀天女·斯塔德
 from .dukefishron_bullets import render_dukefishron_bullet_preview  # 深渊龙鱼·猪公爵
 from .slime_bullets import render_slime_bullet_preview  # 末世星凝·史莱姆
+from .providence_bullets import render_providence_bullet_preview  # 亵渎天神·普罗维登斯
 
 
 # 渲染函数列表，按优先级顺序排列（终极机体优先）
@@ -88,6 +89,7 @@ BULLET_RENDERERS = [
     render_staradia_bullet_preview,  # [至尊机体] 辉耀天女·斯塔德
     render_dukefishron_bullet_preview,  # [至尊机体] 深渊龙鱼·猪公爵
     render_slime_bullet_preview,  # [至尊机体] 末世星凝·史莱姆
+    render_providence_bullet_preview,  # [至尊机体] 亵渎天神·普罗维登斯
 ]
 
 

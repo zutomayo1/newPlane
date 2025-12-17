@@ -49,8 +49,9 @@
 - skins_slime.py: Slime专属涂装 (12种) [末世星凝·史莱姆]
 - skins_oro.py: Oro专属涂装 (12种) [终噬星链·奥罗]
 - skins_yharon.py: Yharon专属涂装 (12种) [狱炎神龙·犽戎]
+- skins_providence.py: Providence专属涂装 (12种) [亵渎天神·普罗维登斯]
 
-所有机体涂装拆分完成！共计 393 种涂装。
+所有机体涂装拆分完成！共计 405 种涂装。
 """
 
 from .base import get_plane_surf, clear_plane_cache
@@ -100,6 +101,7 @@ from .skins_dukefishron import draw_duke
 from .skins_slime import draw_slime, is_slime_style, render_slime_skin, SLIME_STYLES
 from .skins_oro import draw_oro, is_oro_style, render_oro_skin, ORO_STYLES
 from .skins_yharon import draw_yharon, is_yharon_style, render_yharon_skin, YHARON_STYLES
+from .skins_providence import draw_providence, is_providence_style, render_providence_skin, PROVIDENCE_STYLES
 
 # DukeFishron样式定义 - 12个高质量涂装（带duke_前缀避免冲突）
 DUKEFISHRON_STYLES = [
@@ -156,5 +158,6 @@ __all__ = [
     'render_dukefishron_skin', 'is_dukefishron_style', 'DUKEFISHRON_STYLES', 'draw_duke',
     'render_slime_skin', 'is_slime_style', 'SLIME_STYLES', 'draw_slime',
     'render_oro_skin', 'is_oro_style', 'ORO_STYLES', 'draw_oro',
-    'render_yharon_skin', 'is_yharon_style', 'YHARON_STYLES', 'draw_yharon'
+    'render_yharon_skin', 'is_yharon_style', 'YHARON_STYLES', 'draw_yharon',
+    'render_providence_skin', 'is_providence_style', 'PROVIDENCE_STYLES', 'draw_providence'
 ]

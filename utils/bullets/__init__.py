@@ -71,6 +71,12 @@ from .yharon_bullets import (YHARON_THEMES, FlareStreamBullet, EmberSpark, Borde
                              PoisonCloud, GigaNukeSkill, DraconicSwarmSkill, Bumblebirb,
                              BumblebirbBullet, EnemyAscendedSkill, HellFirePillar,
                              render_yharon_bullet_preview)
+from .providence_bullets import (HolyShardBullet, HolyExplosion, ProfanedSpearBullet,
+                                  HealerGuardian, HealingWave, CocoonShield,
+                                  MoltenRainStorm, HolyRay, SupernovaExplosion,
+                                  create_holy_shard, create_profaned_spear, create_healer_guardian,
+                                  create_cocoon_shield, create_molten_rain, create_holy_ray, create_supernova,
+                                  render_providence_bullet_preview)
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
@@ -94,4 +100,10 @@ __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES',
            'BorderBullet', 'DragonDashSkill', 'DraconicTornado', 'JungleBreath',
            'PoisonCloud', 'GigaNukeSkill', 'DraconicSwarmSkill', 'Bumblebirb',
            'BumblebirbBullet', 'EnemyAscendedSkill', 'HellFirePillar',
-           'render_yharon_bullet_preview']
+           'render_yharon_bullet_preview',
+           'HolyShardBullet', 'HolyExplosion', 'ProfanedSpearBullet',
+           'HealerGuardian', 'HealingWave', 'CocoonShield',
+           'MoltenRainStorm', 'HolyRay', 'SupernovaExplosion',
+           'create_holy_shard', 'create_profaned_spear', 'create_healer_guardian',
+           'create_cocoon_shield', 'create_molten_rain', 'create_holy_ray', 'create_supernova',
+           'render_providence_bullet_preview']
