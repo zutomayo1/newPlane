@@ -11236,9 +11236,11 @@ class Player(pygame.sprite.Sprite):
         self.is_dashing = False
         
         # ========== 【Goliath 瘟疫冲锋】双击检测系统 ==========
-        self.last_key_press = None
-        self.last_key_time = 0
-        self.double_tap_window = 15  # 15帧内视为双击
+        self.goliath_key_released = True  # 按键是否已释放
+        self.goliath_last_tap_key = None  # 上次按下的方向键
+        self.goliath_tap_timer = 0        # 双击窗口计时器
+        self.goliath_double_tap_window = 18  # 18帧内视为双击（约0.3秒）
+        self.goliath_dash_cooldown = 0    # 冲锋冷却
         
         self.ult_charge = 0
         self.max_ult_charge = 100  # 主大招：只能储存1次
@@ -11514,30 +11516,42 @@ class Player(pygame.sprite.Sprite):
         
         # ========== 【Goliath 瘟疫冲锋】检测双击 ==========
         if self.plane_id == "goliath":
-            # 检测移动键按下
+            # 更新冷却
+            if self.goliath_dash_cooldown > 0:
+                self.goliath_dash_cooldown -= 1
+            
+            # 检测当前按下的方向键
             current_key = None
             if keys[pygame.K_LEFT] or keys[pygame.K_a]: current_key = 'left'
             elif keys[pygame.K_RIGHT] or keys[pygame.K_d]: current_key = 'right'
             elif keys[pygame.K_UP] or keys[pygame.K_w]: current_key = 'up'
             elif keys[pygame.K_DOWN] or keys[pygame.K_s]: current_key = 'down'
             
-            # 双击检测
-            if current_key and current_key == self.last_key_press:
-                if self.last_key_time > 0 and self.last_key_time <= self.double_tap_window:
-                    # 触发瘟疫冲锋
-                    self._trigger_plague_dash(current_key)
-                    self.last_key_press = None
-                    self.last_key_time = 0
-                else:
-                    self.last_key_time += 1
-            elif current_key:
-                self.last_key_press = current_key
-                self.last_key_time = 1
+            # 双击检测逻辑：按下->释放->快速再按
+            if current_key:
+                if self.goliath_key_released:  # 如果之前已释放
+                    if (current_key == self.goliath_last_tap_key and 
+                        self.goliath_tap_timer > 0 and 
+                        self.goliath_dash_cooldown <= 0):
+                        # 双击成功！触发瘟疫冲锋
+                        self._trigger_plague_dash(current_key)
+                        self.goliath_last_tap_key = None
+                        self.goliath_tap_timer = 0
+                        self.goliath_dash_cooldown = 30  # 0.5秒冷却
+                    else:
+                        # 记录这次按下
+                        self.goliath_last_tap_key = current_key
+                        self.goliath_tap_timer = self.goliath_double_tap_window
+                    self.goliath_key_released = False
             else:
-                self.last_key_time += 1
-                if self.last_key_time > self.double_tap_window:
-                    self.last_key_press = None
-                    self.last_key_time = 0
+                # 按键释放
+                self.goliath_key_released = True
+            
+            # 倒计时
+            if self.goliath_tap_timer > 0:
+                self.goliath_tap_timer -= 1
+            else:
+                self.goliath_last_tap_key = None
         
         # 冲刺
         # Overdrive temporary buff handling
