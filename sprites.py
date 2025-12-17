@@ -11234,6 +11234,12 @@ class Player(pygame.sprite.Sprite):
         self.max_dash_energy = 100
         self.dash_energy = 100
         self.is_dashing = False
+        
+        # ========== 【Goliath 瘟疫冲锋】双击检测系统 ==========
+        self.last_key_press = None
+        self.last_key_time = 0
+        self.double_tap_window = 15  # 15帧内视为双击
+        
         self.ult_charge = 0
         self.max_ult_charge = 100  # 主大招：只能储存1次
         self.ult_cooldown = 0  # 【新】大招冷却计时器
@@ -11506,6 +11512,33 @@ class Player(pygame.sprite.Sprite):
             dx = dx / move_length * self.speed
             dy = dy / move_length * self.speed
         
+        # ========== 【Goliath 瘟疫冲锋】检测双击 ==========
+        if self.plane_id == "goliath":
+            # 检测移动键按下
+            current_key = None
+            if keys[pygame.K_LEFT] or keys[pygame.K_a]: current_key = 'left'
+            elif keys[pygame.K_RIGHT] or keys[pygame.K_d]: current_key = 'right'
+            elif keys[pygame.K_UP] or keys[pygame.K_w]: current_key = 'up'
+            elif keys[pygame.K_DOWN] or keys[pygame.K_s]: current_key = 'down'
+            
+            # 双击检测
+            if current_key and current_key == self.last_key_press:
+                if self.last_key_time > 0 and self.last_key_time <= self.double_tap_window:
+                    # 触发瘟疫冲锋
+                    self._trigger_plague_dash(current_key)
+                    self.last_key_press = None
+                    self.last_key_time = 0
+                else:
+                    self.last_key_time += 1
+            elif current_key:
+                self.last_key_press = current_key
+                self.last_key_time = 1
+            else:
+                self.last_key_time += 1
+                if self.last_key_time > self.double_tap_window:
+                    self.last_key_press = None
+                    self.last_key_time = 0
+        
         # 冲刺
         # Overdrive temporary buff handling
         if self.overdrive_timer > 0:
@@ -11762,6 +11795,46 @@ class Player(pygame.sprite.Sprite):
             if model_style.startswith('goliath_'):
                 return model_style
         return "goliath_default"
+
+    def _trigger_plague_dash(self, direction):
+        """【Goliath 瘟疫冲锋】双击触发的高机动动作"""
+        from utils.bullets.goliath_bullets import PlagueCloud
+        import random
+        
+        style = self._get_goliath_style()
+        theme = {}
+        try:
+            from utils.planes.skins_goliath import get_goliath_theme
+            theme = get_goliath_theme(style)
+        except:
+            theme = {"toxic": (57, 255, 20), "smoke": (50, 60, 40)}
+        
+        # 在原地生成一团毒雾（陷阱）
+        for _ in range(3):
+            cloud_x = self.rect.centerx + random.randint(-30, 30)
+            cloud_y = self.rect.centery + random.randint(-20, 20)
+            PlagueCloud(cloud_x, cloud_y, self.damage * 0.15, owner=self, style=style, duration=180)
+        
+        # 产生毒雾视觉效果
+        from sprites import Particle
+        for _ in range(20):
+            Particle(self.rect.center, theme.get("toxic", (57, 255, 20)), mode='spark')
+        
+        # 计算瞬移方向
+        dash_dist = 120
+        if direction == 'left': self.rect.x -= dash_dist
+        elif direction == 'right': self.rect.x += dash_dist
+        elif direction == 'up': self.rect.y -= dash_dist
+        elif direction == 'down': self.rect.y += dash_dist
+        
+        # 边界限制
+        self.rect.clamp_ip(screen_rect)
+        
+        # 扣除能量
+        self.dash_energy = max(0, self.dash_energy - 30)
+        
+        # 音效
+        sound_mgr.play("dash")
 
     def _fire_main_gun(self):
         """根据机体ID释放不同的射击模式"""
@@ -13076,9 +13149,9 @@ class Player(pygame.sprite.Sprite):
                 ProfanedSpearBullet(cx - 15, cy, self.damage * 0.7, angle=-90, owner=self, style=style)
                 ProfanedSpearBullet(cx + 15, cy, self.damage * 0.7, angle=-90, owner=self, style=style)
         
-        # ========== 47. 瘟疫使者·歌莉娅 - 瘟疫导弹+无人机 ==========
+        # ========== 47. 瘟疫使者·歌莉娅 - 瘟疫导弹+病毒尘埃 ==========
         elif pid == "goliath":
-            from utils.bullets.goliath_bullets import (PlagueMissileBullet, PlagueDrone, PlagueCloud)
+            from utils.bullets.goliath_bullets import (PlagueMissileBullet, PlagueDrone, PlagueCloud, PlagueDust)
             
             cx, cy = self.rect.centerx, self.rect.top - 5
             style = self._get_goliath_style()
@@ -13086,31 +13159,32 @@ class Player(pygame.sprite.Sprite):
             # 初始化瘟疫系统
             if not hasattr(self, 'goliath_drones'):
                 self.goliath_drones = []
-                self.goliath_drone_timer = 0
-                self.goliath_cloud_timer = 0
+                self.goliath_dust_timer = 0
+                self.goliath_last_pos = (self.rect.centerx, self.rect.centery)
             
-            # 更新无人机
+            # ========== 被动：瘟疫感染 - 路径残留病毒尘埃 ==========
+            # 移动时在路径上留下病毒尘埃
+            current_pos = (self.rect.centerx, self.rect.centery)
+            dx = current_pos[0] - self.goliath_last_pos[0]
+            dy = current_pos[1] - self.goliath_last_pos[1]
+            move_dist = (dx*dx + dy*dy) ** 0.5
+            
+            self.goliath_dust_timer += 1
+            if move_dist > 5 and self.goliath_dust_timer >= 8:  # 移动时每8帧生成尘埃
+                self.goliath_dust_timer = 0
+                # 在身后生成病毒尘埃
+                import random
+                dust_x = self.rect.centerx + random.randint(-20, 20)
+                dust_y = self.rect.centery + random.randint(10, 30)
+                PlagueDust(dust_x, dust_y, self.damage * 0.05, owner=self, style=style)
+            
+            self.goliath_last_pos = current_pos
+            
+            # 更新无人机存活状态
             self.goliath_drones = [d for d in self.goliath_drones if d.alive()]
-            self.goliath_drone_timer += 1
-            
-            # 每2秒生成一只瘟疫无人机（最多3只）
-            if self.goliath_drone_timer >= 120 and len(self.goliath_drones) < 3:
-                self.goliath_drone_timer = 0
-                drone = PlagueDrone(cx, cy, self.damage * 0.3, owner=self, style=style)
-                self.goliath_drones.append(drone)
             
             # 主武器：瘟疫巡航导弹（爆炸后留下毒云）
             PlagueMissileBullet(cx, cy, self.damage, angle=-90, owner=self, style=style)
-            
-            # 毒云残留效果：每秒生成环境毒云
-            self.goliath_cloud_timer += 1
-            if self.goliath_cloud_timer >= 60:
-                self.goliath_cloud_timer = 0
-                # 在随机位置生成毒云
-                import random
-                cloud_x = cx + random.randint(-50, 50)
-                cloud_y = cy - random.randint(30, 80)
-                PlagueCloud(cloud_x, cloud_y, self.damage * 0.1, owner=self, style=style)
         
         # 默认情况
         else:
