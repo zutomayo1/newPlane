@@ -425,6 +425,17 @@ def _generate_plane_surf(pid, visual=None, static=False):
             _draw_sepulcher_preview(s, c, 10, 10, 100, 100, frame, theme)
             return s
         
+        # 尝试 Galaxia 专属涂装（宇宙之弧·Galaxia）
+        if model_style and model_style.startswith("galaxia_"):
+            frame = int(t * 60) if not static else 0
+            from .skins_galaxia import render_galaxia_plane
+            # 280x280的surface，中心区域100x100，留出90像素边距容纳2.0倍放大
+            big_s = pygame.Surface((280, 280), pygame.SRCALPHA)
+            render_galaxia_plane(big_s, c, 90, 90, 100, 100, frame, model_style)
+            scaled = pygame.transform.smoothscale(big_s, (120, 120))
+            s.blit(scaled, (0, 0))
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -591,6 +602,16 @@ def _generate_plane_surf(pid, visual=None, static=False):
         frame = int(t * 60) if t > 0 else 0
         theme = get_sepulcher_theme("sepulcher_default")
         _draw_sepulcher_preview(s, c, 10, 10, 100, 100, frame, theme)
+    
+    # 宇宙之弧 - Galaxia
+    elif pid == "galaxia":
+        from .skins_galaxia import render_galaxia_plane
+        frame = int(t * 60) if t > 0 else 0
+        # 280x280的surface，中心区域100x100，留出90像素边距容纳2.0倍放大
+        big_s = pygame.Surface((280, 280), pygame.SRCALPHA)
+        render_galaxia_plane(big_s, c, 90, 90, 100, 100, frame, "galaxia_default")
+        scaled = pygame.transform.smoothscale(big_s, (120, 120))
+        s.blit(scaled, (0, 0))
     
     else:
         # 默认占位图形

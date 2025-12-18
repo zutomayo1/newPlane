@@ -583,7 +583,19 @@
     "sepulcher_frost": true,
     "sepulcher_shadow": true,
     "sepulcher_seraph": true,
-    "sepulcher_quantum": true
+    "sepulcher_quantum": true,
+    "galaxia_default": true,
+    "galaxia_solar": true,
+    "galaxia_nebula": true,
+    "galaxia_vortex": true,
+    "galaxia_stardust": true,
+    "galaxia_crimson": true,
+    "galaxia_corruption": true,
+    "galaxia_hallowed": true,
+    "galaxia_lunar": true,
+    "galaxia_zenith": true,
+    "galaxia_rainbow": true,
+    "galaxia_void": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -636,9 +648,10 @@
     "slime": "slime_void",
     "oro": "oro_default",
     "yharon": "yharon_trojan",
-    "providence": "providence_abyss",
+    "providence": "providence_frost",
     "goliath": "goliath_refinery",
-    "sepulcher": "sepulcher_void"
+    "sepulcher": "sepulcher_witch",
+    "galaxia": "galaxia_rainbow"
   },
   "unlocked_bullet_themes": {
     "default": true,

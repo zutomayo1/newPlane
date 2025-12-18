@@ -11842,6 +11842,23 @@ class Player(pygame.sprite.Sprite):
                 return model_style
         return "sepulcher_default"
 
+    def _get_galaxia_style(self):
+        """获取Galaxia涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("galaxia_"):
+                # 移除后缀（如果有）
+                clean_id = theme_id.replace("galaxia_", "")
+                if clean_id.endswith("_star") or clean_id.endswith("_slash"):
+                    return clean_id.rsplit("_", 1)[0]
+                return clean_id
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('galaxia_'):
+                return model_style.replace("galaxia_", "")
+        return "default"
+
+
     def _init_sepulcher_systems(self):
         """初始化Sepulcher的特殊系统"""
         from utils.bullets.sepulcher_bullets import SkullTail, CalamityAura, MagicHalo
@@ -13328,6 +13345,48 @@ class Player(pygame.sprite.Sprite):
                     BrimstoneBolt(cx + offset, cy, self.damage * 0.6, 
                                  angle=-90 + random.randint(-10, 10), owner=self, style=style)
         
+        # ========== 49. 方舟·苍穹 - 宇宙剪刃+星辰剪切 ==========
+        elif pid == "galaxia":
+            from utils.bullets.galaxia_bullets import SplitStar, CosmicScissorBullet
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_galaxia_style()
+            
+            # 初始化GALAXIA系统
+            if not hasattr(self, 'galaxia_initialized') or not self.galaxia_initialized:
+                self.galaxia_snip_range = 80  # 剪切范围
+                self.galaxia_parry_chance = 0.3  # 弹反概率
+                self.galaxia_initialized = True
+            
+            # 主武器：宇宙剪刃（双发交叉）
+            CosmicScissorBullet(cx - 12, cy, self.damage, angle=-85, owner=self, style=style)
+            CosmicScissorBullet(cx + 12, cy, self.damage, angle=-95, owner=self, style=style)
+            
+            # 被动：星辰剪切（近战范围攻击）
+            # 在前方扇形区域检测敌人
+            for mob in mobs:
+                if hasattr(mob, 'rect'):
+                    dx = mob.rect.centerx - cx
+                    dy = mob.rect.centery - cy
+                    dist = math.hypot(dx, dy)
+                    
+                    # 范围内且在前方60度扇形内
+                    if dist < self.galaxia_snip_range and dy < 0:
+                        angle_to_mob = math.degrees(math.atan2(dy, dx))
+                        if -120 <= angle_to_mob <= -60:  # 前方扇形
+                            if hasattr(mob, 'take_damage'):
+                                mob.take_damage(self.damage * 0.4)
+                                
+                                # 命中产生裂变星体
+                                if random.random() < 0.5:
+                                    # 找个新目标
+                                    target = None
+                                    for other_mob in mobs:
+                                        if other_mob != mob and hasattr(other_mob, 'rect'):
+                                            target = other_mob
+                                            break
+                                    SplitStar(cx, cy, target, self.damage * 0.2, style=style)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -13713,6 +13772,14 @@ class Player(pygame.sprite.Sprite):
                 if not hasattr(self, 'sepulcher_active_skills'):
                     self.sepulcher_active_skills = []
                 self.sepulcher_active_skills.append(skill)
+            
+            elif pid == "galaxia":
+                # 【次元斩】F技能：三道全屏紫色裂痕切割
+                from utils.bullets.galaxia_bullets import DimensionalSlashSkill
+                style = self._get_galaxia_style()
+                skill = DimensionalSlashSkill(self.rect.centerx, self.rect.centery, 
+                                             self.damage * 2.5, style=style)
+                all_sprites.add(skill)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -14737,7 +14804,13 @@ class Player(pygame.sprite.Sprite):
                 "turu": "巨石护盾",
                 "staradia": "月虹轨道炮",
                 "dukefishron": "深渊泡风暴",
-                "slime": "星炎水晶"
+                "slime": "星炎水晶",
+                "oro": "终焉吞噬",
+                "yharon": "狱炎风暴",
+                "providence": "圣耀爆发",
+                "goliath": "奇点坍缩",
+                "sepulcher": "天降灾厄",
+                "galaxia": "星系陷阱"
             }
             
             pid = self.plane_id
@@ -14993,6 +15066,14 @@ class Player(pygame.sprite.Sprite):
                     self.sepulcher_active_skills = []
                 self.sepulcher_active_skills.append(skill)
             
+            elif pid == "galaxia":
+                # 【星系陷阱】G技能：剪刀旋转+引力+星座弹幕
+                from utils.bullets.galaxia_bullets import GalaxyTrapSkill
+                style = self._get_galaxia_style()
+                skill = GalaxyTrapSkill(self.rect.centerx, self.rect.centery,
+                                       self.damage * 2, style=style)
+                all_sprites.add(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -15052,7 +15133,13 @@ class Player(pygame.sprite.Sprite):
                 "turu": "图鲁跃砸",
                 "staradia": "皇辉领域",
                 "dukefishron": "龙鱼海啸",
-                "slime": "星凝子体"
+                "slime": "星凝子体",
+                "oro": "灭世之环",
+                "yharon": "地狱风暴",
+                "providence": "圣光净化",
+                "goliath": "终极爆破",
+                "sepulcher": "硫火审判",
+                "galaxia": "苍穹撕裂"
             }
             
             pid = self.plane_id
@@ -15270,6 +15357,14 @@ class Player(pygame.sprite.Sprite):
                 if not hasattr(self, 'sepulcher_active_skills'):
                     self.sepulcher_active_skills = []
                 self.sepulcher_active_skills.append(skill)
+            
+            elif pid == "galaxia":
+                # 【苍穹撕裂】C技能：巨型剪刀撕裂屏幕+星辰喷发
+                from utils.bullets.galaxia_bullets import BigRipSkill
+                style = self._get_galaxia_style()
+                skill = BigRipSkill(self.rect.centerx, self.rect.centery,
+                                   self.damage * 3, style=style)
+                all_sprites.add(skill)
             
             else:
                 # 通用：全屏伤害
