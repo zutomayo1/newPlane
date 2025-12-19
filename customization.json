@@ -595,7 +595,19 @@
     "galaxia_lunar": true,
     "galaxia_zenith": true,
     "galaxia_rainbow": true,
-    "galaxia_void": true
+    "galaxia_void": true,
+    "magnus_default": true,
+    "magnus_arcane": true,
+    "magnus_necro": true,
+    "magnus_holy": true,
+    "magnus_infernal": true,
+    "magnus_void": true,
+    "magnus_celestial": true,
+    "magnus_blood": true,
+    "magnus_elder": true,
+    "magnus_frost": true,
+    "magnus_chaos": true,
+    "magnus_nature": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -651,7 +663,8 @@
     "providence": "providence_frost",
     "goliath": "goliath_refinery",
     "sepulcher": "sepulcher_witch",
-    "galaxia": "galaxia_rainbow"
+    "galaxia": "galaxia_nebula",
+    "magnus": "magnus_elder"
   },
   "unlocked_bullet_themes": {
     "default": true,

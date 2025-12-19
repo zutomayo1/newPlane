@@ -77,6 +77,9 @@ from .providence_bullets import (HolyShardBullet, HolyExplosion, ProfanedSpearBu
                                   create_holy_shard, create_profaned_spear, create_healer_guardian,
                                   create_cocoon_shield, create_molten_rain, create_holy_ray, create_supernova,
                                   render_providence_bullet_preview)
+from .magnus_bullets import (ArcaneMissileBullet, FireballBullet, FrostWaveBullet,
+                              LightningChainBullet, BlizzardSkill, AncientSpiritSkill,
+                              CircleOfTruthSkill, PageGuardBullet, MAGNUS_COLORS)
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
@@ -106,4 +109,7 @@ __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES',
            'MoltenRainStorm', 'HolyRay', 'SupernovaExplosion',
            'create_holy_shard', 'create_profaned_spear', 'create_healer_guardian',
            'create_cocoon_shield', 'create_molten_rain', 'create_holy_ray', 'create_supernova',
-           'render_providence_bullet_preview']
+           'render_providence_bullet_preview',
+           'ArcaneMissileBullet', 'FireballBullet', 'FrostWaveBullet',
+           'LightningChainBullet', 'BlizzardSkill', 'AncientSpiritSkill',
+           'CircleOfTruthSkill', 'PageGuardBullet', 'MAGNUS_COLORS']

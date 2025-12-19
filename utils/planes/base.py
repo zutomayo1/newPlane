@@ -436,6 +436,17 @@ def _generate_plane_surf(pid, visual=None, static=False):
             s.blit(scaled, (0, 0))
             return s
         
+        # 尝试 Magnus 专属涂装（真理之书·MAGNUS）
+        if model_style and model_style.startswith("magnus_"):
+            frame = int(t * 60) if not static else 0
+            from .skins_magnus import render_magnus_plane
+            # 400x400的surface，中心区域100x100，留出150像素边距容纳2.3倍放大的所有视觉效果
+            big_s = pygame.Surface((400, 400), pygame.SRCALPHA)
+            render_magnus_plane(big_s, c, 150, 150, 100, 100, frame, model_style)
+            scaled = pygame.transform.smoothscale(big_s, (120, 120))
+            s.blit(scaled, (0, 0))
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -610,6 +621,16 @@ def _generate_plane_surf(pid, visual=None, static=False):
         # 280x280的surface，中心区域100x100，留出90像素边距容纳2.0倍放大
         big_s = pygame.Surface((280, 280), pygame.SRCALPHA)
         render_galaxia_plane(big_s, c, 90, 90, 100, 100, frame, "galaxia_default")
+        scaled = pygame.transform.smoothscale(big_s, (120, 120))
+        s.blit(scaled, (0, 0))
+    
+    # 真理之书 - Magnus
+    elif pid == "magnus":
+        from .skins_magnus import render_magnus_plane
+        frame = int(t * 60) if t > 0 else 0
+        # 400x400的surface，中心区域100x100，留出150像素边距容纳2.3倍放大的所有视觉效果
+        big_s = pygame.Surface((400, 400), pygame.SRCALPHA)
+        render_magnus_plane(big_s, c, 150, 150, 100, 100, frame, "magnus_default")
         scaled = pygame.transform.smoothscale(big_s, (120, 120))
         s.blit(scaled, (0, 0))
     

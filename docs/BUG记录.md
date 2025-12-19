@@ -321,3 +321,82 @@ if glow_alpha > 0:
 
 ### 修复日期
 2025年12月16日
+
+---
+
+## Bug #005: Pygame实心圆覆盖精细渲染
+
+### 问题描述
+MAGNUS机体（真理之书）在游戏中只显示为纯色圆形，2500+行的精细魔法书渲染完全看不到。
+
+### 具体表现
+- 用户选择MAGNUS机体，进入涂装界面或游戏
+- 预览/游戏中只显示一个纯色圆形
+- 调试日志显示渲染函数确实被调用（`render_magnus_plane` 正常执行）
+- 控制台无报错
+- 测试脚本统计显示有90000+像素被渲染，但最终图像仍是纯色圆
+
+### 根本原因
+**Pygame `draw.circle()` 缺省参数导致实心圆覆盖**
+
+在 `skins_magnus.py` 文件末尾，存在一段"氛围光晕"代码：
+
+```python
+# 问题代码位置：skins_magnus.py 第2497-2502行
+# ---------- 11.10 整体氛围光晕（最底层但最后绘制以混合） ----------
+atmosphere_pulse = 0.4 + 0.2 * math.sin(t * 1.5) + 0.2 * math.sin(t * 2.3)
+atmosphere_alpha = max(0, min(255, int(20 * atmosphere_pulse)))
+atmosphere_radius = int(85 * scale)
+
+pygame.draw.circle(surface, (*theme["crystal"], atmosphere_alpha),
+                  (cx, cy), atmosphere_radius)  # ← 问题：画了一个 85*scale 大小的实心圆！
+```
+
+关键问题：
+1. `pygame.draw.circle(surface, color, center, radius)` 不指定 `width` 参数时，默认画**实心圆**
+2. 这个圆的半径是 `85 * scale`，几乎覆盖整个机体渲染区域
+3. 虽然 alpha 值较低（约20），但在透明surface上会完全替换掉之前的像素
+
+代码意图是画一个"氛围光晕"混合效果，但实际效果是用半透明实心圆覆盖了所有精细渲染。
+
+### 解决方案
+移除这个覆盖性的实心圆绘制，或改为环形：
+
+```python
+# 修复方案1：直接移除
+# ---------- 11.10 整体氛围光晕（最底层但最后绘制以混合） ----------
+# 注意：这个光晕应该非常透明，只是增加氛围感，不能覆盖主体
+# 已移除实心圆绘制，因为它会覆盖掉所有细节渲染
+
+return surface
+
+# 修复方案2：如果需要光晕效果，画环形而非实心圆
+# pygame.draw.circle(surface, color, center, radius, width=2)  # 指定 width 参数
+```
+
+### 预防措施
+1. **Pygame draw.circle 参数检查**：
+   - `pygame.draw.circle(surface, color, center, radius)` → **实心圆**
+   - `pygame.draw.circle(surface, color, center, radius, width)` → **空心环**
+   
+2. **渲染顺序原则**：
+   - 大面积填充（背景、光晕）应该**最先绘制**
+   - 精细细节应该**最后绘制**
+   - 避免在渲染函数末尾画大面积图形
+
+3. **视觉测试规范**：
+   - 重写渲染代码后，生成测试图片并**目视检查**
+   - 不能仅依赖像素统计，因为覆盖图形也会产生大量像素
+
+4. **代码审查清单**：
+   ```python
+   # 检查所有 pygame.draw.circle 调用
+   # 确认是否需要指定 width 参数
+   pygame.draw.circle(...)  # ← 检查：是否应该是空心环？
+   ```
+
+### 相关文件
+- `utils/planes/skins_magnus.py` - `render_magnus_plane()` 函数末尾
+
+### 修复日期
+2025年12月18日

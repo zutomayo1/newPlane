@@ -11641,6 +11641,19 @@ class Player(pygame.sprite.Sprite):
                 self.current_slot = (self.current_slot + 1) % 3
                 self.switch_cooldown = 60
                 sound_mgr.play("select")
+        
+        # 【MAGNUS】法术轮盘切换（R键）
+        if self.plane_id == "magnus" and hasattr(self, 'magnus_initialized') and self.magnus_initialized:
+            if not hasattr(self, 'magnus_switch_cooldown'):
+                self.magnus_switch_cooldown = 0
+            if self.magnus_switch_cooldown > 0:
+                self.magnus_switch_cooldown -= 1
+            if keys[pygame.K_r] and self.magnus_switch_cooldown <= 0:
+                self.magnus_spell_mode = (self.magnus_spell_mode + 1) % 4
+                self.magnus_switch_cooldown = 30  # 0.5秒冷却
+                spell_name = self.magnus_spell_names[self.magnus_spell_mode]
+                FloatingText(self.rect.centerx, self.rect.top - 30, f"⚡{spell_name}魔法", (255, 215, 100))
+                sound_mgr.play("select")
 
     def shoot(self):
         now = pygame.time.get_ticks()
@@ -11857,6 +11870,18 @@ class Player(pygame.sprite.Sprite):
             if model_style.startswith('galaxia_'):
                 return model_style.replace("galaxia_", "")
         return "default"
+
+    def _get_magnus_style(self):
+        """获取Magnus涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("magnus_"):
+                return theme_id  # 直接返回完整样式名
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('magnus_'):
+                return model_style
+        return "magnus_default"
 
 
     def _init_sepulcher_systems(self):
@@ -13387,6 +13412,97 @@ class Player(pygame.sprite.Sprite):
                                             break
                                     SplitStar(cx, cy, target, self.damage * 0.2, style=style)
         
+        # ========== 50. 真理之书·MAGNUS - 奥术飞弹+法术轮盘 ==========
+        elif pid == "magnus":
+            from utils.bullets.magnus_bullets import (ArcaneMissileBullet, FireballBullet, 
+                                                      FrostWaveBullet, LightningChainBullet,
+                                                      PageGuardBullet)
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_magnus_style()
+            
+            # 初始化MAGNUS系统
+            if not hasattr(self, 'magnus_initialized') or not self.magnus_initialized:
+                self.magnus_mana = 0                    # 法力值（用于过载）
+                self.magnus_max_mana = 100              # 最大法力
+                self.magnus_overload = False            # 过载状态
+                self.magnus_overload_timer = 0         # 过载持续时间
+                self.magnus_spell_mode = 0              # 法术轮盘：0=奥术 1=火 2=冰 3=雷
+                self.magnus_spell_names = ["奥术", "火焰", "冰霜", "闪电"]
+                self.magnus_page_shield = 6             # 书页护盾数量
+                self.magnus_last_shoot = 0             # 上次射击时间
+                self.magnus_initialized = True
+            
+            # ========== 被动：法力过载 - 不射击时充能 ==========
+            now = pygame.time.get_ticks()
+            if now - self.magnus_last_shoot > 1000:  # 1秒不射击开始充能
+                if not self.magnus_overload:
+                    self.magnus_mana = min(self.magnus_max_mana, self.magnus_mana + 2)
+                    # 满法力触发过载
+                    if self.magnus_mana >= self.magnus_max_mana:
+                        self.magnus_overload = True
+                        self.magnus_overload_timer = 180  # 3秒过载
+                        FloatingText(cx, cy - 40, "⚡法力过载!", (255, 215, 100))
+            
+            self.magnus_last_shoot = now
+            
+            # 更新过载状态
+            if self.magnus_overload:
+                self.magnus_overload_timer -= 1
+                if self.magnus_overload_timer <= 0:
+                    self.magnus_overload = False
+                    self.magnus_mana = 0
+            
+            # 根据当前法术模式发射
+            spell = self.magnus_spell_mode
+            is_overloaded = self.magnus_overload
+            
+            if spell == 0:  # 奥术飞弹
+                # 过载时三倍弹幕
+                shot_count = 3 if is_overloaded else 1
+                for s in range(shot_count):
+                    for i in range(cnt):
+                        offset_x = (i - (cnt-1)/2) * 20 + (s - 1) * 10
+                        angle_offset = (s - 1) * 8
+                        ArcaneMissileBullet(cx + offset_x, cy, 
+                                           angle=-1.57 + math.radians(angle_offset),
+                                           damage=self.damage,
+                                           element="arcane", 
+                                           overloaded=is_overloaded)
+            
+            elif spell == 1:  # 火球术
+                shot_count = 3 if is_overloaded else 1
+                for s in range(shot_count):
+                    angle_offset = (s - 1) * 15
+                    FireballBullet(cx, cy, 
+                                  angle=-1.57 + math.radians(angle_offset),
+                                  damage=self.damage * 1.5)
+            
+            elif spell == 2:  # 冰霜波
+                # 扇形散射
+                spread = 7 if is_overloaded else 5
+                for i in range(spread):
+                    angle = -45 + i * (90 / (spread - 1))
+                    FrostWaveBullet(cx, cy,
+                                   angle=-1.57 + math.radians(angle),
+                                   damage=self.damage * 0.6)
+            
+            elif spell == 3:  # 闪电链
+                # 寻找最近敌人
+                nearest = None
+                nearest_dist = 300
+                for mob in mobs:
+                    if hasattr(mob, 'rect') and hasattr(mob, 'alive') and mob.alive():
+                        dist = math.hypot(mob.rect.centerx - cx, mob.rect.centery - cy)
+                        if dist < nearest_dist:
+                            nearest_dist = dist
+                            nearest = mob
+                
+                chain_count = 5 if is_overloaded else 3
+                LightningChainBullet(cx, cy, target=nearest,
+                                    damage=self.damage * 0.8,
+                                    chain_count=chain_count)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -13779,6 +13895,12 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_galaxia_style()
                 skill = DimensionalSlashSkill(self.rect.centerx, self.rect.centery, 
                                              self.damage * 2.5, style=style)
+                all_sprites.add(skill)
+            
+            elif pid == "magnus":
+                # 【禁忌篇章·暴风雪】F技能：全屏冰锥雨+冻结敌人
+                from utils.bullets.magnus_bullets import BlizzardSkill
+                skill = BlizzardSkill(self.rect.centerx, self.rect.centery)
                 all_sprites.add(skill)
             
             else:
@@ -14810,7 +14932,8 @@ class Player(pygame.sprite.Sprite):
                 "providence": "圣耀爆发",
                 "goliath": "奇点坍缩",
                 "sepulcher": "天降灾厄",
-                "galaxia": "星系陷阱"
+                "galaxia": "星系陷阱",
+                "magnus": "远古之灵"
             }
             
             pid = self.plane_id
@@ -15074,6 +15197,12 @@ class Player(pygame.sprite.Sprite):
                                        self.damage * 2, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "magnus":
+                # 【召唤·远古之灵】G技能：召唤巨大骷髅头冲撞全场
+                from utils.bullets.magnus_bullets import AncientSpiritSkill
+                skill = AncientSpiritSkill(self.rect.centerx, self.rect.centery)
+                all_sprites.add(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -15139,7 +15268,8 @@ class Player(pygame.sprite.Sprite):
                 "providence": "圣光净化",
                 "goliath": "终极爆破",
                 "sepulcher": "硫火审判",
-                "galaxia": "苍穹撕裂"
+                "galaxia": "苍穹撕裂",
+                "magnus": "真理之圆"
             }
             
             pid = self.plane_id
@@ -15364,6 +15494,12 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_galaxia_style()
                 skill = BigRipSkill(self.rect.centerx, self.rect.centery,
                                    self.damage * 3, style=style)
+                all_sprites.add(skill)
+            
+            elif pid == "magnus":
+                # 【真理之圆】C技能：最终魔法阵持续灼烧+定身
+                from utils.bullets.magnus_bullets import CircleOfTruthSkill
+                skill = CircleOfTruthSkill(self.rect.centerx, self.rect.centery)
                 all_sprites.add(skill)
             
             else:

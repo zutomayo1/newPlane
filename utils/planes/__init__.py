@@ -103,6 +103,7 @@ from .skins_oro import draw_oro, is_oro_style, render_oro_skin, ORO_STYLES
 from .skins_yharon import draw_yharon, is_yharon_style, render_yharon_skin, YHARON_STYLES
 from .skins_providence import draw_providence, is_providence_style, render_providence_skin, PROVIDENCE_STYLES
 from .skins_galaxia import render_galaxia_plane, is_galaxia_style, get_galaxia_theme, get_all_galaxia_styles, GALAXIA_THEMES
+from .skins_magnus import render_magnus_plane, is_magnus_style, get_magnus_theme, get_all_magnus_styles, MAGNUS_THEMES
 
 # DukeFishron样式定义 - 12个高质量涂装（带duke_前缀避免冲突）
 DUKEFISHRON_STYLES = [
@@ -161,5 +162,6 @@ __all__ = [
     'render_oro_skin', 'is_oro_style', 'ORO_STYLES', 'draw_oro',
     'render_yharon_skin', 'is_yharon_style', 'YHARON_STYLES', 'draw_yharon',
     'render_providence_skin', 'is_providence_style', 'PROVIDENCE_STYLES', 'draw_providence',
-    'render_galaxia_plane', 'is_galaxia_style', 'get_galaxia_theme', 'get_all_galaxia_styles', 'GALAXIA_THEMES'
+    'render_galaxia_plane', 'is_galaxia_style', 'get_galaxia_theme', 'get_all_galaxia_styles', 'GALAXIA_THEMES',
+    'render_magnus_plane', 'is_magnus_style', 'get_magnus_theme', 'get_all_magnus_styles', 'MAGNUS_THEMES'
 ]
