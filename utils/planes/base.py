@@ -447,6 +447,14 @@ def _generate_plane_surf(pid, visual=None, static=False):
             s.blit(scaled, (0, 0))
             return s
         
+        # 尝试 Heavy Metal 专属涂装（维那斯万岁·HEAVY METAL）
+        from .skins_heavymetal import is_heavymetal_style
+        if is_heavymetal_style(model_style):
+            frame = int(t * 60) if not static else 0
+            from .skins_heavymetal import render_heavymetal_skin
+            render_heavymetal_skin(s, c, 60, 60, 100, 100, frame, model_style)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -633,6 +641,11 @@ def _generate_plane_surf(pid, visual=None, static=False):
         render_magnus_plane(big_s, c, 150, 150, 100, 100, frame, "magnus_default")
         scaled = pygame.transform.smoothscale(big_s, (120, 120))
         s.blit(scaled, (0, 0))
+    
+    # 维那斯万岁 - Heavy Metal
+    elif pid == "heavymetal":
+        from .skins_heavymetal import _render_heavymetal_base
+        _render_heavymetal_base(s, t, pulse)
     
     else:
         # 默认占位图形

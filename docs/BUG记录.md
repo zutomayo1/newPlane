@@ -400,3 +400,123 @@ return surface
 
 ### 修复日期
 2025年12月18日
+
+---
+
+## Bug #007: 技能效果渲染在屏幕左侧而非玩家位置
+
+### 问题描述
+HEAVY METAL 机体的所有技能效果（Q/E/R/F/G/C）都渲染在屏幕左侧，而不是跟随玩家位置。
+
+### 具体表现
+- 用户操作 HEAVY METAL 机体，玩家在屏幕中央偏右位置
+- 按下技能键后，视觉效果全部出现在屏幕左边 1/3 区域
+- 效果看起来与玩家完全脱节
+
+### 根本原因
+**屏幕尺寸硬编码不匹配**：
+
+游戏实际屏幕尺寸为 `1280 x 720`（在 config.py 中定义），但 `heavymetal_bullets.py` 中所有技能效果的 Surface 都硬编码为 `480 x 640`：
+
+```python
+# 问题代码 - 使用错误的硬编码尺寸
+self.image = pygame.Surface((480, 640), pygame.SRCALPHA)
+self.rect = self.image.get_rect(topleft=(0, 0))
+```
+
+这导致：
+1. 全屏 Surface 只覆盖屏幕左边 480 像素（实际需要 1280）
+2. 玩家在 `WIDTH/2 = 640` 位置时，已超出 480 的范围
+3. 效果在 Surface 上按 `self.x, self.y` 绘制，但 Surface 本身位置错误
+
+### 影响范围
+- `DeathMetalSolo` - R键技能
+- `DeathMetalSoloUlt` - F键大招
+- `EchoWallSkill` - G键技能
+- `HellishOpenerSkill` - C键技能
+- `PowerChordWave` - Q键技能（中心偏移问题）
+- 所有相关渲染代码中的硬编码坐标（240, 320, 430, 440, 600 等）
+
+### 解决方案
+
+1. **导入实际屏幕尺寸**：
+```python
+from config import all_sprites, bullets, mobs, enemy_bullets, WIDTH, HEIGHT
+```
+
+2. **修改所有全屏 Surface 创建**：
+```python
+# 修复后 - 使用实际屏幕尺寸
+self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+self.rect = self.image.get_rect(topleft=(0, 0))
+```
+
+3. **修改所有硬编码坐标**：
+```python
+# 聚光灯位置
+spotlight_x = WIDTH // 2 + int(WIDTH * 0.15 * math.sin(spot_phase))
+spotlight_y = HEIGHT // 2 + int(HEIGHT * 0.15 * math.cos(spot_phase * 0.7))
+
+# EQ条形图
+bar_x = int(i * (WIDTH / eq_count))
+bar_y = HEIGHT - bar_height  # 底部
+
+# 边缘效果
+pygame.draw.rect(self.image, color, (0, 0, WIDTH, HEIGHT), 12)
+
+# 边界检查
+if self.y > HEIGHT + 50 or self.x > WIDTH + 50:
+    self.kill()
+
+# 敌人位置限制
+enemy.rect.x = max(0, min(WIDTH - 40, enemy.rect.x))
+enemy.rect.y = max(0, min(HEIGHT - 40, enemy.rect.y))
+```
+
+4. **修复 PowerChordWave 尺寸计算**：
+```python
+# 基于实际半径动态计算 Surface 尺寸
+surf_size = self.max_radius * 2 + 100
+self.image = pygame.Surface((surf_size, surf_size), pygame.SRCALPHA)
+self.rect = self.image.get_rect(center=(int(x), int(y)))
+
+# 渲染时使用动态中心
+cx, cy = surf_size // 2, surf_size // 2
+```
+
+### 预防措施
+
+1. **永远不要硬编码屏幕尺寸**：
+   ```python
+   # ❌ 错误
+   self.image = pygame.Surface((480, 640), pygame.SRCALPHA)
+   
+   # ✅ 正确
+   from config import WIDTH, HEIGHT
+   self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+   ```
+
+2. **全屏效果检查清单**：
+   - [ ] Surface 尺寸是否使用 WIDTH, HEIGHT？
+   - [ ] 渲染坐标是否使用 WIDTH/2, HEIGHT/2 作为中心？
+   - [ ] 边界检查是否使用 WIDTH, HEIGHT？
+   - [ ] 循环范围是否使用 WIDTH, HEIGHT？
+
+3. **新建技能效果类模板**：
+   ```python
+   class NewFullScreenSkill(pygame.sprite.Sprite):
+       def __init__(self, x, y, ...):
+           super().__init__()
+           self.x = x
+           self.y = y
+           # 全屏效果必须使用 WIDTH, HEIGHT
+           self.image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+           self.rect = self.image.get_rect(topleft=(0, 0))
+   ```
+
+### 相关文件
+- `utils/bullets/heavymetal_bullets.py` - 所有技能类
+- `config.py` - WIDTH=1280, HEIGHT=720 定义
+
+### 修复日期
+2025年12月19日

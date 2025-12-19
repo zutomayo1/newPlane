@@ -607,7 +607,19 @@
     "magnus_elder": true,
     "magnus_frost": true,
     "magnus_chaos": true,
-    "magnus_nature": true
+    "magnus_nature": true,
+    "heavymetal_default": true,
+    "heavymetal_bloody": true,
+    "heavymetal_cyber": true,
+    "heavymetal_golden": true,
+    "heavymetal_psychedelic": true,
+    "heavymetal_toxic": true,
+    "heavymetal_frost": true,
+    "heavymetal_hellfire": true,
+    "heavymetal_midnight": true,
+    "heavymetal_rainbow": true,
+    "heavymetal_steampunk": true,
+    "heavymetal_starpunk": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -664,7 +676,8 @@
     "goliath": "goliath_refinery",
     "sepulcher": "sepulcher_witch",
     "galaxia": "galaxia_nebula",
-    "magnus": "magnus_elder"
+    "magnus": "magnus_holy",
+    "heavymetal": "heavymetal_toxic"
   },
   "unlocked_bullet_themes": {
     "default": true,

@@ -50,8 +50,9 @@
 - skins_oro.py: Oro专属涂装 (12种) [终噬星链·奥罗]
 - skins_yharon.py: Yharon专属涂装 (12种) [狱炎神龙·犽戎]
 - skins_providence.py: Providence专属涂装 (12种) [亵渎天神·普罗维登斯]
+- skins_heavymetal.py: HeavyMetal专属涂装 (12种) [维那斯万岁·HEAVY METAL]
 
-所有机体涂装拆分完成！共计 405 种涂装。
+所有机体涂装拆分完成！共计 417 种涂装。
 """
 
 from .base import get_plane_surf, clear_plane_cache
@@ -104,6 +105,7 @@ from .skins_yharon import draw_yharon, is_yharon_style, render_yharon_skin, YHAR
 from .skins_providence import draw_providence, is_providence_style, render_providence_skin, PROVIDENCE_STYLES
 from .skins_galaxia import render_galaxia_plane, is_galaxia_style, get_galaxia_theme, get_all_galaxia_styles, GALAXIA_THEMES
 from .skins_magnus import render_magnus_plane, is_magnus_style, get_magnus_theme, get_all_magnus_styles, MAGNUS_THEMES
+from .skins_heavymetal import render_heavymetal_plane, render_heavymetal_skin, is_heavymetal_style, get_heavymetal_theme, get_all_heavymetal_styles, HEAVYMETAL_THEMES, HEAVYMETAL_STYLES, draw_heavymetal, _render_heavymetal_base
 
 # DukeFishron样式定义 - 12个高质量涂装（带duke_前缀避免冲突）
 DUKEFISHRON_STYLES = [
@@ -163,5 +165,6 @@ __all__ = [
     'render_yharon_skin', 'is_yharon_style', 'YHARON_STYLES', 'draw_yharon',
     'render_providence_skin', 'is_providence_style', 'PROVIDENCE_STYLES', 'draw_providence',
     'render_galaxia_plane', 'is_galaxia_style', 'get_galaxia_theme', 'get_all_galaxia_styles', 'GALAXIA_THEMES',
-    'render_magnus_plane', 'is_magnus_style', 'get_magnus_theme', 'get_all_magnus_styles', 'MAGNUS_THEMES'
+    'render_magnus_plane', 'is_magnus_style', 'get_magnus_theme', 'get_all_magnus_styles', 'MAGNUS_THEMES',
+    'render_heavymetal_plane', 'render_heavymetal_skin', 'is_heavymetal_style', 'get_heavymetal_theme', 'get_all_heavymetal_styles', 'HEAVYMETAL_THEMES', 'HEAVYMETAL_STYLES', 'draw_heavymetal', '_render_heavymetal_base'
 ]

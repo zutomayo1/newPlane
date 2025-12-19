@@ -11655,6 +11655,42 @@ class Player(pygame.sprite.Sprite):
                 FloatingText(self.rect.centerx, self.rect.top - 30, f"⚡{spell_name}魔法", (255, 215, 100))
                 sound_mgr.play("select")
 
+        # 【HEAVY METAL】技能控制
+        if self.plane_id == "heavymetal":
+            from utils.bullets.heavymetal_bullets import PowerChordWave, StageDiveMeteor, DeathMetalSolo
+            
+            # 初始化技能冷却
+            if not hasattr(self, 'heavymetal_skill_cooldowns'):
+                self.heavymetal_skill_cooldowns = {'q': 0, 'e': 0, 'r': 0}
+            
+            # 更新冷却
+            for key in self.heavymetal_skill_cooldowns:
+                if self.heavymetal_skill_cooldowns[key] > 0:
+                    self.heavymetal_skill_cooldowns[key] -= 1
+            
+            cx, cy = self.rect.centerx, self.rect.centery
+            
+            # Q键 - 强力和弦 (冷却2秒)
+            if keys[pygame.K_q] and self.heavymetal_skill_cooldowns['q'] <= 0:
+                PowerChordWave(cx, cy, damage=self.damage * 1.5)
+                self.heavymetal_skill_cooldowns['q'] = 120
+                FloatingText(cx, cy - 40, "🎸 POWER CHORD!", (255, 100, 0))
+                sound_mgr.play("explosion")
+            
+            # E键 - 舞台俯冲 (冷却5秒)
+            if keys[pygame.K_e] and self.heavymetal_skill_cooldowns['e'] <= 0:
+                StageDiveMeteor(cx, cy - 200, cx, cy + 100, damage=self.damage * 5)
+                self.heavymetal_skill_cooldowns['e'] = 300
+                FloatingText(cx, cy - 40, "🔥 STAGE DIVE!", (255, 50, 0))
+                sound_mgr.play("explosion")
+            
+            # R键 - 死亡金属独奏 (冷却10秒)
+            if keys[pygame.K_r] and self.heavymetal_skill_cooldowns['r'] <= 0:
+                DeathMetalSolo(cx, cy, damage_per_tick=self.damage // 6)
+                self.heavymetal_skill_cooldowns['r'] = 600
+                FloatingText(cx, cy - 40, "💀 DEATH METAL SOLO!", (148, 0, 211))
+                sound_mgr.play("ult")
+
     def shoot(self):
         now = pygame.time.get_ticks()
         
@@ -11882,6 +11918,18 @@ class Player(pygame.sprite.Sprite):
             if model_style.startswith('magnus_'):
                 return model_style
         return "magnus_default"
+
+    def _get_heavymetal_style(self):
+        """获取HeavyMetal涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("heavymetal_"):
+                return theme_id
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('heavymetal_'):
+                return model_style
+        return "heavymetal_default"
 
 
     def _init_sepulcher_systems(self):
@@ -13503,6 +13551,61 @@ class Player(pygame.sprite.Sprite):
                                     damage=self.damage * 0.8,
                                     chain_count=chain_count)
         
+        # ========== 51. 维那斯万岁·HEAVY METAL - 音符弹幕+节奏攻击 ==========
+        elif pid == "heavymetal":
+            from utils.bullets.heavymetal_bullets import (NoteBullet, PowerChordWave,
+                                                          EncoreFirework, StageDiveMeteor,
+                                                          EchoClone, DeathMetalSolo,
+                                                          spawn_encore_fireworks)
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_heavymetal_style()
+            
+            # 初始化HEAVY METAL系统
+            if not hasattr(self, 'heavymetal_initialized') or not self.heavymetal_initialized:
+                self.heavymetal_combo = 0               # 连击数
+                self.heavymetal_max_combo = 100         # 满连击触发Encore
+                self.heavymetal_bpm = 120               # 节拍速度
+                self.heavymetal_beat_timer = 0          # 节拍计时
+                self.heavymetal_on_beat = False         # 是否在节拍上
+                self.heavymetal_rhythm_bonus = 1.0      # 节奏加成
+                self.heavymetal_echo_clones = []        # 回声克隆列表
+                self.heavymetal_initialized = True
+            
+            # ========== 被动：BPM同步 - 踩准节拍增加伤害 ==========
+            self.heavymetal_beat_timer += 1
+            beat_interval = 60 * 60 // self.heavymetal_bpm  # 帧数间隔
+            beat_phase = self.heavymetal_beat_timer % beat_interval
+            
+            # 在节拍前后5帧内视为踩准
+            on_beat_window = 5
+            self.heavymetal_on_beat = beat_phase < on_beat_window or beat_phase > beat_interval - on_beat_window
+            
+            if self.heavymetal_on_beat:
+                self.heavymetal_rhythm_bonus = 1.5  # 50%伤害加成
+            else:
+                self.heavymetal_rhythm_bonus = max(1.0, self.heavymetal_rhythm_bonus - 0.05)
+            
+            # 发射音符弹幕
+            note_damage = self.damage * self.heavymetal_rhythm_bonus
+            for i in range(cnt):
+                offset_x = (i - (cnt-1)/2) * 18
+                # 不同音符类型 (整数索引)
+                note_type_index = i % 4
+                nb = NoteBullet(cx + offset_x, cy, 
+                          damage=note_damage,
+                          note_type=note_type_index,
+                          on_beat=self.heavymetal_on_beat)
+            
+            # 命中时增加连击
+            self.heavymetal_combo = min(self.heavymetal_max_combo, self.heavymetal_combo + 1)
+            
+            # 满连击触发Encore烟火
+            if self.heavymetal_combo >= self.heavymetal_max_combo:
+                self.heavymetal_combo = 0
+                spawn_encore_fireworks(cx, cy, count=16, damage=int(self.damage * 2))
+                FloatingText(cx, cy - 50, "🎆 ENCORE!", (255, 200, 50))
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -13901,6 +14004,14 @@ class Player(pygame.sprite.Sprite):
                 # 【禁忌篇章·暴风雪】F技能：全屏冰锥雨+冻结敌人
                 from utils.bullets.magnus_bullets import BlizzardSkill
                 skill = BlizzardSkill(self.rect.centerx, self.rect.centery)
+                all_sprites.add(skill)
+            
+            elif pid == "heavymetal":
+                # 【死亡金属独奏】F技能：全屏音波持续伤害+敌人混乱
+                from utils.bullets.heavymetal_bullets import DeathMetalSoloUlt
+                style = self._get_heavymetal_style()
+                skill = DeathMetalSoloUlt(self.rect.centerx, self.rect.centery, 
+                                          damage=self.damage * 0.5, owner=self, style=style)
                 all_sprites.add(skill)
             
             else:
@@ -14933,7 +15044,8 @@ class Player(pygame.sprite.Sprite):
                 "goliath": "奇点坍缩",
                 "sepulcher": "天降灾厄",
                 "galaxia": "星系陷阱",
-                "magnus": "远古之灵"
+                "magnus": "远古之灵",
+                "heavymetal": "回音墙"
             }
             
             pid = self.plane_id
@@ -15203,6 +15315,14 @@ class Player(pygame.sprite.Sprite):
                 skill = AncientSpiritSkill(self.rect.centerx, self.rect.centery)
                 all_sprites.add(skill)
             
+            elif pid == "heavymetal":
+                # 【回音墙】G技能：多层声波护盾，反弹子弹+持续伤害
+                from utils.bullets.heavymetal_bullets import EchoWallSkill
+                style = self._get_heavymetal_style()
+                skill = EchoWallSkill(self.rect.centerx, self.rect.centery,
+                                     damage=self.damage * 2, owner=self, style=style)
+                all_sprites.add(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -15269,7 +15389,8 @@ class Player(pygame.sprite.Sprite):
                 "goliath": "终极爆破",
                 "sepulcher": "硫火审判",
                 "galaxia": "苍穹撕裂",
-                "magnus": "真理之圆"
+                "magnus": "真理之圆",
+                "heavymetal": "地狱开场"
             }
             
             pid = self.plane_id
@@ -15500,6 +15621,14 @@ class Player(pygame.sprite.Sprite):
                 # 【真理之圆】C技能：最终魔法阵持续灼烧+定身
                 from utils.bullets.magnus_bullets import CircleOfTruthSkill
                 skill = CircleOfTruthSkill(self.rect.centerx, self.rect.centery)
+                all_sprites.add(skill)
+            
+            elif pid == "heavymetal":
+                # 【地狱开场】C技能：全屏火焰+烟火+音波大爆炸
+                from utils.bullets.heavymetal_bullets import HellishOpenerSkill
+                style = self._get_heavymetal_style()
+                skill = HellishOpenerSkill(self.rect.centerx, self.rect.centery,
+                                          damage=self.damage * 3, owner=self, style=style)
                 all_sprites.add(skill)
             
             else:
