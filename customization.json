@@ -619,7 +619,13 @@
     "heavymetal_midnight": true,
     "heavymetal_rainbow": true,
     "heavymetal_steampunk": true,
-    "heavymetal_starpunk": true
+    "heavymetal_starpunk": true,
+    "scarlet_default": true,
+    "scarlet_lunar": true,
+    "scarlet_golden": true,
+    "scarlet_mist": true,
+    "scarlet_gothic": true,
+    "scarlet_destiny": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -677,7 +683,8 @@
     "sepulcher": "sepulcher_witch",
     "galaxia": "galaxia_nebula",
     "magnus": "magnus_holy",
-    "heavymetal": "heavymetal_toxic"
+    "heavymetal": "heavymetal_toxic",
+    "scarlet": "scarlet_gothic"
   },
   "unlocked_bullet_themes": {
     "default": true,
@@ -1088,7 +1095,13 @@
     "providence_storm_shard": true,
     "providence_blood_shard": true,
     "providence_gold_shard": true,
-    "providence_aurora_shard": true
+    "providence_aurora_shard": true,
+    "scarlet_lance_bullet": true,
+    "scarlet_mist_bullet": true,
+    "scarlet_danmaku_bullet": true,
+    "scarlet_gungnir_bullet": true,
+    "scarlet_world_bullet": true,
+    "scarlet_stealth_bullet": true
   },
   "equipped_bullet_themes": {
     "striker": "striker_holy_bullet",

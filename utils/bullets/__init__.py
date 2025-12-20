@@ -80,6 +80,8 @@ from .providence_bullets import (HolyShardBullet, HolyExplosion, ProfanedSpearBu
 from .magnus_bullets import (ArcaneMissileBullet, FireballBullet, FrostWaveBullet,
                               LightningChainBullet, BlizzardSkill, AncientSpiritSkill,
                               CircleOfTruthSkill, PageGuardBullet, MAGNUS_COLORS)
+from .scarlet_bullets import (render_scarlet_bullet, ScarletLanceBullet, MistBlinkSkill,
+                               ScarletMeisterSkill, GungnirSpearSkill, CrimsonWorldUltimate)
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
@@ -112,4 +114,6 @@ __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES',
            'render_providence_bullet_preview',
            'ArcaneMissileBullet', 'FireballBullet', 'FrostWaveBullet',
            'LightningChainBullet', 'BlizzardSkill', 'AncientSpiritSkill',
-           'CircleOfTruthSkill', 'PageGuardBullet', 'MAGNUS_COLORS']
+           'CircleOfTruthSkill', 'PageGuardBullet', 'MAGNUS_COLORS',
+           'render_scarlet_bullet', 'ScarletLanceBullet', 'MistBlinkSkill',
+           'ScarletMeisterSkill', 'GungnirSpearSkill', 'CrimsonWorldUltimate']

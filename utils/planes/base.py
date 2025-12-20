@@ -455,6 +455,13 @@ def _generate_plane_surf(pid, visual=None, static=False):
             render_heavymetal_skin(s, c, 60, 60, 100, 100, frame, model_style)
             return s
         
+        # 尝试 Scarlet 专属涂装（绯红恶魔·SCARLET）
+        from .skins_scarlet import render_scarlet_skin, is_scarlet_style
+        if is_scarlet_style(model_style):
+            result = render_scarlet_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -646,6 +653,11 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid == "heavymetal":
         from .skins_heavymetal import _render_heavymetal_base
         _render_heavymetal_base(s, t, pulse)
+    
+    # 绯红恶魔 - Scarlet
+    elif pid == "scarlet":
+        from .skins_scarlet import _render_scarlet_base
+        _render_scarlet_base(s, t, pulse)
     
     else:
         # 默认占位图形

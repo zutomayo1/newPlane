@@ -11272,6 +11272,12 @@ class Player(pygame.sprite.Sprite):
         self.ult3_cooldown = 0
         self.ult3_max_cooldown = 120  # 冷却2秒
         
+        # ========== 【新增】第四大招系统（E键） ==========
+        self.ult4_charge = 0
+        self.max_ult4_charge = 100  # 第四大招：只能储存1次
+        self.ult4_cooldown = 0
+        self.ult4_max_cooldown = 180  # 冷却3秒
+        
         self.last_shot = 0
         self.damage_reduction = 0.0
         
@@ -11505,6 +11511,8 @@ class Player(pygame.sprite.Sprite):
         if self.ult2_cooldown > 0: self.ult2_cooldown -= 1
         # 【新】第三大招冷却更新
         if self.ult3_cooldown > 0: self.ult3_cooldown -= 1
+        # 【新】第四大招冷却更新（E键）
+        if self.ult4_cooldown > 0: self.ult4_cooldown -= 1
         
         # 武器更新
         if self.switch_cooldown > 0: self.switch_cooldown -= 1
@@ -11930,6 +11938,18 @@ class Player(pygame.sprite.Sprite):
             if model_style.startswith('heavymetal_'):
                 return model_style
         return "heavymetal_default"
+
+    def _get_scarlet_style(self):
+        """获取Scarlet涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("scarlet_"):
+                return theme_id
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('scarlet_'):
+                return model_style
+        return "scarlet_default"
 
 
     def _init_sepulcher_systems(self):
@@ -13606,6 +13626,33 @@ class Player(pygame.sprite.Sprite):
                 spawn_encore_fireworks(cx, cy, count=16, damage=int(self.damage * 2))
                 FloatingText(cx, cy - 50, "🎆 ENCORE!", (255, 200, 50))
         
+        # ========== 52. 绯红恶魔·SCARLET - 魔枪投掷+吸血 ==========
+        elif pid == "scarlet":
+            from utils.bullets.scarlet_bullets import ScarletLanceBullet
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_scarlet_style() if hasattr(self, '_get_scarlet_style') else "scarlet_default"
+            
+            # 初始化SCARLET系统
+            if not hasattr(self, 'scarlet_initialized') or not self.scarlet_initialized:
+                self.scarlet_blood_stacks = 0          # 鲜血层数
+                self.scarlet_max_blood = 10            # 最大层数
+                self.scarlet_stealth_mode = False      # 潜行状态
+                self.scarlet_initialized = True
+            
+            # 发射魔枪投掷
+            for i in range(cnt):
+                offset_x = (i - (cnt-1)/2) * 15
+                lance = ScarletLanceBullet(cx + offset_x, cy, 
+                                          damage=self.damage,
+                                          owner=self,
+                                          style=style)
+                all_sprites.add(lance)
+                bullets.add(lance)
+            
+            # 累计鲜血层数
+            self.scarlet_blood_stacks = min(self.scarlet_max_blood, self.scarlet_blood_stacks + 0.1)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -14012,6 +14059,17 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_heavymetal_style()
                 skill = DeathMetalSoloUlt(self.rect.centerx, self.rect.centery, 
                                           damage=self.damage * 0.5, owner=self, style=style)
+                all_sprites.add(skill)
+            
+            elif pid == "scarlet":
+                # 【迷雾闪烁】F技能：化作红雾瞬移，过程无敌+伤害敌人
+                from utils.bullets.scarlet_bullets import MistBlinkSkill
+                import pygame
+                mouse_pos = pygame.mouse.get_pos()
+                target_y = max(100, mouse_pos[1] if mouse_pos[1] < 500 else self.rect.centery - 150)
+                target_pos = (mouse_pos[0], target_y)
+                style = self._get_scarlet_style() if hasattr(self, '_get_scarlet_style') else "scarlet_default"
+                skill = MistBlinkSkill(self, target_pos, self.damage * 2, style=style)
                 all_sprites.add(skill)
             
             else:
@@ -15323,6 +15381,14 @@ class Player(pygame.sprite.Sprite):
                                      damage=self.damage * 2, owner=self, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "scarlet":
+                # 【绯红不夜城】G技能：东方弹幕风格高密度规则弹幕覆盖全屏
+                from utils.bullets.scarlet_bullets import ScarletMeisterSkill
+                style = self._get_scarlet_style() if hasattr(self, '_get_scarlet_style') else "scarlet_default"
+                skill = ScarletMeisterSkill(self.rect.centerx, self.rect.centery,
+                                           damage=self.damage * 1.5, owner=self, style=style)
+                all_sprites.add(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -15390,7 +15456,8 @@ class Player(pygame.sprite.Sprite):
                 "sepulcher": "硫火审判",
                 "galaxia": "苍穹撕裂",
                 "magnus": "真理之圆",
-                "heavymetal": "地狱开场"
+                "heavymetal": "地狱开场",
+                "scarlet": "命运之枪"
             }
             
             pid = self.plane_id
@@ -15631,11 +15698,49 @@ class Player(pygame.sprite.Sprite):
                                           damage=self.damage * 3, owner=self, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "scarlet":
+                # 【命运之枪】C技能：投掷贯穿全屏的巨大红色光枪
+                from utils.bullets.scarlet_bullets import GungnirSpearSkill
+                style = self._get_scarlet_style() if hasattr(self, '_get_scarlet_style') else "scarlet_default"
+                skill = GungnirSpearSkill(self.rect.centerx, self.rect.centery,
+                                         damage=self.damage * 4, owner=self, style=style)
+                all_sprites.add(skill)
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 命运之枪 ★", (220, 20, 60))
+            
             else:
                 # 通用：全屏伤害
                 for m in list(mobs):
                     m.hp -= 100
                     Particle(m.rect.center, self.plane_data["color"], mode='shockwave')
+
+    def use_quaternary_ultimate(self):
+        """第四大招（E键释放）"""
+        pid = self.plane_id
+        
+        # 冷却检查
+        if self.ult4_cooldown > 0:
+            return
+        
+        if self.ult4_charge >= self.max_ult4_charge:
+            self.ult4_charge = 0  # 消耗全部能量
+            self.ult4_cooldown = self.ult4_max_cooldown
+            
+            sound_mgr.play("laser")
+            
+            if pid == "scarlet":
+                # 【深红世界】E技能（终极大招）：时间停止+影分身斜击所有敌人
+                from utils.bullets.scarlet_bullets import CrimsonWorldUltimate
+                style = self._get_scarlet_style() if hasattr(self, '_get_scarlet_style') else "scarlet_default"
+                skill = CrimsonWorldUltimate(owner=self, damage=self.damage * 5)
+                all_sprites.add(skill)
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 深红世界 ★", (255, 50, 80))
+            
+            else:
+                # 通用：冲刺攻击
+                for m in list(mobs):
+                    if hasattr(m, 'hp'):
+                        m.hp -= 50
+                        Particle(m.rect.center, self.plane_data["color"], mode='shockwave')
 
     def draw_trail(self, surf):
         if len(self.trail_pos) > 2:

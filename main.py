@@ -4214,6 +4214,101 @@ def draw_top_hud():
             draw_text(screen, "血契", 16, label_x, bar_y + bar_gap*3 - 1, blood_color, glow=True, align='left')
             draw_text(screen, f"{stacks}/{max_stacks} (吸血{lifesteal_pct}%)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
     
+    # 【绯红恶魔·SCARLET】鲜血层数 + 潜行状态显示 - 常驻
+    if hasattr(player, 'plane_id') and player.plane_id == "scarlet":
+        blood_stacks = getattr(player, 'scarlet_blood_stacks', 0)
+        max_blood = max(1, getattr(player, 'scarlet_max_blood', 10))
+        is_stealth = getattr(player, 'scarlet_stealth_mode', False)
+        blood_ratio = blood_stacks / max_blood
+        bar_pct = blood_ratio * 100
+        
+        # 颜色根据状态变化
+        if is_stealth:
+            # 潜行状态 - 深红闪烁
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            scarlet_color = (int(180 + 75 * flash), int(20 + 30 * flash), int(60 + 40 * flash))
+        else:
+            # 正常状态 - 根据层数渐变
+            scarlet_color = (int(180 + 40 * blood_ratio), int(20 + 60 * blood_ratio), int(60 + 60 * blood_ratio)) if blood_stacks > 0 else (150, 30, 50)
+        
+        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, scarlet_color, 
+                         bg_color=(50, 10, 20), tilt=tilt, border_color=scarlet_color, border_width=1)
+        
+        # 吸血效果百分比（基于层数）
+        lifesteal_pct = int(blood_ratio * 15)  # 0-15%吸血
+        dmg_bonus = int(blood_ratio * 30)  # 0-30%伤害加成
+        
+        if is_stealth:
+            draw_text(screen, "猩红", 16, label_x, bar_y + bar_gap*3 - 1, (255, 100, 120), glow=True, align='left')
+            draw_text(screen, f"潜行中! 下次攻击暴击", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        else:
+            draw_text(screen, "血魂", 16, label_x, bar_y + bar_gap*3 - 1, scarlet_color, glow=True, align='left')
+            draw_text(screen, f"{int(blood_stacks)}/{max_blood} (吸血{lifesteal_pct}%/伤害+{dmg_bonus}%)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        
+        # 【深红世界】第四大招 [E] - 左上角特殊显示
+        ult4_y = bar_y + bar_gap*4 + 5
+        ult4_charge = getattr(player, 'ult4_charge', 0)
+        max_ult4 = getattr(player, 'max_ult4_charge', 100)
+        ult4_cd = getattr(player, 'ult4_cooldown', 0)
+        ult4_ratio = ult4_charge / max_ult4 if max_ult4 > 0 else 0
+        ult4_ready = ult4_ratio >= 1.0 and ult4_cd <= 0
+        ult4_pct = int(ult4_ratio * 100)
+        
+        # 深红世界标签 - 特殊设计
+        if ult4_ready:
+            # 就绪状态 - 强烈闪烁
+            pulse = abs(math.sin(pygame.time.get_ticks() / 100))
+            ult4_label_color = (255, int(50 + 100 * pulse), int(80 + 100 * pulse))
+            draw_text(screen, "[E] 深红世界", 16, label_x, ult4_y, ult4_label_color, glow=True, align='left')
+            # 就绪提示
+            draw_text(screen, "▶ 时停斩杀就绪!", 12, label_x + 110, ult4_y + 2, (255, 200, 150), glow=True, align='left')
+        elif ult4_cd > 0:
+            # 冷却中 - 暗灰色
+            cd_sec = ult4_cd / 60.0
+            draw_text(screen, "[E] 深红世界", 16, label_x, ult4_y, (100, 40, 50), align='left')
+            draw_text(screen, f"CD {cd_sec:.1f}s", 12, label_x + 110, ult4_y + 2, CYBER_RED_ALERT, align='left')
+        else:
+            # 充能中 - 渐变色
+            charge_color = (int(150 + 105 * ult4_ratio), int(30 + 50 * ult4_ratio), int(50 + 80 * ult4_ratio))
+            draw_text(screen, "[E] 深红世界", 16, label_x, ult4_y, charge_color, align='left')
+            draw_text(screen, f"{ult4_pct}%", 12, label_x + 110, ult4_y + 2, WHITE, align='left')
+        
+        # 深红世界能量条
+        ult4_bar_y = ult4_y + 18
+        ult4_bar_w = bar_w
+        ult4_bar_h = 10
+        
+        # 背景
+        pygame.draw.rect(screen, (40, 10, 20), (bar_x, ult4_bar_y, ult4_bar_w, ult4_bar_h))
+        pygame.draw.rect(screen, (80, 20, 40), (bar_x, ult4_bar_y, ult4_bar_w, ult4_bar_h), 1)
+        
+        # 填充
+        if ult4_ratio > 0:
+            fill_w = int(ult4_bar_w * min(ult4_ratio, 1.0))
+            if ult4_ready:
+                # 满能量 - 闪烁深红
+                pulse = abs(math.sin(pygame.time.get_ticks() / 150))
+                glow_r = int(200 + 55 * pulse)
+                glow_g = int(40 + 40 * pulse)
+                glow_b = int(60 + 60 * pulse)
+                pygame.draw.rect(screen, (glow_r, glow_g, glow_b), (bar_x, ult4_bar_y, fill_w, ult4_bar_h))
+                # 外发光边框
+                pygame.draw.rect(screen, (255, 100, 120), (bar_x, ult4_bar_y, fill_w, ult4_bar_h), 1)
+            else:
+                # 充能中 - 渐变深红
+                for px in range(fill_w):
+                    ratio = px / max(1, fill_w)
+                    r = int(120 + 80 * ratio)
+                    g = int(20 + 30 * ratio)
+                    b = int(40 + 40 * ratio)
+                    pygame.draw.line(screen, (r, g, b), (bar_x + px, ult4_bar_y), (bar_x + px, ult4_bar_y + ult4_bar_h - 1))
+        
+        # 冷却遮罩
+        if ult4_cd > 0:
+            cd_overlay = pygame.Surface((ult4_bar_w, ult4_bar_h), pygame.SRCALPHA)
+            cd_overlay.fill((0, 0, 0, 180))
+            screen.blit(cd_overlay, (bar_x, ult4_bar_y))
+    
     # 【星界潜行者】暗影标记数显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "stalker":
         marks = getattr(player, 'shadow_marks', 0)
@@ -4930,8 +5025,10 @@ def draw_top_hud():
         "thornvine": "荆棘缠绕", "starblade": "星刃回旋", "acidswamp": "酸沼扩散",
         "crystalfall": "晶簇连锁", "sporeveil": "孢子繁殖",
         "cthulhu": "月蚀审判", "turu": "岩拳连击", "staradia": "皇辉残影",
-        "dukefishron": "鲨龙追踪", "slime": "星炎水晶", "oro": "弑神冲袭",
-        "yharon": "龙群盛宴"
+        "dukefishron": "鲨龙追踪", "slime": "星炎水晶", "oro": "激光栅风暴",
+        "yharon": "龙群盛宴", "scarlet": "绯红不夜城",
+        "providence": "神圣射线", "goliath": "瘟疫核弹", "sepulcher": "天降灾厄",
+        "galaxia": "星系陷阱", "magnus": "远古亡灵召唤", "heavymetal": "舞台俯冲"
     }
     ult2_name = ult2_names.get(player.plane_id, '次级技能')
     ult2_y = bar1_y + bar1_h + 3
@@ -5003,8 +5100,10 @@ def draw_top_hud():
         "thornvine": "骨蔓分裂", "starblade": "星镰乱舞", "acidswamp": "腐蚀大潮",
         "crystalfall": "晶瀑倾泻", "sporeveil": "菌海爆发",
         "cthulhu": "星骸剥离", "turu": "巨石核爆", "staradia": "皇辉领域",
-        "dukefishron": "海啸滑翔", "slime": "星凝子体", "oro": "衔尾蛇",
-        "yharon": "宿敌升天"
+        "dukefishron": "海啸滑翔", "slime": "星凝子体", "oro": "终噬黑洞",
+        "yharon": "宿敌升天", "scarlet": "命运之枪",
+        "providence": "超新星爆发", "goliath": "盖亚之死", "sepulcher": "湮灭之眼",
+        "galaxia": "苍穹撕裂", "magnus": "真理魔法阵", "heavymetal": "死亡金属独奏"
     }
     ult3_name = ult3_names.get(player.plane_id, '终极技能')
     ult3_y = bar2_y + bar2_h + 3
@@ -6454,6 +6553,9 @@ while True:
                         elif event.key == pygame.K_c:
                             # C键释放第三大招
                             player.use_tertiary_ultimate()
+                        elif event.key == pygame.K_e:
+                            # E键释放第四大招
+                            player.use_quaternary_ultimate()
                         elif event.key == pygame.K_SPACE:
                             if player.skill_cd <= 0:
                                 player.skill_cd = player.max_skill_cd
@@ -8527,6 +8629,9 @@ while True:
                             player.ult2_charge = min(player.max_ult2_charge, player.ult2_charge + ult_charge_gain * 0.8)
                             # 【新】同时充能第三大招（C键）
                             player.ult3_charge = min(player.max_ult3_charge, player.ult3_charge + ult_charge_gain * 0.6)
+                            # 【新】同时充能第四大招（E键）- SCARLET专属
+                            if hasattr(player, 'plane_id') and player.plane_id == "scarlet":
+                                player.ult4_charge = min(player.max_ult4_charge, player.ult4_charge + ult_charge_gain * 0.4)
                             
                             # 【优化】分裂射击：子弹击中敌人时生成分裂子弹（分裂弹不再分裂）
                             if hasattr(player, 'split_count') and player.split_count > 0:

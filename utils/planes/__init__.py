@@ -106,6 +106,7 @@ from .skins_providence import draw_providence, is_providence_style, render_provi
 from .skins_galaxia import render_galaxia_plane, is_galaxia_style, get_galaxia_theme, get_all_galaxia_styles, GALAXIA_THEMES
 from .skins_magnus import render_magnus_plane, is_magnus_style, get_magnus_theme, get_all_magnus_styles, MAGNUS_THEMES
 from .skins_heavymetal import render_heavymetal_plane, render_heavymetal_skin, is_heavymetal_style, get_heavymetal_theme, get_all_heavymetal_styles, HEAVYMETAL_THEMES, HEAVYMETAL_STYLES, draw_heavymetal, _render_heavymetal_base
+from .skins_scarlet import render_scarlet_skin, is_scarlet_style, SCARLET_STYLES, _render_scarlet_base, get_scarlet_theme
 
 # DukeFishron样式定义 - 12个高质量涂装（带duke_前缀避免冲突）
 DUKEFISHRON_STYLES = [
@@ -166,5 +167,6 @@ __all__ = [
     'render_providence_skin', 'is_providence_style', 'PROVIDENCE_STYLES', 'draw_providence',
     'render_galaxia_plane', 'is_galaxia_style', 'get_galaxia_theme', 'get_all_galaxia_styles', 'GALAXIA_THEMES',
     'render_magnus_plane', 'is_magnus_style', 'get_magnus_theme', 'get_all_magnus_styles', 'MAGNUS_THEMES',
-    'render_heavymetal_plane', 'render_heavymetal_skin', 'is_heavymetal_style', 'get_heavymetal_theme', 'get_all_heavymetal_styles', 'HEAVYMETAL_THEMES', 'HEAVYMETAL_STYLES', 'draw_heavymetal', '_render_heavymetal_base'
+    'render_heavymetal_plane', 'render_heavymetal_skin', 'is_heavymetal_style', 'get_heavymetal_theme', 'get_all_heavymetal_styles', 'HEAVYMETAL_THEMES', 'HEAVYMETAL_STYLES', 'draw_heavymetal', '_render_heavymetal_base',
+    'render_scarlet_skin', 'is_scarlet_style', 'SCARLET_STYLES', '_render_scarlet_base', 'get_scarlet_theme'
 ]
