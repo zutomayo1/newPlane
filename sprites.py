@@ -11217,6 +11217,11 @@ class Player(pygame.sprite.Sprite):
         self.hp = self.max_hp
         self.damage = self.plane_data["damage"]
         self.shoot_delay = self.plane_data["delay"]
+        if self.plane_id == "sdmg":
+            self.sdmg_base_delay = self.shoot_delay
+            self.sdmg_deploy_mine_on_cooldown = False
+            self.sdmg_mine_spawned_this_cooldown = False
+            self.sdmg_overheat_steam_timer = 0
         self.ult_charge_rate = self.plane_data.get("ult_charge_rate", 1.0)  # 大招充能速率倍率
         
         # 属性
@@ -11638,6 +11643,8 @@ class Player(pygame.sprite.Sprite):
         self._update_specter_state()
         # 【极光女神】极光共鸣状态维护
         self._update_aurora_state()
+        # 【星际海豚】过热系统状态维护
+        self._update_sdmg_state()
 
         # 切换武器
         if self.switch_cooldown <= 0:
@@ -11986,6 +11993,18 @@ class Player(pygame.sprite.Sprite):
             if model_style.startswith('crusher_'):
                 return model_style
         return "crusher_default"
+
+    def _get_sdmg_style(self):
+        """获取SDMG涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("sdmg_"):
+                return theme_id
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('sdmg_'):
+                return model_style
+        return "sdmg_default"
 
 
     def _init_sepulcher_systems(self):
@@ -13429,7 +13448,6 @@ class Player(pygame.sprite.Sprite):
             if move_dist > 5 and self.goliath_dust_timer >= 8:  # 移动时每8帧生成尘埃
                 self.goliath_dust_timer = 0
                 # 在身后生成病毒尘埃
-                import random
                 dust_x = self.rect.centerx + random.randint(-20, 20)
                 dust_y = self.rect.centery + random.randint(10, 30)
                 PlagueDust(dust_x, dust_y, self.damage * 0.05, owner=self, style=style)
@@ -13468,7 +13486,6 @@ class Player(pygame.sprite.Sprite):
             
             # 暴怒状态额外射击
             if self.sepulcher_fury_active:
-                import random
                 for _ in range(2):
                     offset = random.randint(-30, 30)
                     BrimstoneBolt(cx + offset, cy, self.damage * 0.6, 
@@ -13754,6 +13771,48 @@ class Player(pygame.sprite.Sprite):
             
             # 每次射击累积R技能能量（每次+1.5%，约67次满）
             self.ult4_charge = min(self.max_ult4_charge, self.ult4_charge + 1.5)
+        
+        # ========== 56. 星际海豚·S.D.M.G. - 叶绿曳光弹（弱追踪高射速） ==========
+        elif pid == "sdmg":
+            from utils.bullets.sdmg_bullets import ChlorophyteTracerBullet, OverheatManager
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_sdmg_style() if hasattr(self, '_get_sdmg_style') else "sdmg_default"
+            
+            # 获取或创建过热系统实例
+            overheat_mgr = OverheatManager.get_instance(self)
+            
+            # 初始化辅助变量
+            if not hasattr(self, 'sdmg_gatling_angle'):
+                self.sdmg_gatling_angle = 0
+            
+            # 检查是否过热（不再更新，因为会在其他地方更新）
+            if overheat_mgr.overheated:
+                # 过热状态，播放蒸汽效果但不射击
+                if random.random() < 0.3:
+                    Particle((cx + random.randint(-15, 15), cy + 20), (200, 200, 200), mode='spark')
+                return
+            
+            # 可以射击 - 添加热量
+            overheat_mgr.add_heat()
+            
+            # 获取散射惩罚
+            spread_penalty = overheat_mgr.get_spread_penalty()
+            spread = random.uniform(-spread_penalty, spread_penalty)
+            
+            # 旋转枪管视觉效果
+            self.sdmg_gatling_angle += 0.5
+            
+            # 发射叶绿曳光弹
+            bullet = ChlorophyteTracerBullet(cx, cy, self.damage, self, style, spread)
+            all_sprites.add(bullet)
+            bullets.add(bullet)
+            
+            # 弹壳粒子效果
+            if random.random() < 0.4:
+                shell_x = cx + random.randint(-10, 10)
+                shell_y = cy + 30
+                Particle((shell_x, shell_y), (255, 215, 0), mode='spark')
         
         # 默认情况
         else:
@@ -14194,6 +14253,13 @@ class Player(pygame.sprite.Sprite):
                 skill = WarpDashEffect(self, self.damage * 2, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "sdmg":
+                # 【海星雷】F技能：发射旋转海星炸弹，吸附敌人后延迟爆炸
+                from utils.bullets.sdmg_bullets import StarfishMine
+                style = self._get_sdmg_style() if hasattr(self, '_get_sdmg_style') else "sdmg_default"
+                mine = StarfishMine(self.rect.centerx, self.rect.top, self.damage * 2, self, style)
+                all_sprites.add(mine)
+            
             else:
                 # 通用：全屏清弹 + 通用爆炸
                 enemy_bullets.empty()
@@ -14216,6 +14282,24 @@ class Player(pygame.sprite.Sprite):
                 elif ability == 'area_field':
                     for angle in range(0, 360, 60):
                         Particle(self.rect.center, TEAL, mode='shockwave')
+
+    def on_sdmg_overheat(self):
+        """SDMG进入过热冷却时的回调"""
+        if self.plane_id != "sdmg":
+            return
+        self.sdmg_deploy_mine_on_cooldown = True
+        self.sdmg_mine_spawned_this_cooldown = False
+        self.sdmg_overheat_steam_timer = 0
+        FloatingText(self.rect.centerx, self.rect.top - 25, "冷却3秒", CYAN)
+
+    def _sdmg_spawn_cooldown_mine(self):
+        if self.plane_id != "sdmg" or getattr(self, 'sdmg_mine_spawned_this_cooldown', False):
+            return
+        from utils.bullets.sdmg_bullets import StarfishMine
+        style = self._get_sdmg_style() if hasattr(self, '_get_sdmg_style') else "sdmg_default"
+        StarfishMine(self.rect.centerx, self.rect.top, self.damage * 2, self, style)
+        FloatingText(self.rect.centerx, self.rect.top - 45, "海星雷部署", CYAN)
+        self.sdmg_mine_spawned_this_cooldown = True
 
     def apply_crimson_blood(self, enemy, damage, hit_pos=None):
         """绯红之刃固有：命中后吸血并引爆血浪"""
@@ -14842,6 +14926,36 @@ class Player(pygame.sprite.Sprite):
             FloatingText(self.rect.centerx, self.rect.top - 20, "超载启动!", CYAN)
             for _ in range(8):
                 Particle(self.rect.center, CYAN)
+
+    def _update_sdmg_state(self):
+        """每帧更新星际海豚的过热系统"""
+        if self.plane_id != "sdmg":
+            return
+        from utils.bullets.sdmg_bullets import OverheatManager
+        overheat_mgr = OverheatManager.get_instance(self)
+        overheat_mgr.update()
+        base_delay = getattr(self, 'sdmg_base_delay', self.plane_data["delay"])
+        max_heat = max(1.0, overheat_mgr.max_heat)
+        heat_ratio = overheat_mgr.heat / max_heat
+        if overheat_mgr.overheated:
+            self.shoot_delay = max(5, int(base_delay * 1.1))
+            self.sdmg_overheat_steam_timer = getattr(self, 'sdmg_overheat_steam_timer', 0) + 1
+            if self.sdmg_overheat_steam_timer % 6 == 0:
+                puff = (self.rect.centerx + random.randint(-18, 18), self.rect.centery + random.randint(-10, 15))
+                Particle(puff, (210, 210, 215), mode='pulse')
+            if getattr(self, 'sdmg_deploy_mine_on_cooldown', False) and not getattr(self, 'sdmg_mine_spawned_this_cooldown', False):
+                self._sdmg_spawn_cooldown_mine()
+        elif 0.5 <= heat_ratio < 0.9:
+            boosted_delay = max(5, int(base_delay * 0.7))
+            self.shoot_delay = boosted_delay
+            self.sdmg_deploy_mine_on_cooldown = False
+            self.sdmg_mine_spawned_this_cooldown = False
+            self.sdmg_overheat_steam_timer = 0
+        else:
+            self.shoot_delay = base_delay
+            self.sdmg_deploy_mine_on_cooldown = False
+            self.sdmg_mine_spawned_this_cooldown = False
+            self.sdmg_overheat_steam_timer = 0
 
     def _update_striker_state(self):
         """每帧更新霓虹突击者状态"""
@@ -15533,6 +15647,13 @@ class Player(pygame.sprite.Sprite):
                 skill = TractorBeamEffect(self, self.damage * 1.5, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "sdmg":
+                # 【鲨卷风】G技能：发射数十枚鲨鱼导弹，形成龙卷风轨迹
+                from utils.bullets.sdmg_bullets import SharknadoSkill
+                style = self._get_sdmg_style() if hasattr(self, '_get_sdmg_style') else "sdmg_default"
+                SharknadoSkill.activate(self, style)
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 鲨卷风 ★", (192, 192, 192))
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -15877,6 +15998,13 @@ class Player(pygame.sprite.Sprite):
                 all_sprites.add(skill)
                 FloatingText(self.rect.centerx, self.rect.top - 50, "★ 共振破碎 ★", (138, 43, 226))
             
+            elif pid == "sdmg":
+                # 【月球领主之凝视】C技能：召唤幻影手掌跟随，持续发射穿透光球
+                from utils.bullets.sdmg_bullets import MoonLordGazeSkill
+                style = self._get_sdmg_style() if hasattr(self, '_get_sdmg_style') else "sdmg_default"
+                MoonLordGazeSkill.activate(self, style)
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 月球领主之凝视 ★", (100, 255, 200))
+            
             else:
                 # 通用：全屏伤害
                 for m in list(mobs):
@@ -15930,6 +16058,13 @@ class Player(pygame.sprite.Sprite):
                 # 消耗所有护甲层数
                 self.crusher_armor_stacks = 0
                 FloatingText(self.rect.centerx, self.rect.top - 50, "★ 次元坍缩 ★", (138, 43, 226))
+            
+            elif pid == "sdmg":
+                # 【轨道轰炸】R技能（终极大招）：卫星激光从天而降，扫荡全屏
+                from utils.bullets.sdmg_bullets import OrbitalStrikeSkill
+                style = self._get_sdmg_style() if hasattr(self, '_get_sdmg_style') else "sdmg_default"
+                OrbitalStrikeSkill.activate(self, style)
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 轨道轰炸 ★", (255, 200, 100))
             
             else:
                 # 通用：冲刺攻击

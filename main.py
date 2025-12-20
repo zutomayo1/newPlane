@@ -4977,6 +4977,84 @@ def draw_top_hud():
                          bg_color=(25, 10, 40), glow=ult4_ready, animate_frame=anim_frame if ult4_ready else 0)
         draw_text(screen, ult4_text, 14, label_x, ult4_bar_y, ult4_color if ult4_ready else WHITE, glow=ult4_ready, align='left')
     
+    # 【星际海豚·S.D.M.G.】过热系统显示 - 过热超频机制
+    if hasattr(player, 'plane_id') and player.plane_id == "sdmg":
+        from utils.bullets.sdmg_bullets import OverheatManager
+        overheat_mgr = OverheatManager.get_instance(player)
+        heat = overheat_mgr.heat
+        max_heat = overheat_mgr.max_heat
+        is_overheated = overheat_mgr.is_overheated
+        is_overcharge = overheat_mgr.is_overcharge_active
+        
+        heat_ratio = heat / max_heat if max_heat > 0 else 0
+        heat_pct = heat_ratio * 100
+        
+        # 颜色基于过热状态（青/红色系）
+        if is_overcharge:
+            flash = abs(math.sin(pygame.time.get_ticks() / 60))
+            sdmg_color = (int(255 * flash), int(200 + 55 * flash), int(100 * (1 - flash)))
+            status_text = f"★超频中★ 伤害+50%"
+        elif is_overheated:
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            sdmg_color = (int(200 + 55 * flash), int(50 * flash), int(50 * flash))
+            status_text = f"过热! 冷却中..."
+        elif heat_ratio > 0.8:
+            sdmg_color = (255, int(100 + 60 * (1 - heat_ratio)), 50)
+            status_text = f"热量 {int(heat_pct)}% 接近过热!"
+        elif heat_ratio > 0.5:
+            sdmg_color = (255, int(180 - 80 * heat_ratio), 80)
+            status_text = f"热量 {int(heat_pct)}% 高效火控 +30%射速"
+        else:
+            sdmg_color = (0, 255, 255)
+            status_text = f"热量 {int(heat_pct)}%" if heat > 0 else "加特林就绪"
+        
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "flame", sdmg_color, anim_frame if is_overcharge else 0)
+        zone_start_ratio, zone_end_ratio = 0.5, 0.9
+        zone_w = max(0, zone_end_ratio - zone_start_ratio)
+        if zone_w > 0:
+            zone_surface = pygame.Surface((int(bar_w * zone_w), bar_h), pygame.SRCALPHA)
+            zone_surface.fill((40, 140, 200, 55))
+            screen.blit(zone_surface, (bar_x + int(bar_w * zone_start_ratio), special_bar_y))
+            marker_color = (120, 220, 255)
+            pygame.draw.line(screen, marker_color,
+                             (bar_x + int(bar_w * zone_start_ratio), special_bar_y - 3),
+                             (bar_x + int(bar_w * zone_start_ratio), special_bar_y + bar_h + 3), 1)
+            pygame.draw.line(screen, marker_color,
+                             (bar_x + int(bar_w * zone_end_ratio), special_bar_y - 3),
+                             (bar_x + int(bar_w * zone_end_ratio), special_bar_y + bar_h + 3), 1)
+            if zone_start_ratio <= heat_ratio < zone_end_ratio:
+                draw_text(screen, "高效热区", 13,
+                          bar_x + int(bar_w * zone_start_ratio) + 4,
+                          special_bar_y - 16, marker_color, align='left')
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, heat_pct, sdmg_color,
+                       bg_color=(20, 35, 40), glow=is_overcharge, animate_frame=anim_frame if is_overcharge else 0)
+        draw_text(screen, status_text, 15, label_x, special_bar_y, sdmg_color if is_overcharge else WHITE, glow=is_overcharge, align='left')
+        
+        # 【轨道轰炸】第四大招显示
+        ult4_bar_y = special_bar_y + bar_gap
+        ult4_charge = getattr(player, 'ult4_charge', 0)
+        max_ult4 = getattr(player, 'max_ult4_charge', 100)
+        ult4_cd = getattr(player, 'ult4_cooldown', 0)
+        ult4_ratio = ult4_charge / max_ult4 if max_ult4 > 0 else 0
+        ult4_ready = ult4_ratio >= 1.0 and ult4_cd <= 0
+        ult4_pct = ult4_ratio * 100
+        
+        if ult4_ready:
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            ult4_color = (int(200 + 55 * flash), int(150 + 50 * flash), int(50 + 50 * flash))
+            ult4_text = f"[R] 轨道轰炸 就绪!"
+        elif ult4_cd > 0:
+            ult4_color = (100, 80, 40)
+            ult4_text = f"[R] CD {ult4_cd / 60.0:.1f}s"
+        else:
+            ult4_color = (int(150 + 105 * ult4_ratio), int(100 + 100 * ult4_ratio), int(50 + 50 * ult4_ratio))
+            ult4_text = f"[R] 轨道轰炸 {int(ult4_pct)}%"
+        
+        draw_status_icon(screen, panel_x + 8, ult4_bar_y - 2, 20, "star", ult4_color, anim_frame if ult4_ready else 0)
+        draw_premium_bar(screen, bar_x, ult4_bar_y, bar_w, int(bar_h * 0.8), ult4_pct, ult4_color,
+                         bg_color=(30, 25, 15), glow=ult4_ready, animate_frame=anim_frame if ult4_ready else 0)
+        draw_text(screen, ult4_text, 14, label_x, ult4_bar_y, ult4_color if ult4_ready else WHITE, glow=ult4_ready, align='left')
+    
     # ===== 顶部右侧：高级积分和时间面板 =====
     anim_frame = pygame.time.get_ticks() // 16
     panel_right_x = WIDTH - 170
@@ -5315,7 +5393,8 @@ def draw_top_hud():
         "yharon": "龙群盛宴", "scarlet": "绯红不夜城",
         "providence": "神圣射线", "goliath": "瘟疫核弹", "sepulcher": "天降灾厄",
         "galaxia": "星系陷阱", "magnus": "远古亡灵召唤", "heavymetal": "舞台俯冲",
-        "zenith": "传奇剑舞", "viscerator": "归束轰击"
+        "zenith": "传奇剑舞", "viscerator": "归束轰击",
+        "sdmg": "鲨卷风"
     }
     ult2_name = ult2_names.get(player.plane_id, '次级技能')
     ult2_y = bar1_y + bar1_h + 4
@@ -5361,7 +5440,8 @@ def draw_top_hud():
         "yharon": "宿敌升天", "scarlet": "命运之枪",
         "providence": "超新星爆发", "goliath": "盖亚之死", "sepulcher": "湮灭之眼",
         "galaxia": "苍穹撕裂", "magnus": "真理魔法阵", "heavymetal": "死亡金属独奏",
-        "zenith": "终极剑阵", "viscerator": "星流过载"
+        "zenith": "终极剑阵", "viscerator": "星流过载",
+        "sdmg": "月球领主之凝视"
     }
     ult3_name = ult3_names.get(player.plane_id, '终极技能')
     ult3_y = bar2_y + bar2_h + 4
@@ -8932,8 +9012,8 @@ while True:
                             player.ult2_charge = min(player.max_ult2_charge, player.ult2_charge + ult_charge_gain * 0.8)
                             # 【新】同时充能第三大招（C键）
                             player.ult3_charge = min(player.max_ult3_charge, player.ult3_charge + ult_charge_gain * 0.6)
-                            # 【新】同时充能第四大招（R键）- SCARLET/ZENITH/VISCERATOR专属
-                            if hasattr(player, 'plane_id') and player.plane_id in ("scarlet", "zenith", "viscerator"):
+                            # 【新】同时充能第四大招（R键）- SCARLET/ZENITH/VISCERATOR/SDMG专属
+                            if hasattr(player, 'plane_id') and player.plane_id in ("scarlet", "zenith", "viscerator", "sdmg"):
                                 player.ult4_charge = min(player.max_ult4_charge, player.ult4_charge + ult_charge_gain * 0.4)
                             
                             # 【优化】分裂射击：子弹击中敌人时生成分裂子弹（分裂弹不再分裂）
