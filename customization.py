@@ -10217,6 +10217,106 @@ PAINT_THEMES = {
         "model_style": "scarlet_destiny",
         "animated": True,
     },
+    
+    # ========== 专属涂装 - Zenith (分形天顶) ==========
+    # 设计理念：Terraria天顶剑 + 像素崩坏 + 传奇名剑集合
+    # 核心机制：回旋镖母舰 - 投掷剑群穿透追击
+    "zenith_default": {
+        "name": "分形天顶·终极集合",
+        "desc": "💎靛青核心+白色剑刃，紫罗兰像素碎片环绕",
+        "neon_color": (75, 0, 130),        # 靛青
+        "accent_color": (255, 0, 255),     # 品红
+        "trail_color": (147, 112, 219),
+        "unlocked": False,
+        "cost": 0,
+        "trail_style": "pixel_fractal",
+        "particle_count": 250,
+        "category": "exclusive",
+        "trail_width": 35,
+        "exclusive_plane": "zenith",
+        "model_style": "zenith_default",
+        "animated": True,
+    },
+    "zenith_terra": {
+        "name": "泰拉圣剑·翠绿大地",
+        "desc": "🌿泰拉绿核心+翠绿剑刃，自然之力的终极形态",
+        "neon_color": (0, 200, 100),       # 泰拉绿
+        "accent_color": (100, 255, 150),   # 翠绿
+        "trail_color": (0, 180, 80),
+        "unlocked": False,
+        "cost": 28000,
+        "trail_style": "terra_blade",
+        "particle_count": 240,
+        "category": "exclusive",
+        "trail_width": 33,
+        "exclusive_plane": "zenith",
+        "model_style": "zenith_terra",
+        "animated": True,
+    },
+    "zenith_meowmere": {
+        "name": "喵喵彩虹·猫娘之剑",
+        "desc": "🐱粉色核心+彩虹光效，喵喵弹幕与彩虹拖尾",
+        "neon_color": (255, 150, 200),     # 粉色
+        "accent_color": (255, 200, 220),   # 浅粉
+        "trail_color": (255, 180, 220),
+        "unlocked": False,
+        "cost": 30000,
+        "trail_style": "rainbow_cat",
+        "particle_count": 260,
+        "category": "exclusive",
+        "trail_width": 34,
+        "exclusive_plane": "zenith",
+        "model_style": "zenith_meowmere",
+        "animated": True,
+    },
+    "zenith_stardust": {
+        "name": "星尘龙骸·苍穹之翼",
+        "desc": "⭐星蓝核心+浅蓝剑刃，星尘龙幻影守护",
+        "neon_color": (0, 150, 255),       # 星蓝
+        "accent_color": (100, 200, 255),   # 浅蓝
+        "trail_color": (0, 120, 200),
+        "unlocked": False,
+        "cost": 32000,
+        "trail_style": "stardust_dragon",
+        "particle_count": 250,
+        "category": "exclusive",
+        "trail_width": 34,
+        "exclusive_plane": "zenith",
+        "model_style": "zenith_stardust",
+        "animated": True,
+    },
+    "zenith_solar": {
+        "name": "日耀烈焰·太阳核心",
+        "desc": "☀️烈焰橙核心+金色剑刃，日耀爆发焚尽一切",
+        "neon_color": (255, 100, 0),       # 烈焰橙
+        "accent_color": (255, 180, 50),    # 金色
+        "trail_color": (200, 80, 0),
+        "unlocked": False,
+        "cost": 32000,
+        "trail_style": "solar_flare",
+        "particle_count": 260,
+        "category": "exclusive",
+        "trail_width": 35,
+        "exclusive_plane": "zenith",
+        "model_style": "zenith_solar",
+        "animated": True,
+    },
+    "zenith_void": {
+        "name": "虚空终末·末日天顶",
+        "desc": "🌑虚空紫核心+暗紫剑刃，宇宙终结的力量",
+        "neon_color": (30, 0, 50),         # 虚空紫
+        "accent_color": (80, 20, 120),     # 暗紫
+        "trail_color": (60, 0, 100),
+        "unlocked": False,
+        "cost": 40000,
+        "trail_style": "void_collapse",
+        "particle_count": 300,
+        "category": "exclusive",
+        "trail_width": 38,
+        "exclusive_plane": "zenith",
+        "model_style": "zenith_void",
+        "animated": True,
+    },
 }
 
 # ==============================================================================

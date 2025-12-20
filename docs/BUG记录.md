@@ -520,3 +520,119 @@ cx, cy = surf_size // 2, surf_size // 2
 
 ### 修复日期
 2025年12月19日
+
+---
+
+## Bug #008: 技能击杀敌人不增加击杀数、得分和经验
+
+### 问题描述
+使用技能（如天顶的棱镜折射、喵星人轰炸等）击杀敌人后，击杀数不增加、得分不增加、也不掉落经验球和物品。
+
+### 具体表现
+- 用户使用技能击杀敌人
+- 敌人正常死亡消失
+- 但击杀计数器不变
+- 得分不增加
+- 没有经验球掉落
+- 没有物品掉落
+- 成就系统不记录击杀
+
+### 根本原因
+**技能伤害和子弹伤害走不同的死亡处理路径**
+
+游戏中有两种击杀敌人的方式：
+1. **子弹碰撞**：在 `main.py` 的子弹碰撞检测中，直接检查 `m.hp <= 0`，然后处理所有奖励逻辑
+2. **技能伤害**：调用敌人的 `take_damage()` 方法
+
+问题在于 `enemies.py` 中的 `take_damage()` 方法：
+
+```python
+def take_damage(self, damage):
+    self.hp -= damage
+    if self.hp <= 0:
+        self.on_death()  # 直接调用 on_death
+        return False
+    return True
+
+def on_death(self):
+    # 处理分裂等特殊能力...
+    self.kill()  # 直接销毁，没有任何奖励逻辑！
+```
+
+当技能通过 `take_damage()` 杀死敌人时：
+- 敌人直接在 `on_death()` 中被 `kill()` 移除
+- **完全绕过了 main.py 中的奖励逻辑**
+- 导致击杀数、得分、经验、物品等全部丢失
+
+### 解决方案
+
+在 `main.py` 的 `all_sprites.update()` 之后，添加统一的死亡敌人检测循环：
+
+```python
+all_sprites.update()
+
+# 【修复】检测被技能杀死的敌人
+for m in list(mobs):
+    if m.hp <= 0 and not getattr(m, '_death_rewarded', False):
+        m._death_rewarded = True  # 标记已处理，防止重复
+        
+        # 加分
+        score += 100 if m.is_elite else 20
+        
+        # 记录击杀
+        player.stats['kills'] += 1
+        player.stats['current_combo'] += 1
+        # ... 其他奖励逻辑
+        
+        # 经验掉落
+        ExperienceOrb(m.rect.centerx, m.rect.centery, xp_amount)
+        
+        # 物品掉落
+        if item_manager:
+            item_manager.try_spawn_drop(m.rect.centerx, m.rect.centery)
+        
+        m.kill()
+```
+
+同时，在原有的子弹碰撞死亡处理和毒杀死亡处理中添加 `_death_rewarded` 标记，防止重复奖励。
+
+### 预防措施
+
+1. **统一死亡处理入口**：
+   - 所有导致敌人死亡的方式都应该经过同一个奖励处理逻辑
+   - 不要在多个地方重复实现奖励逻辑
+
+2. **敌人死亡设计原则**：
+   ```python
+   # ❌ 错误：敌人自己处理死亡
+   def take_damage(self, damage):
+       self.hp -= damage
+       if self.hp <= 0:
+           self.kill()  # 直接销毁，奖励丢失
+   
+   # ✅ 正确：只标记死亡，让主循环统一处理
+   def take_damage(self, damage):
+       self.hp -= damage
+       # 不要在这里 kill()，让主循环检测 hp <= 0 并处理奖励
+   ```
+
+3. **使用标记防止重复处理**：
+   ```python
+   if m.hp <= 0 and not getattr(m, '_death_rewarded', False):
+       m._death_rewarded = True
+       # 处理奖励...
+   ```
+
+4. **检查清单**：
+   - [ ] 新增的伤害方式是否会绕过主循环的死亡检测？
+   - [ ] 是否有在敌人类内部直接调用 `kill()` 的情况？
+   - [ ] 奖励逻辑是否只在一个地方实现？
+
+### 相关文件
+- `main.py` - 第8135行后添加死亡检测循环
+- `main.py` - 第8936行子弹碰撞死亡处理添加标记
+- `main.py` - 第8338行毒杀死亡处理添加标记
+- `enemies.py` - `take_damage()` 和 `on_death()` 方法
+
+### 修复日期
+2025年12月20日

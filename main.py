@@ -4058,75 +4058,166 @@ def draw_game_stats():
     if player is None or not hasattr(player, 'stats'):
         return
     
-    # 面板位置和大小
-    panel_w, panel_h = 200, 160
-    panel_x = WIDTH - panel_w - 10
-    panel_y = 120  # 在得分和时间面板下方
+    # 面板位置和大小 - 调整到得分/时间面板下方
+    panel_w, panel_h = 170, 155
+    panel_x = WIDTH - panel_w - 8
+    panel_y = 135  # 在得分和时间面板下方（调整位置避免重叠）
     
-    # 半透明背景（更透明）
-    panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-    pygame.draw.rect(panel_surf, (10, 15, 25, 160), (0, 0, panel_w, panel_h), border_radius=8)
+    # 斜切角背景（与其他HUD风格统一）
+    cut = 10
+    bg_points = [
+        (panel_x + cut, panel_y),
+        (panel_x + panel_w, panel_y),
+        (panel_x + panel_w, panel_y + panel_h - cut),
+        (panel_x + panel_w - cut, panel_y + panel_h),
+        (panel_x, panel_y + panel_h),
+        (panel_x, panel_y + cut)
+    ]
+    
+    # 渐变背景
+    panel_surf = pygame.Surface((panel_w + 10, panel_h + 10), pygame.SRCALPHA)
+    for i in range(panel_h):
+        ratio = i / max(1, panel_h - 1)
+        r = int(12 + 8 * ratio)
+        g = int(18 + 12 * ratio)
+        b = int(30 + 10 * ratio)
+        pygame.draw.line(panel_surf, (r, g, b, 180), (0, i), (panel_w, i))
+    
+    # 裁剪为多边形
+    mask = pygame.Surface((panel_w + 10, panel_h + 10), pygame.SRCALPHA)
+    local_points = [(p[0] - panel_x, p[1] - panel_y) for p in bg_points]
+    pygame.draw.polygon(mask, (255, 255, 255, 255), local_points)
+    panel_surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
     screen.blit(panel_surf, (panel_x, panel_y))
     
-    # 边框
-    panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
-    pygame.draw.rect(screen, (0, 150, 200), panel_rect, 2, border_radius=8)
+    # 边框 - 青色
+    pygame.draw.polygon(screen, (60, 180, 200), bg_points, 1)
     
-    # 标题
-    draw_text(screen, "战况统计", 16, panel_x + panel_w//2, panel_y + 8, CYAN, glow=True)
+    # 顶部装饰线
+    pygame.draw.line(screen, (100, 220, 255), (panel_x + cut + 2, panel_y + 2), (panel_x + panel_w - 2, panel_y + 2), 1)
+    
+    # 角落装饰
+    pygame.draw.line(screen, (80, 200, 220), (panel_x, panel_y + cut), (panel_x, panel_y + cut + 8), 2)
+    pygame.draw.line(screen, (80, 200, 220), (panel_x + panel_w - cut, panel_y + panel_h), (panel_x + panel_w - cut - 8, panel_y + panel_h), 2)
+    
+    # 标题 - 带装饰（使用高质感渲染）
+    title_x = panel_x + panel_w // 2
+    from utils.ui import draw_premium_text
+    draw_premium_text(screen, "战况统计", 12, title_x, panel_y + 4, (140, 240, 255), style="neon")
+    
+    # 分隔线 - 渐变效果
+    for i in range(panel_w - 20):
+        ratio = 1 - abs(i - (panel_w - 20) / 2) / ((panel_w - 20) / 2)
+        alpha = int(150 * ratio)
+        pygame.draw.line(screen, (60 + int(60 * ratio), 180 + int(40 * ratio), 220), (panel_x + 10 + i, panel_y + 21), (panel_x + 11 + i, panel_y + 21), 1)
     
     # 统计数据
     stats = player.stats
-    y_offset = panel_y + 32
-    line_height = 18
+    y_offset = panel_y + 27
+    line_height = 19
+    label_x = panel_x + 10
+    value_x = panel_x + panel_w - 10
+    icon_x = label_x + 2
+    text_x = label_x + 18
+    
+    # 绘制小图标的辅助函数
+    def draw_stat_icon(cx, cy, icon_type, color):
+        if icon_type == "skull":
+            # 骷髅 - 简化为圆+十字
+            pygame.draw.circle(screen, color, (cx, cy), 5)
+            pygame.draw.circle(screen, (30, 30, 40), (cx - 2, cy - 1), 1)
+            pygame.draw.circle(screen, (30, 30, 40), (cx + 2, cy - 1), 1)
+        elif icon_type == "target":
+            # 靶心
+            pygame.draw.circle(screen, color, (cx, cy), 5, 1)
+            pygame.draw.circle(screen, color, (cx, cy), 2)
+        elif icon_type == "star":
+            # 星星
+            pts = []
+            for i in range(5):
+                angle = math.radians(-90 + i * 72)
+                pts.append((cx + int(5 * math.cos(angle)), cy + int(5 * math.sin(angle))))
+            pygame.draw.polygon(screen, color, pts)
+        elif icon_type == "bolt":
+            # 闪电
+            pts = [(cx, cy - 5), (cx - 2, cy), (cx + 1, cy), (cx - 1, cy + 5), (cx + 3, cy - 1), (cx, cy - 1)]
+            pygame.draw.polygon(screen, color, pts)
+        elif icon_type == "flame":
+            # 火焰
+            pygame.draw.ellipse(screen, color, (cx - 3, cy - 4, 6, 8))
+            pygame.draw.ellipse(screen, (255, 220, 100), (cx - 2, cy - 2, 4, 5))
+        elif icon_type == "clock":
+            # 时钟
+            pygame.draw.circle(screen, color, (cx, cy), 5, 1)
+            pygame.draw.line(screen, color, (cx, cy), (cx, cy - 3), 1)
+            pygame.draw.line(screen, color, (cx, cy), (cx + 2, cy + 1), 1)
     
     # 击杀数
     kills = stats.get('kills', 0)
-    draw_text(screen, f"击杀: {kills}", 13, panel_x + 10, y_offset, WHITE, align="left")
+    draw_stat_icon(icon_x, y_offset + 6, "skull", (220, 80, 80))
+    draw_premium_text(screen, "击杀", 10, text_x, y_offset, (200, 200, 210), align="left", style="cyber")
+    kill_color = (255, 100, 100) if kills >= 50 else ((255, 200, 100) if kills >= 20 else (210, 210, 220))
+    kill_style = "neon" if kills >= 50 else ("glow" if kills >= 20 else "cyber")
+    draw_premium_text(screen, f"{kills}", 12, value_x, y_offset, kill_color, align="right", style=kill_style)
     y_offset += line_height
     
     # 命中率
     shots = stats.get('shots_fired', 0)
     hits = stats.get('hits', 0)
     accuracy = (hits / shots * 100) if shots > 0 else 0
-    acc_color = LIME if accuracy >= 70 else (YELLOW if accuracy >= 40 else GRAY)
-    draw_text(screen, f"命中: {accuracy:.1f}%", 13, panel_x + 10, y_offset, acc_color, align="left")
+    draw_stat_icon(icon_x, y_offset + 6, "target", (100, 220, 100))
+    draw_premium_text(screen, "命中", 10, text_x, y_offset, (200, 200, 210), align="left", style="cyber")
+    acc_color = (100, 255, 120) if accuracy >= 70 else ((255, 230, 80) if accuracy >= 40 else (160, 160, 170))
+    acc_style = "neon" if accuracy >= 70 else ("glow" if accuracy >= 40 else "cyber")
+    draw_premium_text(screen, f"{accuracy:.1f}%", 12, value_x, y_offset, acc_color, align="right", style=acc_style)
     y_offset += line_height
     
     # 暴击率
     crits = stats.get('crits', 0)
     crit_rate = (crits / hits * 100) if hits > 0 else 0
-    crit_color = RED if crit_rate >= 30 else (ORANGE if crit_rate >= 15 else GRAY)
-    draw_text(screen, f"暴击: {crit_rate:.1f}%", 13, panel_x + 10, y_offset, crit_color, align="left")
+    draw_stat_icon(icon_x, y_offset + 6, "star", (255, 200, 80))
+    draw_premium_text(screen, "暴击", 10, text_x, y_offset, (200, 200, 210), align="left", style="cyber")
+    crit_color = (255, 100, 100) if crit_rate >= 30 else ((255, 180, 80) if crit_rate >= 15 else (160, 160, 170))
+    crit_style = "neon" if crit_rate >= 30 else ("glow" if crit_rate >= 15 else "cyber")
+    draw_premium_text(screen, f"{crit_rate:.1f}%", 12, value_x, y_offset, crit_color, align="right", style=crit_style)
     y_offset += line_height
     
     # 当前连击
     combo = stats.get('current_combo', 0)
     max_combo = stats.get('max_combo', 0)
+    draw_stat_icon(icon_x, y_offset + 6, "bolt", (255, 230, 80))
     if combo > 0:
-        combo_color = (255, 100 + int(combo * 5), 100) if combo >= 10 else YELLOW
-        draw_text(screen, f"连击: {combo}x", 13, panel_x + 10, y_offset, combo_color, align="left", glow=(combo >= 10))
+        draw_premium_text(screen, "连击", 10, text_x, y_offset, (200, 200, 210), align="left", style="cyber")
+        combo_color = (255, 80 + min(175, int(combo * 10)), 80) if combo >= 10 else (255, 230, 80)
+        combo_style = "neon" if combo >= 10 else "glow"
+        draw_premium_text(screen, f"{combo}x", 12, value_x, y_offset, combo_color, align="right", style=combo_style)
     else:
-        draw_text(screen, f"最高: {max_combo}x", 13, panel_x + 10, y_offset, GRAY, align="left")
+        draw_premium_text(screen, "最高", 10, text_x, y_offset, (130, 130, 140), align="left", style="cyber")
+        draw_premium_text(screen, f"{max_combo}x", 12, value_x, y_offset, (130, 130, 140), align="right", style="cyber")
     y_offset += line_height
     
-    # DPS（基于最近的伤害）
+    # DPS
+    draw_stat_icon(icon_x, y_offset + 6, "flame", (255, 160, 50))
+    draw_premium_text(screen, "DPS", 10, text_x, y_offset, (200, 200, 210), align="left", style="cyber")
     if stats.get('time_played', 0) > 0:
-        time_sec = stats['time_played'] / 60  # 转换为秒
+        time_sec = stats['time_played'] / 60
         dps = stats.get('damage_dealt', 0) / max(1, time_sec)
-        draw_text(screen, f"DPS: {int(dps)}", 13, panel_x + 10, y_offset, ORANGE, align="left")
+        dps_color = (255, 140, 50) if dps >= 1000 else ((255, 200, 100) if dps >= 500 else (190, 190, 200))
+        dps_style = "neon" if dps >= 1000 else ("glow" if dps >= 500 else "cyber")
+        draw_premium_text(screen, f"{int(dps)}", 12, value_x, y_offset, dps_color, align="right", style=dps_style)
     else:
-        draw_text(screen, f"DPS: 0", 13, panel_x + 10, y_offset, GRAY, align="left")
+        draw_premium_text(screen, "0", 12, value_x, y_offset, (130, 130, 140), align="right", style="cyber")
     y_offset += line_height
     
     # 存活时间
     time_sec = stats.get('time_played', 0) / 60
     minutes = int(time_sec // 60)
     seconds = int(time_sec % 60)
-    draw_text(screen, f"时间: {minutes:02d}:{seconds:02d}", 13, panel_x + 10, y_offset, CYAN, align="left")
-    
-    # 提示文字
-    draw_text(screen, "实时统计", 10, panel_x + panel_w//2, panel_y + panel_h - 12, (150, 150, 150))
+    draw_stat_icon(icon_x, y_offset + 6, "clock", (80, 210, 230))
+    draw_premium_text(screen, "存活", 10, text_x, y_offset, (200, 200, 210), align="left", style="cyber")
+    time_color = (100, 230, 255) if minutes >= 5 else ((150, 210, 230) if minutes >= 2 else (190, 190, 200))
+    time_style = "neon" if minutes >= 5 else ("glow" if minutes >= 2 else "cyber")
+    draw_premium_text(screen, f"{minutes:02d}:{seconds:02d}", 12, value_x, y_offset, time_color, align="right", style=time_style)
 
 def draw_synergy_combo_hints():
     """【新】绘制协同combo提示"""
@@ -4162,43 +4253,83 @@ def draw_top_hud():
     if player is None:
         return
     
-    # ===== 顶部左侧：护盾/血量/推进器三个倾斜进度条 + 数值标签 =====
-    bar_x = 12
-    bar_y = 10
-    bar_w = 280
-    bar_h_base = 13
-    bar_gap = 28  # 增加间距从 22 到 28，防止条形重合
-    tilt = 12
-    label_x = bar_x + bar_w + 16
-    hp_label_x = bar_x + bar_w + 80  # 血量文字更靠右，避免被血量条覆盖
+    from utils.ui import draw_premium_bar, draw_status_icon, draw_premium_ult_bar, draw_premium_weapon_slot, draw_wingman_indicator, draw_premium_text
     
-    # 护盾条 (青色/CYAN) - 百分比基于护盾上限计算,若无上限则以max_hp为上限
+    # ===== 顶部左侧：高级HUD面板 =====
+    panel_x = 8
+    panel_y = 6
+    
+    # 进度条参数
+    bar_x = panel_x + 32
+    bar_y = panel_y + 12
+    bar_w = 240
+    bar_h = 16
+    bar_gap = 30
+    
+    # 获取动画帧
+    anim_frame = pygame.time.get_ticks() // 16
+    
+    # === 护盾条 (青色) ===
     shield_max = player.max_shield if player.max_shield > 0 else player.max_hp
     shield_pct = (player.shield / max(1, shield_max) * 100) if shield_max > 0 else 0
-    draw_slanted_bar(screen, bar_x, bar_y, bar_w, bar_h_base, shield_pct, CYBER_CYAN_BRIGHT, 
-                     bg_color=(0, 40, 50), tilt=tilt, border_color=CYAN, border_width=1)
-    draw_text(screen, "护盾", 16, label_x, bar_y - 1, CYBER_CYAN_BRIGHT, glow=True, align='left')
-    # 只在有护盾或有max_shield时显示数值
+    
+    # 绘制护盾图标
+    draw_status_icon(screen, panel_x + 8, bar_y - 2, 20, "shield", CYBER_CYAN_BRIGHT, anim_frame)
+    
+    # 绘制护盾条
+    draw_premium_bar(screen, bar_x, bar_y, bar_w, bar_h, shield_pct, CYBER_CYAN_BRIGHT,
+                     bg_color=(10, 35, 45), glow=True, animate_frame=anim_frame)
+    
+    # 护盾数值
+    label_x = bar_x + bar_w + 20
     if player.shield > 0 or player.max_shield > 0:
         display_max = player.max_shield if player.max_shield > 0 else player.max_hp
-        draw_text(screen, f"{int(player.shield)}/{int(display_max)}", 14, label_x + 45, bar_y + 1, WHITE, align='left')
+        draw_text(screen, f"{int(player.shield)}/{int(display_max)}", 15, label_x, bar_y, WHITE, align='left', glow=False)
     else:
-        draw_text(screen, "--/--", 14, label_x + 45, bar_y + 1, (100, 100, 100), align='left')
+        draw_text(screen, "-- / --", 15, label_x, bar_y, (80, 80, 80), align='left')
     
-    # 血量条 (红色，更长更粗)
+    # === 血量条 (根据血量变色) ===
     hp_pct = (player.hp / player.max_hp * 100) if player.max_hp > 0 else 0
-    hp_color = CYBER_RED_ALERT if hp_pct < 30 else (CYBER_AMBER if hp_pct < 60 else CYBER_LIME)
-    draw_slanted_bar(screen, bar_x, bar_y + bar_gap, bar_w + 60, int(bar_h_base * 1.8), hp_pct, hp_color, 
-                     bg_color=(50, 15, 15), tilt=tilt, border_color=CYBER_RED_ALERT, border_width=1)
-    draw_text(screen, "生命", 16, hp_label_x, bar_y + bar_gap + 2, hp_color, glow=True, align='left')
-    draw_text(screen, f"{int(player.hp)}/{int(player.max_hp)}", 14, hp_label_x + 45, bar_y + bar_gap + 4, WHITE, align='left')
+    if hp_pct < 25:
+        hp_color = CYBER_RED_ALERT
+        hp_pulse = True
+    elif hp_pct < 50:
+        hp_color = CYBER_AMBER
+        hp_pulse = False
+    else:
+        hp_color = CYBER_LIME
+        hp_pulse = False
     
-    # 推进器条 (紫色/MAGENTA)
+    bar_y2 = bar_y + bar_gap
+    
+    # 绘制心形图标
+    draw_status_icon(screen, panel_x + 8, bar_y2 - 2, 20, "heart", hp_color, anim_frame if hp_pulse else 0)
+    
+    # 绘制血量条（更宽）
+    hp_bar_w = bar_w + 40
+    draw_premium_bar(screen, bar_x, bar_y2, hp_bar_w, int(bar_h * 1.3), hp_pct, hp_color,
+                     bg_color=(40, 15, 15), glow=hp_pct < 50, animate_frame=anim_frame if hp_pulse else 0)
+    
+    # 血量数值
+    hp_label_x = bar_x + hp_bar_w + 20
+    draw_text(screen, f"{int(player.hp)}/{int(player.max_hp)}", 16, hp_label_x, bar_y2 + 1, WHITE, align='left', glow=hp_pulse)
+    
+    # === 推进器条 (紫色) ===
     thruster_pct = (player.dash_energy / player.max_dash_energy * 100) if player.max_dash_energy > 0 else 0
-    draw_slanted_bar(screen, bar_x, bar_y + bar_gap*2, bar_w, bar_h_base, thruster_pct, MAGENTA, 
-                     bg_color=(40, 15, 40), tilt=tilt, border_color=MAGENTA, border_width=1)
-    draw_text(screen, "推进", 16, label_x, bar_y + bar_gap*2 - 1, MAGENTA, glow=True, align='left')
-    draw_text(screen, f"{int(player.dash_energy)}/{int(player.max_dash_energy)}", 14, label_x + 45, bar_y + bar_gap*2 + 1, WHITE, align='left')
+    bar_y3 = bar_y2 + bar_gap + 4
+    
+    # 绘制闪电图标
+    draw_status_icon(screen, panel_x + 8, bar_y3 - 2, 20, "bolt", MAGENTA, anim_frame)
+    
+    # 绘制推进器条
+    draw_premium_bar(screen, bar_x, bar_y3, bar_w, bar_h, thruster_pct, MAGENTA,
+                     bg_color=(35, 15, 40), glow=thruster_pct > 80, animate_frame=anim_frame)
+    
+    # 推进器数值
+    draw_text(screen, f"{int(player.dash_energy)}/{int(player.max_dash_energy)}", 15, label_x, bar_y3, WHITE, align='left')
+    
+    # ===== 特殊机体资源条 =====
+    special_bar_y = bar_y3 + bar_gap
     
     # 【绯红之刃】鲜血狂热层数显示
     if hasattr(player, 'plane_id') and player.plane_id == "crimson":
@@ -4208,11 +4339,11 @@ def draw_top_hud():
             stack_ratio = stacks / max_stacks
             bar_pct = stack_ratio * 100
             blood_color = (int(150 + 80 * stack_ratio), int(40 + 120 * stack_ratio), int(60 + 80 * stack_ratio))
-            draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, blood_color, 
-                             bg_color=(40, 10, 20), tilt=tilt, border_color=blood_color, border_width=1)
+            draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "skull", blood_color, anim_frame)
+            draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, blood_color,
+                             bg_color=(40, 10, 20), glow=stack_ratio > 0.5, animate_frame=anim_frame)
             lifesteal_pct = int((0.04 + 0.12 * stack_ratio) * 100)
-            draw_text(screen, "血契", 16, label_x, bar_y + bar_gap*3 - 1, blood_color, glow=True, align='left')
-            draw_text(screen, f"{stacks}/{max_stacks} (吸血{lifesteal_pct}%)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"{stacks}/{max_stacks} (吸血{lifesteal_pct}%)", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【绯红恶魔·SCARLET】鲜血层数 + 潜行状态显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "scarlet":
@@ -4224,90 +4355,46 @@ def draw_top_hud():
         
         # 颜色根据状态变化
         if is_stealth:
-            # 潜行状态 - 深红闪烁
             flash = abs(math.sin(pygame.time.get_ticks() / 80))
             scarlet_color = (int(180 + 75 * flash), int(20 + 30 * flash), int(60 + 40 * flash))
         else:
-            # 正常状态 - 根据层数渐变
             scarlet_color = (int(180 + 40 * blood_ratio), int(20 + 60 * blood_ratio), int(60 + 60 * blood_ratio)) if blood_stacks > 0 else (150, 30, 50)
         
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, scarlet_color, 
-                         bg_color=(50, 10, 20), tilt=tilt, border_color=scarlet_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "skull", scarlet_color, anim_frame)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, scarlet_color,
+                         bg_color=(50, 10, 20), glow=is_stealth, animate_frame=anim_frame)
         
-        # 吸血效果百分比（基于层数）
-        lifesteal_pct = int(blood_ratio * 15)  # 0-15%吸血
-        dmg_bonus = int(blood_ratio * 30)  # 0-30%伤害加成
+        lifesteal_pct = int(blood_ratio * 15)
+        dmg_bonus = int(blood_ratio * 30)
         
         if is_stealth:
-            draw_text(screen, "猩红", 16, label_x, bar_y + bar_gap*3 - 1, (255, 100, 120), glow=True, align='left')
-            draw_text(screen, f"潜行中! 下次攻击暴击", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"潜行中! 暴击待发", 15, label_x, special_bar_y, (255, 150, 180), glow=True, align='left')
         else:
-            draw_text(screen, "血魂", 16, label_x, bar_y + bar_gap*3 - 1, scarlet_color, glow=True, align='left')
-            draw_text(screen, f"{int(blood_stacks)}/{max_blood} (吸血{lifesteal_pct}%/伤害+{dmg_bonus}%)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"{int(blood_stacks)}/{max_blood} (吸血{lifesteal_pct}%)", 15, label_x, special_bar_y, WHITE, align='left')
         
-        # 【深红世界】第四大招 [E] - 左上角特殊显示
-        ult4_y = bar_y + bar_gap*4 + 5
+        # 【深红世界】第四大招显示
+        ult4_bar_y = special_bar_y + bar_gap
         ult4_charge = getattr(player, 'ult4_charge', 0)
         max_ult4 = getattr(player, 'max_ult4_charge', 100)
         ult4_cd = getattr(player, 'ult4_cooldown', 0)
         ult4_ratio = ult4_charge / max_ult4 if max_ult4 > 0 else 0
         ult4_ready = ult4_ratio >= 1.0 and ult4_cd <= 0
-        ult4_pct = int(ult4_ratio * 100)
+        ult4_pct = ult4_ratio * 100
         
-        # 深红世界标签 - 特殊设计
         if ult4_ready:
-            # 就绪状态 - 强烈闪烁
-            pulse = abs(math.sin(pygame.time.get_ticks() / 100))
-            ult4_label_color = (255, int(50 + 100 * pulse), int(80 + 100 * pulse))
-            draw_text(screen, "[E] 深红世界", 16, label_x, ult4_y, ult4_label_color, glow=True, align='left')
-            # 就绪提示
-            draw_text(screen, "▶ 时停斩杀就绪!", 12, label_x + 110, ult4_y + 2, (255, 200, 150), glow=True, align='left')
+            ult4_color = (255, 80, 120)
+            ult4_text = "[E] 深红世界 就绪!"
         elif ult4_cd > 0:
-            # 冷却中 - 暗灰色
-            cd_sec = ult4_cd / 60.0
-            draw_text(screen, "[E] 深红世界", 16, label_x, ult4_y, (100, 40, 50), align='left')
-            draw_text(screen, f"CD {cd_sec:.1f}s", 12, label_x + 110, ult4_y + 2, CYBER_RED_ALERT, align='left')
+            ult4_color = (100, 40, 50)
+            ult4_text = f"[E] CD {ult4_cd / 60.0:.1f}s"
         else:
-            # 充能中 - 渐变色
-            charge_color = (int(150 + 105 * ult4_ratio), int(30 + 50 * ult4_ratio), int(50 + 80 * ult4_ratio))
-            draw_text(screen, "[E] 深红世界", 16, label_x, ult4_y, charge_color, align='left')
-            draw_text(screen, f"{ult4_pct}%", 12, label_x + 110, ult4_y + 2, WHITE, align='left')
+            ult4_color = (int(150 + 105 * ult4_ratio), int(30 + 50 * ult4_ratio), int(50 + 80 * ult4_ratio))
+            ult4_text = f"[E] 深红世界 {int(ult4_pct)}%"
         
-        # 深红世界能量条
-        ult4_bar_y = ult4_y + 18
-        ult4_bar_w = bar_w
-        ult4_bar_h = 10
-        
-        # 背景
-        pygame.draw.rect(screen, (40, 10, 20), (bar_x, ult4_bar_y, ult4_bar_w, ult4_bar_h))
-        pygame.draw.rect(screen, (80, 20, 40), (bar_x, ult4_bar_y, ult4_bar_w, ult4_bar_h), 1)
-        
-        # 填充
-        if ult4_ratio > 0:
-            fill_w = int(ult4_bar_w * min(ult4_ratio, 1.0))
-            if ult4_ready:
-                # 满能量 - 闪烁深红
-                pulse = abs(math.sin(pygame.time.get_ticks() / 150))
-                glow_r = int(200 + 55 * pulse)
-                glow_g = int(40 + 40 * pulse)
-                glow_b = int(60 + 60 * pulse)
-                pygame.draw.rect(screen, (glow_r, glow_g, glow_b), (bar_x, ult4_bar_y, fill_w, ult4_bar_h))
-                # 外发光边框
-                pygame.draw.rect(screen, (255, 100, 120), (bar_x, ult4_bar_y, fill_w, ult4_bar_h), 1)
-            else:
-                # 充能中 - 渐变深红
-                for px in range(fill_w):
-                    ratio = px / max(1, fill_w)
-                    r = int(120 + 80 * ratio)
-                    g = int(20 + 30 * ratio)
-                    b = int(40 + 40 * ratio)
-                    pygame.draw.line(screen, (r, g, b), (bar_x + px, ult4_bar_y), (bar_x + px, ult4_bar_y + ult4_bar_h - 1))
-        
-        # 冷却遮罩
-        if ult4_cd > 0:
-            cd_overlay = pygame.Surface((ult4_bar_w, ult4_bar_h), pygame.SRCALPHA)
-            cd_overlay.fill((0, 0, 0, 180))
-            screen.blit(cd_overlay, (bar_x, ult4_bar_y))
+        draw_status_icon(screen, panel_x + 8, ult4_bar_y - 2, 20, "flame", ult4_color, anim_frame if ult4_ready else 0)
+        draw_premium_bar(screen, bar_x, ult4_bar_y, bar_w, int(bar_h * 0.8), ult4_pct, ult4_color,
+                         bg_color=(40, 10, 20), glow=ult4_ready, animate_frame=anim_frame if ult4_ready else 0)
+        draw_text(screen, ult4_text, 14, label_x, ult4_bar_y, ult4_color if ult4_ready else WHITE, glow=ult4_ready, align='left')
     
     # 【星界潜行者】暗影标记数显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "stalker":
@@ -4316,11 +4403,11 @@ def draw_top_hud():
         mark_ratio = marks / max_marks if marks > 0 else 0
         bar_pct = mark_ratio * 100
         mark_color = (int(75 + 50 * mark_ratio), int(0 + 80 * mark_ratio), int(130 + 80 * mark_ratio)) if marks > 0 else (60, 40, 100)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, mark_color, 
-                         bg_color=(20, 10, 40), tilt=tilt, border_color=mark_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", mark_color, anim_frame)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, mark_color,
+                         bg_color=(20, 10, 40), glow=mark_ratio > 0.7, animate_frame=anim_frame)
         dmg_bonus_pct = int(marks * 4)
-        draw_text(screen, "星痕", 16, label_x, bar_y + bar_gap*3 - 1, mark_color, glow=True, align='left')
-        draw_text(screen, f"{marks}/{max_marks} (伤害+{dmg_bonus_pct}%)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_text(screen, f"{marks}/{max_marks} (伤害+{dmg_bonus_pct}%)", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【大地守护者】大地怒气显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "gaia":
@@ -4329,13 +4416,12 @@ def draw_top_hud():
         fury_ratio = fury / max_fury if fury > 0 else 0
         bar_pct = fury_ratio * 100
         fury_color = (int(60 + 100 * fury_ratio), int(140 + 80 * fury_ratio), int(40 + 60 * fury_ratio)) if fury > 0 else (50, 100, 40)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, fury_color, 
-                         bg_color=(20, 35, 15), tilt=tilt, border_color=fury_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "flame", fury_color, anim_frame)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, fury_color,
+                         bg_color=(20, 35, 15), glow=fury_ratio > 0.8, animate_frame=anim_frame)
         armor_pct = int(fury_ratio * 50)
         dmg_pct = int(fury_ratio * 80)
-        atk_spd_pct = int(fury_ratio * 30)
-        draw_text(screen, "怒气", 16, label_x, bar_y + bar_gap*3 - 1, fury_color, glow=True, align='left')
-        draw_text(screen, f"{int(fury)} (护{armor_pct}%/伤{dmg_pct}%/速{atk_spd_pct}%)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_text(screen, f"{int(fury)} (护{armor_pct}%/伤{dmg_pct}%)", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【钢铁泰坦】过载能量 + 装甲显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "titan":
@@ -4345,23 +4431,23 @@ def draw_top_hud():
         overload_ratio = overload / max_overload if overload > 0 else 0
         bar_pct = overload_ratio * 100
         overload_color = (int(200 + 55 * overload_ratio), int(120 - 60 * overload_ratio), int(50 - 50 * overload_ratio)) if overload > 0 else (150, 100, 50)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, overload_color, 
-                         bg_color=(40, 20, 10), tilt=tilt, border_color=overload_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "bolt", overload_color, anim_frame)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, overload_color,
+                         bg_color=(40, 20, 10), glow=overload_ratio > 0.9, animate_frame=anim_frame)
         armor_reduction = int(armor_stacks * 8)
         status = "★就绪!" if overload >= 100 else f"{int(overload)}%"
-        draw_text(screen, "过载", 16, label_x, bar_y + bar_gap*3 - 1, overload_color, glow=True, align='left')
-        draw_text(screen, f"{status} (装甲{armor_stacks}层/-{armor_reduction}%伤)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_text(screen, f"{status} (装甲{armor_stacks}层)", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【虚空编织者】维度织网显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "weaver":
         webbed = getattr(player, 'weaver_webbed_count', 0)
-        bar_pct = min(100, webbed * 12.5)  # 8个满
+        bar_pct = min(100, webbed * 12.5)
         web_color = (int(140 + 40 * (webbed/8)), int(140 + 40 * (webbed/8)), int(140 + 40 * (webbed/8))) if webbed > 0 else (100, 100, 100)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, web_color, 
-                         bg_color=(30, 30, 35), tilt=tilt, border_color=web_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", web_color, anim_frame)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, web_color,
+                         bg_color=(30, 30, 35), glow=webbed > 4, animate_frame=anim_frame)
         dmg_bonus = int(webbed * 6)
-        draw_text(screen, "织网", 16, label_x, bar_y + bar_gap*3 - 1, web_color, glow=True, align='left')
-        draw_text(screen, f"{webbed}个敌人被网 (+{dmg_bonus}%伤害)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_text(screen, f"{webbed}网 (+{dmg_bonus}%伤)", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【日冕耀斑】灼热核心显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "solar":
@@ -4377,16 +4463,15 @@ def draw_top_hud():
             heat_color = (int(200 + 55 * heat_ratio), int(150 - 100 * heat_ratio), int(50 - 50 * heat_ratio))
         else:
             heat_color = (180, 120, 50)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, heat_color, 
-                         bg_color=(40, 20, 10), tilt=tilt, border_color=heat_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "flame", heat_color, anim_frame if is_overheat else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, heat_color,
+                         bg_color=(40, 20, 10), glow=is_overheat or heat_ratio > 0.8, animate_frame=anim_frame)
         dmg_bonus = int(heat_ratio * 60)
         if is_overheat:
             cooldown = getattr(player, 'solar_overheat_timer', 0)
-            draw_text(screen, "过热", 16, label_x, bar_y + bar_gap*3 - 1, (255, 50, 0), glow=True, align='left')
-            draw_text(screen, f"冷却中... ({cooldown//60}.{cooldown%60//6}秒)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"过热! 冷却中...", 15, label_x, special_bar_y, (255, 100, 50), glow=True, align='left')
         else:
-            draw_text(screen, "热量", 16, label_x, bar_y + bar_gap*3 - 1, heat_color, glow=True, align='left')
-            draw_text(screen, f"{int(heat)}% (+{dmg_bonus}%伤害)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"{int(heat)}% (+{dmg_bonus}%伤)", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【量子裁决者】量子叠加态显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "arbiter":
@@ -4401,14 +4486,13 @@ def draw_top_hud():
             quantum_color = (int(120 + 80 * (quantum/max_quantum)), 50, int(180 + 75 * (quantum/max_quantum)))
         else:
             quantum_color = (100, 50, 150)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, quantum_color, 
-                         bg_color=(30, 15, 40), tilt=tilt, border_color=quantum_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", quantum_color, anim_frame if is_ready else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, quantum_color,
+                         bg_color=(30, 15, 40), glow=is_ready, animate_frame=anim_frame if is_ready else 0)
         if is_ready:
-            draw_text(screen, "坍缩", 16, label_x, bar_y + bar_gap*3 - 1, (255, 150, 255), glow=True, align='left')
-            draw_text(screen, "就绪! 下次攻击爆发!", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, "坍缩就绪!", 15, label_x, special_bar_y, (255, 150, 255), glow=True, align='left')
         else:
-            draw_text(screen, "量子", 16, label_x, bar_y + bar_gap*3 - 1, quantum_color, glow=True, align='left')
-            draw_text(screen, f"{int(quantum)}%", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"量子态 {int(quantum)}%", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【日食幽灵】光暗交替显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "eclipse":
@@ -4419,32 +4503,31 @@ def draw_top_hud():
         if phase == "light":
             light_bonus = int(getattr(player, 'eclipse_light_bonus', 0) * 100)
             phase_color = (255, 220, 100)
-            draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, phase_progress, phase_color, 
-                             bg_color=(40, 35, 15), tilt=tilt, border_color=phase_color, border_width=1)
-            draw_text(screen, "光态", 16, label_x, bar_y + bar_gap*3 - 1, phase_color, glow=True, align='left')
-            draw_text(screen, f"+{light_bonus}%伤害 ({int(5-timer/60)}秒)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", phase_color, anim_frame)
+            draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, phase_progress, phase_color,
+                             bg_color=(40, 35, 15), glow=True, animate_frame=anim_frame)
+            draw_text(screen, f"光态 +{light_bonus}%伤", 15, label_x, special_bar_y, phase_color, glow=True, align='left')
         else:
             max_shield = getattr(player, 'max_eclipse_shield', 50)
             shield_pct = (shield / max_shield) * 100 if max_shield > 0 else 0
             phase_color = (100, 50, 180)
-            draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, shield_pct, phase_color, 
-                             bg_color=(20, 15, 35), tilt=tilt, border_color=phase_color, border_width=1)
-            draw_text(screen, "暗态", 16, label_x, bar_y + bar_gap*3 - 1, phase_color, glow=True, align='left')
-            draw_text(screen, f"护盾:{int(shield)} ({int(5-timer/60)}秒)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "shield", phase_color, anim_frame)
+            draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, shield_pct, phase_color,
+                             bg_color=(20, 15, 35), glow=True, animate_frame=anim_frame)
+            draw_text(screen, f"暗态 护盾:{int(shield)}", 15, label_x, special_bar_y, phase_color, glow=True, align='left')
     
     # 【棱镜分光】折射风暴显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "prism":
         chain = getattr(player, 'prism_chain_count', 0)
         max_chain = getattr(player, 'prism_max_chain', 0)
-        bar_pct = (chain / 5) * 100  # 5次满
+        bar_pct = (chain / 5) * 100
         colors = [(100, 180, 255), (140, 140, 255), (180, 100, 255), (255, 100, 180), (255, 180, 100)]
         prism_color = colors[min(chain, len(colors)-1)] if chain > 0 else (80, 120, 160)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, prism_color, 
-                         bg_color=(25, 30, 40), tilt=tilt, border_color=prism_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", prism_color, anim_frame)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, prism_color,
+                         bg_color=(25, 30, 40), glow=chain > 3, animate_frame=anim_frame)
         dmg_bonus = int(chain * 15)
-        chain_text = f"折射x{chain}" if chain > 0 else "就绪"
-        draw_text(screen, "棱镜", 16, label_x, bar_y + bar_gap*3 - 1, prism_color, glow=True, align='left')
-        draw_text(screen, f"{chain_text} (+{dmg_bonus}%) 最高:{max_chain}", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_text(screen, f"折射x{chain} (+{dmg_bonus}%)", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【死灵骑士】亡灵军团显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "necro":
@@ -4454,10 +4537,10 @@ def draw_top_hud():
         total_damage = int(getattr(player, 'necro_ghost_damage', 0))
         bar_pct = (ghost_count / max_ghosts) * 100
         necro_color = (int(150 + 50 * (ghost_count / max_ghosts)), 50, int(100 + 55 * (ghost_count / max_ghosts))) if ghost_count > 0 else (120, 50, 80)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, necro_color, 
-                         bg_color=(30, 15, 25), tilt=tilt, border_color=necro_color, border_width=1)
-        draw_text(screen, "亡灵", 16, label_x, bar_y + bar_gap*3 - 1, necro_color, glow=True, align='left')
-        draw_text(screen, f"{ghost_count}/{max_ghosts} 总伤害:{total_damage}", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "skull", necro_color, anim_frame)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, necro_color,
+                         bg_color=(30, 15, 25), glow=ghost_count > 3, animate_frame=anim_frame)
+        draw_text(screen, f"{ghost_count}/{max_ghosts} 伤害:{total_damage}", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【霓虹突击者】超载引擎显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "striker":
@@ -4470,15 +4553,14 @@ def draw_top_hud():
             striker_color = (int(100 + 155 * flash), int(200 + 55 * flash), int(200 + 55 * flash))
         else:
             striker_color = (int(80 + 120 * (charge/max_charge)), int(180 + 75 * (charge/max_charge)), 220) if charge > 0 else (60, 150, 180)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, striker_color, 
-                       bg_color=(20, 40, 50), tilt=tilt, border_color=striker_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "bolt", striker_color, anim_frame if is_overdrive else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, striker_color,
+                       bg_color=(20, 40, 50), glow=is_overdrive, animate_frame=anim_frame if is_overdrive else 0)
         if is_overdrive:
             timer = getattr(player, 'striker_overdrive_timer', 0)
-            draw_text(screen, "超载", 16, label_x, bar_y + bar_gap*3 - 1, (100, 255, 255), glow=True, align='left')
-            draw_text(screen, f"激活中! +50%攻速 ({timer//60}s)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"超载激活! ({timer//60}s)", 15, label_x, special_bar_y, (100, 255, 255), glow=True, align='left')
         else:
-            draw_text(screen, "超载", 16, label_x, bar_y + bar_gap*3 - 1, striker_color, glow=True, align='left')
-            draw_text(screen, f"{int(charge)}%", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"超载 {int(charge)}%", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【虚空幻影】相位漂移显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "phantom":
@@ -4493,16 +4575,14 @@ def draw_top_hud():
             phantom_color = (180, 80, 255)
         else:
             phantom_color = (int(120 + 60 * (phase/max_phase)), int(50 + 30 * (phase/max_phase)), int(180 + 75 * (phase/max_phase))) if phase > 0 else (100, 50, 150)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, phantom_color, 
-                       bg_color=(30, 15, 45), tilt=tilt, border_color=phantom_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", phantom_color, anim_frame if is_intangible else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, phantom_color,
+                       bg_color=(30, 15, 45), glow=is_intangible, animate_frame=anim_frame if is_intangible else 0)
         if is_intangible:
-            timer = getattr(player, 'phantom_intangible_timer', 0)
-            draw_text(screen, "相位", 16, label_x, bar_y + bar_gap*3 - 1, (255, 150, 255), glow=True, align='left')
-            draw_text(screen, f"无敌中! ({timer}帧)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"相位无敌中!", 15, label_x, special_bar_y, (255, 150, 255), glow=True, align='left')
         else:
             status = "可激活!" if phase >= 50 else f"{int(phase)}%"
-            draw_text(screen, "相位", 16, label_x, bar_y + bar_gap*3 - 1, phantom_color, glow=True, align='left')
-            draw_text(screen, f"{status}", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"相位 {status}", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【雷霆战鹰】雷暴连锁显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "thunderbird":
@@ -4515,14 +4595,13 @@ def draw_top_hud():
             thunder_color = (int(200 + 55 * flash), int(200 + 55 * flash), int(100 * flash))
         else:
             thunder_color = (int(200 + 55 * (charge/max_charge)), int(200 + 55 * (charge/max_charge)), 50) if charge > 0 else (180, 180, 50)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, thunder_color, 
-                       bg_color=(35, 35, 15), tilt=tilt, border_color=thunder_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "bolt", thunder_color, anim_frame if is_ready else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, thunder_color,
+                       bg_color=(35, 35, 15), glow=is_ready, animate_frame=anim_frame if is_ready else 0)
         if is_ready:
-            draw_text(screen, "雷暴", 16, label_x, bar_y + bar_gap*3 - 1, (255, 255, 100), glow=True, align='left')
-            draw_text(screen, "就绪! 下次命中触发!", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, "雷暴就绪!", 15, label_x, special_bar_y, (255, 255, 100), glow=True, align='left')
         else:
-            draw_text(screen, "电荷", 16, label_x, bar_y + bar_gap*3 - 1, thunder_color, glow=True, align='left')
-            draw_text(screen, f"{int(charge)}%", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"电荷 {int(charge)}%", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【剧毒蝰蛇】剧毒累积显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "viper":
@@ -4532,10 +4611,10 @@ def draw_top_hud():
             venom_color = (80, 255, 80)
         else:
             venom_color = (int(100 + 80 * (poison/20)), int(200 + 55 * (poison/20)), int(100 + 80 * (poison/20))) if poison > 0 else (80, 180, 80)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, venom_color, 
-                       bg_color=(20, 40, 20), tilt=tilt, border_color=venom_color, border_width=1)
-        draw_text(screen, "毒素", 16, label_x, bar_y + bar_gap*3 - 1, venom_color, glow=True, align='left')
-        draw_text(screen, f"{poison}层 (持续伤害)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "skull", venom_color, anim_frame)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, venom_color,
+                       bg_color=(20, 40, 20), glow=poison >= 15, animate_frame=anim_frame)
+        draw_text(screen, f"毒素 {poison}层", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【幽灵收割者】死神印记显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "specter":
@@ -4550,33 +4629,30 @@ def draw_top_hud():
             specter_color = (200, 100, 255)
         else:
             specter_color = (int(100 + 60 * (focus_time/180)), int(50 + 30 * (focus_time/180)), int(180 + 75 * (focus_time/180))) if focus_time > 0 else (100, 50, 160)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, specter_color, 
-                       bg_color=(30, 20, 50), tilt=tilt, border_color=specter_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", specter_color, anim_frame if stealth > 0 else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, specter_color,
+                       bg_color=(30, 20, 50), glow=stealth > 0, animate_frame=anim_frame if stealth > 0 else 0)
         if stealth > 0:
-            draw_text(screen, "隐身", 16, label_x, bar_y + bar_gap*3 - 1, (200, 150, 255), glow=True, align='left')
-            draw_text(screen, f"激活中! ({stealth}帧)", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"隐身中!", 15, label_x, special_bar_y, (200, 150, 255), glow=True, align='left')
         else:
             dmg_mult = int((1.0 + (focus_time / 180) * 1.0) * 100) if has_target else 100
-            target_text = f"锁定! {dmg_mult}%伤害" if has_target else "寻找目标..."
-            draw_text(screen, "印记", 16, label_x, bar_y + bar_gap*3 - 1, specter_color, glow=True, align='left')
-            draw_text(screen, target_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+            draw_text(screen, f"印记 {dmg_mult}%伤", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【极光女神】极光共鸣显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "aurora":
         orbs = getattr(player, 'aurora_orbs', [])
         orb_count = len(orbs)
         max_orbs = getattr(player, 'max_aurora_orbs', 5)
-        total_damage = int(getattr(player, 'aurora_orb_damage', 0))
         bar_pct = (orb_count / max_orbs) * 100
         if orb_count >= max_orbs:
             flash = abs(math.sin(pygame.time.get_ticks() / 120))
             aurora_color = (int(100 * flash), int(200 + 55 * flash), int(180 + 75 * flash))
         else:
             aurora_color = (int(80 * (orb_count/max_orbs)), int(180 + 75 * (orb_count/max_orbs)), int(160 + 95 * (orb_count/max_orbs))) if orb_count > 0 else (60, 160, 140)
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, aurora_color, 
-                       bg_color=(20, 40, 35), tilt=tilt, border_color=aurora_color, border_width=1)
-        draw_text(screen, "极光", 16, label_x, bar_y + bar_gap*3 - 1, aurora_color, glow=True, align='left')
-        draw_text(screen, f"{orb_count}/{max_orbs}球 总伤:{total_damage}", 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", aurora_color, anim_frame)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, aurora_color,
+                       bg_color=(20, 40, 35), glow=orb_count >= max_orbs, animate_frame=anim_frame)
+        draw_text(screen, f"极光 {orb_count}/{max_orbs}球", 15, label_x, special_bar_y, WHITE, align='left')
     
     # 【混沌虫洞】裂缝能量显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "wormhole":
@@ -4586,35 +4662,26 @@ def draw_top_hud():
         portal_count = len(portals)
         bar_pct = (rift_energy / max_rift) * 100
         
-        # 能量条颜色根据能量等级变化
         if rift_energy >= 90:
-            # 90%+ 闪烁紫红色(裂缝波动就绪)
             flash = abs(math.sin(pygame.time.get_ticks() / 60))
             rift_color = (int(200 + 55 * flash), int(50 * flash), int(200 + 55 * flash))
         elif rift_energy >= 70:
-            # 70%+ 明亮紫色(增强子弹就绪)
             rift_color = (220, 80, 255)
         else:
-            # 低能量 深紫到明紫渐变
             rift_color = (int(120 + 100 * (rift_energy/max_rift)), int(30 + 50 * (rift_energy/max_rift)), int(150 + 105 * (rift_energy/max_rift))) if rift_energy > 0 else (100, 30, 120)
         
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, rift_color, 
-                       bg_color=(30, 10, 40), tilt=tilt, border_color=rift_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", rift_color, anim_frame if rift_energy >= 90 else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, rift_color,
+                       bg_color=(30, 10, 40), glow=rift_energy >= 70, animate_frame=anim_frame if rift_energy >= 90 else 0)
         
-        # 状态文本
         if rift_energy >= 90:
-            status_text = f"{int(rift_energy)}% (裂缝波动!)"
-        elif rift_energy >= 70:
-            status_text = f"{int(rift_energy)}% (增强就绪!)"
+            status_text = f"裂缝波动就绪!"
+        elif portal_count > 0:
+            status_text = f"{int(rift_energy)}% 门:{portal_count}"
         else:
-            status_text = f"{int(rift_energy)}%"
+            status_text = f"裂缝 {int(rift_energy)}%"
         
-        # 如果有活跃传送门,显示数量
-        if portal_count > 0:
-            status_text += f" 门:{portal_count}"
-        
-        draw_text(screen, "裂缝", 16, label_x, bar_y + bar_gap*3 - 1, rift_color, glow=True, align='left')
-        draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_text(screen, status_text, 15, label_x, special_bar_y, rift_color if rift_energy >= 90 else WHITE, glow=rift_energy >= 90, align='left')
     
     # 【时之回响·克洛诺斯】时间回溯显示 - 常驻
     if hasattr(player, 'plane_id') and player.plane_id == "chronos":
@@ -4624,55 +4691,42 @@ def draw_top_hud():
         is_rewinding = getattr(player, 'chronos_rewinding', False)
         bar_pct = (time_charge / max_time) * 100
         
-        # 能量条颜色
         if is_rewinding:
-            # 回溯中 - 金色闪烁
             flash = abs(math.sin(pygame.time.get_ticks() / 50))
             chronos_color = (int(100 + 155 * flash), int(220 * flash), int(255 * flash))
         elif time_charge >= 80:
-            # 80%+ 亮青蓝(回溯就绪)
             flash = abs(math.sin(pygame.time.get_ticks() / 100))
             chronos_color = (int(100 + 50 * flash), int(220 + 35 * flash), 255)
         elif time_charge >= 50:
-            # 50%+ 青蓝色(时停就绪)
             chronos_color = (80, 200, 255)
         else:
-            # 低能量 深蓝到青蓝渐变
             chronos_color = (int(60 + 40 * (time_charge/max_time)), int(180 + 40 * (time_charge/max_time)), int(230 + 25 * (time_charge/max_time))) if time_charge > 0 else (60, 180, 230)
         
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, chronos_color, 
-                       bg_color=(20, 40, 60), tilt=tilt, border_color=chronos_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", chronos_color, anim_frame if is_rewinding else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, chronos_color,
+                       bg_color=(20, 40, 60), glow=is_rewinding or time_charge >= 80, animate_frame=anim_frame if is_rewinding else 0)
         
-        # 状态文本
         if is_rewinding:
-            rewind_timer = getattr(player, 'chronos_rewind_timer', 0)
-            status_text = f"时间回溯中! ({rewind_timer//60}s)"
+            status_text = f"时间回溯中!"
         elif time_charge >= 80:
-            status_text = f"{int(time_charge)}% (回溯就绪!)"
-        elif time_charge >= 50:
-            status_text = f"{int(time_charge)}% (时停就绪!)"
+            status_text = f"回溯就绪!"
+        elif echo_stacks > 0:
+            status_text = f"时流{int(time_charge)}% 回响x{echo_stacks}"
         else:
-            status_text = f"{int(time_charge)}%"
+            status_text = f"时流 {int(time_charge)}%"
         
-        # 显示时间回响层数
-        if echo_stacks > 0:
-            status_text += f" 回响x{echo_stacks}"
-        
-        draw_text(screen, "时流", 16, label_x, bar_y + bar_gap*3 - 1, chronos_color, glow=True, align='left')
-        draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_text(screen, status_text, 15, label_x, special_bar_y, chronos_color if is_rewinding or time_charge >= 80 else WHITE, glow=is_rewinding, align='left')
     
     # 【辉耀天女·斯塔德】皇辉层数显示 - 被动伤害加成
     if hasattr(player, 'plane_id') and player.plane_id == "staradia":
         radiant_stacks = getattr(player, 'radiant_stacks', 0)
         max_stacks = 5
         domain_active = getattr(player, 'radiant_domain_active', False)
-        remnants = getattr(player, 'remnant_count', 0)  # 残影数量
+        remnants = getattr(player, 'remnant_count', 0)
         bar_pct = (radiant_stacks / max_stacks) * 100
         
-        # 能量条颜色 - 七彩渐变配色
         t = pygame.time.get_ticks() / 1000
         if domain_active:
-            # 领域激活 - 炫目的彩虹金色闪烁
             flash = abs(math.sin(pygame.time.get_ticks() / 50))
             hue_shift = (pygame.time.get_ticks() / 20) % 360
             r = int(200 + 55 * abs(math.sin(math.radians(hue_shift))))
@@ -4680,36 +4734,26 @@ def draw_top_hud():
             b = int(150 + 105 * abs(math.sin(math.radians(hue_shift + 240))))
             radiant_color = (min(255, r), min(255, g), min(255, b))
         elif radiant_stacks >= 5:
-            # 满层 - 金色闪烁 (最大加成)
             flash = abs(math.sin(pygame.time.get_ticks() / 80))
             radiant_color = (int(255), int(200 + 55 * flash), int(100 * flash))
         elif radiant_stacks >= 3:
-            # 3层以上 - 暖金色
             radiant_color = (255, int(180 + 40 * (radiant_stacks/max_stacks)), int(80 + 40 * (radiant_stacks/max_stacks)))
         else:
-            # 低层数 - 淡金到亮金渐变
             radiant_color = (int(180 + 75 * (radiant_stacks/max_stacks)), int(150 + 50 * (radiant_stacks/max_stacks)), int(80 + 40 * (radiant_stacks/max_stacks))) if radiant_stacks > 0 else (160, 130, 70)
         
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, radiant_color, 
-                       bg_color=(40, 30, 15), tilt=tilt, border_color=radiant_color, border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", radiant_color, anim_frame if domain_active else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, radiant_color,
+                       bg_color=(40, 30, 15), glow=domain_active or radiant_stacks >= 5, animate_frame=anim_frame if domain_active else 0)
         
-        # 状态文本 - 皇辉是被动加成
         if domain_active:
-            domain_timer = getattr(player, 'radiant_domain_timer', 0)
-            status_text = f"★领域激活★ ({domain_timer//60}s)"
+            status_text = "★领域激活★"
         else:
-            buff_pct = int(radiant_stacks * 10)  # 每层10%伤害加成
-            if radiant_stacks >= 5:
-                status_text = f"{radiant_stacks}/{max_stacks} (+{buff_pct}%伤害) ★MAX"
-            else:
-                status_text = f"{radiant_stacks}/{max_stacks} (+{buff_pct}%伤害)"
+            buff_pct = int(radiant_stacks * 10)
+            status_text = f"皇辉{radiant_stacks}/{max_stacks} (+{buff_pct}%)"
+            if remnants > 0:
+                status_text += f" 残影:{remnants}"
         
-        # 显示残影数量
-        if remnants > 0:
-            status_text += f" 残影:{remnants}"
-        
-        draw_text(screen, "皇辉", 16, label_x, bar_y + bar_gap*3 - 1, radiant_color, glow=True, align='left')
-        draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_text(screen, status_text, 15, label_x, special_bar_y, radiant_color if domain_active else WHITE, glow=domain_active, align='left')
     
     # 【深渊龙鱼·猪公爵】龙卷/深渊泡状态显示
     if hasattr(player, 'plane_id') and player.plane_id == "dukefishron":
@@ -4717,94 +4761,262 @@ def draw_top_hud():
         refract_ready = getattr(player, 'duke_refract_ready', False)
         tsunami_active = getattr(player, 'duke_tsunami_active', False)
         
-        # 龙卷数量条
         max_tornados = 5
         bar_pct = (min(active_tornados, max_tornados) / max_tornados) * 100
         
-        # 配色 - 深海蓝+龙鱼粉
         if tsunami_active:
-            # 海啸激活 - 闪烁蓝白
             flash = abs(math.sin(pygame.time.get_ticks() / 50))
             duke_color = (int(80 + 175 * flash), int(150 + 105 * flash), int(200 + 55 * flash))
         elif active_tornados >= 3:
-            # 多龙卷 - 亮蓝
             duke_color = (30, 100, 220)
         else:
-            # 普通 - 深海蓝
             duke_color = (30, 80, 180)
         
-        draw_slanted_bar(screen, bar_x, bar_y + bar_gap*3, bar_w, bar_h_base, bar_pct, duke_color, 
-                       bg_color=(10, 20, 40), tilt=tilt, border_color=(255, 120, 180), border_width=1)
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "flame", (255, 120, 180), anim_frame if tsunami_active else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, duke_color,
+                       bg_color=(10, 20, 40), glow=tsunami_active, animate_frame=anim_frame if tsunami_active else 0)
         
-        # 状态文本
         if tsunami_active:
             status_text = "★海啸滑翔★"
         else:
             status_text = f"龙卷x{active_tornados}"
             if refract_ready:
-                status_text += " 🫧折射"
+                status_text += " 🫧"
         
-        draw_text(screen, "深渊", 16, label_x, bar_y + bar_gap*3 - 1, (255, 120, 180), glow=True, align='left')
-        draw_text(screen, status_text, 14, label_x + 45, bar_y + bar_gap*3 + 1, WHITE, align='left')
+        draw_text(screen, status_text, 15, label_x, special_bar_y, (255, 120, 180) if tsunami_active else WHITE, glow=tsunami_active, align='left')
     
-    # ===== 顶部右侧：积分和时间（创意特效面板） =====
-    score_value_x = WIDTH - 24  # 数值右对齐位置
-    score_y = 12
-    label_x_right = score_value_x - 140  # 标签固定位置
+    # 【分形天顶·ZENITH】剑阵状态显示
+    if hasattr(player, 'plane_id') and player.plane_id == "zenith":
+        sword_array = getattr(player, 'zenith_sword_array', None)
+        shield = getattr(player, 'zenith_shield', None)
+        
+        available_swords = 12
+        if sword_array:
+            available_swords = sword_array.get_available_count() if hasattr(sword_array, 'get_available_count') else 12
+        
+        shield_durability = 100
+        max_durability = 100
+        if shield:
+            shield_durability = getattr(shield, 'durability', 100)
+            max_durability = getattr(shield, 'max_durability', 100)
+        
+        shield_ratio = shield_durability / max_durability if max_durability > 0 else 1.0
+        bar_pct = (available_swords / 12) * 100
+        
+        hue_shift = (pygame.time.get_ticks() / 15) % 360
+        if available_swords >= 10:
+            r = int(120 + 135 * abs(math.sin(math.radians(hue_shift))))
+            g = int(100 + 155 * abs(math.sin(math.radians(hue_shift + 120))))
+            b = int(180 + 75 * abs(math.sin(math.radians(hue_shift + 240))))
+            zenith_color = (min(255, r), min(255, g), min(255, b))
+        elif available_swords >= 6:
+            zenith_color = (150, 80, 220)
+        else:
+            sword_ratio = available_swords / 12
+            zenith_color = (int(80 + 70 * sword_ratio), int(40 + 40 * sword_ratio), int(130 + 90 * sword_ratio))
+        
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "star", zenith_color, anim_frame)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, zenith_color,
+                       bg_color=(20, 10, 35), glow=available_swords >= 10, animate_frame=anim_frame)
+        
+        shield_pct = int(shield_ratio * 100)
+        status_text = f"{available_swords}/12剑 护盾{shield_pct}%"
+        
+        draw_text(screen, status_text, 15, label_x, special_bar_y, zenith_color if available_swords >= 10 else WHITE, glow=available_swords >= 10, align='left')
+        
+        # 【棱镜折射】第四大招显示
+        ult4_bar_y = special_bar_y + bar_gap
+        ult4_charge = getattr(player, 'ult4_charge', 0)
+        max_ult4 = getattr(player, 'max_ult4_charge', 100)
+        ult4_cd = getattr(player, 'ult4_cooldown', 0)
+        ult4_ratio = ult4_charge / max_ult4 if max_ult4 > 0 else 0
+        ult4_ready = ult4_ratio >= 1.0 and ult4_cd <= 0
+        ult4_pct = ult4_ratio * 100
+        
+        if ult4_ready:
+            ult4_color = (200, 100, 255)
+            ult4_text = "[E] 棱镜折射 就绪!"
+        elif ult4_cd > 0:
+            ult4_color = (60, 40, 80)
+            ult4_text = f"[E] CD {ult4_cd / 60.0:.1f}s"
+        else:
+            ult4_color = (int(100 + 100 * ult4_ratio), int(50 * ult4_ratio), int(150 + 105 * ult4_ratio))
+            ult4_text = f"[E] 棱镜折射 {int(ult4_pct)}%"
+        
+        draw_status_icon(screen, panel_x + 8, ult4_bar_y - 2, 20, "star", ult4_color, anim_frame if ult4_ready else 0)
+        draw_premium_bar(screen, bar_x, ult4_bar_y, bar_w, int(bar_h * 0.8), ult4_pct, ult4_color,
+                         bg_color=(20, 10, 35), glow=ult4_ready, animate_frame=anim_frame if ult4_ready else 0)
+        draw_text(screen, ult4_text, 14, label_x, ult4_bar_y, ult4_color if ult4_ready else WHITE, glow=ult4_ready, align='left')
     
-    # 【得分区域】创意显示
-    score_box_y = score_y
-    score_box_h = 50
-    score_box_w = 155
-    score_box_x = label_x_right - 8
+    # ===== 顶部右侧：高级积分和时间面板 =====
+    anim_frame = pygame.time.get_ticks() // 16
+    panel_right_x = WIDTH - 170
+    panel_right_y = 8
+    panel_w = 162
     
-    # 背景框 + 渐变效果
-    pygame.draw.rect(screen, (10, 10, 30), (score_box_x, score_box_y, score_box_w, score_box_h))
-    pygame.draw.rect(screen, SCORE_ORANGE, (score_box_x, score_box_y, score_box_w, score_box_h), 2)
+    # ========== 得分面板 ==========
+    score_panel_h = 52
     
-    # 顶部装饰线条 - 闪烁动画
-    deco_brightness = int(100 + 155 * abs(math.sin(pygame.time.get_ticks() / 400)))
-    pygame.draw.line(screen, (deco_brightness, int(deco_brightness * 0.6), 0), 
-                    (score_box_x + 2, score_box_y + 2), (score_box_x + score_box_w - 2, score_box_y + 2), 2)
+    # 面板背景 - 渐变 + 斜切角
+    score_surf = pygame.Surface((panel_w + 20, score_panel_h + 10), pygame.SRCALPHA)
+    cut = 12  # 斜切角大小
     
-    # 得分标签 + 数值
-    draw_text(screen, "得分", 14, label_x_right, score_box_y + 8, SCORE_ORANGE, align='left')
+    # 六边形背景点
+    score_bg_points = [
+        (cut, 0), (panel_w, 0), (panel_w + cut, cut), 
+        (panel_w + cut, score_panel_h), (panel_w, score_panel_h + cut), 
+        (cut, score_panel_h + cut), (0, score_panel_h), (0, cut)
+    ]
     
-    # 得分数值 - 跳动效果 + 发光
-    pulse_y = int(3 * math.sin(pygame.time.get_ticks() / 300))
-    score_text = f"{int(score):,}"  # 千位分隔符
-    # 外层阴影
-    draw_text(screen, score_text, 35, score_value_x + 2, score_y + 5 + pulse_y, (100, 50, 0), align='right', glow=False)
-    # 主体 + 发光
-    draw_text(screen, score_text, 35, score_value_x, score_y + 3 + pulse_y, SCORE_ORANGE, glow=True, align='right')
+    # 渐变填充
+    for i in range(score_panel_h + cut):
+        ratio = i / max(1, score_panel_h + cut - 1)
+        r = int(25 + 15 * ratio)
+        g = int(15 + 10 * (1 - ratio))
+        b = int(10 + 20 * ratio)
+        pygame.draw.line(score_surf, (r, g, b, 220), (0, i), (panel_w + cut, i))
     
-    # 【时间区域】创意显示
-    time_box_y = score_y + 56
-    time_box_h = 50
-    time_box_w = 155
-    time_box_x = label_x_right - 8
+    # 裁剪为多边形
+    mask = pygame.Surface((panel_w + 20, score_panel_h + 10), pygame.SRCALPHA)
+    pygame.draw.polygon(mask, (255, 255, 255, 255), score_bg_points)
+    score_surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    screen.blit(score_surf, (panel_right_x - 5, panel_right_y))
     
-    # 背景框 + 渐变效果
-    pygame.draw.rect(screen, (10, 10, 30), (time_box_x, time_box_y, time_box_w, time_box_h))
-    pygame.draw.rect(screen, CYAN, (time_box_x, time_box_y, time_box_w, time_box_h), 2)
+    # 边框 - 橙色主题
+    score_border_points = [(panel_right_x - 5 + p[0], panel_right_y + p[1]) for p in score_bg_points]
+    pygame.draw.polygon(screen, (255, 140, 40), score_border_points, 2)
     
-    # 顶部装饰线条 - 同步闪烁
-    pygame.draw.line(screen, (0, deco_brightness, deco_brightness), 
-                    (time_box_x + 2, time_box_y + 2), (time_box_x + time_box_w - 2, time_box_y + 2), 2)
+    # 顶部装饰线 - 脉冲发光
+    pulse = abs(math.sin(pygame.time.get_ticks() / 350))
+    deco_color = (200 + int(55 * pulse), 120 + int(50 * pulse), 20)
+    pygame.draw.line(screen, deco_color, 
+                     (panel_right_x + cut - 3, panel_right_y + 3), 
+                     (panel_right_x + panel_w - 5, panel_right_y + 3), 2)
     
-    # 时间标签 + 数值
-    draw_text(screen, "时间", 14, label_x_right, time_box_y + 8, CYAN, align='left')
+    # 角落装饰
+    corner_color = (255, 180, 80)
+    # 左上角
+    pygame.draw.line(screen, corner_color, (panel_right_x - 5, panel_right_y + cut), 
+                     (panel_right_x - 5, panel_right_y + cut + 12), 2)
+    # 右下角
+    pygame.draw.line(screen, corner_color, (panel_right_x + panel_w + cut - 5, panel_right_y + score_panel_h), 
+                     (panel_right_x + panel_w + cut - 5, panel_right_y + score_panel_h - 12), 2)
     
-    # 时间 MM:SS 格式
+    # 得分标签
+    from utils.ui import draw_premium_text
+    draw_premium_text(screen, "SCORE", 10, panel_right_x + 2, panel_right_y + 6, (255, 200, 120), align='left', style="cyber")
+    
+    # 得分图标 - 星形
+    icon_surf = pygame.Surface((18, 18), pygame.SRCALPHA)
+    # 外层发光
+    pygame.draw.polygon(icon_surf, (255, 180, 50, 100), [(9, 0), (11, 6), (17, 7), (12, 11), (14, 17), (9, 14), (4, 17), (6, 11), (1, 7), (7, 6)])
+    pygame.draw.polygon(icon_surf, (255, 220, 80), [(9, 2), (10, 6), (15, 7), (11, 10), (13, 15), (9, 12), (5, 15), (7, 10), (3, 7), (8, 6)])
+    screen.blit(icon_surf, (panel_right_x + panel_w - 8, panel_right_y + 3))
+    
+    # 得分数值 - 大字体 + 跳动效果 + 高质感渲染
+    bounce = int(2 * math.sin(pygame.time.get_ticks() / 250))
+    score_text = f"{int(score):,}"
+    
+    # 根据分数选择渲染风格
+    if score >= 100000:
+        score_color = (255, 255, 150)  # 金色发光
+        score_style = "neon"
+    elif score >= 50000:
+        score_color = (255, 200, 80)
+        score_style = "glow"
+    else:
+        score_color = (255, 180, 50)
+        score_style = "metal"
+    
+    draw_premium_text(screen, score_text, 28, panel_right_x + panel_w, panel_right_y + 18 + bounce, score_color, align='right', style=score_style)
+    
+    # ========== 时间面板 ==========
+    time_panel_y = panel_right_y + score_panel_h + 12
+    time_panel_h = 48
+    
+    # 面板背景
+    time_surf = pygame.Surface((panel_w + 20, time_panel_h + 10), pygame.SRCALPHA)
+    
+    time_bg_points = [
+        (cut, 0), (panel_w, 0), (panel_w + cut, cut), 
+        (panel_w + cut, time_panel_h), (panel_w, time_panel_h + cut), 
+        (cut, time_panel_h + cut), (0, time_panel_h), (0, cut)
+    ]
+    
+    # 渐变填充 - 青色主题
+    for i in range(time_panel_h + cut):
+        ratio = i / max(1, time_panel_h + cut - 1)
+        r = int(10 + 10 * ratio)
+        g = int(25 + 15 * (1 - ratio))
+        b = int(35 + 15 * ratio)
+        pygame.draw.line(time_surf, (r, g, b, 220), (0, i), (panel_w + cut, i))
+    
+    # 裁剪
+    mask2 = pygame.Surface((panel_w + 20, time_panel_h + 10), pygame.SRCALPHA)
+    pygame.draw.polygon(mask2, (255, 255, 255, 255), time_bg_points)
+    time_surf.blit(mask2, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    screen.blit(time_surf, (panel_right_x - 5, time_panel_y))
+    
+    # 边框 - 青色主题
+    time_border_points = [(panel_right_x - 5 + p[0], time_panel_y + p[1]) for p in time_bg_points]
+    pygame.draw.polygon(screen, (80, 200, 220), time_border_points, 2)
+    
+    # 顶部装饰线
+    time_pulse = abs(math.sin(pygame.time.get_ticks() / 400 + 1))
+    time_deco_color = (50 + int(50 * time_pulse), 180 + int(50 * time_pulse), 220 + int(35 * time_pulse))
+    pygame.draw.line(screen, time_deco_color, 
+                     (panel_right_x + cut - 3, time_panel_y + 3), 
+                     (panel_right_x + panel_w - 5, time_panel_y + 3), 2)
+    
+    # 角落装饰
+    time_corner_color = (100, 220, 255)
+    pygame.draw.line(screen, time_corner_color, (panel_right_x - 5, time_panel_y + cut), 
+                     (panel_right_x - 5, time_panel_y + cut + 10), 2)
+    pygame.draw.line(screen, time_corner_color, (panel_right_x + panel_w + cut - 5, time_panel_y + time_panel_h), 
+                     (panel_right_x + panel_w + cut - 5, time_panel_y + time_panel_h - 10), 2)
+    
+    # 时间标签
+    draw_premium_text(screen, "TIME", 10, panel_right_x + 2, time_panel_y + 5, (140, 230, 255), align='left', style="cyber")
+    
+    # 时间图标 - 简易时钟（增强）
+    clock_cx = panel_right_x + panel_w
+    clock_cy = time_panel_y + 12
+    # 外圈发光
+    pygame.draw.circle(screen, (60, 180, 220, 80), (clock_cx, clock_cy), 9, 1)
+    pygame.draw.circle(screen, (100, 220, 255), (clock_cx, clock_cy), 7, 1)
+    # 中心点
+    pygame.draw.circle(screen, (150, 255, 255), (clock_cx, clock_cy), 2)
+    clock_angle = (pygame.time.get_ticks() / 1000) % 60 * 6  # 秒针角度
+    import math as m
+    needle_x = clock_cx + int(4 * m.sin(m.radians(clock_angle)))
+    needle_y = clock_cy - int(4 * m.cos(m.radians(clock_angle)))
+    pygame.draw.line(screen, (180, 255, 255), (clock_cx, clock_cy), (needle_x, needle_y), 2)
+    
+    # 时间 MM:SS
     elapsed_sec = int(pygame.time.get_ticks() / 1000)
     elapsed_min = elapsed_sec // 60
     elapsed_sec_remain = elapsed_sec % 60
     time_text = f"{elapsed_min:02d}:{elapsed_sec_remain:02d}"
     
-    # 时间数值 - 闪烁脉冲
-    time_pulse = 1.0 + 0.1 * math.sin(pygame.time.get_ticks() / 500)
-    time_size = int(32 * time_pulse)
-    draw_text(screen, time_text, time_size, score_value_x, time_box_y + 4, CYAN, glow=True, align='right')
+    # 冒号闪烁效果
+    colon_visible = (pygame.time.get_ticks() // 500) % 2 == 0
+    if colon_visible:
+        display_time = time_text
+    else:
+        display_time = f"{elapsed_min:02d} {elapsed_sec_remain:02d}"
+    
+    # 时间数值 - 根据时间变化风格
+    if elapsed_min >= 10:
+        time_color = (180, 255, 255)  # 清亮的青色
+        time_style = "neon"
+    elif elapsed_min >= 5:
+        time_color = (120, 240, 255)
+        time_style = "glow"
+    else:
+        time_color = (100, 220, 255)
+        time_style = "metal"
+    
+    draw_premium_text(screen, display_time, 26, panel_right_x + panel_w, time_panel_y + 16, time_color, align='right', style=time_style)
     
     # ===== 底部左侧：主炮 / 飞机建模 / 核心（往上移以避免与等级重合） =====
     bottom_left_x = 12
@@ -4887,128 +5099,73 @@ def draw_top_hud():
     main_gun_color = (100 + int(155 * main_gun_pulse), 50, 50)  # 脉冲效果
     pygame.draw.line(screen, main_gun_color, (bottom_left_x + 10, bottom_left_y + 12), (bottom_left_x + 60, bottom_left_y + 12), 2)
     
-    # ===== 底部右侧：武器库 / 三个武器槽 / 大招 / 储能条 =====
+    # ===== 底部右侧：高级武器库 / 武器槽 / 大招能量条 =====
+    animate_frame = pygame.time.get_ticks() // 16  # 动画帧计数
     bottom_right_x = WIDTH - 24
-    bottom_right_y = HEIGHT - 165  # 与左侧对齐
+    bottom_right_y = HEIGHT - 195  # 上移30像素
     
-    # 三个武器槽（隔一点距离，放大）
-    slot_w = 40
-    slot_h = 40
-    slot_gap = 8
-    slot_total_w = slot_w * 3 + slot_gap * 2
-    slot_start_x = bottom_right_x - slot_total_w - 12
-    slot_y = bottom_right_y + 22
+    # --- 武器槽系统 ---
+    slot_size = 42
+    slot_gap = 10
+    slot_total_w = slot_size * 3 + slot_gap * 2
+    slot_start_x = bottom_right_x - slot_total_w - 8
+    slot_y = bottom_right_y + 20
     
-    # 僚机标签 - 显示当前僚机信息
+    # 僚机指示器（使用新组件）
     wingman_count = len(player.wingman_squadron.wingmen) if player.wingman_squadron else 0
     wingman_max = player.max_wingmen if hasattr(player, 'max_wingmen') else 4
-    wingman_text = f"僚机 {wingman_count}/{wingman_max}"
-    second_weapon_x = slot_start_x + 1 * (slot_w + slot_gap) + slot_w // 2
-    draw_text(screen, wingman_text, 13, second_weapon_x, slot_y - 18, CYAN, glow=True, align='center')
+    wingman_center_x = slot_start_x + slot_total_w // 2
+    draw_wingman_indicator(screen, wingman_center_x, slot_y - 12, wingman_count, wingman_max, animate_frame)
     
-    # 僚机编队脉冲效果 - 青色闪烁
-    wingman_pulse = abs(math.sin(pygame.time.get_ticks() / 600))
-    wingman_color = (0, 100 + int(155 * wingman_pulse), 200)  # 青色脉冲
-    pygame.draw.line(screen, wingman_color, (second_weapon_x - 30, slot_y - 25), (second_weapon_x + 30, slot_y - 25), 2)
-    
+    # 武器槽（使用新的高级组件）
     for i in range(3):
-        slot_x = slot_start_x + i * (slot_w + slot_gap)
-        slot_rect = pygame.Rect(slot_x, slot_y, slot_w, slot_h)
+        slot_x = slot_start_x + i * (slot_size + slot_gap)
         weapon = player.weapon_slots[i] if i < len(player.weapon_slots) else None
-        is_current = (i == player.current_slot)  # 检查是否为当前使用的武器
+        is_current = (i == player.current_slot)
         
+        weapon_info = None
+        cooldown = 0
         if weapon:
-            # Weapon box with color
             w_info = WEAPON_TYPES.get(weapon.type, {})
-            col = w_info.get('color', (100, 100, 100))
-            # 显示武器名称首字
-            w_name = w_info.get('name', '？')[:2]
-            draw_text(screen, w_name, 14, slot_rect.centerx, slot_rect.centery - 4, WHITE, align='center')
-        else:
-            col = (60, 60, 60)
+            weapon_info = {
+                'name': w_info.get('name', '？'),
+                'color': w_info.get('color', (80, 80, 100))
+            }
+            if weapon.cooldown > 0:
+                cooldown = weapon.cooldown / 30.0
         
-        # 当前使用的武器槽添加发光效果
-        border_color = CYBER_LIME if is_current else (100, 100, 100)
-        border_width = 3 if is_current else 2
-        alpha_val = 220 if is_current else 200
-        
-        draw_cyber_rect(screen, slot_rect, col, alpha=alpha_val, border_width=border_width, fill=True)
-        
-        # CD冷却显示：在武器槽上方显示CD数字
-        if weapon and weapon.cooldown > 0:
-            cd_remaining = weapon.cooldown / 30  # 转换为秒（假设每秒30帧）
-            draw_text(screen, f"{cd_remaining:.1f}s", 10, slot_rect.centerx, slot_rect.top - 14, CYBER_RED_ALERT, align='center')
-            # 在槽上显示半透明黑色遮罩表示冷却中
-            cd_overlay = pygame.Surface((slot_w, slot_h), pygame.SRCALPHA)
-            cd_overlay.fill((0, 0, 0, 100))
-            screen.blit(cd_overlay, (slot_x, slot_y))
-        
-        # 当前武器槽添加额外的发光框
-        if is_current:
-            glow_rect = pygame.Rect(slot_x - 3, slot_y - 3, slot_w + 6, slot_h + 6)
-            draw_cyber_rect(screen, glow_rect, CYBER_LIME, alpha=100, border_width=1, fill=False)
+        draw_premium_weapon_slot(screen, slot_x, slot_y, slot_size, weapon_info, 
+                                  is_current=is_current, cooldown=cooldown, animate_frame=animate_frame)
     
-    # ===== 大招能量条系统（连续进度条设计）=====
-    ult_bar_width = 140  # 能量条宽度
-    ult_bar_x = bottom_right_x - ult_bar_width  # 右对齐
+    # --- 大招能量条系统（使用新的高级进度条）---
+    ult_bar_width = 150
+    ult_bar_x = bottom_right_x - ult_bar_width - 4
     
-    # --- 主大招 [F] ---
+    # [F] 主大招
     ult_name = player.plane_data.get('ult_name', 'ULT')
-    ult1_y = slot_y + 40  # 上移30像素
+    ult1_y = slot_y + slot_size + 8
     
-    # 主大招标签和百分比
     ult_ratio = player.ult_charge / player.max_ult_charge if player.max_ult_charge > 0 else 0
     ult_pct = int(ult_ratio * 100)
     ult_ready = ult_ratio >= 1.0 and player.ult_cooldown <= 0
+    ult_cd = player.ult_cooldown / 60.0 if player.ult_cooldown > 0 else 0
     
-    # 标签颜色：满能量时高亮
-    label_color = CYBER_CYAN_BRIGHT if ult_ready else MAGENTA
+    # 标签
+    label_color = (200, 150, 255) if ult_ready else (180, 100, 220)
     draw_text(screen, f"[F] {ult_name}", 12, ult_bar_x, ult1_y, label_color, align='left', glow=ult_ready)
     
-    # 主大招能量条（高度14）
-    bar1_y = ult1_y + 14
+    # 能量条
+    bar1_y = ult1_y + 15
     bar1_h = 14
-    bar1_rect = pygame.Rect(ult_bar_x, bar1_y, ult_bar_width, bar1_h)
+    draw_premium_ult_bar(screen, ult_bar_x, bar1_y, ult_bar_width, bar1_h, ult_pct, 
+                          (200, 80, 220), ult_name, "[F]", ready=ult_ready, 
+                          cooldown=ult_cd, animate_frame=animate_frame)
     
-    # 背景
-    pygame.draw.rect(screen, (40, 20, 50), bar1_rect)
-    pygame.draw.rect(screen, (80, 40, 90), bar1_rect, 1)
+    # 百分比
+    pct_color = (220, 180, 255) if ult_ready else (180, 180, 200)
+    draw_text(screen, f"{ult_pct}%", 11, ult_bar_x + ult_bar_width + 12, bar1_y + 1, pct_color, align='left')
     
-    # 填充
-    if ult_ratio > 0:
-        fill_w = int(ult_bar_width * min(ult_ratio, 1.0))
-        fill_rect = pygame.Rect(ult_bar_x, bar1_y, fill_w, bar1_h)
-        
-        if ult_ready:
-            # 满能量：渐变+闪烁效果
-            pulse = abs(math.sin(pygame.time.get_ticks() / 200))
-            glow_color = (200 + int(55 * pulse), 50 + int(50 * pulse), 200 + int(55 * pulse))
-            pygame.draw.rect(screen, glow_color, fill_rect)
-            # 发光边框
-            pygame.draw.rect(screen, CYBER_CYAN_BRIGHT, fill_rect, 2)
-        else:
-            # 充能中：紫红色渐变
-            pygame.draw.rect(screen, MAGENTA, fill_rect)
-            # 充能动画条纹
-            stripe_offset = (pygame.time.get_ticks() // 50) % 10
-            for sx in range(ult_bar_x + stripe_offset, ult_bar_x + fill_w, 10):
-                if sx < ult_bar_x + fill_w - 2:
-                    pygame.draw.line(screen, (255, 150, 255), (sx, bar1_y + 2), (sx + 4, bar1_y + bar1_h - 2), 1)
-    
-    # 百分比文字
-    pct_color = CYBER_CYAN_BRIGHT if ult_ready else WHITE
-    draw_text(screen, f"{ult_pct}%", 12, ult_bar_x + ult_bar_width + 5, bar1_y + 2, pct_color, align='left')
-    
-    # 冷却显示
-    if player.ult_cooldown > 0:
-        cd_sec = player.ult_cooldown / 60.0
-        # 冷却遮罩
-        cd_overlay = pygame.Surface((ult_bar_width, bar1_h), pygame.SRCALPHA)
-        cd_overlay.fill((0, 0, 0, 150))
-        screen.blit(cd_overlay, (ult_bar_x, bar1_y))
-        draw_text(screen, f"CD {cd_sec:.1f}s", 11, ult_bar_x + ult_bar_width // 2, bar1_y + 2, CYBER_RED_ALERT, align='center')
-    
-    # --- 副大招 [G] ---
+    # [G] 副大招
     ult2_names = {
         "striker": "欧米伽激光", "phantom": "分身乱舞", "titan": "陨石轰炸",
         "thunderbird": "连锁闪电", "viper": "酸雨倾盆", "specter": "亡魂哀嚎",
@@ -5028,62 +5185,33 @@ def draw_top_hud():
         "dukefishron": "鲨龙追踪", "slime": "星炎水晶", "oro": "激光栅风暴",
         "yharon": "龙群盛宴", "scarlet": "绯红不夜城",
         "providence": "神圣射线", "goliath": "瘟疫核弹", "sepulcher": "天降灾厄",
-        "galaxia": "星系陷阱", "magnus": "远古亡灵召唤", "heavymetal": "舞台俯冲"
+        "galaxia": "星系陷阱", "magnus": "远古亡灵召唤", "heavymetal": "舞台俯冲",
+        "zenith": "传奇剑舞"
     }
     ult2_name = ult2_names.get(player.plane_id, '次级技能')
-    ult2_y = bar1_y + bar1_h + 3
+    ult2_y = bar1_y + bar1_h + 4
     
-    # 副大招标签和百分比
     ult2_ratio = player.ult2_charge / player.max_ult2_charge if player.max_ult2_charge > 0 else 0
     ult2_pct = int(ult2_ratio * 100)
     ult2_ready = ult2_ratio >= 1.0 and player.ult2_cooldown <= 0
+    ult2_cd = player.ult2_cooldown / 60.0 if player.ult2_cooldown > 0 else 0
     
-    # 标签颜色
-    label2_color = CYBER_LIME if ult2_ready else CYAN
+    # 标签
+    label2_color = (100, 255, 200) if ult2_ready else (80, 200, 180)
     draw_text(screen, f"[G] {ult2_name}", 11, ult_bar_x, ult2_y, label2_color, align='left', glow=ult2_ready)
     
-    # 副大招能量条（高度12）
-    bar2_y = ult2_y + 13
+    # 能量条
+    bar2_y = ult2_y + 14
     bar2_h = 12
-    bar2_rect = pygame.Rect(ult_bar_x, bar2_y, ult_bar_width, bar2_h)
+    draw_premium_ult_bar(screen, ult_bar_x, bar2_y, ult_bar_width, bar2_h, ult2_pct,
+                          (60, 200, 180), ult2_name, "[G]", ready=ult2_ready,
+                          cooldown=ult2_cd, animate_frame=animate_frame)
     
-    # 背景
-    pygame.draw.rect(screen, (20, 40, 50), bar2_rect)
-    pygame.draw.rect(screen, (40, 80, 100), bar2_rect, 1)
+    # 百分比
+    pct2_color = (150, 255, 220) if ult2_ready else (150, 200, 190)
+    draw_text(screen, f"{ult2_pct}%", 10, ult_bar_x + ult_bar_width + 12, bar2_y + 1, pct2_color, align='left')
     
-    # 填充
-    if ult2_ratio > 0:
-        fill_w = int(ult_bar_width * min(ult2_ratio, 1.0))
-        fill_rect = pygame.Rect(ult_bar_x, bar2_y, fill_w, bar2_h)
-        
-        if ult2_ready:
-            # 满能量：闪烁
-            pulse = abs(math.sin(pygame.time.get_ticks() / 250))
-            glow_color = (50 + int(50 * pulse), 200 + int(55 * pulse), 200 + int(55 * pulse))
-            pygame.draw.rect(screen, glow_color, fill_rect)
-            pygame.draw.rect(screen, CYBER_LIME, fill_rect, 1)
-        else:
-            # 充能中：青色
-            pygame.draw.rect(screen, CYAN, fill_rect)
-            # 充能动画
-            stripe_offset = (pygame.time.get_ticks() // 60) % 8
-            for sx in range(ult_bar_x + stripe_offset, ult_bar_x + fill_w, 8):
-                if sx < ult_bar_x + fill_w - 2:
-                    pygame.draw.line(screen, (150, 255, 255), (sx, bar2_y + 1), (sx + 3, bar2_y + bar2_h - 1), 1)
-    
-    # 百分比文字
-    pct2_color = CYBER_LIME if ult2_ready else WHITE
-    draw_text(screen, f"{ult2_pct}%", 10, ult_bar_x + ult_bar_width + 5, bar2_y + 1, pct2_color, align='left')
-    
-    # 冷却显示
-    if player.ult2_cooldown > 0:
-        cd_sec = player.ult2_cooldown / 60.0
-        cd_overlay = pygame.Surface((ult_bar_width, bar2_h), pygame.SRCALPHA)
-        cd_overlay.fill((0, 0, 0, 150))
-        screen.blit(cd_overlay, (ult_bar_x, bar2_y))
-        draw_text(screen, f"CD {cd_sec:.1f}s", 10, ult_bar_x + ult_bar_width // 2, bar2_y + 1, CYBER_RED_ALERT, align='center')
-    
-    # --- 第三大招 [C] ---
+    # [C] 第三大招
     ult3_names = {
         "striker": "等离子漩涡", "phantom": "镜像分裂", "titan": "地震冲击",
         "thunderbird": "球状闪电", "viper": "腐蚀云雾", "specter": "灵魂风暴",
@@ -5103,75 +5231,62 @@ def draw_top_hud():
         "dukefishron": "海啸滑翔", "slime": "星凝子体", "oro": "终噬黑洞",
         "yharon": "宿敌升天", "scarlet": "命运之枪",
         "providence": "超新星爆发", "goliath": "盖亚之死", "sepulcher": "湮灭之眼",
-        "galaxia": "苍穹撕裂", "magnus": "真理魔法阵", "heavymetal": "死亡金属独奏"
+        "galaxia": "苍穹撕裂", "magnus": "真理魔法阵", "heavymetal": "死亡金属独奏",
+        "zenith": "终极剑阵"
     }
     ult3_name = ult3_names.get(player.plane_id, '终极技能')
-    ult3_y = bar2_y + bar2_h + 3
+    ult3_y = bar2_y + bar2_h + 4
     
-    # 第三大招标签和百分比
     ult3_ratio = player.ult3_charge / player.max_ult3_charge if player.max_ult3_charge > 0 else 0
     ult3_pct = int(ult3_ratio * 100)
     ult3_ready = ult3_ratio >= 1.0 and player.ult3_cooldown <= 0
+    ult3_cd = player.ult3_cooldown / 60.0 if player.ult3_cooldown > 0 else 0
     
-    # 标签颜色（橙黄色主题）
-    label3_color = (255, 200, 50) if ult3_ready else (255, 165, 0)
+    # 标签
+    label3_color = (255, 200, 100) if ult3_ready else (255, 180, 80)
     draw_text(screen, f"[C] {ult3_name}", 11, ult_bar_x, ult3_y, label3_color, align='left', glow=ult3_ready)
     
-    # 第三大招能量条（高度12）
-    bar3_y = ult3_y + 13
+    # 能量条
+    bar3_y = ult3_y + 14
     bar3_h = 12
-    bar3_rect = pygame.Rect(ult_bar_x, bar3_y, ult_bar_width, bar3_h)
+    draw_premium_ult_bar(screen, ult_bar_x, bar3_y, ult_bar_width, bar3_h, ult3_pct,
+                          (255, 160, 60), ult3_name, "[C]", ready=ult3_ready,
+                          cooldown=ult3_cd, animate_frame=animate_frame)
     
-    # 背景
-    pygame.draw.rect(screen, (50, 40, 20), bar3_rect)
-    pygame.draw.rect(screen, (100, 80, 40), bar3_rect, 1)
+    # 百分比
+    pct3_color = (255, 220, 150) if ult3_ready else (200, 180, 150)
+    draw_text(screen, f"{ult3_pct}%", 10, ult_bar_x + ult_bar_width + 12, bar3_y + 1, pct3_color, align='left')
     
-    # 填充
-    if ult3_ratio > 0:
-        fill_w = int(ult_bar_width * min(ult3_ratio, 1.0))
-        fill_rect = pygame.Rect(ult_bar_x, bar3_y, fill_w, bar3_h)
-        
-        if ult3_ready:
-            # 满能量：闪烁
-            pulse = abs(math.sin(pygame.time.get_ticks() / 200))
-            glow_color = (255, 180 + int(75 * pulse), 50 + int(50 * pulse))
-            pygame.draw.rect(screen, glow_color, fill_rect)
-            pygame.draw.rect(screen, (255, 220, 100), fill_rect, 1)
-        else:
-            # 充能中：橙色
-            pygame.draw.rect(screen, (255, 165, 0), fill_rect)
-            # 充能动画
-            stripe_offset = (pygame.time.get_ticks() // 70) % 8
-            for sx in range(ult_bar_x + stripe_offset, ult_bar_x + fill_w, 8):
-                if sx < ult_bar_x + fill_w - 2:
-                    pygame.draw.line(screen, (255, 220, 150), (sx, bar3_y + 1), (sx + 3, bar3_y + bar3_h - 1), 1)
-    
-    # 百分比文字
-    pct3_color = (255, 220, 100) if ult3_ready else WHITE
-    draw_text(screen, f"{ult3_pct}%", 10, ult_bar_x + ult_bar_width + 5, bar3_y + 1, pct3_color, align='left')
-    
-    # 冷却显示
-    if player.ult3_cooldown > 0:
-        cd_sec = player.ult3_cooldown / 60.0
-        cd_overlay = pygame.Surface((ult_bar_width, bar3_h), pygame.SRCALPHA)
-        cd_overlay.fill((0, 0, 0, 150))
-        screen.blit(cd_overlay, (ult_bar_x, bar3_y))
-        draw_text(screen, f"CD {cd_sec:.1f}s", 10, ult_bar_x + ult_bar_width // 2, bar3_y + 1, CYBER_RED_ALERT, align='center')
-    
-    # ===== 底部：厚的经验条，左侧显示等级 =====
+    # ===== 底部：经验条 =====
     exp_bar_y = HEIGHT - 14
     exp_bar_h = 12
     exp_val = player.xp if hasattr(player, 'xp') else 0
     exp_max = player.next_level_xp if hasattr(player, 'next_level_xp') else 100
     exp_pct = (exp_val / exp_max * 100) if exp_max > 0 else 0
     
-    # 背景
-    pygame.draw.rect(screen, (15, 25, 15), (0, exp_bar_y, WIDTH, exp_bar_h))
-    # 填充
+    # 渐变背景
+    for i in range(exp_bar_h):
+        ratio = i / max(1, exp_bar_h - 1)
+        r = int(10 + 15 * ratio)
+        g = int(20 + 10 * ratio)
+        b = int(15 + 15 * ratio)
+        pygame.draw.line(screen, (r, g, b), (0, exp_bar_y + i), (WIDTH, exp_bar_y + i))
+    
+    # 填充 - 带光泽效果
     exp_fill_w = int((exp_pct / 100) * WIDTH)
     if exp_fill_w > 0:
-        pygame.draw.rect(screen, CYBER_LIME, (0, exp_bar_y, exp_fill_w, exp_bar_h))
+        # 主色填充
+        for i in range(exp_bar_h):
+            ratio = i / max(1, exp_bar_h - 1)
+            brightness = 1.0 + (0.5 - abs(ratio - 0.3)) * 0.4
+            r = min(255, int(80 * brightness))
+            g = min(255, int(255 * brightness))
+            b = min(255, int(100 * brightness))
+            pygame.draw.line(screen, (r, g, b), (0, exp_bar_y + i), (exp_fill_w, exp_bar_y + i))
+        # 顶部高光
+        pygame.draw.line(screen, (200, 255, 200, 150), (0, exp_bar_y + 1), (exp_fill_w, exp_bar_y + 1))
     # 边框
+
     pygame.draw.rect(screen, CYAN, (0, exp_bar_y, WIDTH, exp_bar_h), 1)
     
     # 等级文本靠左，EXP条上方（放大字体，往上移）
@@ -8018,6 +8133,64 @@ while True:
                         
                         all_sprites.update()
                         
+                        # 【修复】检测被技能杀死的敌人（take_damage导致hp<=0但未经子弹碰撞处理）
+                        for m in list(mobs):
+                            if m.hp <= 0 and not getattr(m, '_death_rewarded', False):
+                                m._death_rewarded = True  # 标记已处理，防止重复
+                                
+                                # 加分
+                                score += 100 if m.is_elite else 20
+                                
+                                # 【统计】记录击杀和更新连击
+                                player.stats['kills'] += 1
+                                player.stats['current_combo'] += 1
+                                player.stats['combo_timer'] = 180
+                                if player.stats['current_combo'] > player.stats['max_combo']:
+                                    player.stats['max_combo'] = player.stats['current_combo']
+                                
+                                # 击杀特效
+                                create_explosion(m.rect.center, CYAN, 5)
+                                sound_mgr.play("explosion")
+                                
+                                # 经验掉落
+                                enemy_strength_map = {
+                                    "drone": 5, "chaser": 6, "phantom": 7, "wasp": 8,
+                                    "glitch": 8, "spike": 9, "sniper": 10, "tank": 12,
+                                    "orbiter": 13, "sentinel": 14, "vortex": 20
+                                }
+                                base_xp = enemy_strength_map.get(m.type, 5)
+                                elite_multiplier = 3.0 if m.is_elite else 1.0
+                                level_multiplier = 1.0 + (player.level - 1) * 0.10
+                                xp_amount = max(5, int(base_xp * elite_multiplier * level_multiplier))
+                                ExperienceOrb(m.rect.centerx, m.rect.centery, xp_amount)
+                                FloatingText(m.rect.centerx, m.rect.top - 30, f"经验+{xp_amount}", LIME)
+                                
+                                # 物品掉落
+                                if item_manager:
+                                    item_manager.try_spawn_drop(m.rect.centerx, m.rect.centery)
+                                
+                                # 核心掉落
+                                if random.random() < 0.25:
+                                    arsenal_save_data["currencies"]["cores"] += 1
+                                    FloatingText(m.rect.centerx, m.rect.top-20, "核心+1", CYAN)
+                                
+                                # 成就系统
+                                if player and hasattr(player, 'achievement_manager'):
+                                    player.achievement_manager.add_kill(1)
+                                    new_achievements = player.achievement_manager.check_achievements(player)
+                                    if new_achievements:
+                                        sound_mgr.play("achievement")
+                                        for ach_id in new_achievements:
+                                            ach = player.achievement_manager.achievements[ach_id]
+                                            achievement_notifications.append((ach, 180))
+                                
+                                # 触发击杀效果
+                                corpse_effect = player.on_kill_enemy(m)
+                                if corpse_effect:
+                                    create_explosion(corpse_effect["pos"], ORANGE, 8)
+                                
+                                m.kill()
+                        
                         # 【至尊灾厄】擦弹检测 - 敌弹接近但未命中时增加暴怒值
                         if hasattr(player, 'plane_id') and player.plane_id == "sepulcher":
                             graze_radius = getattr(player, 'sepulcher_graze_radius', 80)
@@ -8161,7 +8334,8 @@ while True:
                                     # 毒伤害粒子
                                     Particle(enemy.rect.center, (0, 200, 80))
                                     # 检查是否因中毒死亡
-                                    if enemy.hp <= 0:
+                                    if enemy.hp <= 0 and not getattr(enemy, '_death_rewarded', False):
+                                        enemy._death_rewarded = True
                                         score += 100 if enemy.is_elite else 20
                                         create_explosion(enemy.rect.center, (0, 255, 100), 5)
                                         sound_mgr.play("explosion")
@@ -8629,8 +8803,8 @@ while True:
                             player.ult2_charge = min(player.max_ult2_charge, player.ult2_charge + ult_charge_gain * 0.8)
                             # 【新】同时充能第三大招（C键）
                             player.ult3_charge = min(player.max_ult3_charge, player.ult3_charge + ult_charge_gain * 0.6)
-                            # 【新】同时充能第四大招（E键）- SCARLET专属
-                            if hasattr(player, 'plane_id') and player.plane_id == "scarlet":
+                            # 【新】同时充能第四大招（E键）- SCARLET/ZENITH专属
+                            if hasattr(player, 'plane_id') and player.plane_id in ("scarlet", "zenith"):
                                 player.ult4_charge = min(player.max_ult4_charge, player.ult4_charge + ult_charge_gain * 0.4)
                             
                             # 【优化】分裂射击：子弹击中敌人时生成分裂子弹（分裂弹不再分裂）
@@ -8758,7 +8932,8 @@ while True:
                             
                             if b.piercing <= 0: b.kill()
                             else: b.piercing -= 1
-                            if m.hp <= 0:
+                            if m.hp <= 0 and not getattr(m, '_death_rewarded', False):
+                                m._death_rewarded = True  # 标记已处理，防止重复奖励
                                 score += 100 if m.is_elite else 20
                                 # 【统计】记录击杀和更新连击
                                 player.stats['kills'] += 1

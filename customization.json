@@ -625,7 +625,13 @@
     "scarlet_golden": true,
     "scarlet_mist": true,
     "scarlet_gothic": true,
-    "scarlet_destiny": true
+    "scarlet_destiny": true,
+    "zenith_default": true,
+    "zenith_terra": true,
+    "zenith_meowmere": true,
+    "zenith_stardust": true,
+    "zenith_solar": true,
+    "zenith_void": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -684,7 +690,8 @@
     "galaxia": "galaxia_nebula",
     "magnus": "magnus_holy",
     "heavymetal": "heavymetal_toxic",
-    "scarlet": "scarlet_gothic"
+    "scarlet": "scarlet_gothic",
+    "zenith": "zenith_default"
   },
   "unlocked_bullet_themes": {
     "default": true,

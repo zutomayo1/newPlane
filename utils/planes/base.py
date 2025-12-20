@@ -462,6 +462,13 @@ def _generate_plane_surf(pid, visual=None, static=False):
             if result:
                 return result
         
+        # 尝试 Zenith 专属涂装（分形天顶·ZENITH）
+        from .skins_zenith import render_zenith_skin, is_zenith_style
+        if is_zenith_style(model_style):
+            result = render_zenith_skin(s, c, model_style, t, pid, static)
+            if result:
+                return result
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -658,6 +665,12 @@ def _generate_plane_surf(pid, visual=None, static=False):
     elif pid == "scarlet":
         from .skins_scarlet import _render_scarlet_base
         _render_scarlet_base(s, t, pulse)
+    
+    # 分形天顶 - Zenith
+    elif pid == "zenith":
+        from .skins_zenith import draw_zenith
+        frame = int(t * 60) if t > 0 else 0
+        draw_zenith(s, c, 10, 10, 100, 100, frame, "zenith_default")
     
     else:
         # 默认占位图形

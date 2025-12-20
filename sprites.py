@@ -11951,6 +11951,18 @@ class Player(pygame.sprite.Sprite):
                 return model_style
         return "scarlet_default"
 
+    def _get_zenith_style(self):
+        """获取Zenith涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("zenith_"):
+                return theme_id
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('zenith_'):
+                return model_style
+        return "zenith_default"
+
 
     def _init_sepulcher_systems(self):
         """初始化Sepulcher的特殊系统"""
@@ -13653,6 +13665,28 @@ class Player(pygame.sprite.Sprite):
             # 累计鲜血层数
             self.scarlet_blood_stacks = min(self.scarlet_max_blood, self.scarlet_blood_stacks + 0.1)
         
+        # ========== 53. 分形天顶·ZENITH - 天顶剑影（椭圆轨迹） ==========
+        elif pid == "zenith":
+            from utils.bullets.zenith_bullets import (ThrowingSwordBullet, FractalShield,
+                                                      get_sword_array, clear_sword_array)
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_zenith_style() if hasattr(self, '_get_zenith_style') else "zenith_default"
+            
+            # 初始化天顶系统
+            if not hasattr(self, 'zenith_initialized') or not self.zenith_initialized:
+                self.zenith_sword_array = get_sword_array(self, style)
+                self.zenith_shield = FractalShield(self, style)
+                self.zenith_initialized = True
+                self.zenith_sword_count = 0  # 剑计数器
+            
+            # 发射天顶剑影 - 椭圆轨迹飞行，第一把剑不追踪
+            self.zenith_sword_count = getattr(self, 'zenith_sword_count', 0) + 1
+            is_first = (self.zenith_sword_count % 3 == 1)  # 每3把剑中第1把不追踪
+            sword = ThrowingSwordBullet(cx, cy, self.damage, owner=self, 
+                                        style=style, sword_array=self.zenith_sword_array,
+                                        is_first=is_first)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -14070,6 +14104,13 @@ class Player(pygame.sprite.Sprite):
                 target_pos = (mouse_pos[0], target_y)
                 style = self._get_scarlet_style() if hasattr(self, '_get_scarlet_style') else "scarlet_default"
                 skill = MistBlinkSkill(self, target_pos, self.damage * 2, style=style)
+                all_sprites.add(skill)
+            
+            elif pid == "zenith":
+                # 【泰拉光束】F技能：召唤绿色泰拉刃幻影，发射全屏剑气波
+                from utils.bullets.zenith_bullets import TerraBeamSkill
+                style = self._get_zenith_style() if hasattr(self, '_get_zenith_style') else "zenith_default"
+                skill = TerraBeamSkill(self, self.damage * 2, style=style)
                 all_sprites.add(skill)
             
             else:
@@ -15389,6 +15430,13 @@ class Player(pygame.sprite.Sprite):
                                            damage=self.damage * 1.5, owner=self, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "zenith":
+                # 【喵星人轰炸】G技能：召唤大量彩虹猫头疯狂反弹
+                from utils.bullets.zenith_bullets import MeowmereBombSkill
+                style = self._get_zenith_style() if hasattr(self, '_get_zenith_style') else "zenith_default"
+                skill = MeowmereBombSkill(self, self.damage * 1.5, style=style)
+                all_sprites.add(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -15707,6 +15755,14 @@ class Player(pygame.sprite.Sprite):
                 all_sprites.add(skill)
                 FloatingText(self.rect.centerx, self.rect.top - 50, "★ 命运之枪 ★", (220, 20, 60))
             
+            elif pid == "zenith":
+                # 【天顶霸主】C技能：所有剑以鬼畜速度全屏乱舞
+                from utils.bullets.zenith_bullets import ZenithOverdriveSkill
+                style = self._get_zenith_style() if hasattr(self, '_get_zenith_style') else "zenith_default"
+                skill = ZenithOverdriveSkill(self, self.damage * 2, style=style)
+                all_sprites.add(skill)
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 天顶霸主 ★", (75, 0, 130))
+            
             else:
                 # 通用：全屏伤害
                 for m in list(mobs):
@@ -15734,6 +15790,14 @@ class Player(pygame.sprite.Sprite):
                 skill = CrimsonWorldUltimate(owner=self, damage=self.damage * 5)
                 all_sprites.add(skill)
                 FloatingText(self.rect.centerx, self.rect.top - 50, "★ 深红世界 ★", (255, 50, 80))
+            
+            elif pid == "zenith":
+                # 【棱镜折射】E技能（蓄力终极）：所有剑合体成巨剑劈砍
+                from utils.bullets.zenith_bullets import PrismBreakSkill
+                style = self._get_zenith_style() if hasattr(self, '_get_zenith_style') else "zenith_default"
+                skill = PrismBreakSkill(self, self.damage * 5, style=style)
+                all_sprites.add(skill)
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 棱镜折射 ★", (255, 0, 255))
             
             else:
                 # 通用：冲刺攻击
