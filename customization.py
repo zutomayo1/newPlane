@@ -10317,6 +10317,106 @@ PAINT_THEMES = {
         "model_style": "zenith_void",
         "animated": True,
     },
+    
+    # ========== 专属涂装 - Viscerator (光之在解) ==========
+    # 设计理念：Calamity Mod光子粉碎机 + EXO机甲科技 + 双引擎粒子炮
+    # 核心机制：追踪光流 - 像软管般弯曲追踪的光束
+    "viscerator_default": {
+        "name": "光之在解·EXO原型",
+        "desc": "💠暗岩灰装甲+深粉能量核心，黄绿追踪光流",
+        "neon_color": (255, 20, 147),      # 深粉 Deep Pink
+        "accent_color": (127, 255, 0),     # 黄绿 Chartreuse
+        "trail_color": (47, 79, 79),       # 暗岩灰 Dark Slate Gray
+        "unlocked": False,
+        "cost": 0,
+        "trail_style": "exo_stream",
+        "particle_count": 200,
+        "category": "exclusive",
+        "trail_width": 30,
+        "exclusive_plane": "viscerator",
+        "model_style": "viscerator_default",
+        "animated": True,
+    },
+    "viscerator_ares": {
+        "name": "战争领主·阿瑞斯",
+        "desc": "🔴战争红装甲+橙色能量，毁灭性火力平台",
+        "neon_color": (255, 60, 60),       # 战争红
+        "accent_color": (255, 140, 0),     # 橙色
+        "trail_color": (139, 0, 0),        # 暗红
+        "unlocked": False,
+        "cost": 28000,
+        "trail_style": "ares_plasma",
+        "particle_count": 220,
+        "category": "exclusive",
+        "trail_width": 32,
+        "exclusive_plane": "viscerator",
+        "model_style": "viscerator_ares",
+        "animated": True,
+    },
+    "viscerator_thanatos": {
+        "name": "死神链蛇·塔纳托斯",
+        "desc": "💀死亡绿装甲+深绿能量，无尽追踪的蛇形光束",
+        "neon_color": (0, 255, 100),       # 死亡绿
+        "accent_color": (50, 205, 50),     # 亮绿
+        "trail_color": (0, 100, 0),        # 深绿
+        "unlocked": False,
+        "cost": 28000,
+        "trail_style": "thanatos_serpent",
+        "particle_count": 230,
+        "category": "exclusive",
+        "trail_width": 31,
+        "exclusive_plane": "viscerator",
+        "model_style": "viscerator_thanatos",
+        "animated": True,
+    },
+    "viscerator_artemis": {
+        "name": "月神激光·阿尔忒弥斯",
+        "desc": "🌙青色装甲+冰蓝激光，精准制导的狙击光束",
+        "neon_color": (0, 255, 255),       # 青色
+        "accent_color": (135, 206, 250),   # 冰蓝
+        "trail_color": (0, 139, 139),      # 暗青
+        "unlocked": False,
+        "cost": 30000,
+        "trail_style": "artemis_beam",
+        "particle_count": 200,
+        "category": "exclusive",
+        "trail_width": 28,
+        "exclusive_plane": "viscerator",
+        "model_style": "viscerator_artemis",
+        "animated": True,
+    },
+    "viscerator_apollo": {
+        "name": "太阳战车·阿波罗",
+        "desc": "☀️太阳橙装甲+金色火焰，炽热的等离子推进",
+        "neon_color": (255, 165, 0),       # 太阳橙
+        "accent_color": (255, 215, 0),     # 金色
+        "trail_color": (255, 69, 0),       # 烈焰红
+        "unlocked": False,
+        "cost": 30000,
+        "trail_style": "apollo_plasma",
+        "particle_count": 240,
+        "category": "exclusive",
+        "trail_width": 33,
+        "exclusive_plane": "viscerator",
+        "model_style": "viscerator_apollo",
+        "animated": True,
+    },
+    "viscerator_draedon": {
+        "name": "造物主·德雷顿",
+        "desc": "⚙️科技蓝装甲+白色能量，EXO科技的终极形态",
+        "neon_color": (0, 150, 255),       # 科技蓝
+        "accent_color": (220, 220, 255),   # 冰白
+        "trail_color": (25, 25, 112),      # 深蓝
+        "unlocked": False,
+        "cost": 40000,
+        "trail_style": "draedon_override",
+        "particle_count": 280,
+        "category": "exclusive",
+        "trail_width": 36,
+        "exclusive_plane": "viscerator",
+        "model_style": "viscerator_draedon",
+        "animated": True,
+    },
 }
 
 # ==============================================================================

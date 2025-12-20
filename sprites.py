@@ -11650,13 +11650,13 @@ class Player(pygame.sprite.Sprite):
                 self.switch_cooldown = 60
                 sound_mgr.play("select")
         
-        # 【MAGNUS】法术轮盘切换（R键）
+        # 【MAGNUS】法术轮盘切换（T键）
         if self.plane_id == "magnus" and hasattr(self, 'magnus_initialized') and self.magnus_initialized:
             if not hasattr(self, 'magnus_switch_cooldown'):
                 self.magnus_switch_cooldown = 0
             if self.magnus_switch_cooldown > 0:
                 self.magnus_switch_cooldown -= 1
-            if keys[pygame.K_r] and self.magnus_switch_cooldown <= 0:
+            if keys[pygame.K_t] and self.magnus_switch_cooldown <= 0:
                 self.magnus_spell_mode = (self.magnus_spell_mode + 1) % 4
                 self.magnus_switch_cooldown = 30  # 0.5秒冷却
                 spell_name = self.magnus_spell_names[self.magnus_spell_mode]
@@ -11669,7 +11669,7 @@ class Player(pygame.sprite.Sprite):
             
             # 初始化技能冷却
             if not hasattr(self, 'heavymetal_skill_cooldowns'):
-                self.heavymetal_skill_cooldowns = {'q': 0, 'e': 0, 'r': 0}
+                self.heavymetal_skill_cooldowns = {'q': 0, 't': 0, 'r': 0}
             
             # 更新冷却
             for key in self.heavymetal_skill_cooldowns:
@@ -11685,10 +11685,10 @@ class Player(pygame.sprite.Sprite):
                 FloatingText(cx, cy - 40, "🎸 POWER CHORD!", (255, 100, 0))
                 sound_mgr.play("explosion")
             
-            # E键 - 舞台俯冲 (冷却5秒)
-            if keys[pygame.K_e] and self.heavymetal_skill_cooldowns['e'] <= 0:
+            # T键 - 舞台俯冲 (冷却5秒)
+            if keys[pygame.K_t] and self.heavymetal_skill_cooldowns['t'] <= 0:
                 StageDiveMeteor(cx, cy - 200, cx, cy + 100, damage=self.damage * 5)
-                self.heavymetal_skill_cooldowns['e'] = 300
+                self.heavymetal_skill_cooldowns['t'] = 300
                 FloatingText(cx, cy - 40, "🔥 STAGE DIVE!", (255, 50, 0))
                 sound_mgr.play("explosion")
             
@@ -11962,6 +11962,18 @@ class Player(pygame.sprite.Sprite):
             if model_style.startswith('zenith_'):
                 return model_style
         return "zenith_default"
+
+    def _get_viscerator_style(self):
+        """获取Viscerator涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("viscerator_"):
+                return theme_id
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('viscerator_'):
+                return model_style
+        return "viscerator_default"
 
 
     def _init_sepulcher_systems(self):
@@ -13687,6 +13699,26 @@ class Player(pygame.sprite.Sprite):
                                         style=style, sword_array=self.zenith_sword_array,
                                         is_first=is_first)
         
+        # ========== 54. 光之在解·VISCERATOR - 追踪光流（软管追踪） ==========
+        elif pid == "viscerator":
+            from utils.bullets.viscerator_bullets import (
+                ExoStreamBullet, SparkStickManager, fire_exo_stream
+            )
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_viscerator_style() if hasattr(self, '_get_viscerator_style') else "viscerator_default"
+            
+            # 初始化光流系统
+            if not hasattr(self, 'viscerator_initialized') or not self.viscerator_initialized:
+                self.viscerator_spark_manager = SparkStickManager()
+                self.viscerator_initialized = True
+                self.viscerator_stream_side = 0  # 左右交替
+            
+            # 发射追踪光流 - 像软管一样弯曲追踪敌人
+            self.viscerator_stream_side = 1 - getattr(self, 'viscerator_stream_side', 0)
+            offset_x = 18 if self.viscerator_stream_side == 0 else -18
+            fire_exo_stream(cx + offset_x, cy, self.damage, self, style)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -14112,6 +14144,12 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_zenith_style() if hasattr(self, '_get_zenith_style') else "zenith_default"
                 skill = TerraBeamSkill(self, self.damage * 2, style=style)
                 all_sprites.add(skill)
+            
+            elif pid == "viscerator":
+                # 【推进器反转】F技能：向后释放锥形光爆，击退敌人并清弹
+                from utils.bullets.viscerator_bullets import fire_reverse_thrust
+                style = self._get_viscerator_style() if hasattr(self, '_get_viscerator_style') else "viscerator_default"
+                fire_reverse_thrust(self.rect.centerx, self.rect.centery, self.damage * 1.5, self, style)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -15144,7 +15182,8 @@ class Player(pygame.sprite.Sprite):
                 "sepulcher": "天降灾厄",
                 "galaxia": "星系陷阱",
                 "magnus": "远古之灵",
-                "heavymetal": "回音墙"
+                "heavymetal": "回音墙",
+                "viscerator": "粒子风暴"
             }
             
             pid = self.plane_id
@@ -15437,6 +15476,12 @@ class Player(pygame.sprite.Sprite):
                 skill = MeowmereBombSkill(self, self.damage * 1.5, style=style)
                 all_sprites.add(skill)
             
+            elif pid == "viscerator":
+                # 【粒子风暴】G技能：12方向粉绿双色高速粒子扩散
+                from utils.bullets.viscerator_bullets import fire_focus_beam
+                style = self._get_viscerator_style() if hasattr(self, '_get_viscerator_style') else "viscerator_default"
+                fire_focus_beam(self.rect.centerx, self.rect.top, self.damage * 2, self, style)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -15505,7 +15550,9 @@ class Player(pygame.sprite.Sprite):
                 "galaxia": "苍穹撕裂",
                 "magnus": "真理之圆",
                 "heavymetal": "地狱开场",
-                "scarlet": "命运之枪"
+                "scarlet": "命运之枪",
+                "zenith": "天顶霸主",
+                "viscerator": "星流过载"
             }
             
             pid = self.plane_id
@@ -15763,6 +15810,13 @@ class Player(pygame.sprite.Sprite):
                 all_sprites.add(skill)
                 FloatingText(self.rect.centerx, self.rect.top - 50, "★ 天顶霸主 ★", (75, 0, 130))
             
+            elif pid == "viscerator":
+                # 【星流过载】C技能：召唤环绕棱镜，自动发射追踪激光
+                from utils.bullets.viscerator_bullets import create_exo_overload
+                style = self._get_viscerator_style() if hasattr(self, '_get_viscerator_style') else "viscerator_default"
+                create_exo_overload(self, self.damage * 1.5, style)
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 星流过载 ★", (255, 20, 147))
+            
             else:
                 # 通用：全屏伤害
                 for m in list(mobs):
@@ -15798,6 +15852,13 @@ class Player(pygame.sprite.Sprite):
                 skill = PrismBreakSkill(self, self.damage * 5, style=style)
                 all_sprites.add(skill)
                 FloatingText(self.rect.centerx, self.rect.top - 50, "★ 棱镜折射 ★", (255, 0, 255))
+            
+            elif pid == "viscerator":
+                # 【光子湮灭】R技能（终极大招）：交叉激光雨 + 中心爆炸
+                from utils.bullets.viscerator_bullets import fire_light_of_destruction
+                style = self._get_viscerator_style() if hasattr(self, '_get_viscerator_style') else "viscerator_default"
+                fire_light_of_destruction(self, self.damage * 4, style)
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 光子湮灭 ★", (255, 20, 147))
             
             else:
                 # 通用：冲刺攻击

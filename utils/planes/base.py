@@ -469,6 +469,13 @@ def _generate_plane_surf(pid, visual=None, static=False):
             if result:
                 return result
         
+        # 尝试 Viscerator 专属涂装（光之在解·VISCERATOR）
+        from .skins_viscerator import is_viscerator_style, draw_viscerator_plane
+        if is_viscerator_style(model_style):
+            frame = int(t * 60) if t > 0 else 0
+            draw_viscerator_plane(s, model_style, frame)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -671,6 +678,12 @@ def _generate_plane_surf(pid, visual=None, static=False):
         from .skins_zenith import draw_zenith
         frame = int(t * 60) if t > 0 else 0
         draw_zenith(s, c, 10, 10, 100, 100, frame, "zenith_default")
+    
+    # 光之在解 - Viscerator
+    elif pid == "viscerator":
+        from .skins_viscerator import draw_viscerator_plane
+        frame = int(t * 60) if t > 0 else 0
+        draw_viscerator_plane(s, "viscerator_default", frame)
     
     else:
         # 默认占位图形

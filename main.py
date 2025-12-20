@@ -4383,13 +4383,13 @@ def draw_top_hud():
         
         if ult4_ready:
             ult4_color = (255, 80, 120)
-            ult4_text = "[E] 深红世界 就绪!"
+            ult4_text = "[R] 深红世界 就绪!"
         elif ult4_cd > 0:
             ult4_color = (100, 40, 50)
-            ult4_text = f"[E] CD {ult4_cd / 60.0:.1f}s"
+            ult4_text = f"[R] CD {ult4_cd / 60.0:.1f}s"
         else:
             ult4_color = (int(150 + 105 * ult4_ratio), int(30 + 50 * ult4_ratio), int(50 + 80 * ult4_ratio))
-            ult4_text = f"[E] 深红世界 {int(ult4_pct)}%"
+            ult4_text = f"[R] 深红世界 {int(ult4_pct)}%"
         
         draw_status_icon(screen, panel_x + 8, ult4_bar_y - 2, 20, "flame", ult4_color, anim_frame if ult4_ready else 0)
         draw_premium_bar(screen, bar_x, ult4_bar_y, bar_w, int(bar_h * 0.8), ult4_pct, ult4_color,
@@ -4835,17 +4835,87 @@ def draw_top_hud():
         
         if ult4_ready:
             ult4_color = (200, 100, 255)
-            ult4_text = "[E] 棱镜折射 就绪!"
+            ult4_text = "[R] 棱镜折射 就绪!"
         elif ult4_cd > 0:
             ult4_color = (60, 40, 80)
-            ult4_text = f"[E] CD {ult4_cd / 60.0:.1f}s"
+            ult4_text = f"[R] CD {ult4_cd / 60.0:.1f}s"
         else:
             ult4_color = (int(100 + 100 * ult4_ratio), int(50 * ult4_ratio), int(150 + 105 * ult4_ratio))
-            ult4_text = f"[E] 棱镜折射 {int(ult4_pct)}%"
+            ult4_text = f"[R] 棱镜折射 {int(ult4_pct)}%"
         
         draw_status_icon(screen, panel_x + 8, ult4_bar_y - 2, 20, "star", ult4_color, anim_frame if ult4_ready else 0)
         draw_premium_bar(screen, bar_x, ult4_bar_y, bar_w, int(bar_h * 0.8), ult4_pct, ult4_color,
                          bg_color=(20, 10, 35), glow=ult4_ready, animate_frame=anim_frame if ult4_ready else 0)
+        draw_text(screen, ult4_text, 14, label_x, ult4_bar_y, ult4_color if ult4_ready else WHITE, glow=ult4_ready, align='left')
+    
+    # 【光之在解·VISCERATOR】光子火花显示 - 被动累积系统
+    if hasattr(player, 'plane_id') and player.plane_id == "viscerator":
+        spark_manager = getattr(player, 'viscerator_spark_manager', None)
+        
+        # 计算所有敌人身上的火花总数
+        total_sparks = 0
+        max_spark_enemy = None
+        max_sparks = 0
+        
+        if spark_manager:
+            for eid, count in spark_manager.sparks.items():
+                total_sparks += count
+                if count > max_sparks:
+                    max_sparks = count
+        
+        spark_threshold = 8
+        bar_pct = (max_sparks / spark_threshold) * 100 if max_sparks > 0 else 0
+        
+        # 颜色基于最大火花数
+        if max_sparks >= 6:
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            # 粉色和绿色交替闪烁
+            if int(pygame.time.get_ticks() / 200) % 2 == 0:
+                spark_color = (int(255), int(20 + 127 * flash), int(147 + 50 * flash))  # 深粉
+            else:
+                spark_color = (int(127 + 80 * flash), int(255), int(0))  # 黄绿
+        elif max_sparks >= 3:
+            ratio = max_sparks / spark_threshold
+            spark_color = (int(200 + 55 * ratio), int(80 + 100 * ratio), int(120 + 80 * ratio))
+        else:
+            spark_color = (180, 100, 130) if max_sparks > 0 else (100, 60, 80)
+        
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "bolt", spark_color, anim_frame if max_sparks >= 6 else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, spark_color,
+                       bg_color=(30, 15, 25), glow=max_sparks >= 6, animate_frame=anim_frame if max_sparks >= 6 else 0)
+        
+        if max_sparks >= 6:
+            status_text = f"光子临界! {max_sparks}/{spark_threshold}"
+        elif total_sparks > 0:
+            status_text = f"火花 {max_sparks}/{spark_threshold} 总计:{total_sparks}"
+        else:
+            status_text = "光子火花待累积"
+        
+        draw_text(screen, status_text, 15, label_x, special_bar_y, spark_color if max_sparks >= 6 else WHITE, glow=max_sparks >= 6, align='left')
+        
+        # 【毁灭之光】第四大招显示
+        ult4_bar_y = special_bar_y + bar_gap
+        ult4_charge = getattr(player, 'ult4_charge', 0)
+        max_ult4 = getattr(player, 'max_ult4_charge', 100)
+        ult4_cd = getattr(player, 'ult4_cooldown', 0)
+        ult4_ratio = ult4_charge / max_ult4 if max_ult4 > 0 else 0
+        ult4_ready = ult4_ratio >= 1.0 and ult4_cd <= 0
+        ult4_pct = ult4_ratio * 100
+        
+        if ult4_ready:
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            ult4_color = (int(255), int(20 + 100 * flash), int(147 + 50 * flash))
+            ult4_text = "[R] 毁灭之光 就绪!"
+        elif ult4_cd > 0:
+            ult4_color = (80, 40, 60)
+            ult4_text = f"[R] CD {ult4_cd / 60.0:.1f}s"
+        else:
+            ult4_color = (int(180 + 75 * ult4_ratio), int(20 + 80 * ult4_ratio), int(100 + 47 * ult4_ratio))
+            ult4_text = f"[R] 毁灭之光 {int(ult4_pct)}%"
+        
+        draw_status_icon(screen, panel_x + 8, ult4_bar_y - 2, 20, "flame", ult4_color, anim_frame if ult4_ready else 0)
+        draw_premium_bar(screen, bar_x, ult4_bar_y, bar_w, int(bar_h * 0.8), ult4_pct, ult4_color,
+                         bg_color=(30, 10, 20), glow=ult4_ready, animate_frame=anim_frame if ult4_ready else 0)
         draw_text(screen, ult4_text, 14, label_x, ult4_bar_y, ult4_color if ult4_ready else WHITE, glow=ult4_ready, align='left')
     
     # ===== 顶部右侧：高级积分和时间面板 =====
@@ -5186,7 +5256,7 @@ def draw_top_hud():
         "yharon": "龙群盛宴", "scarlet": "绯红不夜城",
         "providence": "神圣射线", "goliath": "瘟疫核弹", "sepulcher": "天降灾厄",
         "galaxia": "星系陷阱", "magnus": "远古亡灵召唤", "heavymetal": "舞台俯冲",
-        "zenith": "传奇剑舞"
+        "zenith": "传奇剑舞", "viscerator": "归束轰击"
     }
     ult2_name = ult2_names.get(player.plane_id, '次级技能')
     ult2_y = bar1_y + bar1_h + 4
@@ -5232,7 +5302,7 @@ def draw_top_hud():
         "yharon": "宿敌升天", "scarlet": "命运之枪",
         "providence": "超新星爆发", "goliath": "盖亚之死", "sepulcher": "湮灭之眼",
         "galaxia": "苍穹撕裂", "magnus": "真理魔法阵", "heavymetal": "死亡金属独奏",
-        "zenith": "终极剑阵"
+        "zenith": "终极剑阵", "viscerator": "星流过载"
     }
     ult3_name = ult3_names.get(player.plane_id, '终极技能')
     ult3_y = bar2_y + bar2_h + 4
@@ -6668,8 +6738,8 @@ while True:
                         elif event.key == pygame.K_c:
                             # C键释放第三大招
                             player.use_tertiary_ultimate()
-                        elif event.key == pygame.K_e:
-                            # E键释放第四大招
+                        elif event.key == pygame.K_r:
+                            # R键释放第四大招
                             player.use_quaternary_ultimate()
                         elif event.key == pygame.K_SPACE:
                             if player.skill_cd <= 0:
@@ -8803,8 +8873,8 @@ while True:
                             player.ult2_charge = min(player.max_ult2_charge, player.ult2_charge + ult_charge_gain * 0.8)
                             # 【新】同时充能第三大招（C键）
                             player.ult3_charge = min(player.max_ult3_charge, player.ult3_charge + ult_charge_gain * 0.6)
-                            # 【新】同时充能第四大招（E键）- SCARLET/ZENITH专属
-                            if hasattr(player, 'plane_id') and player.plane_id in ("scarlet", "zenith"):
+                            # 【新】同时充能第四大招（R键）- SCARLET/ZENITH/VISCERATOR专属
+                            if hasattr(player, 'plane_id') and player.plane_id in ("scarlet", "zenith", "viscerator"):
                                 player.ult4_charge = min(player.max_ult4_charge, player.ult4_charge + ult_charge_gain * 0.4)
                             
                             # 【优化】分裂射击：子弹击中敌人时生成分裂子弹（分裂弹不再分裂）

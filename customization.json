@@ -631,7 +631,13 @@
     "zenith_meowmere": true,
     "zenith_stardust": true,
     "zenith_solar": true,
-    "zenith_void": true
+    "zenith_void": true,
+    "viscerator_default": true,
+    "viscerator_ares": true,
+    "viscerator_thanatos": true,
+    "viscerator_artemis": true,
+    "viscerator_apollo": true,
+    "viscerator_draedon": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -691,7 +697,8 @@
     "magnus": "magnus_holy",
     "heavymetal": "heavymetal_toxic",
     "scarlet": "scarlet_gothic",
-    "zenith": "zenith_default"
+    "zenith": "zenith_default",
+    "viscerator": "viscerator_default"
   },
   "unlocked_bullet_themes": {
     "default": true,

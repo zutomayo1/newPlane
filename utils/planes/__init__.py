@@ -108,6 +108,7 @@ from .skins_magnus import render_magnus_plane, is_magnus_style, get_magnus_theme
 from .skins_heavymetal import render_heavymetal_plane, render_heavymetal_skin, is_heavymetal_style, get_heavymetal_theme, get_all_heavymetal_styles, HEAVYMETAL_THEMES, HEAVYMETAL_STYLES, draw_heavymetal, _render_heavymetal_base
 from .skins_scarlet import render_scarlet_skin, is_scarlet_style, SCARLET_STYLES, _render_scarlet_base, get_scarlet_theme
 from .skins_zenith import draw_zenith, is_zenith_style, render_zenith_skin, ZENITH_STYLES, get_zenith_theme
+from .skins_viscerator import draw_viscerator_plane, is_viscerator_style, get_viscerator_theme, VISCERATOR_STYLES
 
 # DukeFishron样式定义 - 12个高质量涂装（带duke_前缀避免冲突）
 DUKEFISHRON_STYLES = [
@@ -170,5 +171,6 @@ __all__ = [
     'render_magnus_plane', 'is_magnus_style', 'get_magnus_theme', 'get_all_magnus_styles', 'MAGNUS_THEMES',
     'render_heavymetal_plane', 'render_heavymetal_skin', 'is_heavymetal_style', 'get_heavymetal_theme', 'get_all_heavymetal_styles', 'HEAVYMETAL_THEMES', 'HEAVYMETAL_STYLES', 'draw_heavymetal', '_render_heavymetal_base',
     'render_scarlet_skin', 'is_scarlet_style', 'SCARLET_STYLES', '_render_scarlet_base', 'get_scarlet_theme',
-    'render_zenith_skin', 'is_zenith_style', 'ZENITH_STYLES', 'draw_zenith', 'get_zenith_theme'
+    'render_zenith_skin', 'is_zenith_style', 'ZENITH_STYLES', 'draw_zenith', 'get_zenith_theme',
+    'draw_viscerator_plane', 'is_viscerator_style', 'get_viscerator_theme', 'VISCERATOR_STYLES'
 ]
