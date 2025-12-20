@@ -11975,6 +11975,18 @@ class Player(pygame.sprite.Sprite):
                 return model_style
         return "viscerator_default"
 
+    def _get_crusher_style(self):
+        """获取Crusher涂装样式名称"""
+        if hasattr(self, 'bullet_theme_id') and self.bullet_theme_id:
+            theme_id = self.bullet_theme_id
+            if theme_id.startswith("crusher_"):
+                return theme_id
+        if hasattr(self, 'visual') and self.visual:
+            model_style = self.visual.get('model_style', '')
+            if model_style.startswith('crusher_'):
+                return model_style
+        return "crusher_default"
+
 
     def _init_sepulcher_systems(self):
         """初始化Sepulcher的特殊系统"""
@@ -13719,6 +13731,30 @@ class Player(pygame.sprite.Sprite):
             offset_x = 18 if self.viscerator_stream_side == 0 else -18
             fire_exo_stream(cx + offset_x, cy, self.damage, self, style)
         
+        # ========== 55. 晶体粉碎者·CRUSHER - 荒芜光束（瞬发穿透） ==========
+        elif pid == "crusher":
+            from utils.bullets.crusher_bullets import DesolationBeamBullet
+            
+            cx, cy = self.rect.centerx, self.rect.top - 5
+            style = self._get_crusher_style() if hasattr(self, '_get_crusher_style') else "crusher_default"
+            
+            # 初始化CRUSHER系统
+            if not hasattr(self, 'crusher_initialized') or not self.crusher_initialized:
+                self.crusher_beam_side = 0           # 光束左右交替
+                self.crusher_armor_stacks = 0        # 晶体护甲层数
+                self.crusher_max_armor = 20          # 最大护甲层数
+                self.crusher_initialized = True
+            
+            # 发射荒芜光束 - 瞬发穿透
+            self.crusher_beam_side = 1 - self.crusher_beam_side
+            offset_x = 15 if self.crusher_beam_side == 0 else -15
+            beam = DesolationBeamBullet(cx + offset_x, cy, self.damage, self, style)
+            all_sprites.add(beam)
+            bullets.add(beam)
+            
+            # 每次射击累积R技能能量（每次+1.5%，约67次满）
+            self.ult4_charge = min(self.max_ult4_charge, self.ult4_charge + 1.5)
+        
         # 默认情况
         else:
             cnt = self.bullet_count
@@ -14150,6 +14186,13 @@ class Player(pygame.sprite.Sprite):
                 from utils.bullets.viscerator_bullets import fire_reverse_thrust
                 style = self._get_viscerator_style() if hasattr(self, '_get_viscerator_style') else "viscerator_default"
                 fire_reverse_thrust(self.rect.centerx, self.rect.centery, self.damage * 1.5, self, style)
+            
+            elif pid == "crusher":
+                # 【相位冲撞】F技能：向前相位冲刺，破盾+无敌+击穿敌人
+                from utils.bullets.crusher_bullets import WarpDashEffect
+                style = self._get_crusher_style() if hasattr(self, '_get_crusher_style') else "crusher_default"
+                skill = WarpDashEffect(self, self.damage * 2, style=style)
+                all_sprites.add(skill)
             
             else:
                 # 通用：全屏清弹 + 通用爆炸
@@ -15183,7 +15226,8 @@ class Player(pygame.sprite.Sprite):
                 "galaxia": "星系陷阱",
                 "magnus": "远古之灵",
                 "heavymetal": "回音墙",
-                "viscerator": "粒子风暴"
+                "viscerator": "粒子风暴",
+                "crusher": "牵引光束"
             }
             
             pid = self.plane_id
@@ -15482,6 +15526,13 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_viscerator_style() if hasattr(self, '_get_viscerator_style') else "viscerator_default"
                 fire_focus_beam(self.rect.centerx, self.rect.top, self.damage * 2, self, style)
             
+            elif pid == "crusher":
+                # 【牵引光束】G技能：扇形牵引波，将敌人拉向玩家并减速
+                from utils.bullets.crusher_bullets import TractorBeamEffect
+                style = self._get_crusher_style() if hasattr(self, '_get_crusher_style') else "crusher_default"
+                skill = TractorBeamEffect(self, self.damage * 1.5, style=style)
+                all_sprites.add(skill)
+            
             else:
                 # 通用：清弹
                 enemy_bullets.empty()
@@ -15552,7 +15603,8 @@ class Player(pygame.sprite.Sprite):
                 "heavymetal": "地狱开场",
                 "scarlet": "命运之枪",
                 "zenith": "天顶霸主",
-                "viscerator": "星流过载"
+                "viscerator": "星流过载",
+                "crusher": "共振破碎"
             }
             
             pid = self.plane_id
@@ -15817,6 +15869,14 @@ class Player(pygame.sprite.Sprite):
                 create_exo_overload(self, self.damage * 1.5, style)
                 FloatingText(self.rect.centerx, self.rect.top - 50, "★ 星流过载 ★", (255, 20, 147))
             
+            elif pid == "crusher":
+                # 【共振破碎】C技能：全屏晶体震爆，伤害所有敌人+清除敌弹
+                from utils.bullets.crusher_bullets import ResonanceBreakEffect
+                style = self._get_crusher_style() if hasattr(self, '_get_crusher_style') else "crusher_default"
+                skill = ResonanceBreakEffect(self, self.damage * 3, style=style)
+                all_sprites.add(skill)
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 共振破碎 ★", (138, 43, 226))
+            
             else:
                 # 通用：全屏伤害
                 for m in list(mobs):
@@ -15859,6 +15919,17 @@ class Player(pygame.sprite.Sprite):
                 style = self._get_viscerator_style() if hasattr(self, '_get_viscerator_style') else "viscerator_default"
                 fire_light_of_destruction(self, self.damage * 4, style)
                 FloatingText(self.rect.centerx, self.rect.top - 50, "★ 光子湮灭 ★", (255, 20, 147))
+            
+            elif pid == "crusher":
+                # 【核心过载】R技能（终极大招）：释放积累的护甲能量，巨型钻头冲击波
+                from utils.bullets.crusher_bullets import CoreMeltdownEffect
+                style = self._get_crusher_style() if hasattr(self, '_get_crusher_style') else "crusher_default"
+                armor_stacks = getattr(self, 'crusher_armor_stacks', 0)
+                skill = CoreMeltdownEffect(self, self.damage * 5, style=style, armor_stacks=armor_stacks)
+                all_sprites.add(skill)
+                # 消耗所有护甲层数
+                self.crusher_armor_stacks = 0
+                FloatingText(self.rect.centerx, self.rect.top - 50, "★ 次元坍缩 ★", (138, 43, 226))
             
             else:
                 # 通用：冲刺攻击
@@ -16040,6 +16111,26 @@ class Player(pygame.sprite.Sprite):
     
     def take_damage(self, amount):
         """受到伤害，考虑护盾和装甲"""
+        # CRUSHER特殊机制：撞击护甲（受到伤害时积累层数，减少受到的伤害）
+        if hasattr(self, 'plane_id') and self.plane_id == "crusher":
+            # 确保护甲系统已初始化
+            if not hasattr(self, 'crusher_initialized') or not self.crusher_initialized:
+                self.crusher_armor_stacks = 0
+                self.crusher_max_armor = 20  # 最大20层
+                self.crusher_initialized = True
+            
+            # 每次受击增加1层护甲
+            if self.crusher_armor_stacks < self.crusher_max_armor:
+                self.crusher_armor_stacks += 1
+                # 显示护甲增加提示
+                if self.crusher_armor_stacks % 5 == 0:  # 每5层显示一次
+                    FloatingText(self.rect.centerx, self.rect.centery - 20, 
+                               f"晶甲+{self.crusher_armor_stacks}", (138, 43, 226))
+            
+            # 每层护甲减少2%伤害
+            armor_reduction = self.crusher_armor_stacks * 0.02
+            amount = amount * (1 - armor_reduction)
+        
         # 装甲减伤
         reduced = amount * (1 - self.damage_reduction)
         

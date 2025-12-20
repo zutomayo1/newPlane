@@ -476,6 +476,13 @@ def _generate_plane_surf(pid, visual=None, static=False):
             draw_viscerator_plane(s, model_style, frame)
             return s
         
+        # 尝试 Crusher 专属涂装（晶体粉碎者·CRUSHER）
+        from .skins_crusher import is_crusher_style, draw_crusher_plane
+        if is_crusher_style(model_style):
+            frame = int(t * 60) if t > 0 else 0
+            draw_crusher_plane(s, model_style, frame)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -684,6 +691,12 @@ def _generate_plane_surf(pid, visual=None, static=False):
         from .skins_viscerator import draw_viscerator_plane
         frame = int(t * 60) if t > 0 else 0
         draw_viscerator_plane(s, "viscerator_default", frame)
+    
+    # 晶体粉碎者 - Crusher
+    elif pid == "crusher":
+        from .skins_crusher import draw_crusher_plane
+        frame = int(t * 60) if t > 0 else 0
+        draw_crusher_plane(s, "crusher_default", frame)
     
     else:
         # 默认占位图形

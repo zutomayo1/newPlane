@@ -85,11 +85,15 @@ from .scarlet_bullets import (render_scarlet_bullet, ScarletLanceBullet, MistBli
 from .zenith_bullets import (ZENITH_THEMES, ThrowingSwordBullet, FractalShield,
                               TerraBeamSkill, MeowmereBombSkill, ZenithOverdriveSkill,
                               PrismBreakSkill, render_zenith_bullet_preview)
-from .viscerator_bullets import (VISCERATOR_THEMES, ExoStreamBullet, ReverseThrustBlast,
-                                  FocusBeamBullet, ExoPrism, PrismLaser, LightOfDestructionBullet,
+from .viscerator_bullets import (ExoStreamBullet, ReverseThrustBlast,
+                                  ExoPrism, PrismLaser,
                                   fire_exo_stream, fire_reverse_thrust, fire_focus_beam,
                                   fire_light_of_destruction, create_exo_overload,
-                                  get_spark_manager, reset_spark_manager, SparkStickManager)
+                                  get_spark_manager, SparkStickManager,
+                                  fire_particle_storm, fire_photon_annihilation)
+from .crusher_bullets import (DesolationBeamBullet, BeamHitEffect, WarpDashEffect,
+                               CrushSpark, TractorBeamEffect, ResonanceBreakEffect,
+                               CrystalShatterEffect, MiniShatter, CoreMeltdownEffect)
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
@@ -128,8 +132,12 @@ __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES',
            'ZENITH_THEMES', 'ThrowingSwordBullet', 'FractalShield',
            'TerraBeamSkill', 'MeowmereBombSkill', 'ZenithOverdriveSkill',
            'PrismBreakSkill', 'render_zenith_bullet_preview',
-           'VISCERATOR_THEMES', 'ExoStreamBullet', 'ReverseThrustBlast',
-           'FocusBeamBullet', 'ExoPrism', 'PrismLaser', 'LightOfDestructionBullet',
+           'ExoStreamBullet', 'ReverseThrustBlast',
+           'ExoPrism', 'PrismLaser',
            'fire_exo_stream', 'fire_reverse_thrust', 'fire_focus_beam',
            'fire_light_of_destruction', 'create_exo_overload',
-           'get_spark_manager', 'reset_spark_manager', 'SparkStickManager']
+           'get_spark_manager', 'SparkStickManager',
+           'fire_particle_storm', 'fire_photon_annihilation',
+           'DesolationBeamBullet', 'BeamHitEffect', 'WarpDashEffect',
+           'CrushSpark', 'TractorBeamEffect', 'ResonanceBreakEffect',
+           'CrystalShatterEffect', 'MiniShatter', 'CoreMeltdownEffect']

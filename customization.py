@@ -10417,6 +10417,104 @@ PAINT_THEMES = {
         "model_style": "viscerator_draedon",
         "animated": True,
     },
+    
+    # ========== CRUSHER (晶体粉碎者) 专属涂装 ==========
+    "crusher_default": {
+        "name": "晶体紫·原型",
+        "desc": "💎晶体紫装甲+虚空黑底色，基础采矿舰配色",
+        "neon_color": (138, 43, 226),      # 晶体紫
+        "accent_color": (230, 230, 250),   # 激光辉光
+        "trail_color": (25, 25, 25),       # 虚空黑
+        "unlocked": True,
+        "cost": 0,
+        "trail_style": "crystal_beam",
+        "particle_count": 150,
+        "category": "exclusive",
+        "trail_width": 22,
+        "exclusive_plane": "crusher",
+        "model_style": "crusher_default",
+        "animated": True,
+    },
+    "crusher_crimson": {
+        "name": "熔岩钻头·赤炎",
+        "desc": "🔥深红装甲+岩浆橙纹路，专攻火山星球的改装版",
+        "neon_color": (178, 34, 34),       # 深红
+        "accent_color": (255, 69, 0),      # 岩浆橙
+        "trail_color": (139, 0, 0),        # 暗红
+        "unlocked": False,
+        "cost": 15000,
+        "trail_style": "magma_flow",
+        "particle_count": 180,
+        "category": "exclusive",
+        "trail_width": 25,
+        "exclusive_plane": "crusher",
+        "model_style": "crusher_crimson",
+        "animated": True,
+    },
+    "crusher_azure": {
+        "name": "冰晶采集者·极寒",
+        "desc": "❄️冰蓝装甲+白色霜纹，极地行星开采专用型",
+        "neon_color": (0, 191, 255),       # 深天蓝
+        "accent_color": (240, 255, 255),   # 霜白
+        "trail_color": (25, 25, 112),      # 深蓝
+        "unlocked": False,
+        "cost": 18000,
+        "trail_style": "ice_shard",
+        "particle_count": 160,
+        "category": "exclusive",
+        "trail_width": 24,
+        "exclusive_plane": "crusher",
+        "model_style": "crusher_azure",
+        "animated": True,
+    },
+    "crusher_emerald": {
+        "name": "翡翠矿脉·翠绿",
+        "desc": "💚翠绿装甲+金色矿脉纹路，稀有宝石采集专家",
+        "neon_color": (0, 201, 87),        # 翠绿
+        "accent_color": (255, 215, 0),     # 金色
+        "trail_color": (0, 100, 0),        # 深绿
+        "unlocked": False,
+        "cost": 20000,
+        "trail_style": "emerald_pulse",
+        "particle_count": 170,
+        "category": "exclusive",
+        "trail_width": 26,
+        "exclusive_plane": "crusher",
+        "model_style": "crusher_emerald",
+        "animated": True,
+    },
+    "crusher_golden": {
+        "name": "黄金矿主·财富",
+        "desc": "✨纯金装甲+白金边框，富有的星际矿业巨头专属",
+        "neon_color": (255, 215, 0),       # 金色
+        "accent_color": (229, 228, 226),   # 白金
+        "trail_color": (184, 134, 11),     # 暗金
+        "unlocked": False,
+        "cost": 35000,
+        "trail_style": "gold_dust",
+        "particle_count": 220,
+        "category": "exclusive",
+        "trail_width": 30,
+        "exclusive_plane": "crusher",
+        "model_style": "crusher_golden",
+        "animated": True,
+    },
+    "crusher_void": {
+        "name": "虚空撕裂者·深渊",
+        "desc": "🌑纯黑装甲+深紫能量，突破次元壁的终极改造",
+        "neon_color": (48, 0, 48),         # 深紫黑
+        "accent_color": (148, 0, 211),     # 暗紫
+        "trail_color": (0, 0, 0),          # 纯黑
+        "unlocked": False,
+        "cost": 50000,
+        "trail_style": "void_rift",
+        "particle_count": 250,
+        "category": "exclusive",
+        "trail_width": 35,
+        "exclusive_plane": "crusher",
+        "model_style": "crusher_void",
+        "animated": True,
+    },
 }
 
 # ==============================================================================

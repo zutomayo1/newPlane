@@ -4918,6 +4918,65 @@ def draw_top_hud():
                          bg_color=(30, 10, 20), glow=ult4_ready, animate_frame=anim_frame if ult4_ready else 0)
         draw_text(screen, ult4_text, 14, label_x, ult4_bar_y, ult4_color if ult4_ready else WHITE, glow=ult4_ready, align='left')
     
+    # 【晶体粉碎者·CRUSHER】撞击护甲显示 - 被动减伤 + R技能
+    if hasattr(player, 'plane_id') and player.plane_id == "crusher":
+        armor_stacks = getattr(player, 'crusher_armor_stacks', 0)
+        max_armor = getattr(player, 'crusher_max_armor', 20)
+        
+        armor_ratio = armor_stacks / max_armor if max_armor > 0 else 0
+        bar_pct = armor_ratio * 100
+        
+        # 颜色基于护甲层数（紫色系）
+        if armor_stacks >= 15:
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            crusher_color = (int(138 + 80 * flash), int(43 + 60 * flash), int(226 + 29 * flash))
+        elif armor_stacks >= 8:
+            crusher_color = (int(120 + 40 * armor_ratio), int(30 + 30 * armor_ratio), int(200 + 56 * armor_ratio))
+        else:
+            crusher_color = (int(100 + 38 * armor_ratio), int(20 + 23 * armor_ratio), int(180 + 46 * armor_ratio)) if armor_stacks > 0 else (80, 20, 140)
+        
+        draw_status_icon(screen, panel_x + 8, special_bar_y - 2, 20, "shield", crusher_color, anim_frame if armor_stacks >= 15 else 0)
+        draw_premium_bar(screen, bar_x, special_bar_y, bar_w, bar_h, bar_pct, crusher_color,
+                       bg_color=(25, 10, 40), glow=armor_stacks >= 15, animate_frame=anim_frame if armor_stacks >= 15 else 0)
+        
+        reduction_pct = int(armor_stacks * 2)
+        if armor_stacks >= 15:
+            status_text = f"晶甲满载! {armor_stacks}/{max_armor} (-{reduction_pct}%)"
+        elif armor_stacks > 0:
+            status_text = f"晶甲 {armor_stacks}/{max_armor} (减伤{reduction_pct}%)"
+        else:
+            status_text = "晶体护甲待激活"
+        
+        draw_text(screen, status_text, 15, label_x, special_bar_y, crusher_color if armor_stacks >= 15 else WHITE, glow=armor_stacks >= 15, align='left')
+        
+        # 【核心过载】第四大招显示
+        ult4_bar_y = special_bar_y + bar_gap
+        ult4_charge = getattr(player, 'ult4_charge', 0)
+        max_ult4 = getattr(player, 'max_ult4_charge', 100)
+        ult4_cd = getattr(player, 'ult4_cooldown', 0)
+        ult4_ratio = ult4_charge / max_ult4 if max_ult4 > 0 else 0
+        ult4_ready = ult4_ratio >= 1.0 and ult4_cd <= 0
+        ult4_pct = ult4_ratio * 100
+        
+        # R技能伤害加成（基于护甲层数）
+        dmg_bonus = int(armor_stacks * 15)
+        
+        if ult4_ready:
+            flash = abs(math.sin(pygame.time.get_ticks() / 80))
+            ult4_color = (int(138 + 80 * flash), int(43 + 60 * flash), int(226 + 29 * flash))
+            ult4_text = f"[R] 次元坍缩 就绪! (+{dmg_bonus}%)"
+        elif ult4_cd > 0:
+            ult4_color = (60, 20, 100)
+            ult4_text = f"[R] CD {ult4_cd / 60.0:.1f}s"
+        else:
+            ult4_color = (int(100 + 38 * ult4_ratio), int(30 + 13 * ult4_ratio), int(180 + 46 * ult4_ratio))
+            ult4_text = f"[R] 次元坍缩 {int(ult4_pct)}% (+{dmg_bonus}%)"
+        
+        draw_status_icon(screen, panel_x + 8, ult4_bar_y - 2, 20, "flame", ult4_color, anim_frame if ult4_ready else 0)
+        draw_premium_bar(screen, bar_x, ult4_bar_y, bar_w, int(bar_h * 0.8), ult4_pct, ult4_color,
+                         bg_color=(25, 10, 40), glow=ult4_ready, animate_frame=anim_frame if ult4_ready else 0)
+        draw_text(screen, ult4_text, 14, label_x, ult4_bar_y, ult4_color if ult4_ready else WHITE, glow=ult4_ready, align='left')
+    
     # ===== 顶部右侧：高级积分和时间面板 =====
     anim_frame = pygame.time.get_ticks() // 16
     panel_right_x = WIDTH - 170
@@ -9156,6 +9215,13 @@ while True:
                         hits = pygame.sprite.spritecollide(player, mobs, False, pygame.sprite.collide_circle)
                         hits.extend(pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle))
                         if hits:
+                            # 【晶体粉碎者】牵引光束无敌检查
+                            if getattr(player, 'tractor_immune', False):
+                                FloatingText(player.rect.centerx, player.rect.top, "牵引护盾!", (138, 43, 226))
+                                for _ in range(3):
+                                    Particle(player.rect.center, (138, 43, 226))
+                                continue  # 免疫伤害
+                            
                             # 【瘟疫使者·歌莉娅】瘟疫冲锋无敌帧检查
                             if hasattr(player, 'plane_id') and player.plane_id == "goliath":
                                 if getattr(player, 'goliath_invincible', 0) > 0:

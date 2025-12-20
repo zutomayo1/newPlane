@@ -637,7 +637,13 @@
     "viscerator_thanatos": true,
     "viscerator_artemis": true,
     "viscerator_apollo": true,
-    "viscerator_draedon": true
+    "viscerator_draedon": true,
+    "crusher_default": true,
+    "crusher_crimson": true,
+    "crusher_azure": true,
+    "crusher_emerald": true,
+    "crusher_golden": true,
+    "crusher_void": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -698,7 +704,8 @@
     "heavymetal": "heavymetal_toxic",
     "scarlet": "scarlet_gothic",
     "zenith": "zenith_default",
-    "viscerator": "viscerator_default"
+    "viscerator": "viscerator_default",
+    "crusher": "crusher_crimson"
   },
   "unlocked_bullet_themes": {
     "default": true,
