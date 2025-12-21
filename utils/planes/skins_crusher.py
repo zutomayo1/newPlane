@@ -1842,6 +1842,7 @@ def _draw_top_effects(surf, cx, cy, theme, t):
 # =============================================================================
 
 _cache = {}
+_flash_cache = {}
 
 
 def _build_cache(size, style):
@@ -1874,25 +1875,28 @@ def draw_crusher_plane(surface, style, frame, damage_flash=0, shield_active=Fals
     
     # 受伤闪白
     if damage_flash > 0 and (damage_flash // 2) % 2 == 0:
-        white_surf = pygame.Surface((size, size), pygame.SRCALPHA)
-        # 精细闪白轮廓
-        flash_pts = [
-            (cx - 32, cy - 8),
-            (cx - 38, cy + 10),
-            (cx - 35, cy + 32),
-            (cx - 26, cy + 48),
-            (cx, cy + 52),
-            (cx + 26, cy + 48),
-            (cx + 35, cy + 32),
-            (cx + 38, cy + 10),
-            (cx + 32, cy - 8),
-            (cx + 22, cy - 5),
-            (cx, cy - 60),
-            (cx - 22, cy - 5),
-        ]
-        flash_pts = [(int(p[0]), int(p[1])) for p in flash_pts]
-        pygame.draw.polygon(white_surf, (255, 255, 255, 200), flash_pts)
-        surface.blit(white_surf, (0, 0))
+        flash_key = (size,)
+        if flash_key not in _flash_cache:
+            white_surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            # 精细闪白轮廓
+            flash_pts = [
+                (cx - 32, cy - 8),
+                (cx - 38, cy + 10),
+                (cx - 35, cy + 32),
+                (cx - 26, cy + 48),
+                (cx, cy + 52),
+                (cx + 26, cy + 48),
+                (cx + 35, cy + 32),
+                (cx + 38, cy + 10),
+                (cx + 32, cy - 8),
+                (cx + 22, cy - 5),
+                (cx, cy - 60),
+                (cx - 22, cy - 5),
+            ]
+            flash_pts = [(int(p[0]), int(p[1])) for p in flash_pts]
+            pygame.draw.polygon(white_surf, (255, 255, 255, 200), flash_pts)
+            _flash_cache[flash_key] = white_surf
+        surface.blit(_flash_cache[flash_key], (0, 0))
     else:
         # 第一层：威压背景
         _draw_pressure_aura(surface, cx, cy, theme, t)
