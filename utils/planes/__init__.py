@@ -110,6 +110,7 @@ from .skins_scarlet import render_scarlet_skin, is_scarlet_style, SCARLET_STYLES
 from .skins_zenith import draw_zenith, is_zenith_style, render_zenith_skin, ZENITH_STYLES, get_zenith_theme
 from .skins_viscerator import draw_viscerator_plane, is_viscerator_style, get_viscerator_theme, VISCERATOR_STYLES
 from .skins_crusher import draw_crusher_plane, is_crusher_style, get_crusher_theme, CRUSHER_STYLES
+from .skins_sdmg import draw_sdmg, is_sdmg_style, get_sdmg_theme, render_sdmg_skin, SDMG_STYLES, _render_sdmg_base
 
 # DukeFishron样式定义 - 12个高质量涂装（带duke_前缀避免冲突）
 DUKEFISHRON_STYLES = [
@@ -174,5 +175,6 @@ __all__ = [
     'render_scarlet_skin', 'is_scarlet_style', 'SCARLET_STYLES', '_render_scarlet_base', 'get_scarlet_theme',
     'render_zenith_skin', 'is_zenith_style', 'ZENITH_STYLES', 'draw_zenith', 'get_zenith_theme',
     'draw_viscerator_plane', 'is_viscerator_style', 'get_viscerator_theme', 'VISCERATOR_STYLES',
-    'draw_crusher_plane', 'is_crusher_style', 'get_crusher_theme', 'CRUSHER_STYLES'
+    'draw_crusher_plane', 'is_crusher_style', 'get_crusher_theme', 'CRUSHER_STYLES',
+    'draw_sdmg', 'is_sdmg_style', 'get_sdmg_theme', 'render_sdmg_skin', 'SDMG_STYLES', '_render_sdmg_base'
 ]

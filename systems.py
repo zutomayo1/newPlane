@@ -4,7 +4,7 @@ import os
 import random
 import math
 from config import *
-from utils import sound_mgr, log_error
+from utils import music_director, log_error
 
 # ==============================================================================
 #   特效系统 (粒子、屏幕震动等)
@@ -4355,6 +4355,37 @@ class BackgroundManager:
         }
     }
     
+    ELEMENT_INTENSITY = {
+        "classic": 0.45,
+        "dawn": 0.4,
+        "storm": 0.65,
+        "urban": 0.5,
+        "aurora": 0.48,
+        "deep_ocean": 0.52,
+        "desert": 0.5,
+        "holy": 0.35,
+        "heaven": 0.32,
+        "pond": 0.3,
+        "void": 0.78,
+        "pixel": 0.55,
+        "paper": 0.3,
+        "cyber": 0.6,
+        "abyss": 0.72,
+        "lava": 0.75,
+        "boss": 0.85
+    }
+
+    @staticmethod
+    def resolve_bgm_intensity(element_type):
+        if not element_type:
+            return 0.45
+        if element_type in BackgroundManager.ELEMENT_INTENSITY:
+            return BackgroundManager.ELEMENT_INTENSITY[element_type]
+        for key, value in BackgroundManager.ELEMENT_INTENSITY.items():
+            if key in element_type:
+                return value
+        return 0.45
+
     def __init__(self, style="classic"):
         self.current_style = style
         self.stars = []
@@ -4380,8 +4411,8 @@ class BackgroundManager:
         
         # 切换背景音乐
         if "bgm" in config:
-            from utils import sound_mgr
-            sound_mgr.play_music(config["bgm"])
+            intensity = self.resolve_bgm_intensity(config.get("element_type", "classic"))
+            music_director.set_state("explore", intensity=intensity, override_track=config["bgm"])
         
         # 清空所有元素
         self.stars = []

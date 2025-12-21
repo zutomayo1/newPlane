@@ -1,10 +1,11 @@
 ﻿import pygame
+import os
 import sys
-import random
 import math
-import traceback
+import random
 import json
-from config import *
+import traceback
+import textwrap
 from utils import *
 from systems import *
 from sprites import *
@@ -12,6 +13,7 @@ from customization import customization_manager, PAINT_THEMES, BULLET_THEMES, En
 from enemies import enemy_factory, init_enemy_system
 from roguelite import ItemManager
 from room_system import RoomManager, RoomType, RoomState
+from music_catalog import resolve_music_metadata, MUSIC_FILTER_CHOICES
 
 # ==============================================================================
 #   全局初始化
@@ -48,7 +50,31 @@ sound_mgr.set_master_volume(game_settings.get("master_volume", 1.0))
 sound_mgr.set_music_volume(game_settings.get("music_volume", 0.5))
 sound_mgr.set_sfx_volume(game_settings.get("sfx_volume", 0.8))
 # 播放主菜单音乐
-sound_mgr.play_music("cinematic")
+MENU_THEME_PRESETS = {
+    "menu_home": {"track": "cinematic", "intensity": 0.35},
+    "mode_select": {"track": "epic", "intensity": 0.55},
+    "audio_hub": {"track": "calm", "intensity": 0.4},
+    "select_plane": {"track": "mystery", "intensity": 0.48},
+}
+
+current_menu_theme = None
+
+
+def apply_menu_theme(theme_key, force=False):
+    global current_menu_theme
+    preset = MENU_THEME_PRESETS.get(theme_key, MENU_THEME_PRESETS["menu_home"])
+    if current_menu_theme == theme_key and not force:
+        return
+    music_director.set_state(
+        "menu",
+        intensity=preset.get("intensity", 0.4),
+        override_track=preset.get("track"),
+        layers_enabled=True,
+    )
+    current_menu_theme = theme_key
+
+
+apply_menu_theme("menu_home", force=True)
 
 # ==============================================================================
 #   UI 布局常量
@@ -95,6 +121,8 @@ from systems import BossManager
 boss_manager = BossManager()
 item_manager = None  # 物品掉落管理器
 room_manager = None  # 房间系统管理器
+boss_music_active = False
+boss_challenge_music_active = False
 
 # 数值
 score = 0
@@ -164,6 +192,31 @@ wingman_theme_filter = None  # 僚机涂装筛选器 (None=全部, plane_id=按�
 background_settings_page = 0  # 当前页码
 background_settings_selected = 0  # 当前选中的背景索引
 
+# 音乐馆
+music_library_all_tracks = []
+music_library_tracks = []
+music_library_scroll_index = 0
+music_library_selected = 0
+music_library_now_playing = None
+music_library_status_msg = ""
+music_library_status_timer = 0
+music_library_filter = "all"
+music_library_sort_mode = "default"
+music_library_search_query = ""
+music_library_search_active = False
+
+# 音效实验室
+sound_lab_all_tracks = []
+sound_lab_tracks = []
+sound_lab_scroll_index = 0
+sound_lab_selected = 0
+sound_lab_now_playing = None
+sound_lab_filter = "all"
+
+# 音乐主题 & 动态音乐
+dynamic_music_state = {"state": None, "intensity": 0.0}
+dynamic_music_boss_phase = 0
+
 # 暂停菜单状态
 pause_menu_selected = 0  # 0: 继续, 1: 重新开始, 2: 退出战斗
 
@@ -175,6 +228,7 @@ room_completion_paused = False  # 房间完成后暂停锁
 # ==============================================================================
 # 主菜单选择
 main_menu_selected = 0  # 用于键盘导航
+audio_hub_selected = 0  # 音乐入口界面的选项索引
 
 
 def save_achievements_to_file(filename="achievements.json"):
@@ -276,12 +330,722 @@ def draw_bullet_preview(surface, theme, x, y, size=60, plane_id=None):
     from utils.bullets import draw_bullet_preview as _draw_bullet_preview
     _draw_bullet_preview(surface, theme, x, y, size, plane_id)
 
+
+def activate_background_music(style_key=None):
+    """根据背景风格切换探索阶段BGM"""
+    style = style_key or bg_manager.current_style
+    config = BackgroundManager.BG_STYLES.get(style, {})
+    track = config.get("bgm", "normal")
+    element_type = config.get("element_type", "classic")
+    intensity = BackgroundManager.resolve_bgm_intensity(element_type)
+    music_director.set_state("explore", intensity=intensity, override_track=track)
+
+
+def deactivate_boss_music():
+    """关闭Boss音乐图层并回到上一层级"""
+    global boss_music_active
+    if boss_music_active:
+        music_director.pop_state()
+        boss_music_active = False
+
+
+def deactivate_boss_challenge_music():
+    """关闭Boss挑战音乐状态（自动先关闭Boss音乐）"""
+    global boss_challenge_music_active
+    deactivate_boss_music()
+    if boss_challenge_music_active:
+        music_director.pop_state()
+        boss_challenge_music_active = False
+
+
+MUSIC_LIBRARY_ITEM_HEIGHT = 64
+
+MUSIC_FILTER_OPTIONS = MUSIC_FILTER_CHOICES
+
+MUSIC_SORT_OPTIONS = [
+    ("default", "默认"),
+    ("name", "名称"),
+    ("bpm", "BPM"),
+    ("mood", "情绪"),
+]
+
+MUSIC_SEARCH_MAX_LEN = 48
+SOUND_LAB_FILTERS = [
+    ("all", "全部"),
+    ("weapon", "武器"),
+    ("combat", "战斗"),
+    ("system", "系统"),
+    ("action", "动作"),
+    ("effect", "特效"),
+    ("support", "支援"),
+]
+
+SFX_CATEGORY_CODES = {
+    "武器": "weapon",
+    "战斗": "combat",
+    "系统": "system",
+    "动作": "action",
+    "特效": "effect",
+    "支援": "support",
+    "终极": "combat",
+}
+
+def update_dynamic_game_music():
+    global dynamic_music_state, dynamic_music_boss_phase
+    if game_state not in ("game", "boss_challenge_play"):
+        if dynamic_music_state["state"] is not None:
+            dynamic_music_state = {"state": None, "intensity": 0.0}
+        dynamic_music_boss_phase = 0
+        return
+    target_state = "boss" if boss else "combat"
+    base_intensity = 0.45 + min(0.35, wave * 0.02)
+    if player and getattr(player, "max_hp", 0):
+        hp_ratio = max(0.0, min(1.0, player.hp / player.max_hp))
+        if hp_ratio < 0.35:
+            base_intensity += 0.12
+        elif hp_ratio < 0.6:
+            base_intensity += 0.05
+    if boss and hasattr(boss, "phase"):
+        try:
+            phase = int(getattr(boss, "phase", 1) or 1)
+        except Exception:
+            phase = 1
+        if phase >= 2:
+            base_intensity += 0.1
+        if phase > dynamic_music_boss_phase:
+            # scheme E: phase transition stinger (only once per phase)
+            music_director.pause_for_stinger(
+                "stinger_boss_phase",
+                resume_state=target_state,
+                resume_intensity=0.9,
+                silence_ms=900,
+            )
+            dynamic_music_boss_phase = phase
+    else:
+        dynamic_music_boss_phase = 0
+    intensity = max(0.3, min(0.95, base_intensity))
+    state_changed = dynamic_music_state["state"] != target_state
+    intensity_changed = abs(dynamic_music_state["intensity"] - intensity) > 0.05
+    if state_changed or intensity_changed:
+        music_director.set_state(target_state, intensity=intensity, layers_enabled=True)
+        dynamic_music_state = {"state": target_state, "intensity": intensity}
+
+
+def _format_music_track_name(track_id):
+    if not track_id:
+        return "未知曲目"
+    parts = track_id.split("_")
+    display_parts = []
+    for part in parts:
+        if not part:
+            continue
+        if len(part) <= 3:
+            display_parts.append(part.upper())
+        else:
+            display_parts.append(part.capitalize())
+    return " ".join(display_parts) if display_parts else track_id.upper()
+
+
+def _truncate_music_text(text, limit=36):
+    if not text:
+        return ""
+    if len(text) <= limit:
+        return text
+    return text[:limit - 1] + "…"
+
+
+def _wrap_music_sources(text, limit=18, max_lines=4):
+    if not text:
+        return ["未绑定场景"]
+    lines = textwrap.wrap(text, width=limit, break_long_words=True, break_on_hyphens=False)
+    if not lines:
+        lines = [text[:limit]]
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        if not lines[-1].endswith("…"):
+            lines[-1] = lines[-1][:-1] + "…"
+    return lines
+
+
+def _collect_music_track_sources():
+    sources = {}
+    try:
+        for style, cfg in BackgroundManager.BG_STYLES.items():
+            track = cfg.get("bgm")
+            if not track:
+                continue
+            sources.setdefault(track, set()).add(cfg.get("name", style))
+    except Exception as exc:
+        log_error(f"收集音乐来源失败: {exc}")
+    sources.setdefault("boss", set()).add("Boss战斗主题")
+    sources.setdefault("intense", set()).add("紧张战斗段")
+    sources.setdefault("epic", set()).add("史诗事件")
+    sources.setdefault("cinematic", set()).add("主菜单")
+    return {k: sorted(v) for k, v in sources.items()}
+
+
+def _build_music_library_tracks():
+    if not getattr(sound_mgr, "file_paths", None):
+        return []
+    sources = _collect_music_track_sources()
+    tracks = []
+    for key in sorted(sound_mgr.file_paths.keys()):
+        if not key.startswith("bgm_"):
+            continue
+        track_id = key[4:]
+        display = _format_music_track_name(track_id)
+        meta = resolve_music_metadata(track_id)
+        tags = sources.get(track_id, [])
+        short_tags = tags[:2]
+        if not tags:
+            source_label = "未绑定场景"
+        elif len(tags) > 2:
+            source_label = "、".join(short_tags) + " 等"
+        else:
+            source_label = "、".join(short_tags)
+        tracks.append({
+            "id": track_id,
+            "display": display,
+            "source": source_label,
+            "source_full": list(tags),
+            "metadata": meta,
+            "tags": meta.get("tags", []),
+        })
+    return tracks
+
+
+def enter_music_library():
+    global music_library_all_tracks, music_library_filter
+    global music_library_status_msg, music_library_status_timer
+    global music_library_sort_mode
+    global music_library_search_query, music_library_search_active
+    music_library_all_tracks = _build_music_library_tracks()
+    music_library_filter = "all"
+    music_library_sort_mode = "default"
+    music_library_search_query = ""
+    music_library_search_active = False
+    rebuild_music_library_view()
+    _queue_selected_music_library_track()
+    if not getattr(sound_mgr, "enabled", True):
+        set_music_library_message("音频系统未启用，无法试听", 240)
+    elif not music_library_tracks:
+        set_music_library_message("未找到可用的BGM文件", 240)
+    else:
+        set_music_library_message("↑/↓选择，Enter播放，Space恢复默认", 240)
+
+
+def rebuild_music_library_view(preserve_track_id=None):
+    global music_library_tracks, music_library_selected, music_library_scroll_index
+    global music_library_sort_mode, music_library_search_query
+    if not music_library_all_tracks:
+        music_library_tracks = []
+        music_library_selected = 0
+        music_library_scroll_index = 0
+        return
+    query = music_library_search_query.strip().lower()
+    filtered = []
+    for track in music_library_all_tracks:
+        tags = track.get("tags", [])
+        if music_library_filter != "all" and music_library_filter not in tags:
+            continue
+        meta = track.get("metadata") or {}
+        if query:
+            haystack = "|".join([
+                track.get("display", ""),
+                track.get("id", ""),
+                meta.get("mood", ""),
+                meta.get("description", ""),
+            ]).lower()
+            if query not in haystack:
+                continue
+        filtered.append(track)
+
+    if music_library_sort_mode == "name":
+        filtered.sort(key=lambda t: t.get("display", ""))
+    elif music_library_sort_mode == "bpm":
+        filtered.sort(key=lambda t: ((t.get("metadata") or {}).get("bpm", 0), t.get("display", "")))
+    elif music_library_sort_mode == "mood":
+        filtered.sort(key=lambda t: ((t.get("metadata") or {}).get("mood", ""), t.get("display", "")))
+
+    music_library_tracks = filtered
+    target_idx = 0
+    if preserve_track_id:
+        for idx, track in enumerate(filtered):
+            if track["id"] == preserve_track_id:
+                target_idx = idx
+                break
+    music_library_selected = min(target_idx, max(0, len(filtered) - 1)) if filtered else 0
+    music_library_scroll_index = 0
+    ensure_music_library_visible()
+    _queue_selected_music_library_track()
+
+
+def apply_music_library_filter(filter_key):
+    global music_library_filter
+    if filter_key == music_library_filter:
+        return
+    prev_track = None
+    if 0 <= music_library_selected < len(music_library_tracks):
+        prev_track = music_library_tracks[music_library_selected]["id"]
+    music_library_filter = filter_key
+    rebuild_music_library_view(preserve_track_id=prev_track)
+
+
+def cycle_music_library_filter(step):
+    global music_library_filter
+    if not MUSIC_FILTER_OPTIONS:
+        return
+    keys = [key for key, _ in MUSIC_FILTER_OPTIONS]
+    try:
+        idx = keys.index(music_library_filter)
+    except ValueError:
+        idx = 0
+    new_key = keys[(idx + step) % len(keys)]
+    apply_music_library_filter(new_key)
+
+
+def set_music_library_sort_mode(mode):
+    global music_library_sort_mode
+    valid = {key for key, _ in MUSIC_SORT_OPTIONS}
+    if mode not in valid or mode == music_library_sort_mode:
+        return
+    prev_track = None
+    if 0 <= music_library_selected < len(music_library_tracks):
+        prev_track = music_library_tracks[music_library_selected]["id"]
+    music_library_sort_mode = mode
+    rebuild_music_library_view(preserve_track_id=prev_track)
+
+
+def set_music_library_search_query(text):
+    global music_library_search_query
+    normalized = text[:MUSIC_SEARCH_MAX_LEN]
+    if normalized == music_library_search_query:
+        return
+    music_library_search_query = normalized
+    rebuild_music_library_view()
+
+
+def _apply_music_library_exit_music():
+    if music_library_now_playing:
+        music_director.set_state(
+            "menu",
+            intensity=0.4,
+            override_track=music_library_now_playing,
+            immediate=True,
+            force=True,
+            layers_enabled=False,
+        )
+    else:
+        music_director.set_state("menu", intensity=0.25)
+
+
+def return_to_audio_hub_from_music_library():
+    global game_state, audio_hub_selected
+    game_state = "audio_hub"
+    audio_hub_selected = 0
+    _apply_music_library_exit_music()
+
+
+def return_to_menu_from_music_library():
+    global game_state, main_menu_selected
+    game_state = "menu"
+    main_menu_selected = 0
+    _apply_music_library_exit_music()
+
+
+def set_music_library_message(msg, duration=180):
+    global music_library_status_msg, music_library_status_timer
+    music_library_status_msg = msg
+    music_library_status_timer = duration
+
+
+def play_music_library_track(index):
+    global music_library_now_playing
+    if not getattr(sound_mgr, "enabled", True):
+        set_music_library_message("当前环境未启用声音播放", 240)
+        return
+    if not (0 <= index < len(music_library_tracks)):
+        set_music_library_message("没有可播放的曲目", 180)
+        return
+    track = music_library_tracks[index]
+    music_director.set_state(
+        "menu",
+        intensity=0.5,
+        override_track=track["id"],
+        immediate=True,
+        force=True,
+        layers_enabled=False,
+    )
+    music_library_now_playing = track["id"]
+    set_music_library_message(f"正在播放：{track['display']}", 300)
+
+
+def stop_music_library_track():
+    global music_library_now_playing
+    music_library_now_playing = None
+    music_director.set_state("menu", intensity=0.25, force=True)
+    set_music_library_message("已恢复默认菜单音乐", 200)
+
+
+def get_music_library_layout():
+    list_rect = pygame.Rect(80, 170, 500, HEIGHT - 260)
+    info_rect = pygame.Rect(620, 170, WIDTH - 700, HEIGHT - 260)
+    btn_y = HEIGHT - 70
+    controls = {
+        "stop": pygame.Rect(WIDTH // 2 - 240, btn_y, 140, 40),
+        "play": pygame.Rect(WIDTH // 2 - 70, btn_y, 140, 40),
+        "back": pygame.Rect(WIDTH // 2 + 100, btn_y, 140, 40),
+    }
+    return list_rect, info_rect, controls
+
+
+def get_music_filter_layout(list_rect=None, start_y=None):
+    if list_rect is None:
+        list_rect, _, _ = get_music_library_layout()
+    chip_w = 88
+    chip_h = 26
+    gap = 10
+    start_x = list_rect.x + 12
+    max_x = list_rect.right - 12
+    x = start_x
+    y = start_y if start_y is not None else list_rect.y + 10
+    chips = []
+    for key, label in MUSIC_FILTER_OPTIONS:
+        if x + chip_w > max_x:
+            x = start_x
+            y += chip_h + 8
+        rect = pygame.Rect(x, y, chip_w, chip_h)
+        chips.append((key, label, rect))
+        x += chip_w + gap
+    base_y = start_y if start_y is not None else list_rect.y
+    band_height = 0
+    if chips:
+        max_bottom = max(rect.bottom for _, _, rect in chips)
+        band_height = max(0, max_bottom - base_y + 8)
+    return chips, band_height
+
+
+def build_music_library_controls(list_rect=None):
+    if list_rect is None:
+        list_rect, _, _ = get_music_library_layout()
+    padding = 12
+    search_rect = pygame.Rect(list_rect.right - 12 - 240, list_rect.y + padding, 240, 30)
+    sort_y = search_rect.bottom + 6
+    sort_buttons = []
+    btn_w = 74
+    btn_h = 24
+    btn_x = list_rect.x + padding
+    for mode, label in MUSIC_SORT_OPTIONS:
+        rect = pygame.Rect(btn_x, sort_y, btn_w, btn_h)
+        sort_buttons.append((mode, label, rect))
+        btn_x += btn_w + 8
+    chips_start = sort_y + btn_h + 8
+    chips, chip_height = get_music_filter_layout(list_rect, start_y=chips_start)
+    chips_bottom = chips[-1][2].bottom if chips else (sort_y + btn_h)
+    max_bottom = max(search_rect.bottom, sort_y + btn_h, chips_bottom)
+    control_bottom = max_bottom + padding
+    content_top = min(list_rect.bottom, control_bottom)
+    return {
+        "search_rect": search_rect,
+        "sort_buttons": sort_buttons,
+        "filter_chips": chips,
+        "content_top": content_top,
+    }
+
+
+def _music_library_visible_rows():
+    list_rect, _, _ = get_music_library_layout()
+    controls = build_music_library_controls(list_rect)
+    header_height = max(0, controls["content_top"] - list_rect.y)
+    usable_height = max(0, list_rect.height - header_height - 12)
+    return max(1, usable_height // MUSIC_LIBRARY_ITEM_HEIGHT)
+
+
+def ensure_music_library_visible():
+    global music_library_scroll_index
+    visible = _music_library_visible_rows()
+    max_start = max(0, len(music_library_tracks) - visible)
+    if music_library_selected < music_library_scroll_index:
+        music_library_scroll_index = music_library_selected
+    elif music_library_selected >= music_library_scroll_index + visible:
+        music_library_scroll_index = music_library_selected - visible + 1
+    music_library_scroll_index = max(0, min(max_start, music_library_scroll_index))
+
+
+def _queue_music_library_prewarm(track_id: str | None):
+    if not track_id:
+        return
+    try:
+        if getattr(sound_mgr, "enabled", False) and hasattr(sound_mgr, "queue_bgm_prewarm"):
+            sound_mgr.queue_bgm_prewarm(track_id)
+    except Exception:
+        return
+
+
+def _queue_selected_music_library_track():
+    try:
+        if 0 <= music_library_selected < len(music_library_tracks):
+            _queue_music_library_prewarm(music_library_tracks[music_library_selected].get("id"))
+    except Exception:
+        return
+
+
+def move_music_library_selection(delta):
+    global music_library_selected
+    if not music_library_tracks:
+        music_library_selected = 0
+        music_library_scroll_index = 0
+        return
+    music_library_selected = max(0, min(len(music_library_tracks) - 1, music_library_selected + delta))
+    ensure_music_library_visible()
+    _queue_selected_music_library_track()
+
+
+def scroll_music_library(delta):
+    global music_library_scroll_index
+    if not music_library_tracks:
+        music_library_scroll_index = 0
+        return
+    visible = _music_library_visible_rows()
+    max_start = max(0, len(music_library_tracks) - visible)
+    music_library_scroll_index = max(0, min(max_start, music_library_scroll_index + delta))
+
+
+SOUND_LAB_ITEM_HEIGHT = 60
+
+SFX_METADATA = {
+    "shoot": {"name": "主炮射击", "category": "武器", "desc": "基础武器的连续射击音效"},
+    "explosion": {"name": "爆炸冲击", "category": "战斗", "desc": "大范围爆炸或导弹命中的反馈"},
+    "hit": {"name": "命中反馈", "category": "战斗", "desc": "敌方受击或护盾破碎时的提示音"},
+    "levelup": {"name": "升级提示", "category": "系统", "desc": "升级和奖励的正向提示音效"},
+    "warning": {"name": "警告信号", "category": "系统", "desc": "高危状态或Boss预警"},
+    "laser": {"name": "激光蓄能", "category": "武器", "desc": "高能激光充能并发射的音效"},
+    "dash": {"name": "闪避冲刺", "category": "动作", "desc": "玩家触发位移/闪避时的反馈"},
+    "graze": {"name": "擦弹奖励", "category": "动作", "desc": "擦弹判定成功时的提示"},
+    "select": {"name": "菜单选择", "category": "UI", "desc": "菜单或界面选中项的轻反馈"},
+    "zap": {"name": "电弧脉冲", "category": "特效", "desc": "带有电流质感的短促脉冲"},
+    "sniper_charge": {"name": "狙击蓄力", "category": "武器", "desc": "狙击或强力射击的蓄力过程"},
+    "freeze": {"name": "冰封冲击", "category": "特效", "desc": "时间冻结或冰冻技能的音效"},
+    "nuke": {"name": "核爆引信", "category": "终极", "desc": "终极技能或核爆触发时的沉重音"},
+    "gameover": {"name": "任务失败", "category": "系统", "desc": "结算或失败画面播放的提示曲"},
+    "blackhole": {"name": "黑洞漩涡", "category": "特效", "desc": "空间扭曲或黑洞技能的音效"},
+    "achievement": {"name": "成就解锁", "category": "系统", "desc": "成就完成时的庆祝提示"},
+    "item_pickup": {"name": "拾取奖励", "category": "系统", "desc": "道具或资源拾取时的提示"},
+    "critical": {"name": "暴击提示", "category": "战斗", "desc": "暴击发生时的高亮音效"},
+    "heal": {"name": "治疗脉冲", "category": "支援", "desc": "治疗或恢复效果的提示"},
+    "shield": {"name": "护盾激活", "category": "支援", "desc": "护盾开启或刷新时的音效"},
+}
+
+
+def _format_sfx_display(effect_id):
+    meta = SFX_METADATA.get(effect_id)
+    if meta and meta.get("name"):
+        return meta["name"]
+    parts = effect_id.split("_")
+    return " ".join(part.capitalize() for part in parts) if parts else effect_id
+
+
+def _get_sfx_category(effect_id):
+    meta = SFX_METADATA.get(effect_id)
+    return meta.get("category", "通用反馈") if meta else "通用反馈"
+
+
+def _get_sfx_desc(effect_id):
+    meta = SFX_METADATA.get(effect_id)
+    return meta.get("desc", "暂无详细描述，该音效用于通用反馈。") if meta else "暂无详细描述，该音效用于通用反馈。"
+
+
+def _build_sound_lab_tracks():
+    if not getattr(sound_mgr, "sounds", None):
+        return []
+    tracks = []
+    for effect_id in sorted(sound_mgr.sounds.keys()):
+        if effect_id.startswith("bgm_"):
+            continue
+        display = _format_sfx_display(effect_id)
+        category = _get_sfx_category(effect_id)
+        desc = _get_sfx_desc(effect_id)
+        category_code = SFX_CATEGORY_CODES.get(category, "system")
+        tracks.append({
+            "id": effect_id,
+            "display": display,
+            "category": category,
+             "category_code": category_code,
+            "desc": desc,
+        })
+    return tracks
+
+
+def enter_sound_lab():
+    global sound_lab_all_tracks, sound_lab_filter
+    sound_lab_all_tracks = _build_sound_lab_tracks()
+    sound_lab_filter = "all"
+    rebuild_sound_lab_view()
+
+
+def return_to_audio_hub_from_sound_lab():
+    global game_state, audio_hub_selected
+    stop_sound_lab_effect()
+    game_state = "audio_hub"
+    audio_hub_selected = 1
+
+
+def return_to_menu_from_sound_lab():
+    global game_state, main_menu_selected
+    stop_sound_lab_effect()
+    game_state = "menu"
+    main_menu_selected = 0
+
+
+def play_sound_lab_effect(index):
+    global sound_lab_now_playing
+    if not getattr(sound_mgr, "enabled", True):
+        return
+    if not (0 <= index < len(sound_lab_tracks)):
+        return
+    effect_id = sound_lab_tracks[index]["id"]
+    sound_lab_now_playing = effect_id
+    sound_mgr.play(effect_id)
+
+
+def stop_sound_lab_effect():
+    global sound_lab_now_playing
+    if not sound_lab_now_playing:
+        return
+    channel = sound_mgr.sound_channels.get(sound_lab_now_playing)
+    if channel:
+        try:
+            channel.stop()
+        except Exception:
+            pass
+    sound_lab_now_playing = None
+
+
+def get_sound_lab_layout():
+    list_rect = pygame.Rect(80, 170, 440, HEIGHT - 260)
+    info_rect = pygame.Rect(560, 170, WIDTH - 640, HEIGHT - 260)
+    btn_y = HEIGHT - 70
+    controls = {
+        "stop": pygame.Rect(WIDTH // 2 - 260, btn_y, 140, 40),
+        "play": pygame.Rect(WIDTH // 2 - 80, btn_y, 140, 40),
+        "back": pygame.Rect(WIDTH // 2 + 100, btn_y, 140, 40),
+    }
+    return list_rect, info_rect, controls
+
+
+def get_sound_lab_filter_layout(list_rect=None):
+    if list_rect is None:
+        list_rect, _, _ = get_sound_lab_layout()
+    chip_w = 94
+    chip_h = 26
+    gap = 8
+    start_x = list_rect.x + 12
+    max_x = list_rect.right - 12
+    x = start_x
+    y = list_rect.y + 10
+    chips = []
+    for key, label in SOUND_LAB_FILTERS:
+        if x + chip_w > max_x:
+            x = start_x
+            y += chip_h + 8
+        rect = pygame.Rect(x, y, chip_w, chip_h)
+        chips.append((key, label, rect))
+        x += chip_w + gap
+    band_height = 0
+    if chips:
+        max_bottom = max(rect.bottom for _, _, rect in chips)
+        band_height = max(0, max_bottom - list_rect.y + 8)
+    return chips, band_height
+
+
+def _sound_lab_visible_rows():
+    list_rect, _, _ = get_sound_lab_layout()
+    _, band_height = get_sound_lab_filter_layout(list_rect)
+    usable_height = max(0, list_rect.height - band_height - 24)
+    return max(1, usable_height // SOUND_LAB_ITEM_HEIGHT)
+
+
+def ensure_sound_lab_visible():
+    global sound_lab_scroll_index
+    visible = _sound_lab_visible_rows()
+    max_start = max(0, len(sound_lab_tracks) - visible)
+    if sound_lab_selected < sound_lab_scroll_index:
+        sound_lab_scroll_index = sound_lab_selected
+    elif sound_lab_selected >= sound_lab_scroll_index + visible:
+        sound_lab_scroll_index = sound_lab_selected - visible + 1
+    sound_lab_scroll_index = max(0, min(max_start, sound_lab_scroll_index))
+
+
+def move_sound_lab_selection(delta):
+    global sound_lab_selected
+    if not sound_lab_tracks:
+        sound_lab_selected = 0
+        sound_lab_scroll_index = 0
+        return
+    sound_lab_selected = max(0, min(len(sound_lab_tracks) - 1, sound_lab_selected + delta))
+    ensure_sound_lab_visible()
+
+
+def scroll_sound_lab(delta):
+    global sound_lab_scroll_index
+    if not sound_lab_tracks:
+        sound_lab_scroll_index = 0
+        return
+    visible = _sound_lab_visible_rows()
+    max_start = max(0, len(sound_lab_tracks) - visible)
+    sound_lab_scroll_index = max(0, min(max_start, sound_lab_scroll_index + delta))
+
+
+def rebuild_sound_lab_view(preserve_track_id=None):
+    global sound_lab_tracks, sound_lab_selected, sound_lab_scroll_index
+    if not sound_lab_all_tracks:
+        sound_lab_tracks = []
+        sound_lab_selected = 0
+        sound_lab_scroll_index = 0
+        return
+    filtered = [t for t in sound_lab_all_tracks if sound_lab_filter == "all" or t.get("category_code") == sound_lab_filter]
+    sound_lab_tracks = filtered
+    target_idx = 0
+    if preserve_track_id:
+        for idx, track in enumerate(filtered):
+            if track["id"] == preserve_track_id:
+                target_idx = idx
+                break
+    sound_lab_selected = min(target_idx, max(0, len(filtered) - 1)) if filtered else 0
+    sound_lab_scroll_index = 0
+    ensure_sound_lab_visible()
+
+
+def apply_sound_lab_filter(filter_key):
+    global sound_lab_filter
+    if filter_key == sound_lab_filter:
+        return
+    prev_track = None
+    if 0 <= sound_lab_selected < len(sound_lab_tracks):
+        prev_track = sound_lab_tracks[sound_lab_selected]["id"]
+    sound_lab_filter = filter_key
+    rebuild_sound_lab_view(preserve_track_id=prev_track)
+
+
+def cycle_sound_lab_filter(step):
+    global sound_lab_filter
+    if not SOUND_LAB_FILTERS:
+        return
+    keys = [key for key, _ in SOUND_LAB_FILTERS]
+    try:
+        idx = keys.index(sound_lab_filter)
+    except ValueError:
+        idx = 0
+    new_key = keys[(idx + step) % len(keys)]
+    apply_sound_lab_filter(new_key)
+
 def reset_game():
     global player, boss, score, item_manager, room_manager
     global global_time_freeze, is_paused
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave, tab_paused
     global map_paused, show_full_map, room_completion_paused
+    global boss_music_active, boss_challenge_music_active
     
     # reset_game() called
     
@@ -317,13 +1081,16 @@ def reset_game():
     score = 0
     boss = None
     boss_manager.reset()
+    deactivate_boss_challenge_music()
+    boss_music_active = False
+    boss_challenge_music_active = False
     global_time_freeze = 0
     wave = 0
     
     try:
         # 获取玩家选择的涂装
         custom_visual = customization_manager.get_theme_visual(
-            selected_plane, 
+            selected_plane,
             PLANES[selected_plane].get('visual', None)
         )
     except Exception as e:
@@ -343,10 +1110,7 @@ def reset_game():
     
     try:
         # 使用当前背景对应的BGM
-        current_bg_style = bg_manager.current_style
-        bg_config = BackgroundManager.BG_STYLES.get(current_bg_style, {})
-        bgm_track = bg_config.get("bgm", "normal")
-        sound_mgr.play_music(bgm_track)
+        activate_background_music(bg_manager.current_style)
     except Exception as e:
         print(f"音乐播放错误: {e}")
     # reset_game() done
@@ -363,6 +1127,7 @@ def get_menu_buttons():
         ("涂装", MAGENTA, "customization"),
         ("背景设置", (100, 200, 255), "background_settings"),
         ("系统设置", (255, 150, 0), "settings"),
+        ("音乐", CYAN, "audio_hub"),
         ("战术图鉴", MAGENTA, "gallery"),
         ("机密档案", BLUE, "codex"),
         ("成就", LIME, "achievements"),
@@ -374,17 +1139,69 @@ def get_menu_buttons():
         buttons.append((r, txt, col, act))
     return buttons
 
-# ==============================================================================
-#   UI 绘制
-# ==============================================================================
+
+AUDIO_HUB_OPTIONS = [
+    {
+        "id": "music_library",
+        "title": "音乐馆",
+        "tagline": "原声殿堂",
+        "desc": "浏览所有BGM并试听不同场景的音乐氛围。",
+        "color": CYAN,
+    },
+    {
+        "id": "sound_lab",
+        "title": "音效实验室",
+        "tagline": "战术声场",
+        "desc": "预览战斗与系统音效，微调节奏与反馈。",
+        "color": CYBER_AMBER,
+    },
+]
+
+
+def enter_audio_hub():
+    global game_state, audio_hub_selected
+    audio_hub_selected = 0
+    game_state = "audio_hub"
+
+
+def _get_audio_hub_card_rects():
+    card_w = 360
+    card_h = 380
+    gap = 60
+    total = len(AUDIO_HUB_OPTIONS)
+    start_x = (WIDTH - (card_w * total + gap * (total - 1))) // 2
+    card_y = 210
+    rects = []
+    for i in range(total):
+        x = start_x + i * (card_w + gap)
+        rects.append(pygame.Rect(x, card_y, card_w, card_h))
+    return rects
+
+
+def _get_audio_hub_back_rect():
+    return pygame.Rect(WIDTH//2 - 120, HEIGHT - 120, 240, 48)
+
+
+def _activate_audio_hub_option(index):
+    global game_state
+    if not (0 <= index < len(AUDIO_HUB_OPTIONS)):
+        return
+    option_id = AUDIO_HUB_OPTIONS[index]["id"]
+    if option_id == "music_library":
+        game_state = "music_library"
+        enter_music_library()
+    elif option_id == "sound_lab":
+        game_state = "sound_lab"
+        enter_sound_lab()
+
+
 def draw_menu_ui():
-    # 标题字号缩小，居中更高
     scale = 1.0 + 0.03 * math.sin(pygame.time.get_ticks() * 0.003)
-    title_font = get_font(int(60*scale), bold=True)
+    title_font = get_font(int(60 * scale), bold=True)
     glow = title_font.render("霓虹深空", True, (0, 100, 100))
     main = title_font.render("霓虹深空", True, CYAN)
-    rect = main.get_rect(center=(WIDTH//2, 110))
-    safe_blit(screen, glow, (rect.x+3, rect.y+3))
+    rect = main.get_rect(center=(WIDTH // 2, 110))
+    safe_blit(screen, glow, (rect.x + 3, rect.y + 3))
     safe_blit(screen, main, rect)
 
     mx, my = pygame.mouse.get_pos()
@@ -393,12 +1210,10 @@ def draw_menu_ui():
         is_hover = r.collidepoint(mx, my)
         is_selected = (i == main_menu_selected)
         is_active = is_hover or is_selected
-        
-        # 背景颜色
-        bg = (col[0]//2, col[1]//2, col[2]//2) if is_active else (30, 30, 40)
+
+        bg = (col[0] // 2, col[1] // 2, col[2] // 2) if is_active else (30, 30, 40)
         draw_cyber_rect(screen, r, bg, alpha=200, fill=True)
-        
-        # 边框颜色和宽度
+
         if is_selected:
             border_col = CYAN
             border_w = 3
@@ -408,9 +1223,286 @@ def draw_menu_ui():
         else:
             border_col = GRAY
             border_w = 1
-        
+
         draw_cyber_rect(screen, r, border_col, border_width=border_w, fill=False)
-        draw_text(screen, f"[ {txt} ]" if is_active else txt, 18, r.centerx, r.centery-8, WHITE if is_active else GRAY, glow=is_active)
+        draw_text(
+            screen,
+            f"[ {txt} ]" if is_active else txt,
+            18,
+            r.centerx,
+            r.centery - 8,
+            WHITE if is_active else GRAY,
+            glow=is_active,
+        )
+
+
+def draw_audio_hub_ui():
+    draw_text(screen, "音乐枢纽", 64, WIDTH//2, 90, CYAN, glow=True)
+    back_rect = _get_audio_hub_back_rect()
+    mx, my = pygame.mouse.get_pos()
+    back_hover = back_rect.collidepoint(mx, my)
+    draw_cyber_rect(screen, back_rect, (32, 34, 46) if back_hover else (20, 24, 32), alpha=240, fill=True)
+    draw_cyber_rect(screen, back_rect, CYAN if back_hover else GRAY, border_width=2, fill=False)
+    draw_text(screen, "返回主菜单", 24, back_rect.centerx, back_rect.centery - 10, WHITE if back_hover else GRAY)
+    rects = _get_audio_hub_card_rects()
+    for idx, (rect, option) in enumerate(zip(rects, AUDIO_HUB_OPTIONS)):
+        hover = rect.collidepoint(mx, my)
+        selected = (idx == audio_hub_selected)
+        base_color = option["color"]
+        bg = (
+            (base_color[0]//2 + 30, base_color[1]//2 + 18, base_color[2]//2 + 25)
+            if hover or selected else (20, 24, 36)
+        )
+        border = base_color if hover or selected else (70, 70, 90)
+        draw_cyber_rect(screen, rect, bg, alpha=235, fill=True)
+        draw_cyber_rect(screen, rect, border, border_width=4 if selected else 2, fill=False)
+        draw_text(screen, option["title"], 42, rect.centerx, rect.y + 60, WHITE, glow=selected)
+        draw_text(screen, option["tagline"], 24, rect.centerx, rect.y + 110, base_color)
+        desc_lines = textwrap.wrap(option["desc"], width=18)
+        text_y = rect.y + 160
+        for line in desc_lines[:5]:
+            draw_text(screen, line, 20, rect.centerx, text_y, GRAY)
+            text_y += 28
+        draw_text(screen, "点击进入", 20, rect.centerx, rect.bottom - 70, WHITE)
+        if selected:
+            draw_text(screen, "●", 28, rect.centerx, rect.bottom - 30, base_color)
+
+
+def draw_music_library_ui():
+    draw_text(screen, "音乐馆", 56, WIDTH//2, 60, CYAN, glow=True)
+    list_rect, info_rect, controls = get_music_library_layout()
+    draw_cyber_rect(screen, list_rect, (15, 20, 35), alpha=230, fill=True)
+    draw_cyber_rect(screen, list_rect, CYAN, border_width=2, fill=False)
+    draw_cyber_rect(screen, info_rect, (12, 16, 24), alpha=230, fill=True)
+    draw_cyber_rect(screen, info_rect, MAGENTA, border_width=2, fill=False)
+    draw_text(screen, f"曲目列表 ({len(music_library_tracks)})", 24, list_rect.x + 10, list_rect.y - 40, WHITE, align="left")
+    draw_text(screen, "曲目信息", 24, info_rect.x + 10, info_rect.y - 40, WHITE, align="left")
+
+    controls_layout = build_music_library_controls(list_rect)
+    search_rect = controls_layout["search_rect"]
+    sort_buttons = controls_layout["sort_buttons"]
+    chips = controls_layout["filter_chips"]
+    content_top = controls_layout["content_top"]
+
+    mx, my = pygame.mouse.get_pos()
+
+    # Search box
+    search_hover = search_rect.collidepoint(mx, my)
+    search_active = music_library_search_active
+    draw_cyber_rect(
+        screen,
+        search_rect,
+        (32, 38, 52) if (search_hover or search_active) else (22, 26, 34),
+        alpha=235,
+        fill=True,
+    )
+    draw_cyber_rect(
+        screen,
+        search_rect,
+        CYAN if search_active else (CYAN if search_hover else GRAY),
+        border_width=2,
+        fill=False,
+    )
+    search_text = music_library_search_query or "搜索曲目 / 描述"
+    color = WHITE if music_library_search_query else GRAY
+    draw_text(screen, search_text, 18, search_rect.x + 10, search_rect.y + 8, color, align="left")
+
+    # Sort buttons
+    for mode, label, rect in sort_buttons:
+        active = (mode == music_library_sort_mode)
+        hover = rect.collidepoint(mx, my)
+        bg = (35, 40, 60) if (active or hover) else (22, 24, 33)
+        border = CYAN if active else (CYAN if hover else GRAY)
+        draw_cyber_rect(screen, rect, bg, alpha=220, fill=True)
+        draw_cyber_rect(screen, rect, border, border_width=2 if (active or hover) else 1, fill=False)
+        draw_text(screen, label, 16, rect.centerx, rect.centery - 8, WHITE if active else (200, 200, 210))
+
+    # Scene filter chips
+    for key, label, rect in chips:
+        active = (key == music_library_filter)
+        hover = rect.collidepoint(mx, my)
+        base_col = CYAN if active else (80, 90, 110)
+        draw_cyber_rect(screen, rect, (30, 36, 50) if hover or active else (20, 24, 32), alpha=230, fill=True)
+        draw_cyber_rect(screen, rect, base_col if (hover or active) else GRAY, border_width=1, fill=False)
+        draw_text(screen, label, 18, rect.centerx, rect.centery - 8, WHITE if active else (200, 200, 210))
+
+    padding = 12
+    row_height = MUSIC_LIBRARY_ITEM_HEIGHT - 20
+    visible_rows = _music_library_visible_rows()
+    start_idx = music_library_scroll_index
+    end_idx = min(len(music_library_tracks), start_idx + visible_rows)
+    base_y = content_top
+
+    if not music_library_tracks:
+        msg = "未扫描到音乐文件" if getattr(sound_mgr, "enabled", True) else "音频系统未启用"
+        draw_text(screen, msg, 24, list_rect.centerx, list_rect.centery, GRAY)
+    else:
+        for row, idx in enumerate(range(start_idx, end_idx)):
+            track = music_library_tracks[idx]
+            row_rect = pygame.Rect(
+                list_rect.x + padding,
+                base_y + row * MUSIC_LIBRARY_ITEM_HEIGHT,
+                list_rect.width - padding * 2,
+                row_height,
+            )
+            is_selected = (idx == music_library_selected)
+            is_playing = (music_library_now_playing == track["id"])
+            bg_color = (40, 50, 70)
+            if is_playing:
+                bg_color = (55, 30, 30)
+            if is_selected:
+                bg_color = (65, 90, 130)
+            draw_cyber_rect(screen, row_rect, bg_color, alpha=220, fill=True)
+            border_color = CYAN if is_selected else (MAGENTA if is_playing else (60, 60, 80))
+            draw_cyber_rect(screen, row_rect, border_color, border_width=2, fill=False)
+            draw_text(screen, track["display"], 24, row_rect.x + 12, row_rect.y + 4, WHITE, align="left")
+            source_line = _truncate_music_text(track["source"], 36)
+            draw_text(screen, source_line, 18, row_rect.x + 12, row_rect.y + row_height - 18, GRAY, align="left")
+            if is_playing:
+                draw_text(screen, "播放中", 18, row_rect.right - 16, row_rect.centery - 10, LIME, align="right")
+
+        if len(music_library_tracks) > visible_rows:
+            scroll_track_h = list_rect.bottom - padding - base_y
+            if scroll_track_h > 0:
+                indicator_h = max(20, int(scroll_track_h * (visible_rows / len(music_library_tracks))))
+                max_scroll = max(1, len(music_library_tracks) - visible_rows)
+                indicator_y = base_y + int((scroll_track_h - indicator_h) * (music_library_scroll_index / max_scroll))
+                pygame.draw.rect(screen, (50, 50, 70), (list_rect.right - 10, base_y, 4, scroll_track_h), border_radius=2)
+                pygame.draw.rect(screen, CYAN, (list_rect.right - 10, indicator_y, 4, indicator_h), border_radius=2)
+
+    draw_cyber_rect(screen, info_rect.inflate(-20, -20), (20, 28, 40), alpha=220, fill=True)
+    info_inner = info_rect.inflate(-20, -20)
+    info_y = info_inner.y + 10
+    if 0 <= music_library_selected < len(music_library_tracks):
+        current = music_library_tracks[music_library_selected]
+        draw_text(screen, current["display"], 32, info_inner.x + 10, info_y, WHITE, align="left")
+        info_y += 50
+        draw_text(screen, f"内部ID：{current['id']}", 20, info_inner.x + 10, info_y, GRAY, align="left")
+        info_y += 30
+        draw_text(screen, "关联场景：", 20, info_inner.x + 10, info_y, CYBER_AMBER, align="left")
+        info_y += 30
+        full_text = "、".join(current.get("source_full", [])) or current.get("source", "未绑定场景")
+        for line in _wrap_music_sources(full_text, limit=20, max_lines=8):
+            draw_text(screen, line, 18, info_inner.x + 25, info_y, GRAY, align="left")
+            info_y += 24
+    else:
+        draw_text(screen, "请选择一首曲目", 26, info_inner.centerx, info_inner.centery, GRAY)
+
+    control_labels = {
+        "stop": "恢复默认",
+        "play": "播放选中",
+        "back": "返回音乐选择",
+    }
+    mx, my = pygame.mouse.get_pos()
+    for key, rect in controls.items():
+        hover = rect.collidepoint(mx, my)
+        draw_cyber_rect(screen, rect, (35, 40, 60) if hover else (20, 24, 36), alpha=230, fill=True)
+        draw_cyber_rect(screen, rect, CYAN if hover else GRAY, border_width=2, fill=False)
+        draw_text(screen, control_labels[key], 22, rect.centerx, rect.centery - 12, WHITE if hover else GRAY)
+
+    now_playing_label = "当前播放："
+    status_text = now_playing_label + (next((t["display"] for t in music_library_tracks if t["id"] == music_library_now_playing), _format_music_track_name(music_library_now_playing)) if music_library_now_playing else "默认菜单主题")
+    status_color = LIME if music_library_now_playing else GRAY
+    draw_text(screen, status_text, 22, WIDTH - 40, 30, status_color, align="right")
+
+def draw_sound_lab_ui():
+    draw_text(screen, "音效实验室", 56, WIDTH//2, 60, CYBER_AMBER, glow=True)
+    list_rect, info_rect, controls = get_sound_lab_layout()
+    draw_cyber_rect(screen, list_rect, (18, 20, 32), alpha=235, fill=True)
+    draw_cyber_rect(screen, list_rect, CYBER_AMBER, border_width=2, fill=False)
+    draw_cyber_rect(screen, info_rect, (14, 16, 26), alpha=235, fill=True)
+    draw_cyber_rect(screen, info_rect, (255, 180, 80), border_width=2, fill=False)
+    draw_text(screen, f"音效列表 ({len(sound_lab_tracks)})", 24, list_rect.x + 10, list_rect.y - 40, WHITE, align="left")
+    draw_text(screen, "音效详情", 24, info_rect.x + 10, info_rect.y - 40, WHITE, align="left")
+
+    mx, my = pygame.mouse.get_pos()
+    chips, filter_band_height = get_sound_lab_filter_layout(list_rect)
+    for key, label, rect in chips:
+        active = (key == sound_lab_filter)
+        hover = rect.collidepoint(mx, my)
+        base_col = CYBER_AMBER if active else (120, 100, 70)
+        draw_cyber_rect(screen, rect, (42, 32, 26) if hover or active else (24, 20, 18), alpha=230, fill=True)
+        draw_cyber_rect(screen, rect, base_col if (hover or active) else GRAY, border_width=1, fill=False)
+        draw_text(screen, label, 18, rect.centerx, rect.centery - 8, WHITE if active else (210, 200, 190))
+
+    padding = 12
+    visible_rows = _sound_lab_visible_rows()
+    start_idx = sound_lab_scroll_index
+    end_idx = min(len(sound_lab_tracks), start_idx + visible_rows)
+    content_top = list_rect.y + padding + filter_band_height
+
+    if not sound_lab_tracks:
+        msg = "未加载到可用音效" if getattr(sound_mgr, "enabled", True) else "音频系统未启用"
+        draw_text(screen, msg, 24, list_rect.centerx, list_rect.centery, GRAY)
+    else:
+        for row, idx in enumerate(range(start_idx, end_idx)):
+            track = sound_lab_tracks[idx]
+            row_rect = pygame.Rect(
+                list_rect.x + padding,
+                content_top + row * SOUND_LAB_ITEM_HEIGHT,
+                list_rect.width - padding * 2,
+                SOUND_LAB_ITEM_HEIGHT - 10,
+            )
+            is_selected = (idx == sound_lab_selected)
+            is_playing = (sound_lab_now_playing == track["id"])
+            bg_color = (46, 46, 64)
+            if is_playing:
+                bg_color = (60, 38, 38)
+            if is_selected:
+                bg_color = (70, 80, 110)
+            draw_cyber_rect(screen, row_rect, bg_color, alpha=220, fill=True)
+            border_color = CYBER_AMBER if is_selected else ((255, 120, 120) if is_playing else (70, 70, 90))
+            draw_cyber_rect(screen, row_rect, border_color, border_width=2, fill=False)
+            draw_text(screen, track["display"], 24, row_rect.x + 10, row_rect.y + 4, WHITE, align="left")
+            draw_text(screen, track["category"], 18, row_rect.x + 10, row_rect.y + row_rect.height - 20, CYBER_AMBER, align="left")
+            draw_text(screen, _truncate_music_text(track["desc"], 26), 16, row_rect.right - 10, row_rect.y + row_rect.height - 22, GRAY, align="right")
+
+        if len(sound_lab_tracks) > visible_rows:
+            scroll_track_h = list_rect.height - padding * 2 - filter_band_height
+            if scroll_track_h > 0:
+                indicator_h = max(20, int(scroll_track_h * (visible_rows / len(sound_lab_tracks))))
+                max_scroll = max(1, len(sound_lab_tracks) - visible_rows)
+                indicator_y = content_top + int((scroll_track_h - indicator_h) * (sound_lab_scroll_index / max_scroll))
+                pygame.draw.rect(screen, (50, 50, 70), (list_rect.right - 8, content_top, 4, scroll_track_h), border_radius=2)
+                pygame.draw.rect(screen, CYBER_AMBER, (list_rect.right - 8, indicator_y, 4, indicator_h), border_radius=2)
+
+    draw_cyber_rect(screen, info_rect.inflate(-20, -20), (24, 26, 40), alpha=230, fill=True)
+    info_inner = info_rect.inflate(-20, -20)
+    info_y = info_inner.y + 10
+    if 0 <= sound_lab_selected < len(sound_lab_tracks):
+        current = sound_lab_tracks[sound_lab_selected]
+        draw_text(screen, current["display"], 34, info_inner.x + 10, info_y, WHITE, align="left")
+        info_y += 48
+        draw_text(screen, f"类别：{current['category']}", 20, info_inner.x + 10, info_y, CYBER_AMBER, align="left")
+        info_y += 28
+        draw_text(screen, f"内部ID：{current['id']}", 20, info_inner.x + 10, info_y, GRAY, align="left")
+        info_y += 32
+        draw_text(screen, "描述：", 20, info_inner.x + 10, info_y, WHITE, align="left")
+        info_y += 30
+        desc_lines = textwrap.wrap(current["desc"], width=24)
+        for line in desc_lines[:6]:
+            draw_text(screen, line, 18, info_inner.x + 20, info_y, GRAY, align="left")
+            info_y += 24
+    else:
+        draw_text(screen, "请选择一个音效", 26, info_inner.centerx, info_inner.centery, GRAY)
+
+    control_labels = {
+        "stop": "停止播放",
+        "play": "播放选中",
+        "back": "返回音乐选择",
+    }
+    for key, rect in controls.items():
+        hover = rect.collidepoint(mx, my)
+        draw_cyber_rect(screen, rect, (45, 40, 50) if hover else (25, 25, 35), alpha=230, fill=True)
+        draw_cyber_rect(screen, rect, CYBER_AMBER if hover else GRAY, border_width=2, fill=False)
+        draw_text(screen, control_labels[key], 22, rect.centerx, rect.centery - 12, WHITE if hover else GRAY)
+
+    if sound_lab_now_playing:
+        current_name = next((t["display"] for t in sound_lab_tracks if t["id"] == sound_lab_now_playing), _format_sfx_display(sound_lab_now_playing))
+        draw_text(screen, f"当前音效：{current_name}", 22, WIDTH - 40, 30, CYBER_AMBER, align="right")
+    else:
+        draw_text(screen, "当前音效：无", 22, WIDTH - 40, 30, GRAY, align="right")
+
 
 def draw_mode_select_ui():
     """绘制游戏模式选择UI"""
@@ -520,15 +1612,12 @@ def draw_mode_select_ui():
             pulse = int(150 + 105 * abs(math.sin(t / 300)))
             draw_text(screen, "点击选择", 24, card_rect.centerx, hint_y, (*WHITE[:3], pulse))
     
-    # 操作提示
-    draw_text(screen, "← → 切换模式  |  Enter 确认  |  ESC 返回", 18, WIDTH//2, HEIGHT - 110, GRAY)
-    
     # 返回按钮
     back_btn_rect = pygame.Rect(WIDTH//2 - 100, HEIGHT - 60, 200, 50)
     is_back_hover = back_btn_rect.collidepoint(mx, my)
     draw_cyber_rect(screen, back_btn_rect, (50, 20, 20) if is_back_hover else (30, 30, 40), alpha=200, fill=True)
     draw_cyber_rect(screen, back_btn_rect, RED if is_back_hover else GRAY, border_width=2, fill=False)
-    draw_text(screen, "返回主菜单 [ESC]", 20, back_btn_rect.centerx, back_btn_rect.centery, WHITE if is_back_hover else GRAY)
+    draw_text(screen, "返回主菜单 [ESC]", 20, back_btn_rect.centerx, back_btn_rect.y + 18, WHITE if is_back_hover else GRAY)
 
 def draw_settings_ui():
     """绘制系统设置界面"""
@@ -4160,7 +5249,7 @@ def draw_game_stats():
     kill_style = "neon" if kills >= 50 else ("glow" if kills >= 20 else "cyber")
     draw_premium_text(screen, f"{kills}", 12, value_x, y_offset, kill_color, align="right", style=kill_style)
     y_offset += line_height
-    
+
     # 命中率
     shots = stats.get('shots_fired', 0)
     hits = stats.get('hits', 0)
@@ -6453,6 +7542,14 @@ def draw_levelup_ui():
 while True:
     try:
         clock.tick(FPS)
+        music_director.update()
+        update_dynamic_game_music()
+        if music_library_status_timer > 0:
+            music_library_status_timer -= 1
+            if music_library_status_timer == 0:
+                music_library_status_msg = ""
+        if game_state in ("menu", "audio_hub", "music_library", "sound_lab") and music_director.current_state != "menu":
+            music_director.set_state("menu", intensity=0.25)
         screen.fill(CYBER_DEEP_BLACK)  # 深空黑背景
         
         # 绘制背景（游戏或Boss战斗）
@@ -6604,14 +7701,15 @@ while True:
                 if game_state == "gameover" and event.key == pygame.K_r:
                     reset_game()
                     game_state = "game"
-                    sound_mgr.play_music("battle")
+                    music_director.set_state("combat", intensity=0.8, immediate=True, force=True)
                     sound_mgr.play("select")
                     continue
                 
                 # 菜单子页：ESC 返回主菜单
-                if event.key == pygame.K_ESCAPE and game_state in ["arsenal", "gallery", "codex", "leaderboard", "select_plane", "background_settings", "settings", "achievements", "customization"]:
+                if event.key == pygame.K_ESCAPE and game_state in ["arsenal", "gallery", "codex", "leaderboard", "background_settings", "settings", "achievements", "customization"]:
                     game_state = "menu"
                     main_menu_selected = 0
+                    music_director.set_state("menu", intensity=0.25)
                     sound_mgr.play("select")
                     continue
                 
@@ -6675,6 +7773,9 @@ while True:
                             log_error(f"reset_game failed: {e}")
                             traceback.print_exc()
                             game_state = "menu"
+                    elif event.key == pygame.K_ESCAPE:
+                        game_state = "mode_select"
+                        sound_mgr.play("select")
                     continue
 
                 # 升级选择 UI 键盘控制
@@ -6817,6 +7918,12 @@ while True:
                                     is_paused = False
                                     frozen_screen = None
                                     game_state = "gameover"
+                                    music_director.pause_for_stinger(
+                                        "stinger_victory",
+                                        resume_state="victory",
+                                        resume_intensity=0.7,
+                                        silence_ms=1400,
+                                    )
                                     sound_mgr.play("achievement")
                     elif event.key == pygame.K_m and room_manager and game_mode == "roguelike":
                         show_full_map = not show_full_map
@@ -6861,7 +7968,7 @@ while True:
                                     player.achievement_manager.save_to_file()
                                 game_state = "menu"
                                 # 菜单使用电影配乐
-                                sound_mgr.play_music("cinematic")
+                                music_director.set_state("menu", intensity=0.25)
                         elif event.key == pygame.K_p:
                             is_paused = False; sound_mgr.play("select")
                         elif event.key == pygame.K_r:
@@ -6932,6 +8039,8 @@ while True:
                                     player.achievement_manager.save_to_file()
                                 pygame.quit(); sys.exit()
                             elif act == "select_plane": game_state = "mode_select"
+                            elif act == "audio_hub":
+                                enter_audio_hub()
                             elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization", "background_settings", "settings"]:
                                 game_state = act
                                 if act == "gallery": gallery_page = 0; gallery_tab = 0
@@ -6941,6 +8050,102 @@ while True:
                                 if act == "customization": customization_scroll_y = 0; customization_plane_scroll_y = 0; customization_selected_plane = None; customization_tab = 0
                                 if act == "background_settings": background_settings_selected = 0
                                 if act == "settings": settings_dragging = None; settings_saved_timer = 0
+
+                elif game_state == "audio_hub":
+                    if event.key in (pygame.K_ESCAPE, pygame.K_BACKSPACE):
+                        game_state = "menu"; sound_mgr.play("select")
+                    elif event.key in (pygame.K_LEFT, pygame.K_a):
+                        audio_hub_selected = (audio_hub_selected - 1) % len(AUDIO_HUB_OPTIONS)
+                        sound_mgr.play("select")
+                    elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                        audio_hub_selected = (audio_hub_selected + 1) % len(AUDIO_HUB_OPTIONS)
+                        sound_mgr.play("select")
+                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        sound_mgr.play("select")
+                        _activate_audio_hub_option(audio_hub_selected)
+
+                elif game_state == "music_library":
+                    if music_library_search_active:
+                        handled = False
+                        if event.key == pygame.K_ESCAPE:
+                            music_library_search_active = False
+                            handled = True
+                        elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                            music_library_search_active = False
+                            handled = True
+                        elif event.key == pygame.K_BACKSPACE:
+                            set_music_library_search_query(music_library_search_query[:-1])
+                            handled = True
+                        elif event.key == pygame.K_DELETE:
+                            set_music_library_search_query("")
+                            handled = True
+                        else:
+                            ch = getattr(event, "unicode", "")
+                            if ch and ch.isprintable() and ch not in ("\r", "\n"):
+                                set_music_library_search_query(music_library_search_query + ch)
+                                handled = True
+                        if handled:
+                            continue
+
+                    if event.key == pygame.K_ESCAPE:
+                        return_to_audio_hub_from_music_library(); sound_mgr.play("select")
+                    elif event.key == pygame.K_BACKSPACE:
+                        return_to_menu_from_music_library(); sound_mgr.play("select")
+                    elif event.key in (pygame.K_UP, pygame.K_w):
+                        move_music_library_selection(-1); sound_mgr.play("select")
+                    elif event.key in (pygame.K_DOWN, pygame.K_s):
+                        move_music_library_selection(1); sound_mgr.play("select")
+                    elif event.key == pygame.K_q:
+                        cycle_music_library_filter(-1); sound_mgr.play("select")
+                    elif event.key == pygame.K_e:
+                        cycle_music_library_filter(1); sound_mgr.play("select")
+                    elif event.key == pygame.K_PAGEUP:
+                        move_music_library_selection(-_music_library_visible_rows()); sound_mgr.play("select")
+                    elif event.key == pygame.K_PAGEDOWN:
+                        move_music_library_selection(_music_library_visible_rows()); sound_mgr.play("select")
+                    elif event.key == pygame.K_HOME:
+                        music_library_selected = 0
+                        ensure_music_library_visible()
+                        sound_mgr.play("select")
+                    elif event.key == pygame.K_END:
+                        if music_library_tracks:
+                            music_library_selected = len(music_library_tracks) - 1
+                            ensure_music_library_visible()
+                            sound_mgr.play("select")
+                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        play_music_library_track(music_library_selected)
+                    elif event.key == pygame.K_SPACE:
+                        stop_music_library_track()
+                elif game_state == "sound_lab":
+                    if event.key == pygame.K_ESCAPE:
+                        return_to_audio_hub_from_sound_lab(); sound_mgr.play("select")
+                    elif event.key == pygame.K_BACKSPACE:
+                        return_to_menu_from_sound_lab(); sound_mgr.play("select")
+                    elif event.key in (pygame.K_UP, pygame.K_w):
+                        move_sound_lab_selection(-1); sound_mgr.play("select")
+                    elif event.key in (pygame.K_DOWN, pygame.K_s):
+                        move_sound_lab_selection(1); sound_mgr.play("select")
+                    elif event.key == pygame.K_q:
+                        cycle_sound_lab_filter(-1); sound_mgr.play("select")
+                    elif event.key == pygame.K_e:
+                        cycle_sound_lab_filter(1); sound_mgr.play("select")
+                    elif event.key == pygame.K_PAGEUP:
+                        move_sound_lab_selection(-_sound_lab_visible_rows()); sound_mgr.play("select")
+                    elif event.key == pygame.K_PAGEDOWN:
+                        move_sound_lab_selection(_sound_lab_visible_rows()); sound_mgr.play("select")
+                    elif event.key == pygame.K_HOME:
+                        sound_lab_selected = 0
+                        ensure_sound_lab_visible()
+                        sound_mgr.play("select")
+                    elif event.key == pygame.K_END:
+                        if sound_lab_tracks:
+                            sound_lab_selected = len(sound_lab_tracks) - 1
+                            ensure_sound_lab_visible()
+                            sound_mgr.play("select")
+                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        play_sound_lab_effect(sound_lab_selected)
+                    elif event.key == pygame.K_SPACE:
+                        stop_sound_lab_effect()
                 
                 # Boss挑战模式导航（仅处理Enter和Esc，上下左右由持续按键处理）
                 elif game_state == "boss_challenge":
@@ -6962,7 +8167,9 @@ while True:
                         boss_challenge_active = True
                         try:
                             reset_game()
-                            sound_mgr.play_music("orchestral_dark")
+                            if not boss_challenge_music_active:
+                                music_director.push_state("boss_challenge", intensity=0.85, immediate=True)
+                                boss_challenge_music_active = True
                             # 立即生成第一个Boss
                             if boss_challenge_active and boss_challenge_current < len(boss_challenge_order):
                                 boss_type = boss_challenge_order[boss_challenge_current]
@@ -7046,6 +8253,9 @@ while True:
                             elif act == "select_plane":
                                 game_state = "mode_select"  # 先选择模式
                                 log_info(f"Game state changed to: {game_state}")
+                            elif act == "audio_hub":
+                                enter_audio_hub()
+                                log_info("Game state changed to: audio_hub")
                             elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization", "background_settings", "settings"]: 
                                 game_state = act
                                 if act == "gallery": gallery_page = 0; gallery_tab = 0
@@ -7057,6 +8267,105 @@ while True:
                                 if act == "settings": settings_dragging = None; settings_saved_timer = 0
                                 log_info(f"Game state changed to: {game_state}")
                             break
+
+                elif game_state == "audio_hub":
+                    card_rects = _get_audio_hub_card_rects()
+                    if event.button == 1:
+                        clicked = False
+                        for idx, rect in enumerate(card_rects):
+                            if rect.collidepoint(mx, my):
+                                audio_hub_selected = idx
+                                sound_mgr.play("select")
+                                _activate_audio_hub_option(idx)
+                                clicked = True
+                                break
+                        if not clicked:
+                            back_rect = _get_audio_hub_back_rect()
+                            if back_rect.collidepoint(mx, my):
+                                game_state = "menu"
+                                sound_mgr.play("select")
+
+                elif game_state == "music_library":
+                    list_rect, info_rect, controls = get_music_library_layout()
+                    layout = build_music_library_controls(list_rect)
+                    search_rect = layout["search_rect"]
+                    sort_buttons = layout["sort_buttons"]
+                    chips = layout["filter_chips"]
+                    content_top = layout["content_top"]
+                    if event.button == 1:
+                        if search_rect.collidepoint(mx, my):
+                            music_library_search_active = True
+                            sound_mgr.play("select")
+                            continue
+                        else:
+                            music_library_search_active = False
+                        sort_clicked = False
+                        for mode, _, rect in sort_buttons:
+                            if rect.collidepoint(mx, my):
+                                set_music_library_sort_mode(mode)
+                                sound_mgr.play("select")
+                                sort_clicked = True
+                                break
+                        if sort_clicked:
+                            continue
+                        chip_clicked = False
+                        for key, _, rect in chips:
+                            if rect.collidepoint(mx, my):
+                                apply_music_library_filter(key)
+                                sound_mgr.play("select")
+                                chip_clicked = True
+                                break
+                        if chip_clicked:
+                            continue
+                        if list_rect.collidepoint(mx, my) and music_library_tracks and my >= content_top:
+                            rel_y = my - content_top
+                            if rel_y >= 0:
+                                idx = music_library_scroll_index + rel_y // MUSIC_LIBRARY_ITEM_HEIGHT
+                                if 0 <= idx < len(music_library_tracks):
+                                    if idx != music_library_selected:
+                                        music_library_selected = idx
+                                        ensure_music_library_visible()
+                                        _queue_selected_music_library_track()
+                                        sound_mgr.play("select")
+                                    else:
+                                        play_music_library_track(idx)
+                        elif controls["play"].collidepoint(mx, my):
+                            play_music_library_track(music_library_selected)
+                        elif controls["stop"].collidepoint(mx, my):
+                            stop_music_library_track()
+                        elif controls["back"].collidepoint(mx, my):
+                            sound_mgr.play("select")
+                            return_to_audio_hub_from_music_library()
+                elif game_state == "sound_lab":
+                    list_rect, info_rect, controls = get_sound_lab_layout()
+                    if event.button == 1:
+                        chips, filter_band_height = get_sound_lab_filter_layout(list_rect)
+                        content_top = list_rect.y + 12 + filter_band_height
+                        if list_rect.collidepoint(mx, my):
+                            if my < content_top:
+                                for key, _, rect in chips:
+                                    if rect.collidepoint(mx, my):
+                                        apply_sound_lab_filter(key)
+                                        sound_mgr.play("select")
+                                        break
+                            elif sound_lab_tracks:
+                                rel_y = my - content_top
+                                if rel_y >= 0:
+                                    idx = sound_lab_scroll_index + rel_y // SOUND_LAB_ITEM_HEIGHT
+                                    if 0 <= idx < len(sound_lab_tracks):
+                                        if idx != sound_lab_selected:
+                                            sound_lab_selected = idx
+                                            ensure_sound_lab_visible()
+                                            sound_mgr.play("select")
+                                        else:
+                                            play_sound_lab_effect(idx)
+                        elif controls["play"].collidepoint(mx, my):
+                            play_sound_lab_effect(sound_lab_selected)
+                        elif controls["stop"].collidepoint(mx, my):
+                            stop_sound_lab_effect()
+                        elif controls["back"].collidepoint(mx, my):
+                            sound_mgr.play("select")
+                            return_to_audio_hub_from_sound_lab()
                 
                 # 成就菜单点击
                 elif game_state == "achievements":
@@ -7169,7 +8478,7 @@ while True:
                             game_state = "menu"
                     elif back_btn.collidepoint(mx, my):
                         sound_mgr.play("select")
-                        game_state = "menu"
+                        game_state = "mode_select"
                     
                 elif game_state == "arsenal":
                     sound_mgr.play("select")
@@ -7541,7 +8850,7 @@ while True:
                         elif pygame.Rect(cx-100, cy+80, 200, 50).collidepoint(mx, my):
                             game_state = "menu" # 退出
                             # 菜单使用电影配乐
-                            sound_mgr.play_music("cinematic")
+                            music_director.set_state("menu", intensity=0.25)
                             sound_mgr.play("select")
                     else:
                         # 游戏进行中：处理点击攻击等逻辑
@@ -7553,6 +8862,12 @@ while True:
             if event.type == pygame.MOUSEBUTTONUP:
                 if game_state == "settings" and settings_dragging:
                     settings_dragging = None
+
+            if event.type == pygame.MOUSEWHEEL:
+                if game_state == "music_library":
+                    scroll_music_library(-event.y)
+                elif game_state == "sound_lab":
+                    scroll_sound_lab(-event.y)
         
         # 鼠标拖动更新 (在事件循环外持续检测)
         if game_state == "settings" and settings_dragging:
@@ -7583,6 +8898,12 @@ while True:
 
         if game_state == "menu": 
             draw_menu_ui()
+        elif game_state == "audio_hub":
+            draw_audio_hub_ui()
+        elif game_state == "music_library":
+            draw_music_library_ui()
+        elif game_state == "sound_lab":
+            draw_sound_lab_ui()
         elif game_state == "mode_select":
             draw_mode_select_ui()
         elif game_state == "select_plane": 
@@ -8606,7 +9927,7 @@ while True:
                     warning_active, spawn_now = boss_manager.update(score, player.level, boss_exists=bool(boss))
                     if warning_active and not boss:
                         # Trigger visual/sound warning once
-                        sound_mgr.stop_music(); sound_mgr.play("warning")
+                        music_director.pause_for_stinger("warning", resume_state="combat", resume_intensity=0.85)
                         # destroy current mobs for dramatic effect
                         for m in list(mobs): create_explosion(m.rect.center, ORANGE, 6); m.kill()
                     if spawn_now and not boss:
@@ -8620,7 +9941,9 @@ while True:
                         if candidate:
                             boss = candidate
                             all_sprites.add(boss)
-                            sound_mgr.play_music("funk")
+                            if not boss_music_active:
+                                music_director.push_state("boss", intensity=1.0, override_track="funk")
+                                boss_music_active = True
                     
                     # 敌人生成：普通模式和Boss挑战模式使用波次生成，房间模式由房间系统控制
                     if (game_mode == "normal" or boss_challenge_active) and len(mobs) < (12 if not boss else 4):
@@ -9455,6 +10778,13 @@ while True:
                                                 player.achievement_manager.save_to_file()
                                             # Boss挑战模式失败时重置标志
                                             boss_challenge_active = False
+                                            music_director.pause_for_stinger(
+                                                "stinger_defeat",
+                                                resume_state="defeat",
+                                                resume_intensity=0.25,
+                                                silence_ms=1400,
+                                            )
+                                            deactivate_boss_challenge_music()
                                             sound_mgr.play("gameover")
                                     else:
                                         # 无复活能力，正常死亡
@@ -9472,6 +10802,13 @@ while True:
                                             player.achievement_manager.save_to_file()
                                         # Boss挑战模式失败时重置标志
                                         boss_challenge_active = False
+                                        music_director.pause_for_stinger(
+                                            "stinger_defeat",
+                                            resume_state="defeat",
+                                            resume_intensity=0.25,
+                                            silence_ms=1400,
+                                        )
+                                        deactivate_boss_challenge_music()
                                         sound_mgr.play("gameover")
                     
                     # ========== 经验球拾取 ==========
@@ -9559,12 +10896,9 @@ while True:
                                 
                                 # 音效
                                 sound_mgr.play("nuke")
-                                # 恢复背景BGM
+                                deactivate_boss_music()
                                 try:
-                                    current_bg_style = bg_manager.current_style
-                                    bg_config = BackgroundManager.BG_STYLES.get(current_bg_style, {})
-                                    bgm_track = bg_config.get("bgm", "normal")
-                                    sound_mgr.play_music(bgm_track)
+                                    activate_background_music(bg_manager.current_style)
                                 except: pass
                                 
                                 FloatingText(WIDTH//2, HEIGHT//2, "BOSS DEFEATED", GOLD)
@@ -9625,6 +10959,7 @@ while True:
                                                 sound_mgr.play("achievement")
                                             player.achievement_manager.save_to_file()
                                         boss_challenge_active = False
+                                        deactivate_boss_challenge_music()
                                         # 继续无限模式或返回菜单
                 
                 # ========== 先绘制尾迹（在飞机下层）==========

@@ -10515,6 +10515,104 @@ PAINT_THEMES = {
         "model_style": "crusher_void",
         "animated": True,
     },
+    
+    # ========== SDMG (星际海豚) 专属涂装 ==========
+    "sdmg_default": {
+        "name": "星际海豚·原型",
+        "desc": "🐬银色镀铬装甲+青色能量辉光，泰拉瑞亚S.D.M.G.原版配色",
+        "neon_color": (0, 255, 255),       # 青色
+        "accent_color": (192, 192, 192),   # 银色
+        "trail_color": (100, 200, 255),    # 浅蓝
+        "unlocked": True,
+        "cost": 0,
+        "trail_style": "tracer_stream",
+        "particle_count": 150,
+        "category": "exclusive",
+        "trail_width": 20,
+        "exclusive_plane": "sdmg",
+        "model_style": "sdmg_default",
+        "animated": True,
+    },
+    "sdmg_neon": {
+        "name": "霓虹鲨潮·狂欢",
+        "desc": "🎉暗灰装甲+洋红霓虹灯效，派对模式全开",
+        "neon_color": (255, 0, 255),       # 洋红
+        "accent_color": (200, 0, 255),     # 紫红
+        "trail_color": (255, 50, 200),     # 粉红
+        "unlocked": False,
+        "cost": 15000,
+        "trail_style": "neon_pulse",
+        "particle_count": 180,
+        "category": "exclusive",
+        "trail_width": 24,
+        "exclusive_plane": "sdmg",
+        "model_style": "sdmg_neon",
+        "animated": True,
+    },
+    "sdmg_abyss": {
+        "name": "深渊猎手·海沟",
+        "desc": "🌊深蓝装甲+冰蓝能量，深海高压环境特化型",
+        "neon_color": (100, 200, 255),     # 冰蓝
+        "accent_color": (80, 150, 220),    # 深蓝
+        "trail_color": (60, 120, 200),     # 海蓝
+        "unlocked": False,
+        "cost": 18000,
+        "trail_style": "bubble_trail",
+        "particle_count": 160,
+        "category": "exclusive",
+        "trail_width": 22,
+        "exclusive_plane": "sdmg",
+        "model_style": "sdmg_abyss",
+        "animated": True,
+    },
+    "sdmg_golden": {
+        "name": "黄金暴君·君王",
+        "desc": "👑纯金装甲+暖光辉煌，星际富豪的极致奢华",
+        "neon_color": (255, 255, 200),     # 金光
+        "accent_color": (255, 215, 0),     # 金色
+        "trail_color": (255, 200, 100),    # 暖金
+        "unlocked": False,
+        "cost": 35000,
+        "trail_style": "gold_stream",
+        "particle_count": 200,
+        "category": "exclusive",
+        "trail_width": 28,
+        "exclusive_plane": "sdmg",
+        "model_style": "sdmg_golden",
+        "animated": True,
+    },
+    "sdmg_void": {
+        "name": "虚空噬星·湮灭",
+        "desc": "🌌暗紫装甲+紫光脉动，虚空能量驱动的终极改造",
+        "neon_color": (150, 100, 255),     # 紫光
+        "accent_color": (120, 80, 200),    # 暗紫
+        "trail_color": (100, 60, 180),     # 深紫
+        "unlocked": False,
+        "cost": 45000,
+        "trail_style": "void_pulse",
+        "particle_count": 220,
+        "category": "exclusive",
+        "trail_width": 30,
+        "exclusive_plane": "sdmg",
+        "model_style": "sdmg_void",
+        "animated": True,
+    },
+    "sdmg_lunar": {
+        "name": "月球领主·天启",
+        "desc": "🌙灰蓝装甲+薄荷绿光晕，泰拉瑞亚月球领主致敬款",
+        "neon_color": (100, 255, 200),     # 薄荷绿
+        "accent_color": (80, 200, 180),    # 青绿
+        "trail_color": (60, 180, 150),     # 深青
+        "unlocked": False,
+        "cost": 50000,
+        "trail_style": "lunar_phase",
+        "particle_count": 250,
+        "category": "exclusive",
+        "trail_width": 35,
+        "exclusive_plane": "sdmg",
+        "model_style": "sdmg_lunar",
+        "animated": True,
+    },
 }
 
 # ==============================================================================

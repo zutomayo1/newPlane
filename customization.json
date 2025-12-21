@@ -643,7 +643,13 @@
     "crusher_azure": true,
     "crusher_emerald": true,
     "crusher_golden": true,
-    "crusher_void": true
+    "crusher_void": true,
+    "sdmg_default": true,
+    "sdmg_neon": true,
+    "sdmg_abyss": true,
+    "sdmg_golden": true,
+    "sdmg_void": true,
+    "sdmg_lunar": true
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
@@ -705,7 +711,8 @@
     "scarlet": "scarlet_gothic",
     "zenith": "zenith_default",
     "viscerator": "viscerator_default",
-    "crusher": "crusher_crimson"
+    "crusher": "crusher_crimson",
+    "sdmg": "sdmg_golden"
   },
   "unlocked_bullet_themes": {
     "default": true,

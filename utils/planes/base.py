@@ -483,6 +483,13 @@ def _generate_plane_surf(pid, visual=None, static=False):
             draw_crusher_plane(s, model_style, frame)
             return s
         
+        # 尝试 SDMG 专属涂装（星际海豚·S.D.M.G.）
+        from .skins_sdmg import is_sdmg_style, draw_sdmg
+        if is_sdmg_style(model_style):
+            frame = int(t * 60) if t > 0 else 0
+            draw_sdmg(s, c, 10, 10, 100, 100, frame, model_style)
+            return s
+        
         # 所有涂装都已拆分，如果没有匹配则继续渲染基础机体
         # （不再需要 utils_legacy 回退）
     
@@ -697,6 +704,12 @@ def _generate_plane_surf(pid, visual=None, static=False):
         from .skins_crusher import draw_crusher_plane
         frame = int(t * 60) if t > 0 else 0
         draw_crusher_plane(s, "crusher_default", frame)
+    
+    # 星际海豚 - SDMG
+    elif pid == "sdmg":
+        from .skins_sdmg import draw_sdmg
+        frame = int(t * 60) if t > 0 else 0
+        draw_sdmg(s, c, 10, 10, 100, 100, frame, "sdmg_default")
     
     else:
         # 默认占位图形

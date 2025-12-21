@@ -94,6 +94,10 @@ from .viscerator_bullets import (ExoStreamBullet, ReverseThrustBlast,
 from .crusher_bullets import (DesolationBeamBullet, BeamHitEffect, WarpDashEffect,
                                CrushSpark, TractorBeamEffect, ResonanceBreakEffect,
                                CrystalShatterEffect, MiniShatter, CoreMeltdownEffect)
+from .sdmg_bullets import (SDMG_BULLET_THEMES, ChlorophyteTracerBullet, TracerHitEffect,
+                            StarfishMine, StarfishExplosion, SharknadoMissile, SharkHitEffect,
+                            SharknadoSkill, MoonLordHand, PhantasmOrb, MoonLordGazeSkill,
+                            OrbitalStrikeBeam, OrbitalStrikeSkill, OverheatManager)
 
 __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES', 
            'render_dragoon_bullet', 'DRAGOON_BULLET_THEMES',
@@ -140,4 +144,8 @@ __all__ = ['draw_bullet_preview', 'render_asura_bullet', 'ASURA_BULLET_THEMES',
            'fire_particle_storm', 'fire_photon_annihilation',
            'DesolationBeamBullet', 'BeamHitEffect', 'WarpDashEffect',
            'CrushSpark', 'TractorBeamEffect', 'ResonanceBreakEffect',
-           'CrystalShatterEffect', 'MiniShatter', 'CoreMeltdownEffect']
+           'CrystalShatterEffect', 'MiniShatter', 'CoreMeltdownEffect',
+           'SDMG_BULLET_THEMES', 'ChlorophyteTracerBullet', 'TracerHitEffect',
+           'StarfishMine', 'StarfishExplosion', 'SharknadoMissile', 'SharkHitEffect',
+           'SharknadoSkill', 'MoonLordHand', 'PhantasmOrb', 'MoonLordGazeSkill',
+           'OrbitalStrikeBeam', 'OrbitalStrikeSkill', 'OverheatManager']

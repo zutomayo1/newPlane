@@ -17,11 +17,13 @@ from .core import (
 # 音频系统（已拆分到子模块）
 from .audio import (
     AudioSynthesizer,
-    SoundManager
+    SoundManager,
+    MusicDirector
 )
 
 # 创建全局音频管理器实例
 sound_mgr = SoundManager()
+music_director = MusicDirector(sound_mgr)
 
 # UI绘制（已拆分到子模块）
 from .ui import (
@@ -48,8 +50,8 @@ __all__ = [
     'save_settings', 'load_settings',
     'safe_blit',
     # Audio
-    'AudioSynthesizer', 'SoundManager',
-    'sound_mgr',  # 全局实例
+    'AudioSynthesizer', 'SoundManager', 'MusicDirector',
+    'sound_mgr', 'music_director',  # 全局实例
     # UI
     'get_font',
     'draw_text', 'draw_mono_text', 'draw_spaced_text',
