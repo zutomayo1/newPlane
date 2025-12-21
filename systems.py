@@ -4396,9 +4396,76 @@ class BackgroundManager:
         self.target_bg = [10, 10, 18]
         self.nebula_color = (0, 50, 100)
         self.warp_effect = False
+
+        # performance caches (must not change visuals)
+        self._gradient_cache = {}  # (style, w, h) -> Surface
+        self._grid_cache = {}      # (color, w, h) -> (vert_surf, horiz_surf)
+        self._star_sprite_cache = {}  # (radius, gray) -> Surface
         
         # 初始化当前风格
         self.load_style(style)
+
+    def _get_cached_gradient(self, style: str):
+        key = (style, WIDTH, HEIGHT)
+        surf = self._gradient_cache.get(key)
+        if surf is not None:
+            return surf
+        g = pygame.Surface((WIDTH, HEIGHT))
+        if style == "dawn_clouds":
+            # 晨曦云海 - 橙粉色渐变
+            for y in range(HEIGHT):
+                ratio = y / HEIGHT
+                r = int(255 * (1 - ratio) + 200 * ratio)
+                g_ = int(180 * (1 - ratio) + 150 * ratio)
+                b = int(150 * (1 - ratio) + 255 * ratio)
+                pygame.draw.line(g, (r, g_, b), (0, y), (WIDTH, y))
+        elif style == "city_sky":
+            # 城市上空 - 橙红到深蓝渐变
+            for y in range(HEIGHT):
+                ratio = y / HEIGHT
+                r = int(60 * (1 - ratio) + 20 * ratio)
+                g_ = int(30 * (1 - ratio) + 20 * ratio)
+                b = int(80 * (1 - ratio) + 80 * ratio)
+                pygame.draw.line(g, (r, g_, b), (0, y), (WIDTH, y))
+        else:
+            g.fill((0, 0, 0))
+        self._gradient_cache[key] = g
+        return g
+
+    def _get_cached_grid(self, grid_color):
+        key = (tuple(grid_color) if isinstance(grid_color, (list, tuple)) else grid_color, WIDTH, HEIGHT)
+        cached = self._grid_cache.get(key)
+        if cached is not None:
+            return cached
+
+        grid_alpha = 20
+        color = key[0]
+
+        vert = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        # vertical lines every 100px
+        for x in range(0, WIDTH, 100):
+            pygame.draw.rect(vert, (*color, grid_alpha), pygame.Rect(x, 0, 2, HEIGHT))
+
+        # horizontal lines every 80px; build a slightly taller surface to allow offset blit
+        horiz = pygame.Surface((WIDTH, HEIGHT + 80), pygame.SRCALPHA)
+        for y in range(0, HEIGHT + 80, 80):
+            pygame.draw.rect(horiz, (*color, grid_alpha), pygame.Rect(0, y, WIDTH, 2))
+
+        self._grid_cache[key] = (vert, horiz)
+        return vert, horiz
+
+    def _get_star_sprite(self, radius: int, gray: int):
+        radius = 1 if radius <= 1 else 2
+        gray = int(max(0, min(255, gray)))
+        key = (radius, gray)
+        spr = self._star_sprite_cache.get(key)
+        if spr is not None:
+            return spr
+        size = radius * 2 + 1
+        spr = pygame.Surface((size, size), pygame.SRCALPHA)
+        pygame.draw.circle(spr, (gray, gray, gray, 255), (radius, radius), radius)
+        self._star_sprite_cache[key] = spr
+        return spr
     
     def load_style(self, style):
         """加载指定的背景风格 - 根据元素类型创建不同的对象"""
@@ -4948,21 +5015,11 @@ class BackgroundManager:
     def draw(self, surf):
         # 特殊背景渐变处理
         if self.current_style == "dawn_clouds":
-            # 晨曦云海 - 橙粉色渐变
-            for y in range(HEIGHT):
-                ratio = y / HEIGHT
-                r = int(255 * (1 - ratio) + 200 * ratio)
-                g = int(180 * (1 - ratio) + 150 * ratio)
-                b = int(150 * (1 - ratio) + 255 * ratio)
-                pygame.draw.line(surf, (r, g, b), (0, y), (WIDTH, y))
+            # 晨曦云海 - 橙粉色渐变（缓存）
+            surf.blit(self._get_cached_gradient("dawn_clouds"), (0, 0))
         elif self.current_style == "city_sky":
-            # 城市上空 - 橙红到深蓝渐变
-            for y in range(HEIGHT):
-                ratio = y / HEIGHT
-                r = int(60 * (1 - ratio) + 20 * ratio)
-                g = int(30 * (1 - ratio) + 20 * ratio)
-                b = int(80 * (1 - ratio) + 80 * ratio)
-                pygame.draw.line(surf, (r, g, b), (0, y), (WIDTH, y))
+            # 城市上空 - 橙红到深蓝渐变（缓存）
+            surf.blit(self._get_cached_gradient("city_sky"), (0, 0))
         else:
             # 普通填充
             surf.fill([int(c) for c in self.current_bg])
@@ -4972,20 +5029,11 @@ class BackgroundManager:
         
         # 绘制网格线（如果启用）
         if "grid" in elements and elements["grid"] and config["grid_color"]:
-            grid_alpha = 20
             grid_color = config["grid_color"] if not self.warp_effect else (255, 0, 255)
-            
-            # 纵向线
-            for x in range(0, WIDTH, 100):
-                s = pygame.Surface((2, HEIGHT), pygame.SRCALPHA)
-                s.fill((*grid_color, grid_alpha))
-                surf.blit(s, (x, 0))
-                
-            # 横向线
-            for y in range(int(self.grid_y) - 80, HEIGHT, 80):
-                s = pygame.Surface((WIDTH, 2), pygame.SRCALPHA)
-                s.fill((*grid_color, grid_alpha))
-                surf.blit(s, (0, y))
+
+            vert, horiz = self._get_cached_grid(grid_color)
+            surf.blit(vert, (0, 0))
+            surf.blit(horiz, (0, int(self.grid_y) - 80))
         
         # 绘制所有特殊元素
         for elem in self.special_elements:
@@ -5000,7 +5048,10 @@ class BackgroundManager:
                 length = s['speed'] * 10
                 pygame.draw.line(surf, (s['alpha'], s['alpha'], s['alpha']), (s['x'], s['y']), (s['x'], s['y'] - length), 1)
             else:
-                pygame.draw.circle(surf, (s['alpha'], s['alpha'], s['alpha']), (s['x'], int(s['y'])), 1 if s['size']<2 else 2)
+                radius = 1 if s['size'] < 2 else 2
+                star = self._get_star_sprite(radius, s['alpha'])
+                y = int(s['y'])
+                surf.blit(star, (s['x'] - radius, y - radius))
 
 class BossManager:
     """Boss spawn and scheduling manager with progressive difficulty.
