@@ -442,6 +442,17 @@ class RoomManager:
         self.enemies_in_current_wave = 0
         self.total_enemies_spawned = 0
         self.max_concurrent_enemies = 8  # 同时存在的最大敌人数
+        # 精英轮换顺序（按需循环）
+        self.elite_cycle_order: List[str] = [
+            "quantum_cleaver",
+            "umbra_tormentor",
+            "voidfold_mirror",
+            "prismatic_overseer",
+            "chrono_interdictor",
+            "rift_parasite",
+            "solar_arc_rider_prime",
+        ]
+        self.elite_cycle_index = 0
     
     def _update_theme(self) -> None:
         """更新当前主题配置"""
@@ -689,13 +700,35 @@ class RoomManager:
             except Exception as e:
                 log_error(f"生成Boss失败: {e}")
         
-        # 敌人池
-        light_pool = ["scout_moth", "trooper_spear", "lurker_halo", "bomber_deepjelly", "shield_beeguard", "weaver_dualwasp"]
-        heavy_pool = ["plasma_storm", "jammer_amethyst", "splitter_azurecore", "sniper_blackneedle", "summoner_nethalo", "prism_voidprism", "guard_heavyanvil", "judge_dualpolar"]
+        # 敌人池：当前阶段仅刷新精英
+        fallback_elites = [
+            "quantum_cleaver",
+            "umbra_tormentor",
+            "voidfold_mirror",
+            "prismatic_overseer",
+            "chrono_interdictor",
+            "rift_parasite",
+            "solar_arc_rider_prime",
+        ]
+
+        elite_pool: List[str] = []
+        try:
+            cfgs = getattr(enemy_factory, "enemy_configs", {})
+            if isinstance(cfgs, dict):
+                elite_pool = [k for k, v in cfgs.items() if isinstance(v, dict) and v.get("is_elite")]
+        except Exception:
+            elite_pool = []
+
+        if not elite_pool:
+            elite_pool = fallback_elites
+
+        # 兼容旧逻辑变量名，但实际都指向精英池
+        light_pool = elite_pool
+        heavy_pool = elite_pool
         
         # 基础属性
-        base_hp = 80 + int(room.difficulty * 45)
-        base_damage = 10 + room.difficulty * 3.5
+        base_hp = 80 + int(room.difficulty * 40)
+        base_damage = 10 + room.difficulty * 3.0
         
         # 波次难度递增
         wave_mult = 1.0 + (self.current_wave - 1) * 0.15
@@ -704,35 +737,40 @@ class RoomManager:
         if room.room_type == RoomType.BOSS:
             # Boss房间：第2-5波生成支援敌人
             spawn_count = random.randint(2, 3)
-            enemy_pool = heavy_pool
+            enemy_pool = elite_pool
             is_elite = True
             hp_mult = 1.5 * wave_mult
             dmg_mult = 1.3 * wave_mult
         elif room.room_type == RoomType.ELITE:
-            # 精英房间：混合精英和普通
+            # 精英房间：仅精英
             spawn_count = random.randint(3, 5)
-            enemy_pool = heavy_pool if random.random() < 0.6 else light_pool
-            is_elite = random.random() < 0.5
-            hp_mult = (1.5 if is_elite else 1.0) * wave_mult
-            dmg_mult = (1.3 if is_elite else 1.0) * wave_mult
+            enemy_pool = elite_pool
+            is_elite = True
+            hp_mult = 1.5 * wave_mult
+            dmg_mult = 1.3 * wave_mult
         else:
-            # 普通房间：前期轻型，后期混合
+            # 普通房间：当前也仅精英（用于测试/迭代）
             base_count = 4 + room.depth
             spawn_count = random.randint(max(3, base_count - 2), base_count + 2)
-            
-            # 后面的波次更多重型敌人
-            heavy_chance = 0.2 + (self.current_wave / self.total_waves) * 0.4
-            enemy_pool = heavy_pool if random.random() < heavy_chance else light_pool
-            is_elite = random.random() < 0.15 * self.current_wave
-            hp_mult = (1.4 if is_elite else 1.0) * wave_mult
-            dmg_mult = (1.2 if is_elite else 1.0) * wave_mult
+
+            enemy_pool = elite_pool
+            is_elite = True
+            hp_mult = 1.35 * wave_mult
+            dmg_mult = 1.2 * wave_mult
         
         # 生成敌人
         spawned_count = 0
         summary: Dict[str, int] = {}
         
+        enemy_cfgs = getattr(enemy_factory, "enemy_configs", {}) if enemy_factory else {}
+
+        # 确定本波唯一的精英类型（按顺序循环）
+        sequence = [t for t in self.elite_cycle_order if t in elite_pool] or elite_pool
+        elite_choice = sequence[self.elite_cycle_index % len(sequence)] if sequence else random.choice(elite_pool)
+        self.elite_cycle_index = (self.elite_cycle_index + 1) % max(1, len(sequence))
+
         for _ in range(spawn_count):
-            enemy_type = random.choice(enemy_pool)
+            enemy_type = elite_choice
             summary[enemy_type] = summary.get(enemy_type, 0) + 1
             
             # 随机边缘生成
@@ -747,13 +785,20 @@ class RoomManager:
                 x, y = WIDTH + 70, random.randint(60, HEIGHT - 60)
             
             try:
+                base_type_hp = float(base_hp)
+                base_type_dmg = float(base_damage)
+                if isinstance(enemy_cfgs, dict):
+                    et_cfg = enemy_cfgs.get(enemy_type, {})
+                    if isinstance(et_cfg, dict):
+                        base_type_hp = float(et_cfg.get("hp", base_type_hp))
+                        base_type_dmg = float(et_cfg.get("damage", base_type_dmg))
                 enemy_factory.create_enemy(
                     enemy_type,
                     spawn_pos=(x, y),
                     override_config={
-                        "hp": int(base_hp * hp_mult),
+                        "hp": int(base_type_hp * hp_mult),
                         "is_elite": is_elite,
-                        "damage": int(base_damage * dmg_mult),
+                        "damage": int(base_type_dmg * dmg_mult),
                     },
                 )
                 spawned_count += 1

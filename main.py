@@ -10,7 +10,7 @@ from utils import *
 from systems import *
 from sprites import *
 from customization import customization_manager, PAINT_THEMES, BULLET_THEMES, EnhancedTrailEffect
-from enemies import enemy_factory, init_enemy_system
+from enemies import enemy_factory, init_enemy_system, build_enemy_preview_surface
 from roguelite import ItemManager
 from room_system import RoomManager, RoomType, RoomState
 from music_catalog import resolve_music_metadata, MUSIC_FILTER_CHOICES
@@ -129,6 +129,9 @@ score = 0
 # boss_timer and scheduling managed by BossManager
 global_time_freeze = 0
 wave = 0  # 波数
+# 普通模式连续刷怪计时与循环队列
+normal_spawn_timer = 0
+normal_spawn_cycle = []
 
 # 选人
 selected_plane = "striker"
@@ -1046,6 +1049,7 @@ def reset_game():
     global upgrade_options, upgrade_selected, levelup_ready, frozen_screen, wave, tab_paused
     global map_paused, show_full_map, room_completion_paused
     global boss_music_active, boss_challenge_music_active
+    global normal_spawn_timer, normal_spawn_cycle
     
     # reset_game() called
     
@@ -1086,6 +1090,8 @@ def reset_game():
     boss_challenge_music_active = False
     global_time_freeze = 0
     wave = 0
+    normal_spawn_timer = 0
+    normal_spawn_cycle = []
     
     try:
         # 获取玩家选择的涂装
@@ -2144,6 +2150,16 @@ def draw_codex_ui():
     r['tab_plane'] = tab_plane_rect
     r['tab_boss'] = tab_boss_rect
     r['tab_enemy'] = tab_enemy_rect
+
+    def _enemy_preview(enemy_id: str, color: tuple) -> pygame.Surface:
+        """使用真实敌人渲染逻辑生成图鉴预览。"""
+        try:
+            t = pygame.time.get_ticks() * 0.06  # 约等于游戏内每秒 60 tick 的节奏
+            return build_enemy_preview_surface(enemy_id, t=t, box=180, color_override=color)
+        except Exception:
+            fallback = pygame.Surface((180, 180), pygame.SRCALPHA)
+            pygame.draw.circle(fallback, color, (90, 90), 26, 2)
+            return fallback
     
     # List View (Scrolled)
     if codex_tab == 0:
@@ -2190,670 +2206,17 @@ def draw_codex_ui():
         elif codex_tab == 1:
             preview = get_boss_surf(key, data["color"])
         else:  # codex_tab == 2 - 敌人图鉴
-            # 绘制敌人预览（有机战机风格）
-            import math
-            preview = pygame.Surface((150, 150), pygame.SRCALPHA)
             enemy_color = tuple(data.get("color", (200, 100, 100)))
-            dark_color = tuple(max(0, c - 60) for c in enemy_color)
-            light_color = tuple(min(255, c + 80) for c in enemy_color)
-            center = 75
-            
-            enemy_id = key
-            
-            if enemy_id == "scout_moth":
-                # 灰蛾侦察机：轻盈蛾翼造型
-                # 细长机身
-                pygame.draw.ellipse(preview, enemy_color, (center-8, 30, 16, 90))
-                pygame.draw.ellipse(preview, light_color, (center-8, 30, 16, 90), 2)
-                # 大型蛾翼（弧形）
-                pygame.draw.arc(preview, enemy_color, (20, 45, 50, 60), 0.5, 2.6, 8)
-                pygame.draw.arc(preview, enemy_color, (80, 45, 50, 60), 0.5, 2.6, 8)
-                pygame.draw.arc(preview, light_color, (20, 45, 50, 60), 0.5, 2.6, 2)
-                pygame.draw.arc(preview, light_color, (80, 45, 50, 60), 0.5, 2.6, 2)
-                # 触角
-                pygame.draw.line(preview, light_color, (center-5, 35), (center-15, 20), 2)
-                pygame.draw.line(preview, light_color, (center+5, 35), (center+15, 20), 2)
-                pygame.draw.circle(preview, (255, 200, 100), (center-15, 20), 3)
-                pygame.draw.circle(preview, (255, 200, 100), (center+15, 20), 3)
-                # 复眼
-                pygame.draw.ellipse(preview, (200, 50, 50), (center-12, 38, 10, 14))
-                pygame.draw.ellipse(preview, (200, 50, 50), (center+2, 38, 10, 14))
-            elif enemy_id == "trooper_spear":
-                # 赤矛突击机：矛头战机
-                # 尖锐矛头
-                pygame.draw.polygon(preview, enemy_color, [(center, 15), (center-20, 70), (center+20, 70)])
-                pygame.draw.polygon(preview, light_color, [(center, 15), (center-20, 70), (center+20, 70)], 2)
-                # 矛身
-                pygame.draw.rect(preview, dark_color, (center-12, 70, 24, 50))
-                pygame.draw.rect(preview, enemy_color, (center-10, 72, 20, 46))
-                # 稳定翼
-                pygame.draw.polygon(preview, dark_color, [(center-12, 90), (center-35, 115), (center-12, 120)])
-                pygame.draw.polygon(preview, dark_color, [(center+12, 90), (center+35, 115), (center+12, 120)])
-                pygame.draw.polygon(preview, light_color, [(center-12, 90), (center-35, 115), (center-12, 120)], 1)
-                pygame.draw.polygon(preview, light_color, [(center+12, 90), (center+35, 115), (center+12, 120)], 1)
-                # 推进器火焰
-                pygame.draw.polygon(preview, (255, 150, 50), [(center-8, 120), (center, 135), (center+8, 120)])
-            elif enemy_id == "lurker_halo":
-                # 光环潜伏者：多环UFO
-                # 主碟身
-                pygame.draw.ellipse(preview, dark_color, (center-40, center-12, 80, 24))
-                pygame.draw.ellipse(preview, enemy_color, (center-38, center-10, 76, 20))
-                # 驾驶舱圆顶
-                pygame.draw.arc(preview, light_color, (center-20, center-35, 40, 40), 3.14, 0, 15)
-                pygame.draw.ellipse(preview, (100, 200, 255), (center-15, center-28, 30, 20))
-                # 底部光环
-                pygame.draw.ellipse(preview, (100, 255, 200), (center-30, center+5, 60, 15), 2)
-                pygame.draw.ellipse(preview, (100, 255, 200), (center-25, center+12, 50, 12), 1)
-                # 舷灯
-                for x in [center-30, center-15, center, center+15, center+30]:
-                    pygame.draw.circle(preview, (255, 255, 100), (x, center), 3)
-            elif enemy_id == "bomber_deepjelly":
-                # 深海水母轰炸机：水母造型
-                # 伞盖
-                pygame.draw.arc(preview, enemy_color, (center-35, 25, 70, 60), 3.14, 0, 25)
-                pygame.draw.arc(preview, light_color, (center-35, 25, 70, 60), 3.14, 0, 3)
-                # 内部纹理
-                for i in range(3):
-                    pygame.draw.arc(preview, dark_color, (center-30+i*5, 30+i*3, 60-i*10, 50-i*6), 3.14, 0, 2)
-                # 触须（波浪形）
-                for x_off in [-25, -12, 0, 12, 25]:
-                    for y in range(75, 130, 8):
-                        wave = int(5 * math.sin((y + x_off) * 0.2))
-                        pygame.draw.circle(preview, light_color, (center + x_off + wave, y), 2)
-                # 发光核心
-                pygame.draw.circle(preview, (255, 200, 255), (center, 50), 10)
-                pygame.draw.circle(preview, (255, 255, 255), (center, 50), 5)
-            elif enemy_id == "jammer_amethyst":
-                # 紫晶干扰机：晶体簇造型
-                # 主晶体
-                pygame.draw.polygon(preview, enemy_color, [(center, 20), (center+15, 55), (center+10, 100), (center-10, 100), (center-15, 55)])
-                pygame.draw.polygon(preview, light_color, [(center, 20), (center+15, 55), (center+10, 100), (center-10, 100), (center-15, 55)], 2)
-                # 侧晶体
-                pygame.draw.polygon(preview, dark_color, [(center-20, 45), (center-35, 70), (center-25, 95), (center-15, 70)])
-                pygame.draw.polygon(preview, dark_color, [(center+20, 45), (center+35, 70), (center+25, 95), (center+15, 70)])
-                pygame.draw.polygon(preview, light_color, [(center-20, 45), (center-35, 70), (center-25, 95), (center-15, 70)], 1)
-                pygame.draw.polygon(preview, light_color, [(center+20, 45), (center+35, 70), (center+25, 95), (center+15, 70)], 1)
-                # 小晶体
-                pygame.draw.polygon(preview, enemy_color, [(center-30, 60), (center-40, 80), (center-28, 85)])
-                pygame.draw.polygon(preview, enemy_color, [(center+30, 60), (center+40, 80), (center+28, 85)])
-                # 能量光芒
-                pygame.draw.circle(preview, (200, 150, 255), (center, 60), 8)
-            elif enemy_id == "shield_beeguard":
-                # 蜂巢护卫：六边形蜂巢盾
-                # 六边形主体
-                hex_pts = []
-                for i in range(6):
-                    angle = 60 * i - 90
-                    hx = center + int(35 * math.cos(math.radians(angle)))
-                    hy = center + int(35 * math.sin(math.radians(angle)))
-                    hex_pts.append((hx, hy))
-                pygame.draw.polygon(preview, enemy_color, hex_pts)
-                pygame.draw.polygon(preview, light_color, hex_pts, 3)
-                # 简化蜂巢纹理 - 只画6个孔
-                for i in range(6):
-                    angle = 60 * i
-                    hx = center + int(18 * math.cos(math.radians(angle)))
-                    hy = center + int(18 * math.sin(math.radians(angle)))
-                    pygame.draw.circle(preview, dark_color, (hx, hy), 6)
-                    pygame.draw.circle(preview, (50, 50, 30), (hx, hy), 4)
-                # 中心女王蜂
-                pygame.draw.circle(preview, (255, 200, 50), (center, center), 10)
-                pygame.draw.circle(preview, (255, 255, 150), (center, center), 5)
-            elif enemy_id == "splitter_azurecore":
-                # 分裂核心：可分裂球体
-                # 主核心（带裂纹）
-                pygame.draw.circle(preview, enemy_color, (center, center), 28)
-                pygame.draw.circle(preview, light_color, (center, center), 28, 2)
-                # 裂纹线
-                for angle in [0, 72, 144, 216, 288]:
-                    rad = math.radians(angle)
-                    pygame.draw.line(preview, dark_color, (center, center), 
-                                   (center + int(28*math.cos(rad)), center + int(28*math.sin(rad))), 2)
-                # 预分裂子核
-                for angle in [36, 108, 180, 252, 324]:
-                    rad = math.radians(angle)
-                    px = center + int(20 * math.cos(rad))
-                    py = center + int(20 * math.sin(rad))
-                    pygame.draw.circle(preview, light_color, (px, py), 6)
-                # 能量核心
-                pygame.draw.circle(preview, (150, 200, 255), (center, center), 10)
-            elif enemy_id == "prism_voidprism":
-                # 虚空棱镜：三棱镜造型
-                # 三角棱镜主体
-                pygame.draw.polygon(preview, enemy_color, [(center, 25), (center-40, 110), (center+40, 110)])
-                pygame.draw.polygon(preview, light_color, [(center, 25), (center-40, 110), (center+40, 110)], 3)
-                # 光线折射效果
-                pygame.draw.line(preview, (255, 100, 100), (center-20, 30), (center-35, 100), 2)
-                pygame.draw.line(preview, (100, 255, 100), (center, 35), (center, 105), 2)
-                pygame.draw.line(preview, (100, 100, 255), (center+20, 30), (center+35, 100), 2)
-                # 中心虚空
-                pygame.draw.circle(preview, (20, 0, 40), (center, 70), 15)
-                pygame.draw.circle(preview, (80, 50, 120), (center, 70), 10)
-                pygame.draw.circle(preview, (150, 100, 200), (center, 70), 5)
-            elif enemy_id == "sniper_blackneedle":
-                # 黑针狙击手：细长针形
-                # 超长针身
-                pygame.draw.polygon(preview, enemy_color, [(center, 10), (center-6, 130), (center+6, 130)])
-                pygame.draw.polygon(preview, light_color, [(center, 10), (center-6, 130), (center+6, 130)], 2)
-                # 瞄准镜
-                pygame.draw.circle(preview, dark_color, (center, 50), 12)
-                pygame.draw.circle(preview, (255, 0, 0), (center, 50), 8)
-                pygame.draw.line(preview, (255, 50, 50), (center-12, 50), (center+12, 50), 1)
-                pygame.draw.line(preview, (255, 50, 50), (center, 38), (center, 62), 1)
-                # 稳定鳍
-                pygame.draw.polygon(preview, dark_color, [(center-6, 100), (center-25, 120), (center-6, 125)])
-                pygame.draw.polygon(preview, dark_color, [(center+6, 100), (center+25, 120), (center+6, 125)])
-            elif enemy_id == "weaver_dualwasp":
-                # 双蜂织机：双体黄蜂
-                # 左蜂
-                pygame.draw.ellipse(preview, enemy_color, (30, 50, 25, 50))  # 腹部
-                pygame.draw.circle(preview, enemy_color, (42, 45), 12)  # 头
-                pygame.draw.polygon(preview, dark_color, [(30, 95), (25, 115), (35, 115)])  # 尾刺
-                # 右蜂
-                pygame.draw.ellipse(preview, enemy_color, (95, 50, 25, 50))
-                pygame.draw.circle(preview, enemy_color, (108, 45), 12)
-                pygame.draw.polygon(preview, dark_color, [(120, 95), (115, 115), (125, 115)])
-                # 翅膀
-                pygame.draw.ellipse(preview, (*light_color[:3], 100), (15, 40, 30, 15))
-                pygame.draw.ellipse(preview, (*light_color[:3], 100), (105, 40, 30, 15))
-                # 连接丝线
-                for y in [55, 70, 85]:
-                    pygame.draw.line(preview, (255, 255, 200), (55, y), (95, y), 1)
-                # 眼睛
-                pygame.draw.circle(preview, (255, 50, 50), (38, 42), 3)
-                pygame.draw.circle(preview, (255, 50, 50), (112, 42), 3)
-            elif enemy_id == "summoner_nethalo":
-                # 虚空召唤者：魔法阵核心
-                # 外圈魔法阵
-                pygame.draw.circle(preview, enemy_color, (center, center), 40, 2)
-                # 五芒星
-                for i in range(5):
-                    a1 = math.radians(90 + i * 72)
-                    a2 = math.radians(90 + (i + 2) * 72)
-                    x1, y1 = center + 35*math.cos(a1), center - 35*math.sin(a1)
-                    x2, y2 = center + 35*math.cos(a2), center - 35*math.sin(a2)
-                    pygame.draw.line(preview, light_color, (int(x1), int(y1)), (int(x2), int(y2)), 2)
-                # 符文点
-                for i in range(5):
-                    a = math.radians(90 + i * 72)
-                    px, py = center + 35*math.cos(a), center - 35*math.sin(a)
-                    pygame.draw.circle(preview, (200, 100, 255), (int(px), int(py)), 5)
-                # 中心召唤核心
-                pygame.draw.circle(preview, dark_color, (center, center), 18)
-                pygame.draw.circle(preview, (150, 50, 200), (center, center), 12)
-                pygame.draw.circle(preview, (200, 150, 255), (center, center), 6)
-            elif enemy_id == "guard_heavyanvil":
-                # 重型铁砧：坦克造型
-                # 履带
-                pygame.draw.rect(preview, (60, 60, 70), (25, 85, 25, 40))
-                pygame.draw.rect(preview, (60, 60, 70), (100, 85, 25, 40))
-                for i in range(4):
-                    pygame.draw.line(preview, (40, 40, 50), (25, 90+i*10), (50, 90+i*10), 2)
-                    pygame.draw.line(preview, (40, 40, 50), (100, 90+i*10), (125, 90+i*10), 2)
-                # 车身
-                pygame.draw.rect(preview, enemy_color, (35, 60, 80, 45))
-                pygame.draw.rect(preview, light_color, (35, 60, 80, 45), 2)
-                # 炮塔
-                pygame.draw.circle(preview, dark_color, (center, 70), 22)
-                pygame.draw.circle(preview, enemy_color, (center, 70), 20)
-                # 主炮
-                pygame.draw.rect(preview, (80, 80, 90), (center-5, 25, 10, 45))
-                pygame.draw.rect(preview, light_color, (center-5, 25, 10, 45), 1)
-            elif enemy_id == "nestlord_livestarport":
-                # 巢穴领主：蜘蛛母巢
-                # 腹部
-                pygame.draw.ellipse(preview, enemy_color, (center-30, center-10, 60, 50))
-                pygame.draw.ellipse(preview, dark_color, (center-30, center-10, 60, 50), 2)
-                # 头部
-                pygame.draw.circle(preview, enemy_color, (center, center-25), 18)
-                # 八条腿
-                leg_angles = [-150, -120, -60, -30, 150, 120, 60, 30]
-                for i, angle in enumerate(leg_angles):
-                    rad = math.radians(angle)
-                    x1 = center + int(25 * math.cos(rad))
-                    y1 = center + int(20 * math.sin(rad))
-                    x2 = center + int(50 * math.cos(rad))
-                    y2 = center + int(45 * math.sin(rad))
-                    pygame.draw.line(preview, dark_color, (x1, y1), (x2, y2), 3)
-                # 眼睛群
-                for dx, dy in [(-8, -28), (8, -28), (-5, -22), (5, -22), (0, -18)]:
-                    pygame.draw.circle(preview, (255, 0, 0), (center+dx, center+dy), 3)
-                # 卵囊
-                for dx in [-20, 0, 20]:
-                    pygame.draw.circle(preview, (200, 255, 200), (center+dx, center+25), 6)
-            elif enemy_id == "weaver_dimensionspindle":
-                # 维度纺锤：时空沙漏
-                # 上半沙漏
-                pygame.draw.polygon(preview, enemy_color, [(center-30, 25), (center+30, 25), (center+8, 75), (center-8, 75)])
-                pygame.draw.polygon(preview, light_color, [(center-30, 25), (center+30, 25), (center+8, 75), (center-8, 75)], 2)
-                # 下半沙漏
-                pygame.draw.polygon(preview, enemy_color, [(center-8, 75), (center+8, 75), (center+30, 125), (center-30, 125)])
-                pygame.draw.polygon(preview, light_color, [(center-8, 75), (center+8, 75), (center+30, 125), (center-30, 125)], 2)
-                # 时间流沙
-                for i in range(5):
-                    y = 35 + i * 18
-                    w = 20 - abs(i-2) * 6
-                    pygame.draw.line(preview, (200, 200, 255), (center-w, y), (center+w, y), 1)
-                # 中心奇点
-                pygame.draw.circle(preview, (100, 150, 255), (center, center), 8)
-                pygame.draw.circle(preview, (200, 220, 255), (center, center), 4)
-            elif enemy_id == "judge_dualpolar":
-                # 双极裁决者：阴阳造型
-                # 主圆
-                pygame.draw.circle(preview, enemy_color, (center, center), 35)
-                # 阴阳分割
-                pygame.draw.arc(preview, dark_color, (center-35, center-35, 70, 70), 1.57, 4.71, 35)
-                # 小圆点
-                pygame.draw.circle(preview, dark_color, (center, center-17), 10)
-                pygame.draw.circle(preview, light_color, (center, center+17), 10)
-                pygame.draw.circle(preview, light_color, (center, center-17), 4)
-                pygame.draw.circle(preview, dark_color, (center, center+17), 4)
-                # 外圈
-                pygame.draw.circle(preview, light_color, (center, center), 35, 3)
-                # 裁决光芒
-                for angle in [0, 90, 180, 270]:
-                    rad = math.radians(angle)
-                    x = center + int(42 * math.cos(rad))
-                    y = center + int(42 * math.sin(rad))
-                    pygame.draw.line(preview, (255, 255, 200), (center + int(35*math.cos(rad)), center + int(35*math.sin(rad))), (x, y), 2)
-            elif enemy_id == "annihilator_soleye":
-                # 歼灭独眼：巨型眼球战舰
-                # 眼球主体
-                pygame.draw.circle(preview, (240, 240, 240), (center, center), 40)
-                pygame.draw.circle(preview, enemy_color, (center, center), 40, 3)
-                # 虹膜
-                pygame.draw.circle(preview, enemy_color, (center, center), 25)
-                # 瞳孔
-                pygame.draw.circle(preview, (20, 20, 30), (center, center), 15)
-                pygame.draw.circle(preview, (255, 50, 50), (center, center), 8)
-                # 高光
-                pygame.draw.circle(preview, (255, 255, 255), (center-12, center-12), 8)
-                pygame.draw.circle(preview, (255, 255, 255), (center+5, center-8), 4)
-                # 血丝
-                for angle in [30, 150, 210, 330]:
-                    rad = math.radians(angle)
-                    pygame.draw.line(preview, (255, 100, 100), 
-                                   (center + int(25*math.cos(rad)), center + int(25*math.sin(rad))),
-                                   (center + int(38*math.cos(rad)), center + int(38*math.sin(rad))), 1)
-            elif enemy_id == "chaos_discordantprism":
-                # 混沌乱棱：不规则多面体
-                # 随机多边形
-                pts = [(center + int(35*math.cos(math.radians(i*51+10))), 
-                       center + int(35*math.sin(math.radians(i*51+10)))) for i in range(7)]
-                pygame.draw.polygon(preview, enemy_color, pts)
-                pygame.draw.polygon(preview, light_color, pts, 2)
-                # 内部混乱线
-                pygame.draw.line(preview, (255, 100, 100), pts[0], pts[3], 2)
-                pygame.draw.line(preview, (100, 255, 100), pts[1], pts[4], 2)
-                pygame.draw.line(preview, (100, 100, 255), pts[2], pts[5], 2)
-                pygame.draw.line(preview, (255, 255, 100), pts[3], pts[6], 2)
-                # 混沌核心
-                pygame.draw.circle(preview, (255, 200, 100), (center, center), 12)
-                pygame.draw.circle(preview, (255, 100, 200), (center-4, center-4), 5)
-                pygame.draw.circle(preview, (100, 255, 200), (center+4, center+4), 5)
-            elif enemy_id == "phantom_voidstrider":
-                # 幽灵漫步者：鬼魂造型
-                # 幽灵主体（半透明渐变）
-                for i in range(4):
-                    alpha_surf = pygame.Surface((150, 150), pygame.SRCALPHA)
-                    pygame.draw.ellipse(alpha_surf, (*enemy_color, 80-i*15), (center-25+i*3, 30+i*5, 50-i*6, 80-i*10))
-                    preview.blit(alpha_surf, (0, 0))
-                # 头部
-                pygame.draw.circle(preview, enemy_color, (center, 45), 20)
-                # 眼睛（空洞）
-                pygame.draw.ellipse(preview, (0, 0, 0), (center-15, 38, 12, 16))
-                pygame.draw.ellipse(preview, (0, 0, 0), (center+3, 38, 12, 16))
-                pygame.draw.circle(preview, (200, 200, 255), (center-9, 46), 3)
-                pygame.draw.circle(preview, (200, 200, 255), (center+9, 46), 3)
-                # 飘动尾部
-                pygame.draw.polygon(preview, (*light_color[:3], 100), [(center-20, 100), (center-30, 130), (center-10, 125)])
-                pygame.draw.polygon(preview, (*light_color[:3], 100), [(center, 105), (center-5, 135), (center+5, 135), (center+10, 105)])
-                pygame.draw.polygon(preview, (*light_color[:3], 100), [(center+20, 100), (center+30, 130), (center+10, 125)])
-            # ========== 中期添加的敌人预览图 ==========
-            elif enemy_id == "helix_drone":
-                # 螺旋无人机：四旋翼设计
-                import math
-                # 中心机身
-                pygame.draw.circle(preview, enemy_color, (center, center), 18)
-                pygame.draw.circle(preview, light_color, (center, center), 18, 2)
-                # 四个旋翼
-                rotor_positions = [(center-30, center-30), (center+30, center-30),
-                                  (center-30, center+30), (center+30, center+30)]
-                for rx, ry in rotor_positions:
-                    pygame.draw.circle(preview, dark_color, (rx, ry), 14)
-                    pygame.draw.circle(preview, light_color, (rx, ry), 14, 2)
-                    # 旋翼叶片
-                    pygame.draw.line(preview, light_color, (rx-10, ry), (rx+10, ry), 2)
-                    pygame.draw.line(preview, light_color, (rx, ry-10), (rx, ry+10), 2)
-                # 连接臂
-                for rx, ry in rotor_positions:
-                    pygame.draw.line(preview, (80, 80, 90), (center, center), (rx, ry), 3)
-                # 中心传感器
-                pygame.draw.circle(preview, (200, 200, 255), (center, center), 8)
-            elif enemy_id == "mirage_twin":
-                # 幻影双子：对称镜像设计
-                offset = 20
-                for dx in [-offset, offset]:
-                    pygame.draw.circle(preview, enemy_color, (center + dx, center), 18)
-                    pygame.draw.circle(preview, light_color, (center + dx, center), 18, 2)
-                    pygame.draw.circle(preview, (150, 200, 255), (center + dx, center), 8)
-                # 连接能量桥
-                pygame.draw.line(preview, light_color, (center - offset + 18, center), 
-                                (center + offset - 18, center), 4)
-                # 外层能量环
-                pygame.draw.ellipse(preview, light_color, (center - 45, center - 25, 90, 50), 2)
-            elif enemy_id == "pulse_mine":
-                # 脉冲地雷：球形能量核心
-                # 外层警告环
-                pygame.draw.circle(preview, (255, 50, 0), (center, center), 35, 3)
-                pygame.draw.circle(preview, (255, 100, 50), (center, center), 30, 2)
-                # 内核
-                pygame.draw.circle(preview, enemy_color, (center, center), 25)
-                pygame.draw.circle(preview, (255, 150, 100), (center, center), 15)
-                pygame.draw.circle(preview, (255, 200, 150), (center, center), 8)
-                # 能量脉冲线
-                import math
-                for i in range(8):
-                    angle = i * 45
-                    rad = math.radians(angle)
-                    x1 = center + int(15 * math.cos(rad))
-                    y1 = center + int(15 * math.sin(rad))
-                    x2 = center + int(30 * math.cos(rad))
-                    y2 = center + int(30 * math.sin(rad))
-                    pygame.draw.line(preview, (255, 180, 100), (x1, y1), (x2, y2), 2)
-            elif enemy_id == "laser_turret":
-                # 激光炮塔：固定炮台设计
-                # 底座
-                pygame.draw.rect(preview, (80, 80, 90), (center-30, center+15, 60, 25))
-                pygame.draw.rect(preview, enemy_color, (center-30, center+15, 60, 25), 2)
-                # 炮塔主体
-                pygame.draw.circle(preview, enemy_color, (center, center), 25)
-                pygame.draw.circle(preview, light_color, (center, center), 25, 3)
-                # 炮管
-                pygame.draw.rect(preview, (60, 60, 70), (center-5, center-40, 10, 40))
-                pygame.draw.rect(preview, (255, 50, 50), (center-3, center-40, 6, 8))
-                # 瞄准器
-                pygame.draw.circle(preview, (255, 0, 0), (center, center-8), 5)
-            elif enemy_id == "swarm_carrier":
-                # 蜂群航母：蜂巢母舰设计
-                import math
-                hex_points = [(center + int(35 * math.cos(math.radians(i * 60))),
-                              center + int(35 * math.sin(math.radians(i * 60)))) for i in range(6)]
-                pygame.draw.polygon(preview, enemy_color, hex_points)
-                pygame.draw.polygon(preview, light_color, hex_points, 3)
-                # 蜂巢孔洞
-                for i in range(6):
-                    hx = center + int(18 * math.cos(math.radians(i * 60 + 30)))
-                    hy = center + int(18 * math.sin(math.radians(i * 60 + 30)))
-                    pygame.draw.circle(preview, dark_color, (hx, hy), 8)
-                    pygame.draw.circle(preview, (80, 60, 20), (hx, hy), 5)
-                # 中心孵化核心
-                pygame.draw.circle(preview, (255, 200, 50), (center, center), 12)
-                pygame.draw.circle(preview, (255, 220, 100), (center, center), 7)
-            elif enemy_id == "gravity_anchor":
-                # 重力锚：暗物质核心
-                # 外层扭曲环
-                pygame.draw.circle(preview, (80, 40, 120), (center, center), 35, 3)
-                pygame.draw.circle(preview, (100, 50, 150), (center, center), 30, 2)
-                # 暗物质核心
-                pygame.draw.circle(preview, enemy_color, (center, center), 25)
-                pygame.draw.circle(preview, (30, 10, 50), (center, center), 18)
-                pygame.draw.circle(preview, (180, 100, 255), (center, center), 8)
-                # 引力线
-                import math
-                for i in range(6):
-                    angle = i * 60
-                    rad = math.radians(angle)
-                    x = center + int(40 * math.cos(rad))
-                    y = center + int(40 * math.sin(rad))
-                    pygame.draw.line(preview, (120, 60, 180), (center, center), (x, y), 2)
-            elif enemy_id == "tesla_coil":
-                # 特斯拉线圈：电弧塔
-                # 底座
-                pygame.draw.rect(preview, (80, 80, 100), (center-20, center+20, 40, 20))
-                # 线圈主体
-                pygame.draw.ellipse(preview, enemy_color, (center-15, center-25, 30, 50))
-                pygame.draw.ellipse(preview, light_color, (center-15, center-25, 30, 50), 2)
-                # 电弧顶部
-                pygame.draw.circle(preview, (200, 255, 255), (center, center-30), 12)
-                pygame.draw.circle(preview, (150, 220, 255), (center, center-30), 7)
-                # 电弧线
-                import math
-                for i in range(4):
-                    angle = i * 90 + 45
-                    rad = math.radians(angle)
-                    x = center + int(25 * math.cos(rad))
-                    y = center - 30 + int(25 * math.sin(rad))
-                    pygame.draw.line(preview, (200, 255, 255), (center, center-30), (x, y), 2)
-            elif enemy_id == "void_leech":
-                # 虚空水蛭：吸能体
-                # 主体：蠕虫形
-                pygame.draw.ellipse(preview, enemy_color, (center-20, center-35, 40, 70))
-                pygame.draw.ellipse(preview, (50, 0, 80), (center-20, center-35, 40, 70), 3)
-                # 吸能口
-                pygame.draw.circle(preview, (100, 0, 150), (center, center-25), 12)
-                pygame.draw.circle(preview, (200, 50, 255), (center, center-25), 7)
-                pygame.draw.circle(preview, (255, 100, 255), (center, center-25), 3)
-                # 能量纹路
-                for i in range(3):
-                    y = center - 10 + i * 20
-                    pygame.draw.line(preview, (150, 50, 200), (center-12, y), (center+12, y), 2)
-            elif enemy_id == "omega_sentinel":
-                # 欧米茄哨兵：终极守卫
-                # 主装甲
-                pygame.draw.circle(preview, enemy_color, (center, center), 35)
-                pygame.draw.circle(preview, (255, 200, 50), (center, center), 35, 4)
-                # 希腊字母Ω
-                pygame.draw.arc(preview, (255, 255, 200), (center-20, center-20, 40, 35), 
-                               0.5, 2.6, 3)
-                pygame.draw.line(preview, (255, 255, 200), (center-20, center+8), (center-20, center+20), 3)
-                pygame.draw.line(preview, (255, 255, 200), (center+20, center+8), (center+20, center+20), 3)
-                # 多个武器挂点
-                import math
-                for angle in [0, 90, 180, 270]:
-                    rad = math.radians(angle)
-                    wx = center + int(30 * math.cos(rad))
-                    wy = center + int(30 * math.sin(rad))
-                    pygame.draw.circle(preview, (200, 150, 0), (wx, wy), 6)
-            elif enemy_id == "quantum_ghost":
-                # 量子幽灵：概率云
-                # 半透明主体
-                for r in range(30, 10, -5):
-                    alpha = int(150 * (1 - r / 30))
-                    temp = pygame.Surface((150, 150), pygame.SRCALPHA)
-                    pygame.draw.circle(temp, (*enemy_color, alpha), (center, center), r)
-                    preview.blit(temp, (0, 0))
-                # 量子闪烁点
-                import math
-                for i in range(6):
-                    angle = i * 60
-                    rad = math.radians(angle)
-                    px = center + int(20 * math.cos(rad))
-                    py = center + int(20 * math.sin(rad))
-                    pygame.draw.circle(preview, (200, 255, 220), (px, py), 5)
-                # 核心
-                pygame.draw.circle(preview, (100, 255, 180), (center, center), 10)
-            elif enemy_id == "nova_core":
-                # 新星核心：超新星
-                # 外层光晕
-                pygame.draw.circle(preview, (255, 220, 150), (center, center), 35, 3)
-                pygame.draw.circle(preview, (255, 200, 100), (center, center), 30, 2)
-                # 恒星核心
-                pygame.draw.circle(preview, enemy_color, (center, center), 25)
-                pygame.draw.circle(preview, (255, 240, 180), (center, center), 18)
-                pygame.draw.circle(preview, (255, 255, 220), (center, center), 10)
-                # 耀斑
-                import math
-                for i in range(8):
-                    angle = i * 45
-                    rad = math.radians(angle)
-                    x1 = center + int(25 * math.cos(rad))
-                    y1 = center + int(25 * math.sin(rad))
-                    x2 = center + int(40 * math.cos(rad))
-                    y2 = center + int(40 * math.sin(rad))
-                    pygame.draw.line(preview, (255, 200, 100), (x1, y1), (x2, y2), 3)
-            # ========== 新增8种敌人预览图 ==========
-            elif enemy_id == "plasma_storm":
-                # 等离子风暴：电弧能量球
-                # 外层电弧光晕
-                pygame.draw.circle(preview, (50, 150, 200), (center, 75), 45, 3)
-                pygame.draw.circle(preview, (80, 180, 230), (center, 75), 38, 2)
-                # 中层能量球
-                pygame.draw.circle(preview, enemy_color, (center, 75), 32)
-                pygame.draw.circle(preview, (150, 230, 255), (center, 75), 25)
-                # 内核
-                pygame.draw.circle(preview, (200, 240, 255), (center, 75), 15)
-                pygame.draw.circle(preview, (255, 255, 255), (center, 75), 8)
-                # 电弧线条
-                pygame.draw.line(preview, (100, 200, 255), (center - 35, 55), (center - 15, 75), 2)
-                pygame.draw.line(preview, (100, 200, 255), (center + 15, 75), (center + 35, 95), 2)
-                pygame.draw.line(preview, (100, 200, 255), (center, 40), (center + 10, 55), 2)
-                pygame.draw.line(preview, (100, 200, 255), (center - 10, 95), (center, 110), 2)
-            elif enemy_id == "meteor_crusher":
-                # 陨星粉碎者：重装甲岩石战舰
-                rock_points = [
-                    (center, 25), (center + 25, 45), (center + 35, 75),
-                    (center + 20, 110), (center - 5, 125), (center - 25, 105),
-                    (center - 35, 70), (center - 20, 40)
-                ]
-                pygame.draw.polygon(preview, dark_color, rock_points)
-                pygame.draw.polygon(preview, enemy_color, rock_points)
-                pygame.draw.polygon(preview, (80, 60, 50), rock_points, 3)
-                # 岩石裂纹
-                pygame.draw.line(preview, (60, 40, 30), (center - 15, 50), (center + 10, 90), 2)
-                pygame.draw.line(preview, (60, 40, 30), (center + 5, 55), (center - 10, 100), 2)
-                # 发光核心
-                pygame.draw.circle(preview, (255, 120, 80), (center, 75), 12)
-                pygame.draw.circle(preview, (255, 180, 120), (center, 75), 7)
-                # 四个炮口
-                for angle in [45, 135, 225, 315]:
-                    import math
-                    rad = math.radians(angle)
-                    px = center + int(25 * math.cos(rad))
-                    py = 75 + int(25 * math.sin(rad))
-                    pygame.draw.circle(preview, (255, 100, 50), (px, py), 6)
-            elif enemy_id == "swarm_mother":
-                # 蜂群母舰：生物蜂巢母舰
-                pygame.draw.ellipse(preview, dark_color, (center - 40, 50, 80, 50))
-                pygame.draw.ellipse(preview, enemy_color, (center - 38, 52, 76, 46))
-                pygame.draw.ellipse(preview, light_color, (center - 40, 50, 80, 50), 2)
-                # 蜂巢结构
-                hex_positions = [(center-20, 65), (center, 60), (center+20, 65),
-                                (center-20, 85), (center, 90), (center+20, 85)]
-                for hx, hy in hex_positions:
-                    pygame.draw.circle(preview, (100, 80, 20), (hx, hy), 8)
-                    pygame.draw.circle(preview, (60, 50, 10), (hx, hy), 5)
-                # 触角
-                pygame.draw.line(preview, light_color, (center - 30, 55), (center - 40, 35), 3)
-                pygame.draw.line(preview, light_color, (center + 30, 55), (center + 40, 35), 3)
-                # 尾部产卵器
-                pygame.draw.ellipse(preview, (220, 200, 80), (center - 10, 95, 20, 15))
-            elif enemy_id == "pulse_bomber":
-                # 脉冲轰炸者：能量球体
-                pygame.draw.circle(preview, enemy_color, (center, 75), 30)
-                pygame.draw.circle(preview, light_color, (center, 75), 30, 3)
-                # 能量脉冲环
-                pygame.draw.circle(preview, light_color, (center, 75), 40, 2)
-                pygame.draw.circle(preview, (150, 230, 255), (center, 75), 48, 1)
-                # 内部能量核
-                pygame.draw.circle(preview, (200, 255, 255), (center, 75), 15)
-                pygame.draw.circle(preview, (255, 255, 255), (center, 75), 8)
-                # 脉冲射线
-                import math
-                for i in range(8):
-                    angle = i * 45
-                    rad = math.radians(angle)
-                    x1 = center + int(20 * math.cos(rad))
-                    y1 = 75 + int(20 * math.sin(rad))
-                    x2 = center + int(35 * math.cos(rad))
-                    y2 = 75 + int(35 * math.sin(rad))
-                    pygame.draw.line(preview, light_color, (x1, y1), (x2, y2), 2)
-            elif enemy_id == "laser_sentinel":
-                # 激光哨兵：红色激光眼球
-                pygame.draw.circle(preview, (80, 80, 90), (center, 75), 35)
-                pygame.draw.circle(preview, (100, 100, 110), (center, 75), 35, 3)
-                pygame.draw.circle(preview, (200, 30, 30), (center, 75), 25)
-                pygame.draw.circle(preview, enemy_color, (center, 75), 25, 2)
-                pygame.draw.circle(preview, (150, 20, 20), (center, 75), 18)
-                pygame.draw.circle(preview, (255, 100, 100), (center, 75), 10)
-                pygame.draw.circle(preview, (255, 200, 200), (center, 75), 5)
-                # 激光瞄准十字
-                pygame.draw.line(preview, (255, 50, 50), (center - 45, 75), (center - 28, 75), 2)
-                pygame.draw.line(preview, (255, 50, 50), (center + 28, 75), (center + 45, 75), 2)
-                pygame.draw.line(preview, (255, 50, 50), (center, 30), (center, 47), 2)
-                pygame.draw.line(preview, (255, 50, 50), (center, 103), (center, 120), 2)
-            elif enemy_id == "shadow_assassin":
-                # 暗影刺客：隐匿三角飞镖
-                points = [(center, 25), (center - 35, 110), (center, 85), (center + 35, 110)]
-                pygame.draw.polygon(preview, dark_color, points)
-                pygame.draw.polygon(preview, enemy_color, points)
-                pygame.draw.polygon(preview, (100, 40, 130), points, 3)
-                # 暗影效果层
-                for i in range(3):
-                    alpha_surf = pygame.Surface((150, 150), pygame.SRCALPHA)
-                    offset = i * 3
-                    shadow_points = [(center, 25 + offset), (center - 35 + offset, 110), 
-                                    (center, 85), (center + 35 - offset, 110)]
-                    pygame.draw.polygon(alpha_surf, (*enemy_color[:3], 60 - i * 15), shadow_points)
-                    preview.blit(alpha_surf, (0, 0))
-                # 核心能量
-                pygame.draw.circle(preview, (150, 80, 180), (center, 70), 10)
-                pygame.draw.circle(preview, (200, 150, 220), (center, 70), 5)
-            elif enemy_id == "minelayer_drone":
-                # 布雷无人机：工业风格
-                pygame.draw.rect(preview, dark_color, (center - 25, 50, 50, 40))
-                pygame.draw.rect(preview, enemy_color, (center - 23, 52, 46, 36))
-                pygame.draw.rect(preview, light_color, (center - 25, 50, 50, 40), 2)
-                # 布雷舱门
-                pygame.draw.rect(preview, (100, 100, 30), (center - 15, 80, 30, 15))
-                pygame.draw.line(preview, (80, 80, 20), (center, 80), (center, 95), 2)
-                # 推进器
-                pygame.draw.rect(preview, (80, 80, 90), (center - 35, 55, 10, 20))
-                pygame.draw.rect(preview, (80, 80, 90), (center + 25, 55, 10, 20))
-                # 推进火焰
-                pygame.draw.polygon(preview, (255, 150, 50), 
-                                  [(center - 35, 75), (center - 45, 65), (center - 35, 55)])
-                pygame.draw.polygon(preview, (255, 150, 50), 
-                                  [(center + 35, 75), (center + 45, 65), (center + 35, 55)])
-                # 警示灯
-                pygame.draw.circle(preview, (255, 200, 0), (center, 58), 6)
-                pygame.draw.circle(preview, (255, 255, 150), (center, 58), 3)
-            elif enemy_id == "gatling_fortress":
-                # 加特林堡垒：重型六边形堡垒
-                import math
-                hex_points = [(center + int(40 * math.cos(math.radians(i * 60 - 90))),
-                              75 + int(40 * math.sin(math.radians(i * 60 - 90)))) for i in range(6)]
-                pygame.draw.polygon(preview, dark_color, hex_points)
-                pygame.draw.polygon(preview, enemy_color, hex_points)
-                pygame.draw.polygon(preview, (80, 80, 100), hex_points, 4)
-                # 内层装甲
-                inner_hex = [(center + int(25 * math.cos(math.radians(i * 60 - 90))),
-                             75 + int(25 * math.sin(math.radians(i * 60 - 90)))) for i in range(6)]
-                pygame.draw.polygon(preview, (120, 120, 140), inner_hex, 2)
-                # 加特林炮管组
-                for i in range(6):
-                    angle = i * 60
-                    rad = math.radians(angle)
-                    bx = center + int(12 * math.cos(rad))
-                    pygame.draw.rect(preview, (60, 60, 70), (bx - 3, 30, 6, 30))
-                    pygame.draw.circle(preview, (255, 200, 50), (bx, 30), 4)
-                # 中心旋转机构
-                pygame.draw.circle(preview, (150, 150, 160), (center, 55), 12)
-                pygame.draw.circle(preview, (100, 100, 110), (center, 55), 8)
-                # 弹药指示灯
-                pygame.draw.circle(preview, (255, 50, 50), (center - 12, 95), 4)
-                pygame.draw.circle(preview, (50, 255, 50), (center + 12, 95), 4)
-            else:
-                # 默认：梭形战机
-                pygame.draw.polygon(preview, dark_color, [(center, 25), (55, 75), (center, 125), (95, 75)])
-                pygame.draw.polygon(preview, enemy_color, [(center, 30), (55, 75), (center, 120), (95, 75)])
-                pygame.draw.polygon(preview, light_color, [(center, 30), (55, 75), (center, 120), (95, 75)], 2)
+            preview = _enemy_preview(key, enemy_color)
         
         if codex_tab != 2:
             preview = pygame.transform.scale(preview, (150, 150))
-        safe_blit(screen, preview, (cx - 75, cy))
-        
-        draw_text(screen, data["name"], 30, cx, cy + 170, data.get("color", WHITE), glow=True)
+
+        pw, ph = preview.get_width(), preview.get_height()
+        safe_blit(screen, preview, (cx - pw // 2, cy))
+
+        name_y = cy + ph + 20
+        draw_text(screen, data["name"], 30, cx, name_y, data.get("color", WHITE), glow=True)
         
         # 多行描述显示
         desc = data.get("desc", "")
@@ -2865,11 +2228,10 @@ def draw_codex_ui():
             for i in range(0, len(desc), max_chars_per_line):
                 lines.append(desc[i:i+max_chars_per_line])
             
-            desc_y = cy + 210
+            desc_start = name_y + 40
             desc_lines = len(lines)
-            for line in lines:
-                draw_text(screen, line, 16, cx, desc_y, WHITE)
-                desc_y += 28
+            for idx, line in enumerate(lines):
+                draw_text(screen, line, 16, cx, desc_start + idx * 28, WHITE)
         
         stats = []
         if codex_tab == 0:
@@ -2885,12 +2247,12 @@ def draw_codex_ui():
         
         # 敌人图鉴使用更紧凑的布局
         stat_spacing = 35 if codex_tab == 2 else 40
-        
-        # 根据描述行数动态调整统计信息位置
-        desc_offset = (desc_lines - 1) * 28 if desc_lines > 1 else 0
-            
+
+        desc_offset = desc_lines * 28 if desc_lines else 0
+        stats_base = name_y + 70 + desc_offset
+
         for j, (lbl, val, mxv) in enumerate(stats):
-            y_off = cy + 260 + desc_offset + j*stat_spacing
+            y_off = stats_base + j*stat_spacing
             draw_text(screen, lbl, 18, r['detail_area'].x + 150, y_off, WHITE, align="left")
             pygame.draw.rect(screen, (40,40,40), (r['detail_area'].x + 230, y_off+5, 200, 10))
             fill = min(200, (val/mxv)*200)
@@ -2898,7 +2260,7 @@ def draw_codex_ui():
         
         # 敌人图鉴额外显示分数
         if codex_tab == 2:
-            score_y = cy + 260 + desc_offset + len(stats) * stat_spacing + 5
+            score_y = stats_base + len(stats) * stat_spacing + 5
             draw_text(screen, f"分数: {data.get('score', 100)}", 16, r['detail_area'].x + 150, score_y, GOLD, align="left")
 
     hb = r['btn_back'].collidepoint(mx, my)
@@ -9684,9 +9046,9 @@ while True:
                                 
                                 # 经验掉落
                                 enemy_strength_map = {
-                                    "drone": 5, "chaser": 6, "phantom": 7, "wasp": 8,
-                                    "glitch": 8, "spike": 9, "sniper": 10, "tank": 12,
-                                    "orbiter": 13, "sentinel": 14, "vortex": 20
+                                    "wisp": 6,
+                                    "orbiter": 10,
+                                    "bulwark": 12,
                                 }
                                 base_xp = enemy_strength_map.get(m.type, 5)
                                 elite_multiplier = 3.0 if m.is_elite else 1.0
@@ -9945,121 +9307,59 @@ while True:
                                 music_director.push_state("boss", intensity=1.0, override_track="funk")
                                 boss_music_active = True
                     
-                    # 敌人生成：普通模式和Boss挑战模式使用波次生成，房间模式由房间系统控制
+                    # 敌人生成：普通模式改为连续刷新；Boss挑战保留原先的随机刷法
                     if (game_mode == "normal" or boss_challenge_active) and len(mobs) < (12 if not boss else 4):
-                        # ========== 全新敌人生成系统 v2.0 (仅Boss挑战模式) ==========
-                        # 支持全部37种敌人，分6个阶段逐步解锁
-                        
-                        # 基础生成率：2.5% ~ 8%
-                        base_spawn_rate = 0.025 + 0.055 * (1 - math.exp(-player.level / 15))
-                        
-                        # 波次系统：每隔一段时间有小概率触发编队生成
-                        wave_chance = 0.08 if score > 3000 else 0.03
-                        is_wave_spawn = random.random() < wave_chance
-                        
-                        if random.random() < base_spawn_rate or is_wave_spawn:
-                            # 根据分数段获取当前游戏阶段（0-5）
-                            stage = min(5, score // 1500)
-                            
-                            # ========== 全部37种敌人分阶段池 ==========
-                            # 格式: (敌人ID, 权重)
-                            stage_pools = [
-                                # 阶段0 (0-1500分): 入门期 - 一级普通敌人
-                                [
-                                    ("scout_moth", 35),           # 侦察机·灰蛾
-                                    ("trooper_spear", 30),        # 突击兵·赤矛
-                                    ("lurker_halo", 20),          # 徘徊者·光环盘
-                                    ("plasma_storm", 15),         # 等离子风暴
-                                ],
-                                # 阶段1 (1500-3000分): 成长期 - 更多一级敌人
-                                [
-                                    ("scout_moth", 20),
-                                    ("trooper_spear", 22),
-                                    ("lurker_halo", 15),
-                                    ("bomber_deepjelly", 18),     # 轰炸艇·深水母
-                                    ("jammer_amethyst", 12),      # 干扰者·紫菱
-                                    ("shield_beeguard", 8),       # 盾卫机
-                                    ("plasma_storm", 5),
-                                ],
-                                # 阶段2 (3000-4500分): 挑战期 - 二级敌人登场
-                                [
-                                    ("trooper_spear", 12),
-                                    ("bomber_deepjelly", 15),
-                                    ("jammer_amethyst", 10),
-                                    ("shield_beeguard", 10),
-                                    ("splitter_azurecore", 15),   # 裂解者·蔚蓝核心
-                                    ("sniper_blackneedle", 12),   # 狙击手·黑针
-                                    ("weaver_dualwasp", 10),      # 编织者·双生黄蜂
-                                    ("helix_drone", 8),           # 螺旋无人机
-                                    ("mirage_twin", 8),           # 幻影双子
-                                ],
-                                # 阶段3 (4500-6000分): 激烈期 - 更多二级+中级敌人
-                                [
-                                    ("bomber_deepjelly", 8),
-                                    ("splitter_azurecore", 12),
-                                    ("sniper_blackneedle", 12),
-                                    ("weaver_dualwasp", 10),
-                                    ("summoner_nethalo", 10),     # 召唤师·母巢光环
-                                    ("prism_voidprism", 10),      # 折射棱镜
-                                    ("guard_heavyanvil", 8),      # 脉冲守卫
-                                    ("pulse_mine", 6),            # 脉冲地雷
-                                    ("laser_turret", 8),          # 激光炮塔
-                                    ("swarm_carrier", 6),         # 蜂群航母
-                                    ("meteor_crusher", 5),        # 陨星粉碎者
-                                    ("swarm_mother", 5),          # 蜂群母舰
-                                ],
-                                # 阶段4 (6000-7500分): 困难期 - 三级敌人+新增敌人
-                                [
-                                    ("sniper_blackneedle", 8),
-                                    ("prism_voidprism", 10),
-                                    ("guard_heavyanvil", 10),
-                                    ("nestlord_livestarport", 8), # 巢穴领主
-                                    ("weaver_dimensionspindle", 8),# 时空编织者
-                                    ("judge_dualpolar", 8),       # 镜像仲裁者
-                                    ("gravity_anchor", 7),        # 重力锚
-                                    ("tesla_coil", 8),            # 特斯拉线圈
-                                    ("pulse_bomber", 7),          # 脉冲轰炸者
-                                    ("laser_sentinel", 8),        # 激光哨兵
-                                    ("shadow_assassin", 6),       # 暗影刺客
-                                    ("minelayer_drone", 6),       # 布雷无人机
-                                    ("gatling_fortress", 6),      # 加特林堡垒
-                                ],
-                                # 阶段5 (7500分+): 地狱期 - 全部顶级敌人
-                                [
-                                    ("guard_heavyanvil", 6),
-                                    ("nestlord_livestarport", 8),
-                                    ("weaver_dimensionspindle", 8),
-                                    ("judge_dualpolar", 8),
-                                    ("annihilator_soleye", 8),    # 湮灭光束舰
-                                    ("chaos_discordantprism", 8), # 混沌信标
-                                    ("phantom_voidstrider", 8),   # 相位幽影
-                                    ("void_leech", 7),            # 虚空水蛭
-                                    ("omega_sentinel", 6),        # 欧米茄哨兵
-                                    ("quantum_ghost", 7),         # 量子幽灵
-                                    ("nova_core", 6),             # 新星核心
-                                    ("laser_sentinel", 6),
-                                    ("shadow_assassin", 7),
-                                    ("gatling_fortress", 7),
-                                ],
-                            ]
-                            
-                            # 获取当前阶段敌人池
-                            pool = stage_pools[stage]
-                            
-                            # 加权随机选择
-                            enemies = [e[0] for e in pool]
-                            weights = [e[1] for e in pool]
-                            
-                            # 波次生成：一次生成2-4个同类敌人
-                            if is_wave_spawn and len(mobs) < 8:
-                                spawn_count = random.randint(2, 4)
-                                chosen_type = random.choices(enemies, weights=weights, k=1)[0]
-                                for i in range(spawn_count):
+                        if boss_challenge_active:
+                            # Boss挑战沿用随机/波次节奏，但限定为最新高级敌人
+                            base_spawn_rate = 0.025 + 0.055 * (1 - math.exp(-player.level / 15))
+                            wave_chance = 0.08 if score > 3000 else 0.03
+                            is_wave_spawn = random.random() < wave_chance
+                            if random.random() < base_spawn_rate or is_wave_spawn:
+                                advanced_wave_pool = [
+                                    ("astra_fragger", 18),
+                                    ("ember_siege", 16),
+                                    ("ion_veil", 14),
+                                    ("resonance_breaker", 14),
+                                    ("cryo_lancer", 16),
+                                    ("arc_overseer", 15),
+                                    ("lumen_shade", 15),
+                                ]
+                                enemies = [e[0] for e in advanced_wave_pool]
+                                weights = [e[1] for e in advanced_wave_pool]
+                                if is_wave_spawn and len(mobs) < 8:
+                                    spawn_count = random.randint(2, 4)
+                                    chosen_type = random.choices(enemies, weights=weights, k=1)[0]
+                                    for _ in range(spawn_count):
+                                        enemy_factory.create_enemy(chosen_type)
+                                else:
+                                    chosen_type = random.choices(enemies, weights=weights, k=1)[0]
                                     enemy_factory.create_enemy(chosen_type)
-                            else:
-                                # 普通单个生成
-                                chosen_type = random.choices(enemies, weights=weights, k=1)[0]
-                                enemy_factory.create_enemy(chosen_type)
+                        else:
+                            # 普通模式：连续刷新，仅轮换最新高级敌人
+                            advanced_cycle_ids = [
+                                "astra_fragger",
+                                "ember_siege",
+                                "ion_veil",
+                                "resonance_breaker",
+                                "cryo_lancer",
+                                "arc_overseer",
+                                "lumen_shade",
+                            ]
+                            spawn_interval = max(18, 60 - min(30, score // 400))
+                            normal_spawn_timer += 1
+                            if not normal_spawn_cycle:
+                                normal_spawn_cycle = advanced_cycle_ids[:]
+                                random.shuffle(normal_spawn_cycle)
+                            if normal_spawn_timer >= spawn_interval:
+                                normal_spawn_timer = 0
+                                # 人少时一次刷两只，加快补充
+                                batch = 2 if len(mobs) < 6 else 1
+                                for _ in range(batch):
+                                    if not normal_spawn_cycle:
+                                        normal_spawn_cycle = advanced_cycle_ids[:]
+                                        random.shuffle(normal_spawn_cycle)
+                                    enemy_type = normal_spawn_cycle.pop()
+                                    enemy_factory.create_enemy(enemy_type)
                     
                     hits = pygame.sprite.groupcollide(mobs, bullets, False, False)
                     for m, hit_bullets in hits.items():
@@ -10186,6 +9486,11 @@ while True:
                             player.stats['damage_dealt'] += int(dmg)
                             
                             # 应用伤害
+                            shield_timer = getattr(m, 'ally_shield_timer', 0)
+                            shield_reduction = getattr(m, 'ally_shield_strength', 0.0)
+                            if shield_timer > 0 and shield_reduction > 0:
+                                dmg *= max(0.0, 1.0 - min(0.9, shield_reduction))
+                                FloatingText(m.rect.centerx, m.rect.top - 20, "护幕", (120, 220, 255))
                             m.hp -= dmg
                             
                             # === 新卡牌系统：命中后效果 ===
@@ -10543,7 +9848,14 @@ while True:
                                     "tank": 12,
                                     "orbiter": 13,
                                     "sentinel": 14,
-                                    "vortex": 20
+                                    "vortex": 20,
+                                    "astra_fragger": 18,
+                                    "ember_siege": 20,
+                                    "ion_veil": 22,
+                                    "resonance_breaker": 18,
+                                    "cryo_lancer": 18,
+                                    "arc_overseer": 19,
+                                    "lumen_shade": 19,
                                 }
                                 base_xp = enemy_strength_map.get(m.type, 5)
                                 
@@ -10605,10 +9917,27 @@ while True:
                             minion_rect = pygame.Rect(int(minion['x']) - 8, int(minion['y']) - 8, 16, 16)
                             for bullet in enemy_bullets:
                                 if minion_rect.colliderect(bullet.rect):
-                                    minion['hp'] -= 10
+                                    hit_damage = getattr(bullet, 'damage', 10)
+                                    minion['hp'] -= hit_damage
                                     bullet.kill()
                                     FloatingText(int(minion['x']), int(minion['y']) - 10,
-                                               "-10", (255, 100, 100), font_size=12)
+                                               f"-{int(hit_damage)}", (255, 100, 100), font_size=12)
+                                    effect_payload = getattr(bullet, 'effect_data', None)
+                                    if effect_payload and effect_payload.get('type') == 'chain':
+                                        jumps = effect_payload.get('jumps', 0)
+                                        chain_damage = effect_payload.get('minion_damage', hit_damage)
+                                        for other in player.minions:
+                                            if jumps <= 0:
+                                                break
+                                            if other is minion:
+                                                continue
+                                            other['hp'] -= chain_damage
+                                            FloatingText(int(other['x']), int(other['y']) - 8,
+                                                       f"-{int(chain_damage)}", (120, 200, 255), font_size=12)
+                                            if other['hp'] <= 0:
+                                                for _ in range(5):
+                                                    Particle((int(other['x']), int(other['y'])), (120, 200, 255))
+                                            jumps -= 1
                                     if minion['hp'] <= 0:
                                         for _ in range(5):
                                             Particle((int(minion['x']), int(minion['y'])), (255, 100, 255))
@@ -10616,7 +9945,23 @@ while True:
                     
                     if not player.is_dashing:
                         hits = pygame.sprite.spritecollide(player, mobs, False, pygame.sprite.collide_circle)
-                        hits.extend(pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle))
+                        bullet_hits = []
+                        pending_effects = []  # list[(effect_payload, source_sprite)]
+                        max_bullet_damage = 0
+                        for eb in pygame.sprite.spritecollide(player, enemy_bullets, False, pygame.sprite.collide_circle):
+                            hit_cd = getattr(eb, '_hit_cd', 0)
+                            if hit_cd > 0:
+                                continue
+                            max_bullet_damage = max(max_bullet_damage, int(getattr(eb, 'damage', 20)))
+                            effect_payload = getattr(eb, 'effect_data', None)
+                            if effect_payload:
+                                pending_effects.append((effect_payload, eb))
+                            bullet_hits.append(eb)
+                            if getattr(eb, 'persistent', False):
+                                eb._hit_cd = getattr(eb, 'hit_cooldown', 12)
+                            else:
+                                eb.kill()
+                        hits.extend(bullet_hits)
                         if hits:
                             # 【晶体粉碎者】牵引光束无敌检查
                             if getattr(player, 'tractor_immune', False):
@@ -10652,11 +9997,139 @@ while True:
                                     Particle(player.rect.center, CYAN)
                                 continue  # 完全闪避,不受伤
                             
-                            dmg = 20
+                            dmg = max(20, max_bullet_damage)
+
+                            for eff, source in pending_effects:
+                                etype = eff.get("type")
+                                if etype == "poison":
+                                    player.hazard_slow_mult = min(player.hazard_slow_mult, eff.get("slow_mult", 1.0))
+                                    player.hazard_slow_timer = max(player.hazard_slow_timer, eff.get("slow_duration", 0))
+                                    player.poison_dot_damage = max(player.poison_dot_damage, eff.get("dot_damage", 0))
+                                    player.poison_dot_timer = max(player.poison_dot_timer, eff.get("dot_duration", 0))
+                                    player.poison_tick_cd = eff.get("tick_cd", 18)
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype in ("wall", "impact", "shield", "shrapnel"):
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "grab":
+                                    player.grab_timer = max(player.grab_timer, eff.get("grab_duration", 0))
+                                    player.grab_pull = eff.get("grab_pull", 2.5)
+                                    anchor = eff.get("anchor")
+                                    if anchor is None and source is not None and hasattr(source, "rect"):
+                                        try:
+                                            anchor = (int(source.rect.centerx), int(source.rect.centery))
+                                        except Exception:
+                                            anchor = None
+                                    if anchor is None:
+                                        anchor = (player.rect.centerx, player.rect.centery - 80)
+                                    player.grab_anchor = anchor
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "burn":
+                                    player.burn_timer = max(player.burn_timer, eff.get("dot_duration", 150))
+                                    player.burn_damage = max(player.burn_damage, eff.get("dot_damage", 4))
+                                    player.burn_tick_cd = eff.get("tick_cd", 15)
+                                    player.hazard_slow_mult = min(player.hazard_slow_mult, eff.get("slow_mult", player.hazard_slow_mult))
+                                    player.hazard_slow_timer = max(player.hazard_slow_timer, eff.get("slow_duration", 0))
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "freeze":
+                                    player.freeze_timer = max(player.freeze_timer, eff.get("freeze_duration", 60))
+                                    player.hazard_slow_mult = min(player.hazard_slow_mult, eff.get("slow_mult", player.hazard_slow_mult))
+                                    player.hazard_slow_timer = max(player.hazard_slow_timer, eff.get("slow_duration", 0))
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "emp":
+                                    player.emp_timer = max(player.emp_timer, eff.get("emp_duration", 90))
+                                    drain = eff.get("drain_energy", 30)
+                                    player.dash_energy = max(0, player.dash_energy - drain)
+                                    if hasattr(player, "barrier_current_hp"):
+                                        player.barrier_current_hp = max(0, player.barrier_current_hp - drain)
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "sonic":
+                                    player.sonic_timer = max(player.sonic_timer, eff.get("silence_duration", 45))
+                                    player.armor_break_timer = max(player.armor_break_timer, eff.get("armor_break", 90))
+                                    player.hazard_slow_mult = min(player.hazard_slow_mult, eff.get("slow_mult", 0.8))
+                                    player.hazard_slow_timer = max(player.hazard_slow_timer, eff.get("slow_duration", 0))
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "chain":
+                                    jumps = eff.get("jumps", 0)
+                                    minion_damage = eff.get("minion_damage", eff.get("damage", dmg))
+                                    player_damage = eff.get("player_damage", eff.get("damage", dmg))
+                                    if jumps > 0 and hasattr(player, "minions") and player.minions:
+                                        for minion in player.minions[:]:
+                                            if jumps <= 0:
+                                                break
+                                            minion["hp"] -= minion_damage
+                                            FloatingText(int(minion["x"]), int(minion["y"]) - 8, f"-{int(minion_damage)}", (120, 200, 255), font_size=12)
+                                            if minion["hp"] <= 0:
+                                                for _ in range(5):
+                                                    Particle((int(minion["x"]), int(minion["y"])), (120, 200, 255))
+                                            jumps -= 1
+                                    dmg = max(dmg, player_damage)
+                                elif etype == "whiteout":
+                                    player.whiteout_timer = max(player.whiteout_timer, eff.get("whiteout_duration", eff.get("duration", 150)))
+                                    player.whiteout_intensity = max(player.whiteout_intensity, eff.get("whiteout_intensity", 0.6))
+                                    slow_mult = eff.get("slow_mult", player.hazard_slow_mult)
+                                    player.hazard_slow_mult = min(player.hazard_slow_mult, slow_mult)
+                                    player.hazard_slow_timer = max(player.hazard_slow_timer, eff.get("slow_duration", 0))
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "parasite":
+                                    player.parasite_timer = max(player.parasite_timer, eff.get("duration", 220))
+                                    player.parasite_damage = max(player.parasite_damage, eff.get("tick_damage", eff.get("dot_damage", 4)))
+                                    player.parasite_tick_cd = eff.get("tick_cd", 36)
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "mirror":
+                                    duration = eff.get("duration", eff.get("mirror_duration", 180))
+                                    player.mirror_timer = max(player.mirror_timer, duration)
+                                    fb = eff.get("feedback_damage", eff.get("damage", 0))
+                                    player.mirror_feedback_damage = max(player.mirror_feedback_damage, fb)
+                                    tick_cd = max(6, eff.get("tick_cd", 18))
+                                    player.mirror_tick_cd = tick_cd
+                                    if player.mirror_tick_timer <= 0:
+                                        player.mirror_tick_timer = tick_cd
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "phase_lock":
+                                    duration = eff.get("duration", 90)
+                                    player.phase_lock_timer = max(player.phase_lock_timer, duration)
+                                    player.phase_lock_displacement = max(player.phase_lock_displacement, float(eff.get("displacement", 24.0)))
+                                    pulse_cd = max(6, eff.get("pulse_cd", 18))
+                                    player.phase_lock_pulse_cd = pulse_cd
+                                    if player.phase_lock_pulse_timer <= 0 or player.phase_lock_pulse_timer > pulse_cd:
+                                        player.phase_lock_pulse_timer = max(4, pulse_cd // 2)
+                                    anchor = eff.get("anchor")
+                                    if not anchor and source is not None and hasattr(source, "rect"):
+                                        anchor = (int(source.rect.centerx), int(source.rect.centery))
+                                    if anchor:
+                                        try:
+                                            origin = (int(anchor[0]), int(anchor[1]))
+                                        except Exception:
+                                            origin = (player.rect.centerx, player.rect.centery)
+                                        player.phase_lock_anchor = origin
+                                    player.phase_lock_invert = bool(eff.get("invert", False))
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "spore_root":
+                                    duration = eff.get("duration", 0)
+                                    player.spore_root_timer = max(player.spore_root_timer, duration)
+                                    player.spore_root_damage = max(player.spore_root_damage, eff.get("tick_damage", eff.get("dot_damage", 0)))
+                                    player.spore_root_tick_cd = max(8, eff.get("tick_cd", 24))
+                                    if player.spore_root_tick_timer <= 0:
+                                        player.spore_root_tick_timer = player.spore_root_tick_cd
+                                    slow = eff.get("slow_mult")
+                                    if slow is not None:
+                                        player.spore_root_slow_mult = min(player.spore_root_slow_mult, float(slow))
+                                    dmg = max(dmg, eff.get("damage", dmg))
+                                elif etype == "solar_burn":
+                                    duration = eff.get("duration", eff.get("burn_duration", 0))
+                                    player.solar_burn_timer = max(player.solar_burn_timer, duration)
+                                    player.solar_burn_damage = max(player.solar_burn_damage, eff.get("tick_damage", eff.get("damage", 0)))
+                                    player.solar_burn_tick_cd = max(4, eff.get("tick_cd", 12))
+                                    if player.solar_burn_tick_timer <= 0:
+                                        player.solar_burn_tick_timer = player.solar_burn_tick_cd
+                                    dmg = max(dmg, eff.get("damage", dmg))
                             # ===== 增强受伤打击感 =====
                             # 屏幕震动反馈 - 减弱
                             screen_shake_offset = apply_screen_shake(3)
                             
+                            if getattr(player, 'armor_break_timer', 0) > 0:
+                                dmg = int(dmg * 1.25)
+
                             # 【大地守护者】护甲减伤 + 积蓄怒气
                             if hasattr(player, 'plane_id') and player.plane_id == "gaia":
                                 armor_reduction = getattr(player, 'earth_armor_bonus', 0)
@@ -11005,6 +10478,31 @@ while True:
                     if hasattr(player, 'turrets') and player.turrets:
                         for turret in player.turrets:
                             turret.draw(screen)
+
+                    # 新危害视觉反馈覆盖
+                    if getattr(player, 'whiteout_intensity', 0) > 0:
+                        intensity = min(1.0, player.whiteout_intensity)
+                        whiteout_layer = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                        whiteout_layer.fill((255, 255, 255, int(140 * intensity)))
+                        screen.blit(whiteout_layer, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+                        scan = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                        offset = int((pygame.time.get_ticks() * 0.15) % HEIGHT)
+                        pygame.draw.rect(scan, (255, 255, 255, int(90 * intensity)), (0, offset, WIDTH, 10))
+                        screen.blit(scan, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+                    if getattr(player, 'parasite_timer', 0) > 0 and getattr(player, 'parasite_damage', 0) > 0:
+                        haze = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                        strength = min(1.0, 0.4 + player.parasite_damage / 8.0)
+                        haze.fill((40, 70, 50, int(100 * strength)))
+                        screen.blit(haze, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+                        swarm = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                        tick = pygame.time.get_ticks() / 400
+                        for idx in range(6):
+                            ang = tick + idx * 1.05
+                            radius = 160 + idx * 18
+                            px = player.rect.centerx + math.cos(ang) * radius
+                            py = player.rect.centery + math.sin(ang) * radius * 0.6
+                            pygame.draw.circle(swarm, (140, 220, 140, 120), (int(px), int(py)), 8)
+                        screen.blit(swarm, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
                 else:
                     log_debug("Main loop: player is None; skipping player draws")
                 

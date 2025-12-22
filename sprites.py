@@ -11223,6 +11223,49 @@ class Player(pygame.sprite.Sprite):
             self.sdmg_mine_spawned_this_cooldown = False
             self.sdmg_overheat_steam_timer = 0
         self.ult_charge_rate = self.plane_data.get("ult_charge_rate", 1.0)  # 大招充能速率倍率
+
+        # 敌方持续效果状态
+        self.hazard_slow_timer = 0
+        self.hazard_slow_mult = 1.0
+        self.poison_dot_timer = 0
+        self.poison_dot_damage = 0
+        self.poison_tick_cd = 0
+        self.grab_timer = 0
+        self.grab_anchor = None
+        self.grab_pull = 0.0
+        self.burn_timer = 0
+        self.burn_damage = 0
+        self.burn_tick_cd = 0
+        self.freeze_timer = 0
+        self.is_frozen = False
+        self.emp_timer = 0
+        self.sonic_timer = 0
+        self.armor_break_timer = 0
+        self.whiteout_timer = 0
+        self.whiteout_intensity = 0.0
+        self.parasite_timer = 0
+        self.parasite_damage = 0
+        self.parasite_tick_cd = 0
+        self.mirror_timer = 0
+        self.mirror_feedback_damage = 0
+        self.mirror_tick_cd = 0
+        self.mirror_tick_timer = 0
+        self.mirror_fire_cd = 0
+        self.phase_lock_timer = 0
+        self.phase_lock_anchor = None
+        self.phase_lock_displacement = 0.0
+        self.phase_lock_pulse_cd = 0
+        self.phase_lock_pulse_timer = 0
+        self.phase_lock_invert = False
+        self.spore_root_timer = 0
+        self.spore_root_damage = 0
+        self.spore_root_tick_cd = 0
+        self.spore_root_tick_timer = 0
+        self.spore_root_slow_mult = 1.0
+        self.solar_burn_timer = 0
+        self.solar_burn_damage = 0
+        self.solar_burn_tick_cd = 0
+        self.solar_burn_tick_timer = 0
         
         # 属性
         self.xp = 0
@@ -11524,6 +11567,106 @@ class Player(pygame.sprite.Sprite):
         for w in self.weapon_slots:
             if w: w.update()
 
+        # 危害状态维护：毒与减速、束缚
+        if self.hazard_slow_timer > 0:
+            self.hazard_slow_timer -= 1
+            if self.hazard_slow_timer == 0:
+                self.hazard_slow_mult = 1.0
+        if self.poison_dot_timer > 0:
+            self.poison_dot_timer -= 1
+            if self.poison_tick_cd > 0:
+                self.poison_tick_cd -= 1
+            if self.poison_tick_cd <= 0:
+                if self.poison_dot_damage > 0:
+                    self.hp -= self.poison_dot_damage
+                    FloatingText(self.rect.centerx, self.rect.top - 10, f"-{int(self.poison_dot_damage)}", (80, 200, 120))
+                self.poison_tick_cd = 20
+        if self.grab_timer > 0:
+            self.grab_timer -= 1
+        else:
+            self.grab_anchor = None
+        if self.burn_timer > 0:
+            self.burn_timer -= 1
+            if self.burn_tick_cd > 0:
+                self.burn_tick_cd -= 1
+            if self.burn_tick_cd <= 0 and self.burn_damage > 0:
+                self.hp -= self.burn_damage
+                FloatingText(self.rect.centerx, self.rect.top - 18, f"-{int(self.burn_damage)}", ORANGE)
+                self.burn_tick_cd = 15
+        if self.freeze_timer > 0:
+            self.freeze_timer -= 1
+            self.is_frozen = True
+        else:
+            self.is_frozen = False
+        if self.emp_timer > 0:
+            self.emp_timer -= 1
+            if self.emp_timer % 30 == 0:
+                FloatingText(self.rect.centerx, self.rect.top - 30, "EMP", (120, 220, 255))
+        if self.sonic_timer > 0:
+            self.sonic_timer -= 1
+        if self.armor_break_timer > 0:
+            self.armor_break_timer -= 1
+        if self.whiteout_timer > 0:
+            self.whiteout_timer -= 1
+            self.whiteout_intensity = min(1.0, self.whiteout_intensity + 0.02)
+        else:
+            self.whiteout_intensity = max(0.0, self.whiteout_intensity - 0.03)
+        if self.parasite_timer > 0:
+            self.parasite_timer -= 1
+            if self.parasite_tick_cd > 0:
+                self.parasite_tick_cd -= 1
+            if self.parasite_tick_cd <= 0 and self.parasite_damage > 0:
+                self.hp -= self.parasite_damage
+                FloatingText(self.rect.centerx, self.rect.top - 26, f"-{int(self.parasite_damage)}", (140, 220, 140))
+                self.parasite_tick_cd = 36
+        else:
+            self.parasite_damage = 0
+        if self.mirror_timer > 0:
+            self.mirror_timer -= 1
+            if self.mirror_tick_cd > 0:
+                if self.mirror_tick_timer <= 0:
+                    self._trigger_mirror_feedback("pulse")
+                    self.mirror_tick_timer = self.mirror_tick_cd
+                else:
+                    self.mirror_tick_timer -= 1
+            if self.mirror_fire_cd > 0:
+                self.mirror_fire_cd -= 1
+        else:
+            self.mirror_feedback_damage = 0
+            self.mirror_tick_timer = 0
+            self.mirror_fire_cd = 0
+        if self.phase_lock_timer > 0:
+            self.phase_lock_timer -= 1
+            if self.phase_lock_pulse_cd > 0:
+                if self.phase_lock_pulse_timer <= 0:
+                    self._apply_phase_lock_pulse()
+                else:
+                    self.phase_lock_pulse_timer -= 1
+        else:
+            self.phase_lock_anchor = None
+            self.phase_lock_displacement = 0.0
+            self.phase_lock_pulse_timer = 0
+        if self.spore_root_timer > 0:
+            self.spore_root_timer -= 1
+            if self.spore_root_tick_timer > 0:
+                self.spore_root_tick_timer -= 1
+            else:
+                self._apply_spore_root_tick()
+        else:
+            self.spore_root_damage = 0
+            self.spore_root_slow_mult = 1.0
+            self.spore_root_tick_timer = 0
+        if self.solar_burn_timer > 0:
+            self.solar_burn_timer -= 1
+            if self.solar_burn_tick_timer > 0:
+                self.solar_burn_tick_timer -= 1
+            else:
+                self._apply_solar_burn_tick()
+            self.whiteout_intensity = max(self.whiteout_intensity, 0.35)
+        else:
+            self.solar_burn_damage = 0
+            self.solar_burn_tick_timer = 0
+
         # 移动逻辑 (WASD + Arrows) - 改进版支持流畅对角线移动
         keys = pygame.key.get_pressed()
         dx, dy = 0.0, 0.0
@@ -11539,6 +11682,33 @@ class Player(pygame.sprite.Sprite):
             move_length = math.sqrt(dx*dx + dy*dy)
             dx = dx / move_length * self.speed
             dy = dy / move_length * self.speed
+
+        if self.is_frozen:
+            dx = 0
+            dy = 0
+
+        if self.emp_timer > 0:
+            dx *= 0.3
+            dy *= 0.3
+
+        # 危害减速
+        if self.hazard_slow_mult < 1.0:
+            dx *= self.hazard_slow_mult
+            dy *= self.hazard_slow_mult
+        if self.spore_root_timer > 0 and self.spore_root_slow_mult < 1.0:
+            dx *= self.spore_root_slow_mult
+            dy *= self.spore_root_slow_mult
+
+        # 束缚/牵引：禁止自身移动并朝锚点被拉扯
+        if self.grab_timer > 0 and self.grab_anchor:
+            dx = 0
+            dy = 0
+            anchor_vec = pygame.Vector2(self.grab_anchor)
+            delta = anchor_vec - pygame.Vector2(self.rect.center)
+            if delta.length_squared() > 1:
+                step = delta.normalize() * max(0.5, self.grab_pull)
+                dx += step.x
+                dy += step.y
         
         # ========== 【Goliath 瘟疫冲锋】检测双击 ==========
         if self.plane_id == "goliath":
@@ -11591,7 +11761,7 @@ class Player(pygame.sprite.Sprite):
                 self.damage = self.plane_data['damage']
         
         # 冲刺条件：需要足够的能量（>=80/100）且有移动方向
-        if (keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]) and self.dash_energy >= 80 and (dx!=0 or dy!=0):
+        if (keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]) and self.dash_energy >= 80 and (dx!=0 or dy!=0) and self.emp_timer <= 0 and not self.is_frozen:
             self.is_dashing = True
             self.dash_energy = max(0, self.dash_energy - 2)  # 扣除能量
             dx *= 2.0; dy *= 2.0
@@ -11708,10 +11878,16 @@ class Player(pygame.sprite.Sprite):
 
     def shoot(self):
         now = pygame.time.get_ticks()
+        if self.emp_timer > 0:
+            return
+        effective_delay = self.shoot_delay
+        if self.sonic_timer > 0:
+            effective_delay = int(self.shoot_delay * 1.5)
         
         # 1. 主炮射击 (保持不变)
-        if now - self.last_shot > self.shoot_delay:
+        if now - self.last_shot > effective_delay:
             self.last_shot = now
+            self._handle_mirror_on_fire()
             self._fire_main_gun()
             sound_mgr.play("shoot")
             # 【统计】记录射击次数
@@ -11719,6 +11895,65 @@ class Player(pygame.sprite.Sprite):
             
         # 【改动】副武器现在由僚机使用，玩家只使用主武器
         # 副武器逻辑已转移到 wingman.py 中的 Wingman 类
+
+    def _handle_mirror_on_fire(self):
+        if self.mirror_timer <= 0 or self.mirror_feedback_damage <= 0:
+            return
+        if self.mirror_fire_cd > 0:
+            return
+        self._trigger_mirror_feedback("fire")
+        base_cd = self.mirror_tick_cd or 18
+        self.mirror_fire_cd = max(6, base_cd // 2)
+        self.mirror_tick_timer = max(self.mirror_tick_timer, base_cd // 3)
+
+    def _trigger_mirror_feedback(self, reason="pulse"):
+        if self.mirror_feedback_damage <= 0:
+            return
+        self.hp -= self.mirror_feedback_damage
+        FloatingText(self.rect.centerx, self.rect.top - 18, "镜像反噬", (180, 200, 255))
+        for _ in range(3):
+            jitter = (random.randint(-8, 8), random.randint(-8, 8))
+            Particle((self.rect.centerx + jitter[0], self.rect.centery + jitter[1]), (200, 220, 255))
+
+    def _apply_phase_lock_pulse(self):
+        anchor = self.phase_lock_anchor or (self.rect.centerx, self.rect.centery)
+        displacement = float(self.phase_lock_displacement or 0)
+        if displacement <= 0:
+            self.phase_lock_pulse_timer = self.phase_lock_pulse_cd or 18
+            return
+        anchor_vec = pygame.Vector2(anchor)
+        pos = pygame.Vector2(self.rect.center)
+        delta = pos - anchor_vec
+        if delta.length_squared() <= 1:
+            delta = pygame.Vector2(0, -1)
+        else:
+            delta = delta.normalize()
+        if self.phase_lock_invert:
+            delta *= -1
+        pos += delta * displacement
+        self.rect.centerx = int(pos.x)
+        self.rect.centery = int(pos.y)
+        self.rect.clamp_ip(screen_rect)
+        FloatingText(self.rect.centerx, self.rect.top - 22, "相位锁", (160, 210, 255))
+        self.phase_lock_pulse_timer = self.phase_lock_pulse_cd or 18
+
+    def _apply_spore_root_tick(self):
+        tick = self.spore_root_damage
+        self.spore_root_tick_timer = self.spore_root_tick_cd or 24
+        if tick <= 0:
+            return
+        self.hp -= tick
+        FloatingText(self.rect.centerx, self.rect.top - 20, f"-{int(tick)}", (120, 200, 150))
+        Particle(self.rect.center, (90, 160, 110))
+
+    def _apply_solar_burn_tick(self):
+        tick = self.solar_burn_damage
+        self.solar_burn_tick_timer = self.solar_burn_tick_cd or 12
+        if tick <= 0:
+            return
+        self.hp -= tick
+        FloatingText(self.rect.centerx, self.rect.top - 14, f"-{int(tick)}", (255, 200, 110))
+        Particle(self.rect.center, (255, 180, 90))
 
     def _get_staradia_style(self):
         """获取Staradia涂装样式名称，从bullet_theme_id中提取"""
