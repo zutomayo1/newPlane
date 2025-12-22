@@ -129,9 +129,65 @@ score = 0
 # boss_timer and scheduling managed by BossManager
 global_time_freeze = 0
 wave = 0  # 波数
-# 普通模式连续刷怪计时与循环队列
+
+# ============================================================================
+# 普通模式敌人生成系统
+# ============================================================================
 normal_spawn_timer = 0
 normal_spawn_cycle = []
+wave_event_timer = 0          # 波次事件冷却计时
+wave_event_active = False     # 波次事件进行中
+wave_warning_timer = 0        # 波次预警计时
+current_stage = 1             # 当前难度阶段 (1-5)
+last_kill_timer = 0           # 上次击杀后经过的帧数
+no_damage_timer = 0           # 无伤计时
+recent_enemy_types = []       # 最近生成的敌人类型（用于反单调）
+
+# 敌人分级体系
+ENEMY_TIERS = {
+    # T1 轻型 (威胁值 5-8)
+    "T1": {
+        "enemies": ["wisp", "plague_drone", "void_hunter"],
+        "threat": (5, 8),
+        "tags": ["swarm", "flanker"],
+    },
+    # T2 标准 (威胁值 10-15)
+    "T2": {
+        "enemies": ["bulwark", "orbiter", "skeletal_interceptor", "phantasmal_splitter"],
+        "threat": (10, 15),
+        "tags": ["tank", "ranged"],
+    },
+    # T3 精英 (威胁值 18-25)
+    "T3": {
+        "enemies": ["armored_centurion", "frost_webber", "storm_javelin", "rail_shredder"],
+        "threat": (18, 25),
+        "tags": ["tank", "support", "ranged"],
+    },
+    # T4 高威胁 (威胁值 28-40)
+    "T4": {
+        "enemies": ["astra_fragger", "ember_siege", "cryo_lancer", "arc_overseer", "ion_veil", "resonance_breaker", "lumen_shade"],
+        "threat": (28, 40),
+        "tags": ["ranged", "support"],
+    },
+}
+
+# 阶段解锁配置
+STAGE_CONFIG = {
+    1: {"score": 0,    "tiers": ["T1"], "max_enemies": 6,  "spawn_sides": False, "spawn_bottom": False},
+    2: {"score": 500,  "tiers": ["T1", "T2"], "max_enemies": 8,  "spawn_sides": False, "spawn_bottom": False},
+    3: {"score": 1500, "tiers": ["T1", "T2", "T3"], "max_enemies": 10, "spawn_sides": True,  "spawn_bottom": False},
+    4: {"score": 3000, "tiers": ["T1", "T2", "T3", "T4"], "max_enemies": 12, "spawn_sides": True,  "spawn_bottom": True},
+    5: {"score": 6000, "tiers": ["T1", "T2", "T3", "T4"], "max_enemies": 14, "spawn_sides": True,  "spawn_bottom": True},
+}
+
+# 波次事件模板
+WAVE_TEMPLATES = [
+    {"name": "swarm_rush", "min_score": 500, "composition": [("T1", 6, 8)], "spawn_mode": "top_fan", "warning": "蜂群来袭!"},
+    {"name": "pincer_attack", "min_score": 1200, "composition": [("T2", 3, 4)], "spawn_mode": "sides", "warning": "两侧夹击!"},
+    {"name": "heavy_push", "min_score": 2000, "composition": [("T3", 2, 2), ("T1", 3, 4)], "spawn_mode": "top_slow", "warning": "重装推进!"},
+    {"name": "sniper_surround", "min_score": 3000, "composition": [("T3", 3, 4)], "spawn_mode": "corners", "warning": "精准打击!"},
+    {"name": "full_assault", "min_score": 5000, "composition": [("T2", 2, 3), ("T3", 2, 2), ("T4", 1, 2)], "spawn_mode": "all", "warning": "全面进攻!"},
+]
 
 # 选人
 selected_plane = "striker"
@@ -1050,6 +1106,8 @@ def reset_game():
     global map_paused, show_full_map, room_completion_paused
     global boss_music_active, boss_challenge_music_active
     global normal_spawn_timer, normal_spawn_cycle
+    global wave_event_timer, wave_event_active, wave_warning_timer
+    global current_stage, last_kill_timer, no_damage_timer, recent_enemy_types
     
     # reset_game() called
     
@@ -1092,6 +1150,13 @@ def reset_game():
     wave = 0
     normal_spawn_timer = 0
     normal_spawn_cycle = []
+    wave_event_timer = 0
+    wave_event_active = False
+    wave_warning_timer = 0
+    current_stage = 1
+    last_kill_timer = 0
+    no_damage_timer = 0
+    recent_enemy_types = []
     
     try:
         # 获取玩家选择的涂装
@@ -9033,6 +9098,9 @@ while True:
                                 # 加分
                                 score += 100 if m.is_elite else 20
                                 
+                                # 重置击杀计时
+                                last_kill_timer = 0
+                                
                                 # 【统计】记录击杀和更新连击
                                 player.stats['kills'] += 1
                                 player.stats['current_combo'] += 1
@@ -9106,6 +9174,10 @@ while True:
                             player.stats['combo_timer'] -= 1
                             if player.stats['combo_timer'] == 0:
                                 player.stats['current_combo'] = 0
+                        
+                        # 更新刷怪系统计时器
+                        last_kill_timer += 1
+                        no_damage_timer += 1
                         
                         # 更新物品掉落系统
                         if item_manager:
@@ -9285,81 +9357,218 @@ while True:
                                         enemy.frozen_timer = freeze_duration
                                         Particle(enemy.rect.center, (150, 200, 255))
                         
-                    # Boss spawn logic: handled by boss_manager
-                    warning_active, spawn_now = boss_manager.update(score, player.level, boss_exists=bool(boss))
-                    if warning_active and not boss:
-                        # Trigger visual/sound warning once
-                        music_director.pause_for_stinger("warning", resume_state="combat", resume_intensity=0.85)
-                        # destroy current mobs for dramatic effect
-                        for m in list(mobs): create_explosion(m.rect.center, ORANGE, 6); m.kill()
-                    if spawn_now and not boss:
-                        # Boss挑战模式：依次生成指定的Boss
-                        if boss_challenge_active and boss_challenge_current < len(boss_challenge_order):
-                            boss_type = boss_challenge_order[boss_challenge_current]
-                            candidate = boss_manager.spawn_boss(player.level, boss_type=boss_type)
-                            boss_challenge_current += 1
-                        else:
-                            candidate = boss_manager.spawn_boss(player.level)
-                        if candidate:
-                            boss = candidate
-                            all_sprites.add(boss)
-                            if not boss_music_active:
-                                music_director.push_state("boss", intensity=1.0, override_track="funk")
-                                boss_music_active = True
-                    
-                    # 敌人生成：普通模式改为连续刷新；Boss挑战保留原先的随机刷法
-                    if (game_mode == "normal" or boss_challenge_active) and len(mobs) < (12 if not boss else 4):
-                        if boss_challenge_active:
-                            # Boss挑战沿用随机/波次节奏，但限定为最新高级敌人
-                            base_spawn_rate = 0.025 + 0.055 * (1 - math.exp(-player.level / 15))
-                            wave_chance = 0.08 if score > 3000 else 0.03
-                            is_wave_spawn = random.random() < wave_chance
-                            if random.random() < base_spawn_rate or is_wave_spawn:
-                                advanced_wave_pool = [
-                                    ("astra_fragger", 18),
-                                    ("ember_siege", 16),
-                                    ("ion_veil", 14),
-                                    ("resonance_breaker", 14),
-                                    ("cryo_lancer", 16),
-                                    ("arc_overseer", 15),
-                                    ("lumen_shade", 15),
-                                ]
-                                enemies = [e[0] for e in advanced_wave_pool]
-                                weights = [e[1] for e in advanced_wave_pool]
-                                if is_wave_spawn and len(mobs) < 8:
-                                    spawn_count = random.randint(2, 4)
-                                    chosen_type = random.choices(enemies, weights=weights, k=1)[0]
-                                    for _ in range(spawn_count):
-                                        enemy_factory.create_enemy(chosen_type)
+                        # Boss spawn logic: handled by boss_manager
+                        warning_active, spawn_now = boss_manager.update(score, player.level, boss_exists=bool(boss))
+                        if warning_active and not boss:
+                            # Trigger visual/sound warning once
+                            music_director.pause_for_stinger("warning", resume_state="combat", resume_intensity=0.85)
+                            # destroy current mobs for dramatic effect
+                            for m in list(mobs): create_explosion(m.rect.center, ORANGE, 6); m.kill()
+                        if spawn_now and not boss:
+                            # Boss挑战模式：依次生成指定的Boss
+                            if boss_challenge_active and boss_challenge_current < len(boss_challenge_order):
+                                boss_type = boss_challenge_order[boss_challenge_current]
+                                candidate = boss_manager.spawn_boss(player.level, boss_type=boss_type)
+                                boss_challenge_current += 1
+                            else:
+                                candidate = boss_manager.spawn_boss(player.level)
+                            if candidate:
+                                boss = candidate
+                                all_sprites.add(boss)
+                                if not boss_music_active:
+                                    music_director.push_state("boss", intensity=1.0, override_track="funk")
+                                    boss_music_active = True
+                        
+                        # ================================================================
+                        # 敌人生成系统：双轨制（持续刷新 + 波次事件）
+                        # ================================================================
+                        if game_mode == "normal" or boss_challenge_active:
+                            # --- 阶段更新 ---
+                            for stage_num in sorted(STAGE_CONFIG.keys(), reverse=True):
+                                if score >= STAGE_CONFIG[stage_num]["score"]:
+                                    if current_stage < stage_num:
+                                        current_stage = stage_num
+                                        # 阶段提升提示
+                                        FloatingText(WIDTH // 2, HEIGHT // 3, f"威胁等级 {stage_num}", (255, 100, 100))
+                                    break
+                            
+                            stage_cfg = STAGE_CONFIG.get(current_stage, STAGE_CONFIG[1])
+                            max_cap = stage_cfg["max_enemies"] if not boss else 4
+                            allowed = max(0, max_cap - len(mobs))
+                            
+                            # --- 动态难度调节 ---
+                            hp_ratio = player.hp / player.max_hp if player.max_hp > 0 else 1.0
+                            difficulty_mult = 1.0
+                            if hp_ratio < 0.3:
+                                difficulty_mult = 0.6  # 低血量时放缓刷怪
+                            elif no_damage_timer > 600:  # 10秒无伤
+                                difficulty_mult = 1.3  # 加快刷怪
+                            
+                            # --- 辅助函数 ---
+                            def get_spawn_position(mode: str) -> tuple:
+                                """根据刷新模式返回生成位置"""
+                                if mode == "top" or mode == "top_fan":
+                                    return (random.randint(60, WIDTH - 60), -70)
+                                elif mode == "sides":
+                                    side = random.choice(["left", "right"])
+                                    if side == "left":
+                                        return (-70, random.randint(100, HEIGHT - 100))
+                                    else:
+                                        return (WIDTH + 70, random.randint(100, HEIGHT - 100))
+                                elif mode == "bottom":
+                                    return (random.randint(60, WIDTH - 60), HEIGHT + 70)
+                                elif mode == "corners":
+                                    corner = random.choice(["tl", "tr", "bl", "br"])
+                                    if corner == "tl":
+                                        return (-70, -70)
+                                    elif corner == "tr":
+                                        return (WIDTH + 70, -70)
+                                    elif corner == "bl":
+                                        return (-70, HEIGHT + 70)
+                                    else:
+                                        return (WIDTH + 70, HEIGHT + 70)
+                                elif mode == "all":
+                                    return get_spawn_position(random.choice(["top", "sides", "bottom"]))
+                                elif mode == "top_slow":
+                                    return (random.randint(100, WIDTH - 100), -70)
                                 else:
-                                    chosen_type = random.choices(enemies, weights=weights, k=1)[0]
-                                    enemy_factory.create_enemy(chosen_type)
-                        else:
-                            # 普通模式：连续刷新，仅轮换最新高级敌人
-                            advanced_cycle_ids = [
-                                "astra_fragger",
-                                "ember_siege",
-                                "ion_veil",
-                                "resonance_breaker",
-                                "cryo_lancer",
-                                "arc_overseer",
-                                "lumen_shade",
-                            ]
-                            spawn_interval = max(18, 60 - min(30, score // 400))
-                            normal_spawn_timer += 1
-                            if not normal_spawn_cycle:
-                                normal_spawn_cycle = advanced_cycle_ids[:]
-                                random.shuffle(normal_spawn_cycle)
-                            if normal_spawn_timer >= spawn_interval:
-                                normal_spawn_timer = 0
-                                # 人少时一次刷两只，加快补充
-                                batch = 2 if len(mobs) < 6 else 1
-                                for _ in range(batch):
-                                    if not normal_spawn_cycle:
-                                        normal_spawn_cycle = advanced_cycle_ids[:]
-                                        random.shuffle(normal_spawn_cycle)
-                                    enemy_type = normal_spawn_cycle.pop()
-                                    enemy_factory.create_enemy(enemy_type)
+                                    return (random.randint(60, WIDTH - 60), -70)
+                            
+                            def pick_enemy_from_tier(tier: str) -> str:
+                                """从指定等级随机选择敌人，避免连续重复"""
+                                tier_data = ENEMY_TIERS.get(tier, ENEMY_TIERS["T1"])
+                                pool = tier_data["enemies"]
+                                # 过滤掉最近出现的敌人
+                                filtered = [e for e in pool if e not in recent_enemy_types[-3:]]
+                                if not filtered:
+                                    filtered = pool
+                                return random.choice(filtered)
+                            
+                            def pick_weighted_spawn_mode() -> str:
+                                """根据当前阶段选择刷新位置"""
+                                if current_stage <= 2:
+                                    return "top"
+                                elif current_stage == 3:
+                                    roll = random.random()
+                                    if roll < 0.7:
+                                        return "top"
+                                    else:
+                                        return "sides"
+                                else:  # 阶段4-5
+                                    roll = random.random()
+                                    if roll < 0.5:
+                                        return "top"
+                                    elif roll < 0.8:
+                                        return "sides"
+                                    else:
+                                        return "bottom"
+                            
+                            def pick_tier_weighted() -> str:
+                                """根据当前阶段加权选择敌人等级"""
+                                available = stage_cfg["tiers"]
+                                if current_stage == 1:
+                                    return "T1"
+                                elif current_stage == 2:
+                                    return random.choices(["T1", "T2"], weights=[60, 40], k=1)[0] if "T2" in available else "T1"
+                                elif current_stage == 3:
+                                    return random.choices(["T1", "T2", "T3"], weights=[35, 40, 25], k=1)[0]
+                                elif current_stage == 4:
+                                    return random.choices(["T1", "T2", "T3", "T4"], weights=[20, 35, 30, 15], k=1)[0]
+                                else:  # 阶段5
+                                    return random.choices(["T1", "T2", "T3", "T4"], weights=[15, 30, 30, 25], k=1)[0]
+                            
+                            # ================================================================
+                            # 轨道1：波次事件系统
+                            # ================================================================
+                            if not boss and not wave_event_active:
+                                wave_event_timer += 1
+                                wave_cooldown = int(1800 * difficulty_mult)  # 约30秒，低血量时延长
+                                
+                                if wave_event_timer >= wave_cooldown:
+                                    # 筛选可用波次模板
+                                    available_waves = [w for w in WAVE_TEMPLATES if score >= w["min_score"]]
+                                    if available_waves:
+                                        chosen_wave = random.choice(available_waves)
+                                        wave_event_active = True
+                                        wave_warning_timer = 120  # 2秒预警
+                                        wave_event_timer = 0
+                                        # 预警提示
+                                        FloatingText(WIDTH // 2, HEIGHT // 4, chosen_wave["warning"], (255, 200, 0))
+                                        sound_mgr.play("warning") if hasattr(sound_mgr, 'play') else None
+                            
+                            # 波次预警倒计时
+                            if wave_event_active and wave_warning_timer > 0:
+                                wave_warning_timer -= 1
+                                # 屏幕边缘闪烁效果
+                                if wave_warning_timer % 20 < 10:
+                                    pygame.draw.rect(screen, (255, 50, 50), (0, 0, WIDTH, 4))
+                                    pygame.draw.rect(screen, (255, 50, 50), (0, HEIGHT - 4, WIDTH, 4))
+                                
+                                if wave_warning_timer <= 0:
+                                    # 执行波次生成
+                                    available_waves = [w for w in WAVE_TEMPLATES if score >= w["min_score"]]
+                                    if available_waves:
+                                        chosen_wave = random.choice(available_waves)
+                                        spawn_mode = chosen_wave["spawn_mode"]
+                                        for tier, min_count, max_count in chosen_wave["composition"]:
+                                            count = random.randint(min_count, max_count)
+                                            for _ in range(count):
+                                                enemy_type = pick_enemy_from_tier(tier)
+                                                pos = get_spawn_position(spawn_mode)
+                                                enemy_factory.create_enemy(enemy_type, spawn_pos=pos)
+                                                recent_enemy_types.append(enemy_type)
+                                                if len(recent_enemy_types) > 10:
+                                                    recent_enemy_types.pop(0)
+                                    wave_event_active = False
+                            
+                            # ================================================================
+                            # 轨道2：持续刷新层
+                            # ================================================================
+                            if not wave_event_active or wave_warning_timer <= 0:
+                                normal_spawn_timer += 1
+                                
+                                # 动态刷新间隔
+                                base_interval = max(48, 90 - min(42, score // 150))
+                                if len(mobs) < 4:
+                                    base_interval = max(36, base_interval - 18)
+                                spawn_interval = int(base_interval * difficulty_mult)
+                                
+                                # 调试输出（每秒一次）
+                                if normal_spawn_timer % 60 == 0:
+                                    print(f"[刷怪] 阶段{current_stage} | 分数{score} | 敌人{len(mobs)}/{max_cap} | 间隔{spawn_interval} | 计时{normal_spawn_timer}")
+                                
+                                # Boss挑战模式使用固定高威胁池
+                                if boss_challenge_active:
+                                    if normal_spawn_timer >= spawn_interval and allowed > 0:
+                                        normal_spawn_timer = 0
+                                        batch = min(allowed, 2 if len(mobs) < max_cap // 2 else 1)
+                                        for _ in range(batch):
+                                            enemy_type = pick_enemy_from_tier("T4")
+                                            pos = get_spawn_position(pick_weighted_spawn_mode())
+                                            enemy_factory.create_enemy(enemy_type, spawn_pos=pos)
+                                            recent_enemy_types.append(enemy_type)
+                                            if len(recent_enemy_types) > 10:
+                                                recent_enemy_types.pop(0)
+                                else:
+                                    # 普通模式：根据阶段选择敌人
+                                    if normal_spawn_timer >= spawn_interval and allowed > 0:
+                                        normal_spawn_timer = 0
+                                        batch = 1
+                                        if len(mobs) < 4:
+                                            batch = 2
+                                        elif score > 2000 and random.random() < 0.3:
+                                            batch = 2
+                                        batch = min(batch, allowed)
+                                        
+                                        for _ in range(batch):
+                                            tier = pick_tier_weighted()
+                                            enemy_type = pick_enemy_from_tier(tier)
+                                            spawn_mode = pick_weighted_spawn_mode()
+                                            pos = get_spawn_position(spawn_mode)
+                                            enemy_factory.create_enemy(enemy_type, spawn_pos=pos)
+                                            recent_enemy_types.append(enemy_type)
+                                            if len(recent_enemy_types) > 10:
+                                                recent_enemy_types.pop(0)
                     
                     hits = pygame.sprite.groupcollide(mobs, bullets, False, False)
                     for m, hit_bullets in hits.items():
@@ -10186,6 +10395,7 @@ while True:
                                         Particle(player.rect.center, CYAN)
                             elif dmg > 0:
                                 player.hp -= dmg
+                                no_damage_timer = 0  # 重置无伤计时
                                 FloatingText(player.rect.centerx, player.rect.top, f"-{dmg}", RED)
                                 # 受伤时的特效（简化）
                                 if random.random() < 0.5:  # 50%概率显示

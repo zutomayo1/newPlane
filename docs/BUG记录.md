@@ -636,3 +636,86 @@ for m in list(mobs):
 
 ### 修复日期
 2025年12月20日
+
+---
+
+## Bug #009: 普通模式敌人只刷新一批后停止
+
+### 问题描述
+普通模式开局后，敌人刷新一批到12个后就再也不刷新了，即使玩家击杀敌人场上也不再有新敌人出现。
+
+### 具体表现
+- 游戏开始后敌人正常刷新到上限（12个）
+- 击杀敌人后，场上敌人数量不变或只减少不增加
+- 调试日志显示 `mobs=12, allowed=0` 持续数分钟不变
+
+### 根本原因
+**Enemy类缺少边界检测**：敌人飞出屏幕后不会被移除，导致 `mobs` 精灵组一直保持满员状态。
+
+`Enemy.update()` 方法中没有边界检测代码：
+```python
+def update(self) -> None:
+    # ... 移动和攻击逻辑 ...
+    self._apply_behavior(effective_dt)
+    self._apply_dynamic_effects()
+    self._apply_support_auras()
+    self._maybe_attack()
+    # ❌ 没有边界检测，敌人飞出屏幕后仍然存在于 mobs 组中
+```
+
+而 `EnemyBullet` 类有正确的边界检测：
+```python
+def update(self) -> None:
+    # ...
+    if (self.rect.right < -40 or self.rect.left > WIDTH + 40 ...):
+        self.kill()  # ✅ 飞出屏幕后移除
+```
+
+刷怪逻辑检查 `allowed = max_cap - len(mobs)`，由于敌人不会被移除，`len(mobs)` 永远是12，`allowed` 永远是0，导致不再刷新。
+
+### 解决方案
+在 `Enemy.update()` 方法末尾添加边界检测：
+
+```python
+def update(self) -> None:
+    # ... 原有逻辑 ...
+    self._apply_behavior(effective_dt)
+    self._apply_dynamic_effects()
+    self._apply_support_auras()
+    self._maybe_attack()
+
+    # 边界检测：飞出屏幕的敌人自动移除
+    if (
+        self.rect.top > HEIGHT + 100
+        or self.rect.bottom < -100
+        or self.rect.left > WIDTH + 100
+        or self.rect.right < -100
+    ):
+        self.kill()
+```
+
+### 附加问题
+调试过程中还发现敌人生成代码的缩进错误，导致刷怪逻辑位于错误的代码块外：
+- 敌人生成代码（第9310行）缩进为20空格
+- 应该位于 `else:` (非 `levelup_paused`) 分支内（24空格）
+
+这导致刷怪逻辑虽然每帧执行，但处于错误的上下文中。修复后将其缩进增加4空格。
+
+### 预防措施
+1. **所有移动实体都应有边界检测**：敌人、子弹、道具等飞出屏幕后必须移除
+2. **检查清单**：
+   - [ ] 新增的敌人类型是否继承了正确的边界检测？
+   - [ ] 移动逻辑是否会导致实体永远留在屏幕外？
+   - [ ] 精灵组的数量是否会正常增减？
+
+3. **调试建议**：遇到"不刷新"问题时，优先检查：
+   - 刷怪条件是否满足（`allowed > 0`）
+   - 计时器是否正常递增/重置
+   - 已有实体是否正常移除
+
+### 相关文件
+- `enemies.py` - `Enemy.update()` 方法（第2757-2764行）
+- `main.py` - 敌人生成逻辑（第9310-9365行）
+
+### 修复日期
+2025年12月22日

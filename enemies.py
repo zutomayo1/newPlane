@@ -2755,6 +2755,15 @@ class Enemy(pygame.sprite.Sprite):
         self._apply_support_auras()
         self._maybe_attack()
 
+        # 边界检测：飞出屏幕的敌人自动移除
+        if (
+            self.rect.top > HEIGHT + 100
+            or self.rect.bottom < -100
+            or self.rect.left > WIDTH + 100
+            or self.rect.right < -100
+        ):
+            self.kill()
+
     # ------------------------------------------------------------------
     # Movement behaviors
     def _apply_behavior(self, dt: float) -> None:
