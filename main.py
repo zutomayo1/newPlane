@@ -22,9 +22,85 @@ pygame.mixer.pre_init(44100, -16, 2, 1024)
 pygame.init()
 pygame.font.init()
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+# 窗口模式: 支持最大化和调整大小
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("霓虹深空：无限进化 (最终完美版)")
 clock = pygame.time.Clock()
+
+# ==============================================================================
+#   窗口缩放系统
+# ==============================================================================
+window_width, window_height = WIDTH, HEIGHT
+game_surface = pygame.Surface((WIDTH, HEIGHT))  # 游戏渲染到固定分辨率
+_scale_offset_x, _scale_offset_y = 0, 0  # 缩放后的偏移量
+_current_scale = 1.0  # 当前缩放比例
+
+def get_mouse_pos():
+    """
+    获取鼠标在游戏坐标系中的位置（支持窗口缩放）
+    
+    当窗口被缩放或最大化时，自动将屏幕坐标转换为游戏逻辑坐标(1280x720)。
+    所有需要鼠标位置的地方都应使用此函数。
+    
+    Returns:
+        tuple: (x, y) 游戏坐标系中的鼠标位置
+    """
+    raw_x, raw_y = pygame.mouse.get_pos()
+    if _current_scale != 1.0:
+        game_x = int((raw_x - _scale_offset_x) / _current_scale)
+        game_y = int((raw_y - _scale_offset_y) / _current_scale)
+        return max(0, min(WIDTH - 1, game_x)), max(0, min(HEIGHT - 1, game_y))
+    return raw_x, raw_y
+
+# 全局变量：真实屏幕表面（用于窗口缩放渲染）
+_real_screen = None
+
+def apply_window_mode(mode):
+    """应用窗口模式切换"""
+    global screen, window_width, window_height, _real_screen
+    
+    if mode == "windowed":
+        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+        window_width, window_height = WIDTH, HEIGHT
+    elif mode == "fullscreen":
+        # 使用最大化窗口模式（和右上角最大化按钮一样的逻辑）
+        import ctypes
+        user32 = ctypes.windll.user32
+        sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+        # 减去任务栏高度（约40像素）
+        screen = pygame.display.set_mode((sw, sh - 40), pygame.RESIZABLE)
+        window_width, window_height = sw, sh - 40
+        # 移动窗口到左上角
+        hwnd = pygame.display.get_wm_info()["window"]
+        user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0001)  # SWP_NOSIZE
+    elif mode == "borderless":
+        # 真正的无边框全屏
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        
+        # 获取完整屏幕尺寸
+        sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+        
+        # 先用普通模式创建窗口获取句柄
+        screen = pygame.display.set_mode((sw, sh), pygame.NOFRAME)
+        hwnd = pygame.display.get_wm_info()["window"]
+        
+        # 设置窗口样式为无边框
+        GWL_STYLE = -16
+        WS_POPUP = 0x80000000
+        WS_VISIBLE = 0x10000000
+        user32.SetWindowLongW(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE)
+        
+        # 设置窗口位置和大小，覆盖整个屏幕
+        SWP_FRAMECHANGED = 0x0020
+        SWP_SHOWWINDOW = 0x0040
+        HWND_TOP = 0
+        user32.SetWindowPos(hwnd, HWND_TOP, 0, 0, sw, sh, SWP_FRAMECHANGED | SWP_SHOWWINDOW)
+        
+        window_width, window_height = sw, sh
+    # 同步更新 _real_screen
+    _real_screen = screen
 
 # 加载数据
 try:
@@ -1430,7 +1506,7 @@ def draw_menu_ui():
     safe_blit(screen, glow, (rect.x + 3, rect.y + 3))
     safe_blit(screen, main, rect)
 
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     buttons = get_menu_buttons()
     for i, (r, txt, col, act) in enumerate(buttons):
         is_hover = r.collidepoint(mx, my)
@@ -1465,7 +1541,7 @@ def draw_menu_ui():
 def draw_audio_hub_ui():
     """绘制音乐枢纽界面 - 赛博朋克风格"""
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ====== 背景 ======
     screen.fill((6, 10, 18))
@@ -1621,7 +1697,7 @@ def draw_audio_hub_ui():
 def draw_music_library_ui():
     """绘制音乐馆界面 - 赛博朋克风格"""
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ====== 背景 ======
     screen.fill((6, 10, 18))
@@ -1915,7 +1991,7 @@ def draw_music_library_ui():
 def draw_sound_lab_ui():
     """绘制音效实验室界面 - 赛博朋克风格"""
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ====== 背景 ======
     screen.fill((10, 8, 14))
@@ -2184,7 +2260,7 @@ def draw_mode_select_ui():
     scale = 1.0 + 0.05 * math.sin(t * 0.003)
     draw_text(screen, "选择游戏模式", int(54 * scale), WIDTH//2, 80, CYAN, glow=True)
     
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # 三个模式卡片
     card_width = 380
@@ -2299,7 +2375,7 @@ def draw_settings_ui():
     global settings_saved_timer, settings_saved_msg
     
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ====== 深空背景 ======
     screen.fill((8, 12, 22))
@@ -2475,6 +2551,7 @@ def draw_settings_ui():
         ("fps", "📊", "显示FPS计数器", game_settings.get("show_fps", True), CYAN),
         ("shake", "📳", "屏幕震动效果", game_settings.get("screen_shake", True), MAGENTA),
         ("damage", "💥", "显示伤害数字", game_settings.get("show_damage_numbers", True), YELLOW),
+        ("hitbox", "📐", "显示碰撞箱", game_settings.get("show_hitbox", False), LIME),
     ]
     
     checkboxes = {}
@@ -2508,7 +2585,7 @@ def draw_settings_ui():
         screen.blit(label_surf, (cb_rect.right + 38, y_pos + 7))
     
     # ====== 粒子效果质量 ======
-    particle_y = other_y + 145
+    particle_y = other_y + 190  # 调整位置（多了一个checkbox）
     particle_rect = pygame.Rect(right_x, particle_y - 5, 350, 75)
     pygame.draw.rect(screen, (18, 22, 32), particle_rect, border_radius=6)
     pygame.draw.rect(screen, (60, 70, 90), particle_rect, 1, border_radius=6)
@@ -2541,7 +2618,7 @@ def draw_settings_ui():
         screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
     
     # ====== 射击模式 ======
-    fire_y = other_y + 230
+    fire_y = other_y + 275  # 调整位置
     fire_rect = pygame.Rect(right_x, fire_y - 5, 350, 75)
     pygame.draw.rect(screen, (18, 22, 32), fire_rect, border_radius=6)
     pygame.draw.rect(screen, (60, 70, 90), fire_rect, 1, border_radius=6)
@@ -2568,6 +2645,70 @@ def draw_settings_ui():
         
         btn_text = label_font.render(name, True, color if is_selected else (WHITE if is_hover else GRAY))
         screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
+    
+    # ====== 窗口模式 ======
+    window_y = other_y + 360
+    window_rect = pygame.Rect(right_x, window_y - 5, 350, 75)
+    pygame.draw.rect(screen, (18, 22, 32), window_rect, border_radius=6)
+    pygame.draw.rect(screen, (60, 70, 90), window_rect, 1, border_radius=6)
+    
+    window_icon = vol_emoji.render("🖥️", True, CYAN)
+    window_label = label_font.render("窗口模式", True, WHITE)
+    screen.blit(window_icon, (right_x + 12, window_y + 3))
+    screen.blit(window_label, (right_x + 40, window_y + 5))
+    
+    window_mode = game_settings.get("window_mode", "windowed")
+    window_options = [("windowed", "窗口", CYAN), ("fullscreen", "全屏", MAGENTA), ("borderless", "无边框", ORANGE)]
+    
+    window_btns = []
+    for i, (mode, name, color) in enumerate(window_options):
+        btn_x = right_x + 15 + i * 110
+        btn_rect = pygame.Rect(btn_x, window_y + 35, 100, 30)
+        window_btns.append((btn_rect, mode))
+        is_selected = (window_mode == mode)
+        is_hover = btn_rect.collidepoint(mx, my)
+        
+        btn_bg = (color[0]//4, color[1]//4, color[2]//4) if is_selected else ((50, 55, 65) if is_hover else (30, 35, 45))
+        pygame.draw.rect(screen, btn_bg, btn_rect, border_radius=5)
+        pygame.draw.rect(screen, color if is_selected or is_hover else (60, 65, 75), btn_rect, 2, border_radius=5)
+        
+        btn_text = label_font.render(name, True, color if is_selected else (WHITE if is_hover else GRAY))
+        screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
+    
+    # ====== 存档管理区域（左侧下方）======
+    save_mgmt_y = start_y + 210
+    save_mgmt_title = pygame.Rect(section_x, save_mgmt_y, 350, 35)
+    pygame.draw.rect(screen, (50, 20, 20, 180), save_mgmt_title, border_radius=6)
+    pygame.draw.rect(screen, RED, save_mgmt_title, 1, border_radius=6)
+    save_mgmt_icon = vol_emoji.render("💾", True, RED)
+    save_mgmt_text = vol_font.render(" 存档管理", True, RED)
+    screen.blit(save_mgmt_icon, (section_x + 12, save_mgmt_y + 7))
+    screen.blit(save_mgmt_text, (section_x + 38, save_mgmt_y + 6))
+    
+    # 导出存档按钮
+    export_btn = pygame.Rect(section_x, save_mgmt_y + 50, 170, 45)
+    export_hover = export_btn.collidepoint(mx, my)
+    pygame.draw.rect(screen, (30, 50, 40) if export_hover else (20, 35, 30), export_btn, border_radius=6)
+    pygame.draw.rect(screen, LIME if export_hover else (60, 100, 80), export_btn, 1, border_radius=6)
+    export_icon = vol_emoji.render("📤", True, LIME)
+    export_text = label_font.render("导出存档", True, WHITE if export_hover else (180, 180, 180))
+    screen.blit(export_icon, (export_btn.x + 15, export_btn.centery - 10))
+    screen.blit(export_text, (export_btn.x + 50, export_btn.centery - 10))
+    
+    # 重置存档按钮
+    clear_btn = pygame.Rect(section_x + 180, save_mgmt_y + 50, 170, 45)
+    clear_hover = clear_btn.collidepoint(mx, my)
+    pygame.draw.rect(screen, (60, 30, 30) if clear_hover else (40, 20, 20), clear_btn, border_radius=6)
+    pygame.draw.rect(screen, RED if clear_hover else (120, 60, 60), clear_btn, 1, border_radius=6)
+    clear_icon = vol_emoji.render("🗑️", True, RED)
+    clear_text = label_font.render("重置存档", True, WHITE if clear_hover else (180, 180, 180))
+    screen.blit(clear_icon, (clear_btn.x + 15, clear_btn.centery - 10))
+    screen.blit(clear_text, (clear_btn.x + 50, clear_btn.centery - 10))
+    
+    # 警告提示
+    warn_font = pygame.font.SysFont("SimHei", 12)
+    warn_text = warn_font.render("⚠️ 重置将清除所有游戏数据！", True, (180, 100, 100))
+    screen.blit(warn_text, (section_x + 10, save_mgmt_y + 102))
     
     # ====== 底部按钮区域 ======
     btn_y = HEIGHT - 75
@@ -2634,8 +2775,12 @@ def draw_settings_ui():
         'fps_checkbox': checkboxes['fps'],
         'shake_checkbox': checkboxes['shake'],
         'damage_checkbox': checkboxes['damage'],
+        'hitbox_checkbox': checkboxes['hitbox'],
         'particle_quality_btns': particle_btns,
         'fire_mode_btns': fire_btns,
+        'window_mode_btns': window_btns,
+        'export_btn': export_btn,
+        'clear_btn': clear_btn,
         'sliders': [
             (pygame.Rect(section_x + 15, start_y + 0*65 + 32, slider_width, slider_height), 'master'),
             (pygame.Rect(section_x + 15, start_y + 1*65 + 32, slider_width, slider_height), 'music'),
@@ -2648,7 +2793,7 @@ def draw_arsenal_ui():
     global arsenal_selected_weapon_idx
     
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ====== 深邃背景 ======
     for y in range(HEIGHT):
@@ -3149,7 +3294,7 @@ def draw_background_settings_ui():
     global background_settings_page
     
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ====== 使用当前装备的背景 ======
     bg_manager.draw(screen)
@@ -3397,7 +3542,7 @@ def draw_background_settings_ui():
 def draw_codex_ui():
     """绘制机密档案界面 - 赛博朋克风格"""
     r = CODEX_UI
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     t = pygame.time.get_ticks()
     
     # ====== 背景 ======
@@ -3709,7 +3854,7 @@ def draw_codex_ui():
 
 def draw_gallery_ui():
     """绘制战术图鉴界面 - 赛博朋克风格"""
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     t = pygame.time.get_ticks()
     
     # ====== 背景 ======
@@ -4310,7 +4455,7 @@ def draw_select_plane_ui():
     global current_plane_idx
     
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     pulse = 0.5 + 0.5 * math.sin(t / 500)
     
     # ====== 背景 ======
@@ -4769,7 +4914,7 @@ def draw_boss_challenge_ui():
     enabled_bosses = [k for k in boss_challenge_order if boss_challenge_enabled.get(k, True)]
     enabled_count = len(enabled_bosses)
     
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ====== 标题区 ======
     title_glow = int(180 + 40 * pulse)
@@ -5452,7 +5597,7 @@ def _draw_achievements_ui_inner():
     global player, achievement_page, achievement_category, achievement_selected, achievement_scroll_y
     
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ========== 布局常量 (1280x720) ==========
     MARGIN = 30           # 边距
@@ -6130,7 +6275,7 @@ def draw_leaderboard_ui():
     global leaderboard_mode, leaderboard_sort_by, leaderboard_scroll_y, leaderboard_stats_tab
     
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ====== 缓存的静态背景 ======
     screen.blit(_get_lb_background(), (0, 0))
@@ -6948,7 +7093,7 @@ def draw_customization_ui():
     global customization_mode, game_state
     
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ====== 动态深空背景 ======
     screen.fill((5, 8, 15))
@@ -7106,7 +7251,7 @@ def draw_plane_customization_ui():
     global customization_selected_plane, customization_msg_timer, customization_tab, customization_scroll_y, customization_plane_scroll_y
     
     t = pygame.time.get_ticks()
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     # ====== 预加载所有字体（性能优化）======
     font_18 = get_cached_font("SimHei", 18)
@@ -7602,7 +7747,7 @@ def draw_wingman_customization_ui():
     """绘制僚机涂装界面（结构与机体涂装界面完全相同）"""
     global customization_selected_wingman, customization_msg_timer, customization_tab, customization_scroll_y, customization_plane_scroll_y
     
-    mx, my = pygame.mouse.get_pos()
+    mx, my = get_mouse_pos()
     
     t = pygame.time.get_ticks()
     
@@ -11153,7 +11298,11 @@ while True:
                 music_library_status_msg = ""
         if game_state in ("menu", "audio_hub", "music_library", "sound_lab") and music_director.current_state != "menu":
             music_director.set_state("menu", intensity=0.25)
-        screen.fill(CYBER_DEEP_BLACK)  # 深空黑背景
+        
+        # 渲染到 game_surface（固定分辨率1280x720）
+        game_surface.fill(CYBER_DEEP_BLACK)  # 深空黑背景
+        _real_screen = screen  # 保存真实屏幕引用
+        screen = game_surface  # 临时重定向渲染目标
         
         # 绘制背景（游戏或Boss战斗）
         if game_state == "game" or game_state == "boss_challenge_play":
@@ -11236,7 +11385,7 @@ while True:
                 boss_challenge_key_repeat["right"] = 0
         
         events = pygame.event.get()
-        mx, my = pygame.mouse.get_pos()
+        mx, my = get_mouse_pos()
         
         for event in events:
             if event.type == pygame.QUIT:
@@ -11244,6 +11393,25 @@ while True:
                 if player and hasattr(player, 'achievement_manager'):
                     player.achievement_manager.save_to_file()
                 pygame.quit(); sys.exit()
+            
+            # --- 窗口大小变化事件 ---
+            if event.type == pygame.VIDEORESIZE:
+                window_width, window_height = event.w, event.h
+                screen = pygame.display.set_mode((window_width, window_height), pygame.RESIZABLE)
+                _real_screen = screen  # 同步更新全局变量
+            
+            # --- F11 切换全屏 ---
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+                # 检查当前是否为无边框全屏模式
+                is_borderless = (window_width == pygame.display.Info().current_w and 
+                                window_height == pygame.display.Info().current_h and
+                                not (_real_screen and _real_screen.get_flags() & pygame.RESIZABLE))
+                if is_borderless:
+                    # 恢复窗口模式
+                    apply_window_mode("windowed")
+                else:
+                    # 切换到无边框全屏
+                    apply_window_mode("borderless")
             
             # --- 滚轮事件 (通用) ---
             if event.type == pygame.MOUSEWHEEL:
@@ -11265,7 +11433,7 @@ while True:
                         max_scroll = max(0, len(owned_cards) - 14)  # 14张可见
                         stats_panel_card_scroll = max(0, min(stats_panel_card_scroll - event.y * 2, max_scroll))
                 elif game_state == "customization":
-                    mx, my = pygame.mouse.get_pos()
+                    mx, my = get_mouse_pos()
                     if mx < 330:
                         # 飞机列表滚动
                         customization_plane_scroll_y = max(0, customization_plane_scroll_y - event.y * 30)
@@ -12613,7 +12781,7 @@ while True:
                     sound_mgr.play("select")
                     r = ARSENAL_UI
                     weapons = arsenal_save_data["weapons"]
-                    item_height = 60
+                    item_height = 65  # 与draw_arsenal_ui保持一致
                     total_h = len(weapons) * item_height
                     view_h = r['list_area'].height
                     max_scroll = max(0, total_h - view_h)
@@ -12638,9 +12806,9 @@ while True:
                     
                     # 列表点击 (修正为支持滚动)
                     if r['list_area'].collidepoint(mx, my) and mx < r['list_area'].right - 10:
-                        # 计算相对于列表内容顶部的坐标
-                        click_offset = my - (r['list_area'].y + 10) + arsenal_scroll_y
-                        idx = click_offset // 60
+                        # 计算相对于列表内容顶部的坐标（需考虑header高度38）
+                        click_offset = my - (r['list_area'].y + 43) + arsenal_scroll_y
+                        idx = click_offset // 65
                         # 确保点击有效范围
                         if 0 <= idx < len(arsenal_save_data["weapons"]):
                             arsenal_selected_weapon_idx = int(idx)
@@ -12898,7 +13066,9 @@ while True:
                             screen_shake=game_settings.get("screen_shake", True),
                             particle_quality=game_settings.get("particle_quality", "high"),
                             show_damage_numbers=game_settings.get("show_damage_numbers", True),
-                            auto_fire=game_settings.get("auto_fire", True)
+                            auto_fire=game_settings.get("auto_fire", True),
+                            show_hitbox=game_settings.get("show_hitbox", False),
+                            window_mode=game_settings.get("window_mode", "windowed")
                         )
                         settings_saved_msg = "设置已保存!"
                         settings_saved_timer = 60
@@ -12914,6 +13084,10 @@ while True:
                         game_settings["particle_quality"] = "high"
                         game_settings["show_damage_numbers"] = True
                         game_settings["auto_fire"] = True
+                        game_settings["show_hitbox"] = False
+                        game_settings["window_mode"] = "windowed"
+                        # 恢复窗口模式
+                        apply_window_mode("windowed")
                         settings_saved_msg = "已恢复默认设置!"
                         settings_saved_timer = 60
                         sound_mgr.play("select")
@@ -12939,6 +13113,61 @@ while True:
                         game_settings["show_damage_numbers"] = not game_settings.get("show_damage_numbers", True)
                         sound_mgr.play("select")
                     
+                    # 碰撞箱显示复选框
+                    elif settings_ui['hitbox_checkbox'].collidepoint(mx, my):
+                        game_settings["show_hitbox"] = not game_settings.get("show_hitbox", False)
+                        sound_mgr.play("select")
+                    
+                    # 导出存档按钮
+                    elif settings_ui['export_btn'].collidepoint(mx, my):
+                        try:
+                            import zipfile
+                            import os
+                            from datetime import datetime
+                            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            zip_path = os.path.join(desktop, f"霓虹深空存档_{timestamp}.zip")
+                            with zipfile.ZipFile(zip_path, 'w') as zf:
+                                for f in ["arsenal.json", "achievements.json", "leaderboard.json", "game_settings.json"]:
+                                    if os.path.exists(f):
+                                        zf.write(f)
+                            settings_saved_msg = f"存档已导出到桌面!"
+                            settings_saved_timer = 90
+                            sound_mgr.play("achievement")
+                        except Exception as e:
+                            settings_saved_msg = f"导出失败: {str(e)[:20]}"
+                            settings_saved_timer = 90
+                            sound_mgr.play("warning")
+                    
+                    # 重置存档按钮（需要确认）
+                    elif settings_ui['clear_btn'].collidepoint(mx, my):
+                        # 设置确认状态
+                        if not hasattr(draw_settings_ui, 'confirm_reset'):
+                            draw_settings_ui.confirm_reset = False
+                        if draw_settings_ui.confirm_reset:
+                            # 第二次点击，执行重置
+                            try:
+                                import os
+                                for f in ["arsenal.json", "achievements.json", "leaderboard.json"]:
+                                    if os.path.exists(f):
+                                        os.remove(f)
+                                # 重置内存数据 - 使用函数重新加载
+                                load_arsenal()  # 重新加载会得到默认值
+                                settings_saved_msg = "存档已重置！请重启游戏"
+                                settings_saved_timer = 120
+                                sound_mgr.play("explosion")
+                                draw_settings_ui.confirm_reset = False
+                            except Exception as e:
+                                settings_saved_msg = f"重置失败: {str(e)[:20]}"
+                                settings_saved_timer = 90
+                                sound_mgr.play("warning")
+                        else:
+                            # 第一次点击，要求确认
+                            draw_settings_ui.confirm_reset = True
+                            settings_saved_msg = "再次点击确认重置！"
+                            settings_saved_timer = 120
+                            sound_mgr.play("warning")
+                    
                     # 粒子质量按钮
                     else:
                         clicked_quality = False
@@ -12954,6 +13183,17 @@ while True:
                             for btn_rect, mode in settings_ui['fire_mode_btns']:
                                 if btn_rect.collidepoint(mx, my):
                                     game_settings["auto_fire"] = mode
+                                    sound_mgr.play("select")
+                                    clicked_quality = True
+                                    break
+                        
+                        # 窗口模式按钮
+                        if not clicked_quality:
+                            for btn_rect, mode in settings_ui['window_mode_btns']:
+                                if btn_rect.collidepoint(mx, my):
+                                    game_settings["window_mode"] = mode
+                                    # 应用窗口模式
+                                    apply_window_mode(mode)
                                     sound_mgr.play("select")
                                     clicked_quality = True
                                     break
@@ -13135,7 +13375,7 @@ while True:
         if game_state == "settings" and settings_dragging:
             mouse_buttons = pygame.mouse.get_pressed()
             if mouse_buttons[0]:  # 左键按下
-                mx, my = pygame.mouse.get_pos()
+                mx, my = get_mouse_pos()
                 start_y = 160
                 slider_width = 400
                 
@@ -13162,7 +13402,7 @@ while True:
         if game_state == "achievements" and achievement_dragging_scrollbar:
             mouse_buttons = pygame.mouse.get_pressed()
             if mouse_buttons[0]:  # 左键按下
-                mx, my = pygame.mouse.get_pos()
+                mx, my = get_mouse_pos()
                 achievement_mgr = get_cached_achievement_mgr()
                 if achievement_mgr:
                     # 计算布局参数（与绘制一致）
@@ -13201,7 +13441,7 @@ while True:
         if game_state in ["select_plane", "boss_challenge_select_plane"] and plane_select_dragging_scrollbar:
             mouse_buttons = pygame.mouse.get_pressed()
             if mouse_buttons[0]:
-                mx, my = pygame.mouse.get_pos()
+                mx, my = get_mouse_pos()
                 # 布局参数
                 content_y = 90
                 content_h = HEIGHT - 170
@@ -13228,10 +13468,10 @@ while True:
         if game_state == "arsenal" and arsenal_dragging_scrollbar:
             mouse_buttons = pygame.mouse.get_pressed()
             if mouse_buttons[0]:
-                mx, my = pygame.mouse.get_pos()
+                mx, my = get_mouse_pos()
                 r = ARSENAL_UI
                 weapons = arsenal_save_data["weapons"]
-                item_height = 60
+                item_height = 65  # 与draw_arsenal_ui保持一致
                 total_h = len(weapons) * item_height
                 view_h = r['list_area'].height
                 max_scroll = max(0, total_h - view_h)
@@ -13249,7 +13489,7 @@ while True:
         if game_state == "codex" and codex_dragging_scrollbar:
             mouse_buttons = pygame.mouse.get_pressed()
             if mouse_buttons[0]:
-                mx, my = pygame.mouse.get_pos()
+                mx, my = get_mouse_pos()
                 r = CODEX_UI
                 list_rect = r['list_view']
                 
@@ -13279,7 +13519,7 @@ while True:
         if game_state == "music_library" and music_library_dragging_scrollbar:
             mouse_buttons = pygame.mouse.get_pressed()
             if mouse_buttons[0]:
-                mx, my = pygame.mouse.get_pos()
+                mx, my = get_mouse_pos()
                 list_rect, _, _ = get_music_library_layout()
                 layout = build_music_library_controls(list_rect)
                 content_top = layout["content_top"]
@@ -13303,7 +13543,7 @@ while True:
         if game_state == "sound_lab" and sound_lab_dragging_scrollbar:
             mouse_buttons = pygame.mouse.get_pressed()
             if mouse_buttons[0]:
-                mx, my = pygame.mouse.get_pos()
+                mx, my = get_mouse_pos()
                 list_rect, _, _ = get_sound_lab_layout()
                 _, filter_band_height = get_sound_lab_filter_layout(list_rect)
                 content_top = list_rect.y + 12 + filter_band_height
@@ -13326,7 +13566,7 @@ while True:
         if game_state == "leaderboard" and leaderboard_dragging_scrollbar:
             mouse_buttons = pygame.mouse.get_pressed()
             if mouse_buttons[0]:
-                mx, my = pygame.mouse.get_pos()
+                mx, my = get_mouse_pos()
                 scrollbar_info = _leaderboard_cache.get("scrollbar_info")
                 if scrollbar_info:
                     track_rect = scrollbar_info["track_rect"]
@@ -13494,7 +13734,7 @@ while True:
                     btn_reset = pygame.Rect(cx - 100, cy + 10, 200, 50)
                     btn_menu = pygame.Rect(cx - 100, cy + 80, 200, 50)
 
-                    mx, my = pygame.mouse.get_pos()
+                    mx, my = get_mouse_pos()
 
                     menu_items = [(btn_resume, "继续行动", "[ESC]"), (btn_reset, "重新开始", "[R]"), (btn_menu, "退出战斗", "[Q]")]
                     for i, (btn, txt, hotkey) in enumerate(menu_items):
@@ -15799,6 +16039,30 @@ while True:
                 
                 safe_call_draw(all_sprites.draw, screen)
                 
+                # ========== 显示碰撞箱（调试模式）==========
+                if game_settings.get("show_hitbox", False):
+                    # 玩家碰撞箱 - 绿色
+                    if player is not None:
+                        pygame.draw.rect(screen, (0, 255, 0), player.rect, 2)
+                        # 实际判定点（中心小圆）
+                        pygame.draw.circle(screen, (0, 255, 0), player.rect.center, 5, 1)
+                    
+                    # 敌人碰撞箱 - 红色
+                    for mob in mobs:
+                        pygame.draw.rect(screen, (255, 0, 0), mob.rect, 1)
+                    
+                    # Boss碰撞箱 - 橙色
+                    if boss:
+                        pygame.draw.rect(screen, (255, 165, 0), boss.rect, 2)
+                    
+                    # 玩家子弹 - 青色
+                    for bullet in bullets:
+                        pygame.draw.rect(screen, (0, 255, 255), bullet.rect, 1)
+                    
+                    # 敌人子弹 - 粉红色
+                    for bullet in enemy_bullets:
+                        pygame.draw.rect(screen, (255, 100, 200), bullet.rect, 1)
+                
                 # 绘制物品掉落
                 if item_manager:
                     item_manager.draw(screen)
@@ -16377,6 +16641,36 @@ while True:
                     fps_rect = fps_text.get_rect(center=(WIDTH // 2, 30))
                     screen.blit(fps_text, fps_rect)
 
+        # ==============================================================================
+        #   窗口缩放渲染
+        # ==============================================================================
+        screen = _real_screen  # 恢复真实屏幕
+        
+        if window_width != WIDTH or window_height != HEIGHT:
+            # 计算缩放比例（整数倍优先，保证像素清晰）
+            scale_x = window_width / WIDTH
+            scale_y = window_height / HEIGHT
+            float_scale = min(scale_x, scale_y)
+            _current_scale = max(1, int(float_scale))
+            if _current_scale == 1 and float_scale > 1.0:
+                _current_scale = float_scale  # 允许小数缩放
+            
+            new_width = int(WIDTH * _current_scale)
+            new_height = int(HEIGHT * _current_scale)
+            _scale_offset_x = (window_width - new_width) // 2
+            _scale_offset_y = (window_height - new_height) // 2
+            
+            screen.fill((0, 0, 0))
+            if _current_scale == int(_current_scale):
+                scaled = pygame.transform.scale(game_surface, (new_width, new_height))
+            else:
+                scaled = pygame.transform.smoothscale(game_surface, (new_width, new_height))
+            screen.blit(scaled, (_scale_offset_x, _scale_offset_y))
+        else:
+            _current_scale = 1.0
+            _scale_offset_x, _scale_offset_y = 0, 0
+            screen.blit(game_surface, (0, 0))
+        
         pygame.display.flip()
 
     except Exception as e:
