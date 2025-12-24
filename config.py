@@ -167,41 +167,199 @@ PLANES = {
 }
 
 BOSS_DB = {
-    "carrier": { "name": "毁灭者级·虚空母舰", "desc": "虚空舰队的核心旗舰。", "color": RED, "stats": [("装甲", 80), ("毁灭", 60), ("机动", 20)], "visual": {"core_color": RED, "aura": (180, 20, 20), "phase_effect": "drone_spawns"}, "phases":[{"threshold":0.75, "spawn":{"type":"drone","count":2}, "fire_rate_mult":0.9}, {"threshold":0.5, "spawn":{"type":"drone","count":4}, "fire_rate_mult":0.75}, {"threshold":0.25, "spawn":{"type":"chaser","count":4}, "fire_rate_mult":0.6}]},
-    "fortress": { "name": "不朽级·钢铁堡垒", "desc": "轨道防御系统的终极形态。", "color": ORANGE, "stats": [("装甲", 100), ("毁灭", 75), ("机动", 5)], "visual": {"core_color": ORANGE, "aura": (120, 70, 40), "phase_effect": "turret_barrage"}, "phases": [{"threshold":0.75, "spawn":{"type":"sniper","count":2}, "fire_rate_mult":0.9, "effect":{"type":"pulse","count":2}}, {"threshold":0.5, "spawn":{"type":"tank","count":1}, "fire_rate_mult":0.7, "effect":{"type":"bloom","count":2}}, {"threshold":0.25, "spawn":{"type":"sniper","count":3}, "fire_rate_mult":0.6}]},
-    "assassin": { "name": "幻影级·虚空刺客", "desc": "高机动型精英单位。", "color": MAGENTA, "stats": [("装甲", 40), ("毁灭", 85), ("机动", 100)], "visual": {"core_color": MAGENTA, "aura": (120, 0, 120), "phase_effect": "teleport_dash"}, "phases": [{"threshold":0.6, "effect":{"type":"teleport_dash","intensity":2}, "fire_rate_mult":0.85}, {"threshold":0.3, "effect":{"type":"teleport_dash","intensity":4}, "fire_rate_mult":0.7}]},
-    "seraphim": { "name": "审判级·炽天使", "desc": "高阶审判机甲。", "color": GOLD, "stats": [("装甲", 70), ("毁灭", 90), ("机动", 50)], "visual": {"core_color": GOLD, "aura": (220, 180, 100)}, "phases":[{"threshold":0.7, "spawn":{"type":"sniper","count":2}, "effect":{"type":"bloom","count":2}, "fire_rate_mult":0.85}, {"threshold":0.35, "spawn":{"type":"tank","count":1}, "fire_rate_mult":0.6}, {"threshold":0.15, "spawn":{"type":"spike","count":3}, "fire_rate_mult":0.5}]},
-    "leviathan": { "name": "深渊巨兽·利维坦", "desc": "生物与机械的扭曲结合体。", "color": DEEP_PURPLE, "stats": [("装甲", 90), ("毁灭", 80), ("机动", 30)], "visual": {"core_color": DEEP_PURPLE, "aura": (120, 30, 200)}, "phases":[{"threshold":0.75, "spawn":{"type":"glitch","count":3}, "effect":{"type":"pulse","count":3}, "fire_rate_mult":0.9}, {"threshold":0.45, "spawn":{"type":"wasp","count":3}, "fire_rate_mult":0.7}]},
-    "overlord": { "name": "蜂群主宰·奥伯龙", "desc": "蜂群意识的集合体。", "color": CYAN, "stats": [("装甲", 60), ("毁灭", 50), ("机动", 40)], "visual":{"core_color": CYAN, "aura": (0,180,200)}, "phases":[{"threshold":0.8, "spawn":{"type":"wasp","count":4}, "fire_rate_mult":0.9}, {"threshold":0.5, "spawn":{"type":"wasp","count":7}, "fire_rate_mult":0.75}]},
-    "ragnarok": { "name": "终焉机神·诸神黄昏", "desc": "毁灭文明的终极兵器。", "color": CRIMSON, "stats": [("装甲", 95), ("毁灭", 100), ("机动", 10)], "visual": {"core_color": CRIMSON, "aura": (140, 0, 10)}, "phases":[{"threshold":0.7, "spawn":{"type":"tank","count":2}, "fire_rate_mult":0.85}, {"threshold":0.4, "spawn":{"type":"sniper","count":3}, "fire_rate_mult":0.6}, {"threshold":0.2, "spawn":{"type":"ragnarok_core","count":1}, "fire_rate_mult":0.5}]},
-    "hydra": { "name": "九头蛇·剧毒领主", "desc": "基因突变的生化噩梦。", "color": NEON_GREEN, "stats": [("装甲", 85), ("毁灭", 70), ("机动", 45)], "visual": {"core_color": NEON_GREEN, "aura": (0,200,0)}, "phases":[{"threshold":0.75, "spawn":{"type":"glitch","count":4}, "effect":{"type":"bloom","count":2}, "fire_rate_mult":0.9}, {"threshold":0.45, "spawn":{"type":"drone","count":6}, "fire_rate_mult":0.7}]},
-    "chronos": { "name": "时之主·克洛诺斯", "desc": "神秘的古代遗物守护者。", "color": (100, 150, 255), "stats": [("装甲", 75), ("毁灭", 85), ("机动", 80)], "visual": {"core_color": (100, 150, 255), "aura": (120, 160, 255)}, "phases":[{"threshold":0.7, "effect":{"type":"time_pulse","count":3}, "fire_rate_mult":0.9}, {"threshold":0.4, "effect":{"type":"chronos_burst","count":4}, "fire_rate_mult":0.6}]},
-    "gazer": { "name": "深渊凝视者", "desc": "来自维度的观察者。", "color": EYE_RED, "stats": [("装甲", 60), ("毁灭", 95), ("机动", 5)], "visual": {"core_color": EYE_RED, "aura": (200, 0, 0)}, "phases":[{"threshold":0.8, "effect":{"type":"gaze_beams","count":3}, "fire_rate_mult":0.9}, {"threshold":0.45, "effect":{"type":"gaze_pulse","count":6}, "fire_rate_mult":0.6}]},
-    "lich": { "name": "赛博巫妖", "desc": "被病毒侵蚀的AI核心。", "color": GHOST_CYAN, "stats": [("装甲", 50), ("毁灭", 80), ("机动", 70)], "visual": {"core_color": GHOST_CYAN, "aura": (180,240,240)}, "phases":[{"threshold":0.75, "spawn":{"type":"glitch","count":6}, "effect":{"type":"curse_pulse","count":3}, "fire_rate_mult":0.9}, {"threshold":0.45, "spawn":{"type":"glitch","count":8}, "fire_rate_mult":0.6}]},
-    "tempest": { "name": "风暴引擎", "desc": "失控的气象控制器。", "color": WIND_BLUE, "stats": [("装甲", 85), ("毁灭", 65), ("机动", 60)], "visual": {"core_color": WIND_BLUE, "aura": (140, 200, 255), "phase_effect": "wind_gusts"}, "phases": [{"threshold":0.75, "effect":{"type":"wind_gusts","count":5}}, {"threshold":0.5, "effect":{"type":"storm_burst","count":8, "fire_rate_mult":0.6}}]}
-    ,
-    "void_golem": {
-        "name": "虚空魔像",
-        "desc": "机械与虚空能量的融合体，拥有多阶段变形与强力弹幕。",
-        "color": (80, 0, 120),
-        "stats": [("装甲", 120), ("毁灭", 90), ("机动", 35)],
-        "visual": {"core_color": (80, 0, 120), "aura": (120, 0, 180), "phase_effect": "gear_energy"},
+    # Boss 1: 菌生蟹皇 - 重型生物坦克，六足震地，孢子地雷+菌丝波浪
+    "fungal_colossus": {
+        "name": "菌生蟹皇",
+        "desc": "迟缓但致命的重型生物坦克，背负古代利维坦头骨，每一步都伴随震动。",
+        "color": (30, 80, 120),
+        "stats": [("装甲", 120), ("毁灭", 75), ("机动", 15)],
+        "visual": {"core_color": (30, 80, 120), "aura": (60, 180, 200), "phase_effect": "ground_shake"},
         "phases": [
-            {"threshold": 0.8, "spawn": {"type": "drone", "count": 3}, "effect": {"type": "gear_spin", "count": 4}, "fire_rate_mult": 0.85},
-            {"threshold": 0.55, "effect": {"type": "energy_wave", "count": 2}, "fire_rate_mult": 0.7},
-            {"threshold": 0.3, "spawn": {"type": "chaser", "count": 5}, "effect": {"type": "core_burst", "count": 3}, "fire_rate_mult": 0.55}
+            {"threshold": 0.8, "effect": {"type": "spore_saturation", "count": 5}, "fire_rate_mult": 0.9},
+            {"threshold": 0.5, "effect": {"type": "mycelium_wave", "count": 2}, "fire_rate_mult": 0.75},
+            {"threshold": 0.25, "effect": {"type": "ground_shake", "count": 3}, "fire_rate_mult": 0.6}
         ]
     },
-    "abyss_queen": {
-        "name": "星渊女王",
-        "desc": "星空与深渊的主宰，能召唤星体与释放星爆弹幕。",
-        "color": (120, 60, 200),
-        "stats": [("装甲", 100), ("毁灭", 110), ("机动", 60)],
-        "visual": {"core_color": (120, 60, 200), "aura": (180, 80, 255), "phase_effect": "star_dust"},
+    # Boss 2: 旱海狂鲨 - 突袭刺客，利用屏幕外空间进行突袭
+    "dune_reaper": {
+        "name": "旱海狂鲨",
+        "desc": "利用屏幕外空间进行突袭的刺客，无眼锯齿口器，身体漏出流沙与能量光。",
+        "color": (180, 140, 60),
+        "stats": [("装甲", 65), ("毁灭", 90), ("机动", 95)],
+        "visual": {"core_color": (180, 140, 60), "aura": (220, 180, 80), "phase_effect": "sand_trail"},
         "phases": [
-            {"threshold": 0.85, "spawn": {"type": "starling", "count": 4}, "effect": {"type": "star_dust", "count": 6}, "fire_rate_mult": 0.9},
-            {"threshold": 0.6, "spawn": {"type": "star_guard", "count": 2}, "effect": {"type": "queen_invis", "count": 1}, "fire_rate_mult": 0.7},
-            {"threshold": 0.35, "effect": {"type": "star_burst", "count": 3}, "fire_rate_mult": 0.5}
+            {"threshold": 0.75, "effect": {"type": "blindspot_rush", "count": 3}, "fire_rate_mult": 0.85},
+            {"threshold": 0.45, "effect": {"type": "quicksand_vortex", "count": 1}, "fire_rate_mult": 0.7},
+            {"threshold": 0.2, "effect": {"type": "blindspot_rush", "count": 5}, "fire_rate_mult": 0.5}
+        ]
+    },
+    # Boss 3: 歌莉娅女王 - 高机动空中轰炸机，弹幕密度极大
+    "plague_empress": {
+        "name": "歌莉娅女王",
+        "desc": "高机动的空中轰炸机，腹部透明离心机翻滚毒液，翅膀挂载多管导弹巢。",
+        "color": (85, 180, 47),
+        "stats": [("装甲", 70), ("毁灭", 95), ("机动", 85)],
+        "visual": {"core_color": (85, 180, 47), "aura": (57, 255, 20), "phase_effect": "toxic_trail"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "matrix_bombing", "count": 4}, "fire_rate_mult": 0.9},
+            {"threshold": 0.5, "effect": {"type": "matrix_bombing", "count": 3}, "fire_rate_mult": 0.75},
+            {"threshold": 0.25, "effect": {"type": "matrix_bombing", "count": 5}, "fire_rate_mult": 0.55}
+        ]
+    },
+    # Boss 4: 毁灭魔像 - 阵地战，极高血量，几乎填满屏幕
+    "flesh_totem": {
+        "name": "毁灭魔像",
+        "desc": "由古代黑砖和鲜活肌肉缝合而成，双臂是悬浮石拳，只有一只巨大电子眼。",
+        "color": (60, 20, 20),
+        "stats": [("装甲", 150), ("毁灭", 80), ("机动", 5)],
+        "visual": {"core_color": (60, 20, 20), "aura": (180, 30, 30), "phase_effect": "blood_seep"},
+        "phases": [
+            {"threshold": 0.85, "effect": {"type": "rocket_fist", "count": 2}, "fire_rate_mult": 0.9},
+            {"threshold": 0.55, "effect": {"type": "stone_pillar_cage", "count": 3}, "fire_rate_mult": 0.7},
+            {"threshold": 0.3, "effect": {"type": "rocket_fist", "count": 4}, "fire_rate_mult": 0.5}
+        ]
+    },
+    # Boss 5: 星神游龙 - 多判定点激光阵列，20节浮游单元
+    "star_serpent": {
+        "name": "星神游龙",
+        "desc": "半透明黑曜石晶体，内部封印流动星云，20节分离浮游单元靠引力场维持蛇形。",
+        "color": (100, 50, 150),
+        "stats": [("装甲", 80), ("毁灭", 100), ("机动", 70)],
+        "visual": {"core_color": (100, 50, 150), "aura": (200, 100, 255), "phase_effect": "nebula_flow"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "star_position_laser", "count": 5}, "fire_rate_mult": 0.85},
+            {"threshold": 0.5, "effect": {"type": "fission_charge", "count": 2}, "fire_rate_mult": 0.7},
+            {"threshold": 0.25, "effect": {"type": "star_position_laser", "count": 8}, "fire_rate_mult": 0.5}
+        ]
+    },
+    # Boss 6: 终焉巨械·阿瑞斯 - 武器切换与组合技，纳米液态金属
+    "exo_ares": {
+        "name": "终焉巨械·阿瑞斯",
+        "desc": "完美纳米液态金属表面，骷髅核心周围悬浮四条机械触手，RGB霓虹光带。",
+        "color": (200, 200, 220),
+        "stats": [("装甲", 90), ("毁灭", 110), ("机动", 60)],
+        "visual": {"core_color": (200, 200, 220), "aura": (255, 100, 255), "phase_effect": "rgb_pulse"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "weapon_roulette", "count": 4}, "fire_rate_mult": 0.9},
+            {"threshold": 0.5, "effect": {"type": "clock_beam", "count": 4}, "fire_rate_mult": 0.7},
+            {"threshold": 0.2, "effect": {"type": "weapon_roulette", "count": 6}, "fire_rate_mult": 0.5}
+        ]
+    },
+    # Boss 7: 亵渎天神 - 贪刀惩罚与治疗干扰，视觉致盲
+    "radiance_goddess": {
+        "name": "亵渎天神",
+        "desc": "燃烧的熔岩心脏被三对彩色玻璃晶体翼包裹，全身散发金色粒子尘埃。",
+        "color": (255, 215, 0),
+        "stats": [("装甲", 85), ("毁灭", 85), ("机动", 25)],
+        "visual": {"core_color": (255, 215, 0), "aura": (255, 180, 100), "phase_effect": "holy_radiance"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "cocoon_defense", "count": 3}, "fire_rate_mult": 0.95},
+            {"threshold": 0.5, "effect": {"type": "holy_judgment", "count": 5}, "fire_rate_mult": 0.7},
+            {"threshold": 0.25, "effect": {"type": "fractal_beam", "count": 6}, "fire_rate_mult": 0.5}
+        ]
+    },
+    # Boss 8: 维度之噬 - 必杀技与反应速度测试，碰头即死
+    "dimension_devourer": {
+        "name": "维度之噬",
+        "desc": "Vantablack绝对黑装甲吸收所有光线，极长身躯延伸至屏幕外，颚部张开是紫色漩涡。",
+        "color": (20, 0, 40),
+        "stats": [("装甲", 75), ("毁灭", 120), ("机动", 90)],
+        "visual": {"core_color": (20, 0, 40), "aura": (120, 0, 200), "phase_effect": "dimension_crack"},
+        "phases": [
+            {"threshold": 0.75, "effect": {"type": "dimension_charge", "count": 3}, "fire_rate_mult": 0.85},
+            {"threshold": 0.45, "effect": {"type": "laser_cage", "count": 6}, "fire_rate_mult": 0.65},
+            {"threshold": 0.2, "effect": {"type": "dimension_charge", "count": 5}, "fire_rate_mult": 0.45}
+        ]
+    },
+    # Boss 9: 暴君犽戎 - 限制场地内的极速肉搏
+    "infernal_dragon": {
+        "name": "暴君犽戎",
+        "desc": "原始红色龙鳞与金色机械骨骼的结合体，心脏是金源泰斯拉反应堆，翅膀是日耀火焰。",
+        "color": (255, 69, 0),
+        "stats": [("装甲", 85), ("毁灭", 100), ("机动", 100)],
+        "visual": {"core_color": (255, 69, 0), "aura": (255, 200, 50), "phase_effect": "inferno_aura"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "sonic_dash", "count": 3}, "fire_rate_mult": 0.85},
+            {"threshold": 0.5, "effect": {"type": "scorched_earth", "count": 8}, "fire_rate_mult": 0.65},
+            {"threshold": 0.2, "effect": {"type": "sonic_dash", "count": 5}, "fire_rate_mult": 0.45}
+        ]
+    },
+    # Boss 10: 熵之化身 - 规则破坏与最终考验，打破第四面墙
+    "entropy_avatar": {
+        "name": "熵之化身",
+        "desc": "漂浮虚空的苍白巨人躯干，胸口手心额头三只真理之眼，触手化为光纤数据线。",
+        "color": (220, 220, 230),
+        "stats": [("装甲", 100), ("毁灭", 100), ("机动", 10)],
+        "visual": {"core_color": (220, 220, 230), "aura": (255, 255, 255), "phase_effect": "ui_interference"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "phantom_deathray", "count": 1}, "fire_rate_mult": 0.9},
+            {"threshold": 0.5, "effect": {"type": "life_drain", "count": 3}, "fire_rate_mult": 0.7},
+            {"threshold": 0.2, "effect": {"type": "phantom_deathray", "count": 2}, "fire_rate_mult": 0.5}
+        ]
+    },
+    # Boss 11: 绝音夜煞 - 声波可视化战斗，听觉压迫
+    "sonic_banshee": {
+        "name": "绝音夜煞",
+        "desc": "覆盖漆黑吸音绒毛，胸腔是惨白骨质扬声器。无脸，只有大嘴和无底扩音喇叭喉咙。",
+        "color": (30, 30, 50),
+        "stats": [("装甲", 70), ("毁灭", 95), ("机动", 85)],
+        "visual": {"core_color": (30, 30, 50), "aura": (200, 200, 255), "phase_effect": "sonic_distortion"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "echo_pulse", "count": 3}, "fire_rate_mult": 0.9},
+            {"threshold": 0.5, "effect": {"type": "sonic_scream", "count": 5}, "fire_rate_mult": 0.7},
+            {"threshold": 0.25, "effect": {"type": "sonic_distortion", "count": 6}, "fire_rate_mult": 0.5}
+        ]
+    },
+    # Boss 12: 棱镜核心 - 光线折射与激光网
+    "prism_overlord": {
+        "name": "棱镜核心",
+        "desc": "悬浮正二十面体，每面幻彩镜面，内封雷电球。6块浮游折射盾如钻石切面般璀璨。",
+        "color": (150, 220, 255),
+        "stats": [("装甲", 95), ("毁灭", 110), ("机动", 20)],
+        "visual": {"core_color": (150, 220, 255), "aura": (255, 180, 255), "phase_effect": "prism_refract"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "prism_laser", "count": 4}, "fire_rate_mult": 0.85},
+            {"threshold": 0.5, "effect": {"type": "mirror_shield", "count": 3}, "fire_rate_mult": 0.7},
+            {"threshold": 0.25, "effect": {"type": "laser_web", "count": 6}, "fire_rate_mult": 0.5}
+        ]
+    },
+    # Boss 13: 腐朽剑圣 - 极快攻速与格挡机制
+    "rotting_kensei": {
+        "name": "腐朽剑圣",
+        "desc": "残破战国盔甲，缝隙中钻出红色寄生触手。40米野太刀生锈却泛妖异紫光，攻击留下水墨残影。",
+        "color": (80, 30, 80),
+        "stats": [("装甲", 65), ("毁灭", 130), ("机动", 110)],
+        "visual": {"core_color": (80, 30, 80), "aura": (200, 100, 255), "phase_effect": "ink_trail"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "blade_storm", "count": 4}, "fire_rate_mult": 0.8},
+            {"threshold": 0.5, "effect": {"type": "iai_slash", "count": 2}, "fire_rate_mult": 0.6},
+            {"threshold": 0.25, "effect": {"type": "death_blade", "count": 5}, "fire_rate_mult": 0.4}
+        ]
+    },
+    # Boss 14: 悖论时钟 - 时间流速控制与倒带
+    "paradox_clockwork": {
+        "name": "悖论时钟",
+        "desc": "黄铜齿轮与蒸汽管道构成的机械天使，背后巨大表盘光环。脸是破碎怀表，手握沙漏法杖。",
+        "color": (200, 160, 60),
+        "stats": [("装甲", 90), ("毁灭", 85), ("机动", 40)],
+        "visual": {"core_color": (200, 160, 60), "aura": (255, 220, 100), "phase_effect": "time_distort"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "time_slow", "count": 3}, "fire_rate_mult": 0.9},
+            {"threshold": 0.5, "effect": {"type": "stasis_field", "count": 4}, "fire_rate_mult": 0.7},
+            {"threshold": 0.25, "effect": {"type": "time_rewind", "count": 2}, "fire_rate_mult": 0.5}
+        ]
+    },
+    # Boss 15: 熔核巨兽 - 地形破坏与岩浆漫灌
+    "molten_behemoth": {
+        "name": "熔核巨兽",
+        "desc": "活过来的火山，皮肤是冷却黑曜石，裂缝流淌高亮橙色岩浆。下半身融化在地面，在岩浆池中游泳。",
+        "color": (255, 80, 20),
+        "stats": [("装甲", 140), ("毁灭", 100), ("机动", 10)],
+        "visual": {"core_color": (255, 80, 20), "aura": (255, 180, 50), "phase_effect": "lava_surge"},
+        "phases": [
+            {"threshold": 0.8, "effect": {"type": "lava_wave", "count": 4}, "fire_rate_mult": 0.9},
+            {"threshold": 0.5, "effect": {"type": "meteor_rain", "count": 5}, "fire_rate_mult": 0.7},
+            {"threshold": 0.25, "effect": {"type": "eruption", "count": 6}, "fire_rate_mult": 0.5}
         ]
     }
 }

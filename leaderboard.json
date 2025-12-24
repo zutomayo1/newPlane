@@ -1,1 +1,95 @@
-[{"name": "匿名", "score": 30240}, {"name": "55", "score": 25340}, {"name": "匿名", "score": 20900}, {"name": "匿名", "score": 15740}, {"name": "匿名", "score": 11680}]
+{
+  "normal": [
+    {
+      "name": "匿名",
+      "score": 1120,
+      "plane": "crusher",
+      "kills": 56,
+      "boss_kills": 0,
+      "survival_time": 60,
+      "wave": 0,
+      "rooms": 0,
+      "date": "2025-12-23 18:35"
+    },
+    {
+      "name": "匿名",
+      "score": 40,
+      "plane": "sdmg",
+      "kills": 2,
+      "boss_kills": 0,
+      "survival_time": 19,
+      "wave": 0,
+      "rooms": 0,
+      "date": "2025-12-23 18:20"
+    },
+    {
+      "name": "匿名",
+      "score": 20,
+      "plane": "striker",
+      "kills": 1,
+      "boss_kills": 0,
+      "survival_time": 6,
+      "wave": 0,
+      "rooms": 0,
+      "date": "2025-12-23 19:17"
+    },
+    {
+      "name": "匿名",
+      "score": 20,
+      "plane": "striker",
+      "kills": 1,
+      "boss_kills": 0,
+      "survival_time": 6,
+      "wave": 0,
+      "rooms": 0,
+      "date": "2025-12-23 22:58"
+    },
+    {
+      "name": "匿名",
+      "score": 0,
+      "plane": "sdmg",
+      "kills": 0,
+      "boss_kills": 0,
+      "survival_time": 4,
+      "wave": 0,
+      "rooms": 0,
+      "date": "2025-12-23 18:20"
+    },
+    {
+      "name": "sss",
+      "score": 0,
+      "plane": "sdmg",
+      "kills": 0,
+      "boss_kills": 0,
+      "survival_time": 5,
+      "wave": 0,
+      "rooms": 0,
+      "date": "2025-12-23 18:39"
+    },
+    {
+      "name": "123",
+      "score": 0,
+      "plane": "striker",
+      "kills": 0,
+      "boss_kills": 0,
+      "survival_time": 8,
+      "wave": 0,
+      "rooms": 0,
+      "date": "2025-12-23 18:51"
+    }
+  ],
+  "roguelike": [],
+  "boss_challenge": [],
+  "player_stats": {
+    "total_games": 7,
+    "total_kills": 60,
+    "total_time": 108,
+    "best_score": 1120,
+    "favorite_plane": "sdmg",
+    "plane_usage": {
+      "sdmg": 3,
+      "crusher": 1,
+      "striker": 3
+    }
+  }
+}

@@ -4442,7 +4442,7 @@ class DefenseTurret:
 #   核心实体：Bullet, Player, Enemy, Boss
 # ==============================================================================
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, x, y, angle=0, is_enemy=False, piercing=0, color=YELLOW, homing=0, bounce=0, b_type="beam", bullet_theme=None, is_split=False, bounce_damage=1.0, damage=0):
+    def __init__(self, x, y, angle=0, is_enemy=False, piercing=0, color=YELLOW, homing=0, bounce=0, b_type="beam", bullet_theme=None, is_split=False, bounce_damage=1.0, damage=0, speed=None):
         super().__init__()
         self.is_enemy = is_enemy
         self.piercing = piercing
@@ -4453,6 +4453,7 @@ class Bullet(pygame.sprite.Sprite):
         self.color = color
         self.b_type = b_type
         self.timer = 0
+        self._custom_speed = speed  # 【新】自定义速度参数
         self.frozen = False  # 【新】时间冻结标记
         self.bullet_theme = bullet_theme  # 【新】子弹涂装主题
         self.is_split = is_split  # 【优化】分裂子弹标记，防止递归分裂
@@ -4603,12 +4604,238 @@ class Bullet(pygame.sprite.Sprite):
                 pygame.draw.polygon(self.image, (100, 0, 150), [(5,0), (10,10), (7,22), (3,22), (0,10)])
                 pygame.draw.polygon(self.image, (180, 0, 255), [(5,0), (10,10), (7,22), (3,22), (0,10)], 1)
                 self.speed = 6.5
+            # ========== Boss 专用子弹类型 ==========
+            elif b_type == "spore_mine":  # 孢子地雷 - 菌生蟹皇
+                self.image = pygame.Surface((20, 20), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (80, 180, 120), (10, 10), 8)
+                pygame.draw.circle(self.image, (120, 220, 160), (10, 10), 6)
+                pygame.draw.circle(self.image, (200, 255, 200), (10, 10), 3)
+                # 孢子触须
+                for i in range(4):
+                    angle = i * math.pi / 2
+                    x = 10 + int(6 * math.cos(angle))
+                    y = 10 + int(6 * math.sin(angle))
+                    pygame.draw.line(self.image, (60, 140, 100), (10, 10), (x, y), 2)
+                self.speed = 0
+            elif b_type == "mycelium_wave":  # 菌丝波浪 - 菌生蟹皇
+                self.image = pygame.Surface((18, 12), pygame.SRCALPHA)
+                pygame.draw.arc(self.image, (60, 150, 100), (0,0,18,12), 0, 3.14, 3)
+                pygame.draw.arc(self.image, (100, 200, 140), (2,2,14,8), 0, 3.14, 2)
+                self.speed = 4
+            elif b_type == "sandstorm":  # 沙尘暴 - 旱海狂鲨
+                self.image = pygame.Surface((24, 24), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (200, 170, 100, 150), (12, 12), 10)
+                pygame.draw.circle(self.image, (220, 190, 120), (12, 12), 10, 2)
+                for i in range(6):
+                    angle = i * math.pi / 3
+                    x = 12 + int(6 * math.cos(angle))
+                    y = 12 + int(6 * math.sin(angle))
+                    pygame.draw.circle(self.image, (180, 150, 80), (x, y), 2)
+                self.speed = 3
+            elif b_type == "rock_shard":  # 岩石碎片 - 旱海狂鲨
+                self.image = pygame.Surface((14, 14), pygame.SRCALPHA)
+                pygame.draw.polygon(self.image, (140, 100, 60), [(7,0), (14,6), (10,14), (4,14), (0,6)])
+                pygame.draw.polygon(self.image, (180, 140, 80), [(7,0), (14,6), (10,14), (4,14), (0,6)], 1)
+                self.speed = 5
+            elif b_type == "plague_bomb":  # 瘟疫炸弹 - 歌莉娅女王
+                self.image = pygame.Surface((18, 18), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (80, 180, 40), (9, 9), 7)
+                pygame.draw.circle(self.image, (120, 220, 60), (9, 9), 5)
+                pygame.draw.circle(self.image, (200, 255, 100), (9, 9), 2)
+                self.speed = 4
+            elif b_type == "kamikaze_bee":  # 自爆工蜂 - 歌莉娅女王
+                self.image = pygame.Surface((14, 14), pygame.SRCALPHA)
+                pygame.draw.ellipse(self.image, (255, 200, 50), (3, 4, 8, 6))
+                pygame.draw.line(self.image, (50, 50, 50), (5, 7), (3, 3), 1)
+                pygame.draw.line(self.image, (50, 50, 50), (9, 7), (11, 3), 1)
+                pygame.draw.circle(self.image, (255, 50, 50), (7, 7), 2)
+                self.speed = 3
+            elif b_type == "rocket_fist":  # 火箭飞拳 - 毁灭魔像
+                self.image = pygame.Surface((18, 22), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, (100, 60, 40), (3, 0, 12, 16))
+                pygame.draw.rect(self.image, (140, 80, 50), (3, 0, 12, 16), 2)
+                pygame.draw.polygon(self.image, (255, 100, 50), [(5, 16), (9, 22), (13, 16)])
+                self.speed = 6
+            elif b_type == "stone_pillar":  # 石柱囚笼 - 毁灭魔像
+                self.image = pygame.Surface((16, 40), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, (80, 60, 50), (2, 0, 12, 40))
+                pygame.draw.rect(self.image, (120, 90, 70), (2, 0, 12, 40), 2)
+                self.speed = 0
+            elif b_type == "blood_spike":  # 血刺 - 毁灭魔像
+                self.image = pygame.Surface((8, 20), pygame.SRCALPHA)
+                pygame.draw.polygon(self.image, (180, 30, 30), [(4, 0), (8, 20), (0, 20)])
+                pygame.draw.polygon(self.image, (255, 80, 80), [(4, 0), (8, 20), (0, 20)], 1)
+                self.speed = 5
+            elif b_type == "star_laser":  # 星位激光 - 星神游龙
+                self.image = pygame.Surface((6, 30), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, (200, 150, 255), (1, 0, 4, 30))
+                pygame.draw.rect(self.image, (255, 200, 255), (2, 0, 2, 30))
+                self.speed = 0
+            elif b_type == "nebula":  # 星云 - 星神游龙
+                self.image = pygame.Surface((20, 20), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (150, 100, 200, 150), (10, 10), 8)
+                pygame.draw.circle(self.image, (200, 150, 255), (10, 10), 5)
+                pygame.draw.circle(self.image, (255, 200, 255), (10, 10), 2)
+                self.speed = 4
+            elif b_type == "gauss_bomb":  # 高斯炮弹 - 终焉巨械
+                self.image = pygame.Surface((22, 22), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (255, 100, 50), (11, 11), 9)
+                pygame.draw.circle(self.image, (255, 200, 100), (11, 11), 6)
+                pygame.draw.circle(self.image, (255, 255, 200), (11, 11), 3)
+                self.speed = 6
+            elif b_type == "tesla_arc":  # 特斯拉电弧 - 终焉巨械
+                self.image = pygame.Surface((16, 30), pygame.SRCALPHA)
+                points = [(8, 0), (4, 10), (12, 18), (8, 30)]
+                pygame.draw.lines(self.image, (255, 255, 100), False, points, 3)
+                pygame.draw.lines(self.image, (255, 255, 255), False, points, 1)
+                self.speed = 12
+            elif b_type == "laser_blade":  # 激光刀 - 终焉巨械
+                self.image = pygame.Surface((10, 28), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, (255, 100, 100), (2, 0, 6, 28))
+                pygame.draw.rect(self.image, (255, 200, 200), (3, 0, 4, 28))
+                self.speed = 8
+            elif b_type == "clock_beam":  # 时钟光束 - 终焉巨械
+                self.image = pygame.Surface((8, 40), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, (200, 200, 220), (2, 0, 4, 40))
+                pygame.draw.rect(self.image, (255, 255, 255), (3, 0, 2, 40))
+                self.speed = 10
+            elif b_type == "holy_orb":  # 圣茧光球 - 亵渎天神
+                self.image = pygame.Surface((16, 16), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (255, 220, 150), (8, 8), 6)
+                pygame.draw.circle(self.image, (255, 255, 200), (8, 8), 4)
+                pygame.draw.circle(self.image, (255, 255, 255), (8, 8), 2)
+                self.speed = 2
+            elif b_type == "holy_judgment":  # 圣光审判 - 亵渎天神
+                self.image = pygame.Surface((10, 35), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, (255, 200, 100), (2, 0, 6, 35))
+                pygame.draw.rect(self.image, (255, 255, 200), (3, 0, 4, 35))
+                self.speed = 4
+            elif b_type == "dimension_warning":  # 维度预警 - 维度之噬
+                self.image = pygame.Surface((20, 20), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (150, 0, 200), (10, 10), 8, 2)
+                pygame.draw.circle(self.image, (200, 50, 255), (10, 10), 4)
+                self.speed = 15
+            elif b_type == "laser_cage":  # 激光牢笼 - 维度之噬
+                self.image = pygame.Surface((6, 50), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, (150, 0, 200), (1, 0, 4, 50))
+                pygame.draw.rect(self.image, (200, 100, 255), (2, 0, 2, 50))
+                self.speed = 0
+            elif b_type == "sonic_boom":  # 音爆冲击 - 暴君犽戎
+                self.image = pygame.Surface((24, 24), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (255, 100, 50, 150), (12, 12), 10, 3)
+                pygame.draw.circle(self.image, (255, 200, 100), (12, 12), 6)
+                self.speed = 10
+            elif b_type == "inferno_meteor":  # 焦土陨石 - 暴君犽戎
+                self.image = pygame.Surface((18, 22), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (200, 80, 20), (9, 11), 8)
+                pygame.draw.circle(self.image, (255, 150, 50), (9, 11), 5)
+                pygame.draw.polygon(self.image, (255, 200, 100), [(6, 0), (9, 6), (12, 0)])
+                self.speed = 6
+            elif b_type == "phantom_deathray":  # 幻影死光 - 熵之化身
+                self.image = pygame.Surface((10, 60), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, (255, 255, 255, 200), (2, 0, 6, 60))
+                pygame.draw.rect(self.image, (200, 200, 255), (3, 0, 4, 60))
+                self.speed = 0
+            elif b_type == "life_drain":  # 生命汲取 - 熵之化身
+                self.image = pygame.Surface((16, 16), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (255, 255, 255, 180), (8, 8), 6)
+                pygame.draw.circle(self.image, (200, 200, 255), (8, 8), 4)
+                pygame.draw.circle(self.image, (150, 150, 255), (8, 8), 2)
+                self.speed = 3
+            # ========== Boss 11: 绝音夜煞 子弹类型 ==========
+            elif b_type == "echo_pulse":  # 回声脉冲 - 声呐波
+                self.image = pygame.Surface((20, 20), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (180, 180, 255, 100), (10, 10), 9, 2)
+                pygame.draw.circle(self.image, (220, 220, 255, 150), (10, 10), 6, 2)
+                pygame.draw.circle(self.image, (255, 255, 255), (10, 10), 3)
+                self.speed = 3
+            elif b_type == "sonic_scream":  # 尖啸音波 - 锥形声波
+                self.image = pygame.Surface((24, 12), pygame.SRCALPHA)
+                points = [(0, 6), (24, 0), (24, 12)]
+                pygame.draw.polygon(self.image, (200, 200, 255, 180), points)
+                pygame.draw.polygon(self.image, (255, 255, 255), points, 2)
+                self.speed = 5
+            # ========== Boss 12: 棱镜核心 子弹类型 ==========
+            elif b_type == "prism_laser":  # 棱镜激光 - 彩虹折射
+                self.image = pygame.Surface((8, 40), pygame.SRCALPHA)
+                colors = [(255, 100, 100), (255, 200, 100), (100, 255, 100), (100, 200, 255), (200, 100, 255)]
+                for i, c in enumerate(colors):
+                    pygame.draw.rect(self.image, c, (i + 1, 0, 2, 40))
+                self.speed = 8
+            elif b_type == "refract_orb":  # 折射光球
+                self.image = pygame.Surface((18, 18), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (255, 180, 255, 150), (9, 9), 8)
+                pygame.draw.circle(self.image, (200, 255, 255), (9, 9), 5)
+                pygame.draw.circle(self.image, (255, 255, 255), (9, 9), 3)
+                self.speed = 4
+            # ========== Boss 13: 腐朽剑圣 子弹类型 ==========
+            elif b_type == "blade_wave":  # 剑气波
+                self.image = pygame.Surface((30, 8), pygame.SRCALPHA)
+                pygame.draw.arc(self.image, (200, 100, 255), (0, 0, 30, 8), 0, 3.14, 3)
+                pygame.draw.line(self.image, (255, 200, 255), (0, 4), (30, 4), 2)
+                self.speed = 5
+            elif b_type == "iai_slash":  # 居合斩 - 即死横斩
+                self.image = pygame.Surface((60, 6), pygame.SRCALPHA)
+                pygame.draw.rect(self.image, (200, 50, 255), (0, 1, 60, 4))
+                pygame.draw.rect(self.image, (255, 150, 255), (0, 2, 60, 2))
+                pygame.draw.circle(self.image, (255, 255, 255), (55, 3), 3)
+                self.speed = 20
+            # ========== Boss 14: 悖论时钟 子弹类型 ==========
+            elif b_type == "stasis_orb":  # 凝滞球 - 时间减速
+                self.image = pygame.Surface((16, 16), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (255, 220, 100, 150), (8, 8), 7)
+                pygame.draw.circle(self.image, (200, 160, 60), (8, 8), 5, 2)
+                pygame.draw.line(self.image, (255, 255, 200), (8, 8), (8, 3), 2)
+                pygame.draw.line(self.image, (255, 255, 200), (8, 8), (12, 8), 1)
+                self.speed = 2
+            elif b_type == "frozen_bullet":  # 冻结弹幕 - 蓄力后发射
+                self.image = pygame.Surface((14, 14), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (255, 200, 50, 100), (7, 7), 6)
+                pygame.draw.circle(self.image, (255, 240, 150), (7, 7), 4)
+                pygame.draw.circle(self.image, (255, 255, 255), (7, 7), 2)
+                self.speed = 0
+                self._frozen_timer = 90  # 1.5秒后激活
+            elif b_type == "gear_projectile":  # 齿轮弹
+                self.image = pygame.Surface((16, 16), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (180, 140, 60), (8, 8), 7)
+                pygame.draw.circle(self.image, (220, 180, 80), (8, 8), 5)
+                for i in range(6):
+                    angle = i * 60
+                    x = 8 + int(6 * math.cos(math.radians(angle)))
+                    y = 8 + int(6 * math.sin(math.radians(angle)))
+                    pygame.draw.rect(self.image, (140, 100, 40), (x-1, y-1, 3, 3))
+                self.speed = 4
+            # ========== Boss 15: 熔核巨兽 子弹类型 ==========
+            elif b_type == "lava_wave":  # 岩浆波
+                self.image = pygame.Surface((20, 12), pygame.SRCALPHA)
+                pygame.draw.ellipse(self.image, (255, 100, 20), (0, 0, 20, 12))
+                pygame.draw.ellipse(self.image, (255, 200, 50), (4, 2, 12, 8))
+                pygame.draw.ellipse(self.image, (255, 255, 150), (8, 4, 4, 4))
+                self.speed = 3
+            elif b_type == "molten_meteor":  # 熔岩陨石
+                self.image = pygame.Surface((22, 26), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (100, 40, 20), (11, 15), 10)
+                pygame.draw.circle(self.image, (200, 80, 30), (11, 15), 7)
+                # 火焰尾迹
+                pygame.draw.polygon(self.image, (255, 150, 50), [(8, 5), (11, 12), (14, 5), (11, 0)])
+                pygame.draw.polygon(self.image, (255, 200, 100), [(9, 4), (11, 10), (13, 4)])
+                self.speed = 5
+            elif b_type == "lava_burst":  # 岩浆喷射
+                self.image = pygame.Surface((10, 20), pygame.SRCALPHA)
+                pygame.draw.ellipse(self.image, (255, 80, 20), (0, 0, 10, 20))
+                pygame.draw.ellipse(self.image, (255, 180, 50), (2, 4, 6, 12))
+                pygame.draw.ellipse(self.image, (255, 255, 150), (3, 8, 4, 6))
+                self.speed = 6
             else: 
                 # 默认敌方子弹，红色
                 self.image = pygame.Surface((14, 14), pygame.SRCALPHA)
                 pygame.draw.circle(self.image, CYBER_RED_ALERT, (7,7), 5)
                 pygame.draw.circle(self.image, CYBER_RED_ALERT, (7,7), 5, 1)
                 pygame.draw.circle(self.image, WHITE, (7,7), 2)
+            
+            # 【新增】如果传入了自定义速度参数，使用自定义速度
+            if self._custom_speed is not None:
+                self.speed = self._custom_speed
         else:
             bullets.add(self)
             all_sprites.add(self)
@@ -9058,6 +9285,27 @@ class Bullet(pygame.sprite.Sprite):
     def update(self):
         self.timer += 1
         
+        # 【悖论时钟】冻结弹幕延迟激活机制
+        if hasattr(self, '_frozen_timer') and self._frozen_timer > 0:
+            self._frozen_timer -= 1
+            if self._frozen_timer == 0:
+                # 激活：向下方飞行
+                self.speed = 8
+                rad = math.radians(90)  # 向下
+                self.vel = pygame.math.Vector2(math.cos(rad) * self.speed, math.sin(rad) * self.speed)
+            return  # 冻结期间不移动
+        
+        # 【修复】静止敌方子弹（speed=0）生命周期限制，防止无限堆积导致卡死
+        if self.is_enemy and hasattr(self, 'speed') and self.speed == 0:
+            if self.timer > 180:  # 3秒后销毁静止子弹
+                self.kill()
+                return
+        
+        # 【修复】敌方子弹生命周期上限，防止无限堆积
+        if self.is_enemy and self.timer > 600:  # 10秒后强制销毁
+            self.kill()
+            return
+        
         # 【Chronos】延迟出现效果
         if hasattr(self, 'spawn_delay') and self.spawn_delay > 0:
             self.spawn_delay -= 1
@@ -10871,8 +11119,14 @@ class Boss(pygame.sprite.Sprite):
         self.visual = data.get('visual', None)
         
         # 使用 utils 中的绘图函数
-        self.image = get_boss_surf(self.type, color, data.get('visual', None))
-        self.rect = self.image.get_rect(midbottom=(WIDTH/2, -50))
+        base_surf = get_boss_surf(self.type, color, data.get('visual', None))
+        # 放大Boss尺寸增强压迫感 - 从240放大到320
+        self.image = pygame.transform.smoothscale(base_surf, (320, 320))
+        self.rect = self.image.get_rect(midbottom=(WIDTH/2, -80))
+        
+        # 入场震撼效果
+        self._entrance_timer = 120  # 2秒入场动画
+        self._entrance_scale = 0.3  # 从小放大
         
         self.hp = 5000 # 基础血量
         self.max_hp = self.hp
@@ -10904,12 +11158,34 @@ class Boss(pygame.sprite.Sprite):
             # Enrage visual: spawn aura shockwave
             if self.visual and self.visual.get('aura'):
                 Particle((self.rect.centerx, self.rect.centery), self.visual.get('aura'), mode='shockwave')
+        
+        # 入场动画效果
+        if hasattr(self, '_entrance_timer') and self._entrance_timer > 0:
+            self._entrance_timer -= 1
+            # 从小到大的缩放效果
+            progress = 1 - (self._entrance_timer / 120)
+            self._entrance_scale = 0.3 + 0.7 * progress
+            # 重新生成放大后的图像
+            base_size = 320
+            current_size = int(base_size * self._entrance_scale)
+            if current_size > 20:
+                base_surf = get_boss_surf(self.type, self.data["color"], self.visual)
+                self.image = pygame.transform.smoothscale(base_surf, (current_size, current_size))
+                old_center = self.rect.center
+                self.rect = self.image.get_rect(center=old_center)
+            # 入场时屏幕震动
+            if self._entrance_timer > 80:
+                self.phase_change_timer = 3
+                self.phase_change_magnitude = 8
             
         if self.state == "enter":
             self.rect.y += 2
             if self.rect.top > 50:
                 self.state = "fight"
                 self.start_y = self.rect.y
+                # 入场完成时大震动
+                self.phase_change_timer = 30
+                self.phase_change_magnitude = 15
         elif self.state == "fight":
             self.shoot_timer += 1
             threshold = (30 if self.enraged else 60) * self.shoot_modifier
@@ -10917,163 +11193,354 @@ class Boss(pygame.sprite.Sprite):
             # 丰富的攻击模式：每个Boss都有独特的多阶段弹幕
             if self.shoot_timer > threshold:
                 self.shoot_timer = 0
-                if self.type == "carrier":  # 毁灭者级·虚空母舰
-                    if self.phase_index == 0:  # 阶段1：散射无人机群
+                
+                # ========== Boss 1: 菌生蟹皇 - 重型生物坦克 ==========
+                if self.type == "fungal_colossus":
+                    if self.phase_index == 0:  # 阶段1：孢子饱和 - 全屏悬浮孢子地雷
+                        for i in range(5):  # 减少到5个
+                            x = random.randint(50, WIDTH-50)
+                            y = random.randint(80, HEIGHT//2)
+                            Bullet(x, y, angle=0, speed=0, is_enemy=True, b_type="spore_mine")
+                    elif self.phase_index == 1:  # 阶段2：菌丝波浪 - 左右贴地高波浪弹幕
+                        for side in [-1, 1]:
+                            for i in range(4):  # 减少到4个
+                                Bullet(self.rect.centerx, self.rect.bottom, angle=side*45 + i*8*side, speed=4, is_enemy=True, b_type="mycelium_wave")
+                    else:  # 阶段3：混合攻击 - 孢子+波浪同时（大幅减少数量）
+                        for i in range(6):  # 从20减少到6
+                            x = random.randint(50, WIDTH-50)
+                            y = random.randint(80, HEIGHT//2)
+                            Bullet(x, y, angle=0, speed=0, is_enemy=True, b_type="spore_mine")
+                        for side in [-1, 1]:
+                            for i in range(4):  # 从10减少到4
+                                Bullet(self.rect.centerx, self.rect.bottom, angle=side*50 + i*10*side, speed=5, is_enemy=True, b_type="mycelium_wave")
+                    # 特殊移动：跳跃至玩家头顶
+                    if hasattr(self, '_jump_cooldown'):
+                        self._jump_cooldown -= 1
+                    else:
+                        self._jump_cooldown = 0
+                    if self._jump_cooldown <= 0:
+                        self._jump_cooldown = 180  # 3秒冷却
+                        # 屏幕震动效果
+                        self.phase_change_timer = 30
+                        self.phase_change_magnitude = 12
+                        
+                # ========== Boss 2: 旱海狂鲨 - 突袭刺客 ==========
+                elif self.type == "dune_reaper":
+                    if self.phase_index == 0:  # 阶段1：盲点突袭 - 从屏幕边缘冲出
+                        # 发射沙尘暴减速区弹幕
+                        for i in range(5):
+                            angle = random.randint(0, 360)
+                            Bullet(self.rect.centerx, self.rect.centery, angle=angle, speed=3, is_enemy=True, b_type="sandstorm")
+                    elif self.phase_index == 1:  # 阶段2：流沙漩涡 - 向心引力+岩石碎片
+                        for i in range(0, 360, 30):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i, speed=5, is_enemy=True, b_type="rock_shard")
+                    else:  # 阶段3：狂暴突袭
+                        for i in range(0, 360, 45):  # 减少到8个
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i, speed=6, is_enemy=True, b_type="rock_shard")
+                        for i in range(4):  # 减少到4个
+                            angle = random.randint(0, 360)
+                            Bullet(self.rect.centerx, self.rect.centery, angle=angle, speed=2, is_enemy=True, b_type="sandstorm")
+                    # 特殊移动：钻入背景层，快速移动
+                    if random.random() < 0.02:  # 2%几率触发瞬移
+                        self.rect.x = random.randint(100, WIDTH-200)
+                        self.rect.y = random.randint(50, 200)
+                        Particle((self.rect.centerx, self.rect.centery), (220, 180, 80), mode='star')
+                        
+                # ========== Boss 3: 歌莉娅女王 - 空中轰炸机 ==========
+                elif self.type == "plague_empress":
+                    if self.phase_index == 0:  # 阶段1：矩阵轰炸 - 网格状瘟疫炸弹
+                        for row in range(3):
+                            for col in range(5):
+                                x = 150 + col * 200
+                                Bullet(x, self.rect.bottom, angle=0, speed=4, is_enemy=True, b_type="plague_bomb")
+                    elif self.phase_index == 1:  # 阶段2：蜂群拦截 - 自爆工蜂
+                        for i in range(6):
+                            angle = -60 + i * 20
+                            Bullet(self.rect.centerx, self.rect.centery, angle=angle, speed=3, is_enemy=True, b_type="kamikaze_bee")
+                    else:  # 阶段3：饱和攻击（减少数量）
+                        for col in range(4):  # 减少到4个
+                            x = 150 + col * 220
+                            Bullet(x, self.rect.bottom, angle=random.randint(-10, 10), speed=5, is_enemy=True, b_type="plague_bomb")
+                        for i in range(4):  # 减少到4个
+                            angle = random.randint(-90, 90)
+                            Bullet(self.rect.centerx, self.rect.centery, angle=angle, speed=4, is_enemy=True, b_type="kamikaze_bee")
+                    # 保持在玩家斜上方45度
+                    self.rect.y = min(150, self.rect.y)
+                    
+                # ========== Boss 4: 毁灭魔像 - 阵地推进 ==========
+                elif self.type == "flesh_totem":
+                    if self.phase_index == 0:  # 阶段1：火箭飞拳 - 回旋镖石拳
+                        for side in [-1, 1]:
+                            Bullet(self.rect.centerx + side*80, self.rect.centery, angle=side*30, speed=6, is_enemy=True, b_type="rocket_fist")
+                    elif self.phase_index == 1:  # 阶段2：石柱囚笼（减少数量）
+                        for i in range(-2, 3):  # 减少到5个
+                            if i != 0:
+                                Bullet(self.rect.centerx + i*180, self.rect.bottom + 50, angle=0, speed=0, is_enemy=True, b_type="stone_pillar")
+                        # 激光扫描
+                        Bullet(self.rect.centerx, self.rect.centery, angle=0, speed=8, is_enemy=True, b_type="laser_barrage")
+                    else:  # 阶段3：全力压制（减少数量）
+                        for side in [-1, 1]:
+                            Bullet(self.rect.centerx + side*80, self.rect.centery, angle=side*30, speed=7, is_enemy=True, b_type="rocket_fist")
+                        for i in range(-2, 3):  # 减少到5个
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i*20, speed=5, is_enemy=True, b_type="blood_spike")
+                    # 缓慢推进
+                    if not hasattr(self, '_advance_x'):
+                        self._advance_x = 100
+                    self.rect.x = self._advance_x + math.sin(pygame.time.get_ticks()*0.0005) * 50
+                    
+                # ========== Boss 5: 星神游龙 - 多判定点激光阵列 ==========
+                elif self.type == "star_serpent":
+                    if self.phase_index == 0:  # 阶段1：星位激光（减少数量）
+                        for i in range(0, 360, 45):  # 从18度改为45度
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=0, is_enemy=True, b_type="star_laser")
+                        self.angle += 5
+                    elif self.phase_index == 1:  # 阶段2：裂变冲撞（减少数量）
+                        for i in range(0, 360, 60):  # 从36度改为60度
+                            Bullet(self.rect.centerx - 100, self.rect.centery, angle=i, speed=4, is_enemy=True, b_type="nebula")
+                            Bullet(self.rect.centerx + 100, self.rect.centery, angle=i + 30, speed=4, is_enemy=True, b_type="star")
+                    else:  # 阶段3：星云风暴（减少数量）
+                        for i in range(0, 360, 30):  # 从12度间隔改为30度
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=5, is_enemy=True, b_type="star_laser")
+                        self.angle += 8
+                    # 环绕移动
+                    t = pygame.time.get_ticks() * 0.001
+                    self.rect.centerx = WIDTH//2 + math.cos(t) * 250
+                    self.rect.centery = 180 + math.sin(t*0.7) * 80
+                    
+                # ========== Boss 6: 终焉巨械·阿瑞斯 - 武器切换 ==========
+                elif self.type == "exo_ares":
+                    weapon_cycle = (pygame.time.get_ticks() // 2000) % 4  # 每2秒切换武器
+                    if self.phase_index == 0:  # 阶段1：武器轮盘
+                        if weapon_cycle == 0:  # 高斯炮 - 大范围爆炸
+                            Bullet(self.rect.centerx, self.rect.centery, angle=0, speed=6, is_enemy=True, b_type="gauss_bomb")
+                        elif weapon_cycle == 1:  # 特斯拉线圈 - 闪电
+                            for i in range(-2, 3):
+                                Bullet(self.rect.centerx, self.rect.centery, angle=i*25, speed=12, is_enemy=True, b_type="tesla_arc")
+                        elif weapon_cycle == 2:  # 激光刀 - 横扫
+                            for i in range(-4, 5):
+                                Bullet(self.rect.centerx, self.rect.centery, angle=i*10, speed=8, is_enemy=True, b_type="laser_blade")
+                        else:  # 等离子喷口
+                            for i in range(8):
+                                Bullet(self.rect.centerx, self.rect.centery, angle=random.randint(-45, 45), speed=5, is_enemy=True, b_type="plasma")
+                    elif self.phase_index == 1:  # 阶段2：时钟光束 - 四道旋转激光
+                        for arm in range(4):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=self.angle + arm*90, speed=10, is_enemy=True, b_type="clock_beam")
+                        self.angle += 3
+                    else:  # 阶段3：全武器同时发射
+                        Bullet(self.rect.centerx, self.rect.centery, angle=0, speed=6, is_enemy=True, b_type="gauss_bomb")
+                        for i in range(-2, 3):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i*30, speed=12, is_enemy=True, b_type="tesla_arc")
+                        for arm in range(4):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=self.angle + arm*90, speed=8, is_enemy=True, b_type="clock_beam")
+                        self.angle += 5
+                    # 核心保持屏幕中央
+                    self.rect.centerx = WIDTH//2 + math.sin(pygame.time.get_ticks()*0.0008) * 60
+                    self.rect.centery = 180
+                    
+                # ========== Boss 7: 亵渎天神 - 贪刀惩罚 ==========
+                elif self.type == "radiance_goddess":
+                    if self.phase_index == 0:  # 阶段1：圣茧防御 - 密集慢速弹幕
+                        for i in range(0, 360, 15):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=2, is_enemy=True, b_type="holy_orb")
+                        self.angle += 7
+                    elif self.phase_index == 1:  # 阶段2：圣光审判 - 分形几何射线
+                        base_angles = [0, 60, 120, 180, 240, 300]
+                        for base in base_angles:
+                            Bullet(self.rect.centerx, self.rect.centery, angle=base + self.angle, speed=4, is_enemy=True, b_type="holy_judgment")
+                            # 分支射线
+                            Bullet(self.rect.centerx, self.rect.centery, angle=base + self.angle + 20, speed=3, is_enemy=True, b_type="holy_light")
+                            Bullet(self.rect.centerx, self.rect.centery, angle=base + self.angle - 20, speed=3, is_enemy=True, b_type="holy_light")
+                        self.angle += 4
+                    else:  # 阶段3：神圣审判（减少数量）
+                        for i in range(0, 360, 30):  # 从10度改为30度
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=2.5, is_enemy=True, b_type="holy_orb")
+                        for i in range(0, 360, 60):  # 从30度改为60度
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle*2, speed=5, is_enemy=True, b_type="holy_judgment")
+                        self.angle += 3
+                    # 缓慢移动或静止
+                    self.rect.centerx = WIDTH//2 + math.sin(pygame.time.get_ticks()*0.0003) * 100
+                    self.rect.centery = 200
+                    
+                # ========== Boss 8: 维度之噬 - 必杀测试 ==========
+                elif self.type == "dimension_devourer":
+                    if self.phase_index == 0:  # 阶段1：维度冲撞预警
+                        # 紫色预警线弹幕
+                        for i in range(3):
+                            angle = random.choice([0, 45, 90, 135, 180, 225, 270, 315])
+                            Bullet(self.rect.centerx, self.rect.centery, angle=angle, speed=15, is_enemy=True, b_type="dimension_warning")
+                    elif self.phase_index == 1:  # 阶段2：激光牢笼（减少数量）
+                        for i in range(0, 360, 60):  # 从30度改为60度
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=0, is_enemy=True, b_type="laser_cage")
+                        self.angle += 2
+                    else:  # 阶段3：维度崩塌（减少数量）
+                        for i in range(0, 360, 45):  # 从20度改为45度
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=8, is_enemy=True, b_type="void_spike")
+                        self.angle += 6
+                    # 大部分时间在屏幕外游走
+                    if random.random() < 0.03:
+                        self.rect.centerx = random.randint(100, WIDTH-100)
+                        self.rect.centery = random.randint(80, 250)
+                        Particle((self.rect.centerx, self.rect.centery), (120, 0, 200), mode='shockwave')
+                        
+                # ========== Boss 9: 暴君犽戎 - 极速肉搏 ==========
+                elif self.type == "infernal_dragon":
+                    if self.phase_index == 0:  # 阶段1：音爆冲刺
                         for i in range(-3, 4):
-                            Bullet(self.rect.centerx + i*30, self.rect.bottom, angle=i*10, is_enemy=True, b_type="drone_swarm")
-                    elif self.phase_index == 1:  # 阶段2：密集扇形弹幕
-                        for i in range(-4, 5):
-                            Bullet(self.rect.centerx, self.rect.bottom, angle=i*12, is_enemy=True)
-                    else:  # 阶段3：混合全屏弹幕
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i*15, speed=10, is_enemy=True, b_type="sonic_boom")
+                    elif self.phase_index == 1:  # 阶段2：焦土轰炸（减少数量）
+                        for i in range(6):  # 从15减少到6
+                            x = random.randint(50, WIDTH-50)
+                            Bullet(x, 0, angle=0, speed=6, is_enemy=True, b_type="inferno_meteor")
+                    else:  # 阶段3：狂暴龙息（减少数量）
+                        for i in range(8):  # 从20减少到8
+                            x = random.randint(50, WIDTH-50)
+                            Bullet(x, 0, angle=random.randint(-10, 10), speed=8, is_enemy=True, b_type="inferno_meteor")
+                        for i in range(-3, 4):  # 减少
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i*15, speed=12, is_enemy=True, b_type="sonic_boom")
+                    # 疯狂近身压制 - 快速移动
+                    t = pygame.time.get_ticks() * 0.003
+                    self.rect.centerx = WIDTH//2 + math.cos(t) * 300
+                    self.rect.centery = 150 + math.sin(t*1.5) * 100
+                    
+                # ========== Boss 10: 熵之化身 - 规则破坏 ==========
+                elif self.type == "entropy_avatar":
+                    if self.phase_index == 0:  # 阶段1：幻影死光 - 巨大激光柱缓慢扫过
+                        Bullet(self.rect.centerx, self.rect.centery, angle=self.angle, speed=0, is_enemy=True, b_type="phantom_deathray")
+                        self.angle += 1.5  # 缓慢旋转
+                    elif self.phase_index == 1:  # 阶段2：生命汲取 - 全屏白色弹幕+吸血
                         for i in range(0, 360, 20):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="drone_swarm")
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=3, is_enemy=True, b_type="life_drain")
+                        self.angle += 5
+                    else:  # 阶段3：终极审判（减少数量）
+                        # 只保留一只真理之眼
+                        Bullet(self.rect.centerx, self.rect.centery, angle=self.angle, speed=0, is_enemy=True, b_type="phantom_deathray")
+                        for i in range(0, 360, 40):  # 从15度改为40度
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i, speed=4, is_enemy=True, b_type="life_drain")
+                        self.angle += 2
+                    # 悬停不动，完全依靠眼球精确打击
+                    self.rect.centerx = WIDTH//2
+                    self.rect.centery = 180
+                
+                # ========== Boss 11: 绝音夜煞 - 声波可视化 ==========
+                elif self.type == "sonic_banshee":
+                    if self.phase_index == 0:  # 阶段1：回声定位 - 声呐波探测
+                        # 发射扩散声波环
+                        for i in range(0, 360, 60):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=3, is_enemy=True, b_type="echo_pulse")
+                        self.angle += 10
+                    elif self.phase_index == 1:  # 阶段2：爆音咆哮 - 锥形声波
+                        # 向下方发射锥形高频声波
+                        for i in range(-40, 41, 10):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=90 + i, speed=5, is_enemy=True, b_type="sonic_scream")
+                    else:  # 阶段3：死亡尖啸 - 全屏声波扭曲
+                        for i in range(0, 360, 30):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=4, is_enemy=True, b_type="sonic_scream")
+                        # 额外的回声追踪弹
+                        for i in range(3):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=random.randint(0, 360), speed=2, is_enemy=True, b_type="echo_pulse")
+                        self.angle += 15
+                    # 悬挂在顶部，左右摆动
+                    self.rect.centery = 80
+                    self.rect.centerx = WIDTH//2 + math.sin(pygame.time.get_ticks()*0.002) * 200
+                    
+                # ========== Boss 12: 棱镜核心 - 光线折射 ==========
+                elif self.type == "prism_overlord":
+                    if self.phase_index == 0:  # 阶段1：光路折射 - 激光网
+                        # 发射主激光，模拟折射效果
+                        for i in range(6):
+                            angle = i * 60 + self.angle
+                            Bullet(self.rect.centerx, self.rect.centery, angle=angle, speed=8, is_enemy=True, b_type="prism_laser")
+                        self.angle += 5
+                    elif self.phase_index == 1:  # 阶段2：镜像反制 - 反弹光弹
+                        # 发射折射光弹
+                        for i in range(0, 360, 45):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=4, is_enemy=True, b_type="refract_orb")
+                        self.angle += 8
+                    else:  # 阶段3：棱镜风暴 - 满屏激光
+                        for i in range(0, 360, 20):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=6, is_enemy=True, b_type="prism_laser")
+                        for i in range(4):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=random.randint(0, 360), speed=3, is_enemy=True, b_type="refract_orb")
+                        self.angle += 3
+                    # 缓慢移动，模拟浮空
+                    t = pygame.time.get_ticks() * 0.0005
+                    self.rect.centerx = WIDTH//2 + math.cos(t) * 100
+                    self.rect.centery = 160 + math.sin(t * 1.5) * 40
+                    
+                # ========== Boss 13: 腐朽剑圣 - 极速剑气 ==========
+                elif self.type == "rotting_kensei":
+                    if self.phase_index == 0:  # 阶段1：剑刃风暴 - 圆形剑气领域
+                        for i in range(0, 360, 30):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=5, is_enemy=True, b_type="blade_wave")
+                        self.angle += 12
+                    elif self.phase_index == 1:  # 阶段2：居合·断空 - 横向即死斩
+                        # 水平线大范围斩击
+                        for i in range(-3, 4):
+                            Bullet(0, self.rect.centery + i * 15, angle=0, speed=20, is_enemy=True, b_type="iai_slash")
+                        # 警告线
+                        Particle((WIDTH//2, self.rect.centery), (200, 50, 255), mode='pulse')
+                    else:  # 阶段3：死亡乱舞 - 疯狂连斩
+                        for i in range(0, 360, 20):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=8, is_enemy=True, b_type="blade_wave")
+                        # 突刺追踪
+                        Bullet(self.rect.centerx, self.rect.centery, angle=random.randint(60, 120), speed=15, is_enemy=True, b_type="iai_slash")
+                        self.angle += 20
+                    # 快速移动，追击玩家
+                    t = pygame.time.get_ticks() * 0.003
+                    self.rect.centerx = WIDTH//2 + math.cos(t) * 280
+                    self.rect.centery = 180 + math.sin(t * 1.2) * 100
+                    
+                # ========== Boss 14: 悖论时钟 - 时间操控 ==========
+                elif self.type == "paradox_clockwork":
+                    if self.phase_index == 0:  # 阶段1：时间减速弹 - 凝滞力场
+                        for i in range(0, 360, 45):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=2, is_enemy=True, b_type="stasis_orb")
+                        self.angle += 6
+                    elif self.phase_index == 1:  # 阶段2：凝滞力场 - 蓄力弹幕
+                        # 发射停滞在空中的弹幕
+                        for i in range(5):
+                            x = random.randint(100, WIDTH-100)
+                            y = random.randint(100, HEIGHT//2)
+                            Bullet(x, y, angle=90, speed=0, is_enemy=True, b_type="frozen_bullet")
+                        # 齿轮弹幕
+                        for i in range(0, 360, 60):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=4, is_enemy=True, b_type="gear_projectile")
+                        self.angle += 4
+                    else:  # 阶段3：时间风暴 - 多层旋转弹幕
+                        # 顺时针层
+                        for i in range(0, 360, 40):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i + self.angle, speed=3, is_enemy=True, b_type="gear_projectile")
+                        # 逆时针层
+                        for i in range(0, 360, 40):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=i - self.angle*2, speed=5, is_enemy=True, b_type="stasis_orb")
+                        self.angle += 5
+                    # 保持中央，缓慢旋转
+                    self.rect.centerx = WIDTH//2
+                    self.rect.centery = 180
+                    
+                # ========== Boss 15: 熔核巨兽 - 岩浆地形 ==========
+                elif self.type == "molten_behemoth":
+                    if self.phase_index == 0:  # 阶段1：岩浆海啸 - 上升岩浆
+                        # 底部发射上升岩浆弹
+                        for i in range(5):
+                            x = random.randint(50, WIDTH-50)
+                            Bullet(x, HEIGHT + 20, angle=-90, speed=3, is_enemy=True, b_type="lava_wave")
+                    elif self.phase_index == 1:  # 阶段2：陨石天降 - 岩石雨
+                        for i in range(6):
+                            x = random.randint(50, WIDTH-50)
+                            Bullet(x, -20, angle=90 + random.randint(-20, 20), speed=5, is_enemy=True, b_type="molten_meteor")
+                    else:  # 阶段3：火山喷发 - 全方位攻击
+                        # 岩浆喷射
+                        for i in range(-60, 61, 15):
+                            Bullet(self.rect.centerx, self.rect.centery, angle=-90 + i, speed=6, is_enemy=True, b_type="lava_burst")
+                        # 陨石雨
+                        for i in range(4):
+                            x = random.randint(50, WIDTH-50)
+                            Bullet(x, -20, angle=90, speed=7, is_enemy=True, b_type="molten_meteor")
+                    # 呆在屏幕下方
+                    self.rect.centery = HEIGHT - 120
+                    self.rect.centerx = WIDTH//2 + math.sin(pygame.time.get_ticks()*0.0008) * 150
                         
-                elif self.type == "fortress":  # 不朽级·钢铁堡垒
-                    if self.phase_index == 0:  # 阶段1：激光扫射
-                        for i in range(2, WIDTH-50, 200):
-                            Bullet(i, self.rect.bottom-20, angle=0, is_enemy=True, b_type="laser_barrage")
-                    elif self.phase_index == 1:  # 阶段2：混合激光+等离子
-                        for i in range(0, WIDTH, 180):
-                            Bullet(i, self.rect.bottom, angle=-10 if i % 2 == 0 else 10, is_enemy=True, b_type="plasma")
-                        for i in range(50, WIDTH, 250):
-                            Bullet(i, self.rect.bottom-30, angle=0, is_enemy=True, b_type="laser_barrage")
-                    else:  # 阶段3：全屏地毯式轰炸（优化：减少弹幕密度）
-                        for i in range(0, WIDTH, 120):
-                            Bullet(i, self.rect.bottom, angle=random.randint(-20, 20), is_enemy=True, b_type="plasma")
-                            
-                elif self.type == "assassin":  # 幻影级·虚空刺客 - 快速移动 + 幻影攻击
-                    if self.phase_index == 0:  # 阶段1：追踪幻影弹
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx + i*40, self.rect.centery, angle=i*15, is_enemy=True, b_type="phantom")
-                    elif self.phase_index == 1:  # 阶段2：密集扇形
-                        for i in range(-3, 4):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*12, is_enemy=True, b_type="phantom")
-                    else:  # 阶段3：环形幻影弹幕（优化）
-                        for i in range(0, 360, 45):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="phantom")
-                            
-                elif self.type == "seraphim":  # 审判级·炽天使 - 圣光轰炸
-                    if self.phase_index == 0:  # 阶段1：散射圣光
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx + i*50, self.rect.bottom, angle=i*15, is_enemy=True, b_type="holy_light")
-                    elif self.phase_index == 1:  # 阶段2：连续圣光射线
-                        for i in range(-3, 4):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*12, is_enemy=True, b_type="holy_light")
-                    else:  # 阶段3：神圣审判轰炸（优化）
-                        for i in range(0, 360, 40):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="holy_light")
-                            
-                elif self.type == "leviathan":  # 深渊巨兽·利维坦 - 触手+虚空尖刺
-                    if self.phase_index == 0:  # 阶段1：触手挥击
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx + i*35, self.rect.bottom, angle=i*15, is_enemy=True, b_type="tentacle")
-                    elif self.phase_index == 1:  # 阶段2：深渊尖刺
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*18, is_enemy=True, b_type="void_spike")
-                    else:  # 阶段3：混合全屏弹幕（优化）
-                        for i in range(0, 360, 40):
-                            b_type = "tentacle" if i % 2 == 0 else "void_spike"
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type=b_type)
-                            
-                elif self.type == "overlord":  # 蜂群主宰·奥伯龙 - 蜂群弹幕
-                    if self.phase_index == 0:  # 阶段1：散射群弹
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx + i*30, self.rect.bottom, angle=i*12, is_enemy=True, b_type="glitch")
-                    elif self.phase_index == 1:  # 阶段2：密集环形
-                        for i in range(0, 360, 45):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="glitch")
-                    else:  # 阶段3：超密集环形（优化）
-                        for i in range(0, 360, 30):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="glitch")
-                            
-                elif self.type == "ragnarok":  # 终焉机神·诸神黄昏 - 火焰毁灭
-                    if self.phase_index == 0:  # 阶段1：火焰喷射
-                        for i in range(-3, 4):
-                            Bullet(self.rect.centerx, self.rect.bottom, angle=i*12, is_enemy=True, b_type="flame_burst")
-                    elif self.phase_index == 1:  # 阶段2：混合环形
-                        for i in range(0, 360, 45):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="flame_burst")
-                    else:  # 阶段3：全屏火焰地狱（优化）
-                        for i in range(0, 360, 36):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="flame_burst")
-                            
-                elif self.type == "hydra":  # 九头蛇·剧毒领主 - 毒液喷射
-                    if self.phase_index == 0:  # 阶段1：散射毒液
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx + i*40, self.rect.bottom, angle=i*12, is_enemy=True, b_type="glitch")
-                    elif self.phase_index == 1:  # 阶段2：多向毒液弹幕
-                        for i in range(-3, 4):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*12, is_enemy=True, b_type="glitch")
-                    else:  # 阶段3：九头混合弹幕（优化）
-                        for i in range(0, 360, 40):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="glitch")
-                            
-                elif self.type == "chronos":  # 时之主·克洛诺斯 - 冰冷时间
-                    if self.phase_index == 0:  # 阶段1：散射冰晶
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx + i*50, self.rect.bottom, angle=i*15, is_enemy=True, b_type="ice_shard")
-                    elif self.phase_index == 1:  # 阶段2：环形冰晶
-                        for i in range(0, 360, 45):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="ice_shard")
-                    else:  # 阶段3：密集冰晶地狱（优化）
-                        for i in range(0, 360, 30):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="ice_shard")
-                            
-                elif self.type == "gazer":  # 深渊凝视者 - 盯视射线
-                    if self.phase_index == 0:  # 阶段1：散射激光
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*20, is_enemy=True, b_type="laser_barrage")
-                    elif self.phase_index == 1:  # 阶段2：聚焦扇形
-                        for i in range(-3, 4):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*15, is_enemy=True, b_type="laser_barrage")
-                    else:  # 阶段3：环形激光地狱（优化）
-                        for i in range(0, 360, 36):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="laser_barrage")
-                            
-                elif self.type == "lich":  # 赛博巫妖 - 诅咒能量
-                    if self.phase_index == 0:  # 阶段1：散射诅咒球
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx + i*35, self.rect.bottom, angle=i*12, is_enemy=True, b_type="glitch")
-                    elif self.phase_index == 1:  # 阶段2：混合环形诅咒
-                        for i in range(0, 360, 45):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="glitch")
-                    else:  # 阶段3：诅咒风暴（优化）
-                        for i in range(0, 360, 36):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="glitch")
-                            
-                elif self.type == "tempest":  # 风暴引擎 - 风刃切割
-                    if self.phase_index == 0:  # 阶段1：散射风刃
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx + i*40, self.rect.bottom, angle=i*12, is_enemy=True, b_type="blade_wind")
-                    elif self.phase_index == 1:  # 阶段2：扇形风刃
-                        for i in range(-3, 4):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*12, is_enemy=True, b_type="blade_wind")
-                    else:  # 阶段3：暴风切割（优化）
-                        for i in range(0, 360, 36):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="blade_wind")
-                            
-                elif self.type == "void_golem":  # 虚空魔像 - 齿轮机械
-                    if self.phase_index == 0:  # 阶段1：环形齿轮弹
-                        for i in range(0, 360, 45):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="gear")
-                    elif self.phase_index == 1:  # 阶段2：能量波+追踪弹
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*18, is_enemy=True, b_type="energy")
-                    else:  # 阶段3：多向核心冲击（优化）
-                        for i in range(0, 360, 36):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="core")
-                        
-                elif self.type == "abyss_queen":  # 星渊女王 - 星系弹幕
-                    if self.phase_index == 0:  # 阶段1：星尘弹+召唤星体
-                        for i in range(0, 360, 45):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="star")
-                    elif self.phase_index == 1:  # 阶段2：星卫弹幕
-                        for i in range(-2, 3):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i*25, is_enemy=True, b_type="star_guard")
-                    else:  # 阶段3：星爆全屏弹幕（优化）
-                        for i in range(0, 360, 30):
-                            Bullet(self.rect.centerx, self.rect.centery, angle=i, is_enemy=True, b_type="star_burst")
-                            
                 else:
                     # 默认环形弹幕
                     for i in range(0, 360, 45):
@@ -11114,47 +11581,160 @@ class Boss(pygame.sprite.Sprite):
         if hasattr(self, 'phase_configs') and idx < len(self.phase_configs):
             phase_cfg = self.phase_configs[idx]
         if phase_cfg:
-            # spawn
+            # spawn - 只创建粒子效果，不生成实际敌人（避免卡顿）
             spawn_cfg = phase_cfg.get('spawn')
             if spawn_cfg:
-                btype = spawn_cfg.get('type')
-                cnt = spawn_cfg.get('count', 1)
+                cnt = min(spawn_cfg.get('count', 1), 3)  # 最多3个粒子
                 for i in range(cnt):
-                    Enemy(btype)
                     Particle((self.rect.centerx + random.randint(-80, 80), self.rect.centery + random.randint(20, 80)), self.visual.get('core_color', CYAN) if self.visual else CYBER_AMBER, mode='star')
-            # effect
+            # effect - 限制粒子数量
             eff = phase_cfg.get('effect')
             if eff:
                 eff_type = eff.get('type')
-                eff_count = eff.get('count', 3)
+                eff_count = min(eff.get('count', 3), 8)  # 最多8个粒子效果
                 for i in range(eff_count):
                     if eff_type == 'wind_gusts':
                         Particle((self.rect.centerx + random.randint(-100, 100), self.rect.centery + random.randint(-20, 20)), WIND_BLUE, mode='pulse')
                     elif eff_type == 'storm_burst':
                         Particle((self.rect.centerx + random.randint(-80, 80), self.rect.centery + random.randint(-40, 40)), WIND_BLUE, mode='bloom')
                     elif eff_type == 'teleport_dash':
-                        # small visual and reposition
                         Particle((self.rect.centerx, self.rect.centery), MAGENTA, mode='star')
                         self.rect.x = random.randint(100, WIDTH-100)
+                    # ===== 新Boss阶段效果 =====
+                    elif eff_type == 'spore_saturation':
+                        Particle((self.rect.centerx + random.randint(-120, 120), self.rect.centery + random.randint(-60, 60)), (60, 180, 200), mode='bloom')
+                    elif eff_type == 'mycelium_wave':
+                        Particle((self.rect.centerx + random.randint(-80, 80), self.rect.bottom), (30, 80, 120), mode='pulse')
+                    elif eff_type == 'ground_shake':
+                        self.phase_change_magnitude = 15
+                        Particle((self.rect.centerx, self.rect.bottom + 20), (100, 80, 60), mode='shockwave')
+                    elif eff_type == 'blindspot_rush':
+                        Particle((random.randint(0, WIDTH), random.randint(0, HEIGHT)), (220, 180, 80), mode='star')
+                    elif eff_type == 'quicksand_vortex':
+                        Particle((self.rect.centerx, self.rect.centery), (180, 140, 60), mode='shockwave')
+                    elif eff_type == 'matrix_bombing':
+                        Particle((self.rect.centerx + random.randint(-100, 100), self.rect.bottom), (57, 255, 20), mode='bloom')
+                    elif eff_type == 'rocket_fist':
+                        Particle((self.rect.centerx + random.choice([-80, 80]), self.rect.centery), (180, 30, 30), mode='star')
+                    elif eff_type == 'stone_pillar_cage':
+                        Particle((self.rect.centerx + random.randint(-150, 150), self.rect.bottom + 30), (60, 20, 20), mode='pulse')
+                    elif eff_type == 'star_position_laser':
+                        Particle((self.rect.centerx + random.randint(-60, 60), self.rect.centery + random.randint(-60, 60)), (200, 100, 255), mode='star')
+                    elif eff_type == 'fission_charge':
+                        Particle((self.rect.centerx - 100, self.rect.centery), (100, 50, 150), mode='shockwave')
+                        Particle((self.rect.centerx + 100, self.rect.centery), (100, 50, 150), mode='shockwave')
+                    elif eff_type == 'weapon_roulette':
+                        Particle((self.rect.centerx + random.randint(-50, 50), self.rect.centery + random.randint(-50, 50)), (255, 100, 255), mode='star')
+                    elif eff_type == 'clock_beam':
+                        Particle((self.rect.centerx, self.rect.centery), (200, 200, 220), mode='bloom')
+                    elif eff_type == 'cocoon_defense':
+                        Particle((self.rect.centerx, self.rect.centery), (255, 215, 0), mode='pulse')
+                    elif eff_type == 'holy_judgment' or eff_type == 'fractal_beam':
+                        Particle((self.rect.centerx + random.randint(-80, 80), self.rect.centery + random.randint(-80, 80)), (255, 180, 100), mode='bloom')
+                    elif eff_type == 'dimension_charge':
+                        Particle((random.randint(0, WIDTH), random.randint(0, HEIGHT//3)), (120, 0, 200), mode='star')
+                    elif eff_type == 'laser_cage':
+                        Particle((self.rect.centerx, self.rect.centery), (20, 0, 40), mode='shockwave')
+                    elif eff_type == 'sonic_dash':
+                        Particle((self.rect.centerx, self.rect.centery), (255, 200, 50), mode='star')
+                    elif eff_type == 'scorched_earth':
+                        Particle((random.randint(50, WIDTH-50), random.randint(0, 100)), (255, 69, 0), mode='bloom')
+                    elif eff_type == 'phantom_deathray':
+                        Particle((self.rect.centerx, self.rect.centery), (255, 255, 255), mode='pulse')
+                    elif eff_type == 'life_drain':
+                        Particle((self.rect.centerx + random.randint(-40, 40), self.rect.centery + random.randint(-40, 40)), (220, 220, 230), mode='star')
+                    # ===== 新Boss 11-15 阶段效果 =====
+                    elif eff_type == 'echo_pulse':
+                        Particle((self.rect.centerx + random.randint(-60, 60), self.rect.centery + random.randint(-40, 40)), (180, 180, 255), mode='pulse')
+                    elif eff_type == 'sonic_scream':
+                        Particle((self.rect.centerx, self.rect.centery), (200, 200, 255), mode='shockwave')
+                    elif eff_type == 'sonic_distortion':
+                        for j in range(3):
+                            Particle((random.randint(0, WIDTH), random.randint(0, HEIGHT//2)), (220, 220, 255), mode='pulse')
+                    elif eff_type == 'prism_laser':
+                        Particle((self.rect.centerx + random.randint(-50, 50), self.rect.centery + random.randint(-30, 30)), (255, 180, 255), mode='star')
+                    elif eff_type == 'mirror_shield':
+                        Particle((self.rect.centerx, self.rect.centery), (200, 255, 255), mode='bloom')
+                    elif eff_type == 'laser_web':
+                        Particle((random.randint(50, WIDTH-50), random.randint(50, 200)), (255, 200, 255), mode='star')
+                    elif eff_type == 'blade_storm':
+                        Particle((self.rect.centerx + random.randint(-80, 80), self.rect.centery + random.randint(-60, 60)), (200, 100, 255), mode='star')
+                    elif eff_type == 'iai_slash':
+                        Particle((WIDTH//2, self.rect.centery), (200, 50, 255), mode='shockwave')
+                    elif eff_type == 'death_blade':
+                        for j in range(2):
+                            Particle((random.randint(0, WIDTH), self.rect.centery + random.randint(-20, 20)), (255, 150, 255), mode='pulse')
+                    elif eff_type == 'time_slow':
+                        Particle((self.rect.centerx, self.rect.centery), (255, 220, 100), mode='bloom')
+                    elif eff_type == 'stasis_field':
+                        Particle((random.randint(100, WIDTH-100), random.randint(100, HEIGHT//2)), (255, 240, 150), mode='pulse')
+                    elif eff_type == 'time_rewind':
+                        for j in range(4):
+                            Particle((self.rect.centerx + random.randint(-40, 40), self.rect.centery + random.randint(-40, 40)), (200, 160, 60), mode='star')
+                    elif eff_type == 'lava_wave':
+                        Particle((random.randint(50, WIDTH-50), HEIGHT - 50), (255, 100, 20), mode='bloom')
+                    elif eff_type == 'meteor_rain':
+                        Particle((random.randint(50, WIDTH-50), 0), (255, 150, 50), mode='star')
+                    elif eff_type == 'eruption':
+                        for j in range(3):
+                            Particle((self.rect.centerx + random.randint(-80, 80), self.rect.centery + random.randint(-60, 60)), (255, 80, 20), mode='bloom')
             # fire rate change
             if 'fire_rate_mult' in phase_cfg:
                 # Set modifier directly (don't stack multiplicatively across phases)
                 self.shoot_modifier = phase_cfg.get('fire_rate_mult', self.shoot_modifier)
         else:
-            if self.type == 'carrier':
-                # Spawn small drones
-                for i in range(3 + idx):
-                    Enemy('drone')
-                    Particle((self.rect.centerx + random.randint(-80, 80), self.rect.centery + random.randint(20, 80)), CYBER_RED_ALERT, mode='star')
-            elif self.type == 'fortress':
-                # Turret barrage: spawn short-lived turrets (sniper type) at side
-                for x in range(100, WIDTH-100, 200):
-                    Enemy('sniper')
-                    Particle((x, self.rect.bottom + 10), GOLD, mode='bloom')
-            elif self.type == 'tempest':
-                # Wind gusts: strong slow pulses
+            # 新Boss默认阶段效果
+            if self.type == 'fungal_colossus':
+                self.phase_change_magnitude = 15
+                for i in range(5 + idx*3):
+                    Particle((self.rect.centerx + random.randint(-100, 100), self.rect.centery + random.randint(-50, 50)), (60, 180, 200), mode='bloom')
+            elif self.type == 'dune_reaper':
+                for i in range(4 + idx*2):
+                    Particle((random.randint(0, WIDTH), random.randint(0, HEIGHT//2)), (220, 180, 80), mode='star')
+            elif self.type == 'plague_empress':
+                for i in range(6 + idx*2):
+                    Particle((self.rect.centerx + random.randint(-80, 80), self.rect.bottom + random.randint(0, 40)), (57, 255, 20), mode='bloom')
+            elif self.type == 'flesh_totem':
+                self.phase_change_magnitude = 12
+                for i in range(4 + idx*2):
+                    Particle((self.rect.centerx + random.randint(-60, 60), self.rect.centery + random.randint(-40, 40)), (180, 30, 30), mode='pulse')
+            elif self.type == 'star_serpent':
+                for i in range(8 + idx*3):
+                    Particle((self.rect.centerx + random.randint(-100, 100), self.rect.centery + random.randint(-80, 80)), (200, 100, 255), mode='star')
+            elif self.type == 'exo_ares':
+                for i in range(6 + idx*2):
+                    Particle((self.rect.centerx + random.randint(-60, 60), self.rect.centery + random.randint(-60, 60)), (255, 100, 255), mode='star')
+            elif self.type == 'radiance_goddess':
+                for i in range(10 + idx*3):
+                    Particle((self.rect.centerx + random.randint(-80, 80), self.rect.centery + random.randint(-80, 80)), (255, 215, 0), mode='bloom')
+            elif self.type == 'dimension_devourer':
                 for i in range(5 + idx*2):
-                    Particle((self.rect.centerx + random.randint(-100, 100), self.rect.centery + random.randint(-20, 20)), WIND_BLUE, mode='pulse')
+                    Particle((random.randint(0, WIDTH), random.randint(0, HEIGHT//2)), (120, 0, 200), mode='shockwave')
+            elif self.type == 'infernal_dragon':
+                self.phase_change_magnitude = 10
+                for i in range(8 + idx*3):
+                    Particle((self.rect.centerx + random.randint(-100, 100), self.rect.centery + random.randint(-60, 60)), (255, 69, 0), mode='bloom')
+            elif self.type == 'entropy_avatar':
+                for i in range(6 + idx*2):
+                    Particle((self.rect.centerx + random.randint(-50, 50), self.rect.centery + random.randint(-50, 50)), (255, 255, 255), mode='star')
+            # ===== 新Boss 11-15 默认阶段效果 =====
+            elif self.type == 'sonic_banshee':
+                for i in range(5 + idx*2):
+                    Particle((self.rect.centerx + random.randint(-80, 80), self.rect.centery + random.randint(-40, 40)), (200, 200, 255), mode='pulse')
+            elif self.type == 'prism_overlord':
+                for i in range(6 + idx*2):
+                    Particle((self.rect.centerx + random.randint(-60, 60), self.rect.centery + random.randint(-60, 60)), (255, 180, 255), mode='star')
+            elif self.type == 'rotting_kensei':
+                self.phase_change_magnitude = 10
+                for i in range(4 + idx*3):
+                    Particle((self.rect.centerx + random.randint(-100, 100), self.rect.centery + random.randint(-80, 80)), (200, 100, 255), mode='star')
+            elif self.type == 'paradox_clockwork':
+                for i in range(5 + idx*2):
+                    Particle((self.rect.centerx + random.randint(-50, 50), self.rect.centery + random.randint(-50, 50)), (255, 220, 100), mode='bloom')
+            elif self.type == 'molten_behemoth':
+                self.phase_change_magnitude = 15
+                for i in range(6 + idx*3):
+                    Particle((self.rect.centerx + random.randint(-100, 100), self.rect.centery + random.randint(-60, 60)), (255, 80, 20), mode='bloom')
             else:
                 # Default: slightly increase firing cadence by reducing shoot_timer
                 self.shoot_timer = max(0, self.shoot_timer - 20)

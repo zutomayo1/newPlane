@@ -148,21 +148,112 @@ class EffectManager:
 #   数据存取
 # ==============================================================================
 def load_leaderboard():
+    """加载排行榜数据（支持新旧格式）"""
     if not os.path.exists(LEADERBOARD_FILE):
-        return [{"name": "王牌机师", "score": 1000}, {"name": "老司机", "score": 800}, {"name": "萌新", "score": 500}]
+        # 默认数据 - 新格式
+        return {
+            "normal": [],
+            "roguelike": [],
+            "boss_challenge": [],
+            "player_stats": {
+                "total_games": 0,
+                "total_kills": 0,
+                "total_time": 0,
+                "best_score": 0,
+                "favorite_plane": None,
+                "plane_usage": {}
+            }
+        }
     try:
         with open(LEADERBOARD_FILE, "r", encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+            # 兼容旧格式（纯列表）
+            if isinstance(data, list):
+                return {
+                    "normal": data,
+                    "roguelike": [],
+                    "boss_challenge": [],
+                    "player_stats": {
+                        "total_games": len(data),
+                        "total_kills": 0,
+                        "total_time": 0,
+                        "best_score": max([e.get("score", 0) for e in data]) if data else 0,
+                        "favorite_plane": None,
+                        "plane_usage": {}
+                    }
+                }
+            return data
     except:
-        return []
+        return {
+            "normal": [],
+            "roguelike": [],
+            "boss_challenge": [],
+            "player_stats": {
+                "total_games": 0,
+                "total_kills": 0,
+                "total_time": 0,
+                "best_score": 0,
+                "favorite_plane": None,
+                "plane_usage": {}
+            }
+        }
 
 def save_leaderboard(data):
+    """保存排行榜数据"""
     try:
-        data.sort(key=lambda x: x["score"], reverse=True)
-        data = data[:5]
+        # 对每个模式的记录按分数排序，保留前10名
+        for mode in ["normal", "roguelike", "boss_challenge"]:
+            if mode in data and isinstance(data[mode], list):
+                data[mode].sort(key=lambda x: x.get("score", 0), reverse=True)
+                data[mode] = data[mode][:10]
+        
+        # 更新玩家统计中的最高分
+        all_scores = []
+        for mode in ["normal", "roguelike", "boss_challenge"]:
+            if mode in data:
+                all_scores.extend([e.get("score", 0) for e in data[mode]])
+        if all_scores and "player_stats" in data:
+            data["player_stats"]["best_score"] = max(all_scores)
+            
         with open(LEADERBOARD_FILE, "w", encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False)
+            json.dump(data, f, ensure_ascii=False, indent=2)
     except: pass
+
+def add_leaderboard_entry(data, mode, entry):
+    """添加一条排行榜记录并更新统计"""
+    if mode not in data:
+        data[mode] = []
+    
+    # 添加记录
+    data[mode].append(entry)
+    
+    # 更新玩家统计
+    if "player_stats" not in data:
+        data["player_stats"] = {
+            "total_games": 0,
+            "total_kills": 0,
+            "total_time": 0,
+            "best_score": 0,
+            "favorite_plane": None,
+            "plane_usage": {}
+        }
+    
+    stats = data["player_stats"]
+    stats["total_games"] = stats.get("total_games", 0) + 1
+    stats["total_kills"] = stats.get("total_kills", 0) + entry.get("kills", 0)
+    stats["total_time"] = stats.get("total_time", 0) + entry.get("survival_time", 0)
+    
+    # 更新机体使用统计
+    plane = entry.get("plane", "unknown")
+    if "plane_usage" not in stats:
+        stats["plane_usage"] = {}
+    stats["plane_usage"][plane] = stats["plane_usage"].get(plane, 0) + 1
+    
+    # 更新最常用机体
+    if stats["plane_usage"]:
+        stats["favorite_plane"] = max(stats["plane_usage"], key=stats["plane_usage"].get)
+    
+    return data
 
 # 全局 arsenal 数据容器，将在 main.py 中初始化
 arsenal_save_data = {

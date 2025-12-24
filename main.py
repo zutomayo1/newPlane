@@ -11,7 +11,7 @@ from systems import *
 from sprites import *
 from customization import customization_manager, PAINT_THEMES, BULLET_THEMES, EnhancedTrailEffect
 from enemies import enemy_factory, init_enemy_system, build_enemy_preview_surface
-from roguelite import ItemManager
+from roguelite import ItemManager, AchievementManager
 from room_system import RoomManager, RoomType, RoomState
 from music_catalog import resolve_music_metadata, MUSIC_FILTER_CHOICES
 
@@ -81,15 +81,15 @@ apply_menu_theme("menu_home", force=True)
 # ==============================================================================
 # 武器库布局常量
 ARSENAL_UI = {
-    'list_area': pygame.Rect(50, 80, 300, HEIGHT - 150),
-    'slot_0': pygame.Rect(400, 150, 240, 80),
-    'slot_1': pygame.Rect(400, 270, 240, 80),
-    'slot_2': pygame.Rect(400, 390, 240, 80),
-    'btn_research_normal': pygame.Rect(400, HEIGHT - 100, 200, 50),
-    'btn_research_elite': pygame.Rect(620, HEIGHT - 100, 200, 50),
-    'detail_area': pygame.Rect(WIDTH - 350, 80, 300, HEIGHT - 150),
-    'btn_upgrade': pygame.Rect(WIDTH - 300, HEIGHT - 140, 200, 50),
-    'btn_back': pygame.Rect(50, HEIGHT - 60, 100, 40)
+    'list_area': pygame.Rect(30, 70, 340, HEIGHT - 120),
+    'slot_0': pygame.Rect(395, 120, 280, 95),
+    'slot_1': pygame.Rect(395, 235, 280, 95),
+    'slot_2': pygame.Rect(395, 350, 280, 95),
+    'btn_research_normal': pygame.Rect(395, HEIGHT - 115, 135, 55),
+    'btn_research_elite': pygame.Rect(540, HEIGHT - 115, 135, 55),
+    'detail_area': pygame.Rect(WIDTH - 380, 70, 350, HEIGHT - 120),
+    'btn_upgrade': pygame.Rect(WIDTH - 330, HEIGHT - 135, 250, 55),
+    'btn_back': pygame.Rect(30, HEIGHT - 55, 110, 45)
 }
 
 # 机密档案布局常量
@@ -200,6 +200,15 @@ arsenal_scroll_y = 0
 arsenal_selected_weapon_idx = -1
 arsenal_msg = ""
 arsenal_msg_timer = 0
+arsenal_dragging_scrollbar = False  # 滚动条拖动状态
+arsenal_drag_start_y = 0
+arsenal_drag_start_scroll = 0
+
+# 飞机选择界面滚动
+plane_select_scroll_y = 0
+plane_select_dragging_scrollbar = False  # 滚动条拖动状态
+plane_select_drag_start_y = 0
+plane_select_drag_start_scroll = 0
 
 # 涂装系统
 customization_selected_plane = None
@@ -213,9 +222,48 @@ customization_plane_scroll_y = 0
 customization_msg = ""
 customization_msg_timer = 0
 customization_tab = 0  # 0:全部, 1:经典, 2:霓虹, 3:史诗, 4:特效, 5:传说
+customization_dragging_scrollbar = False  # 涂装列表滚动条拖动
+customization_drag_start_y = 0
+customization_drag_start_scroll = 0
+customization_plane_dragging_scrollbar = False  # 机体列表滚动条拖动
+customization_plane_drag_start_y = 0
+customization_plane_drag_start_scroll = 0
 
-# 成就菜单
+# 成就菜单 - 豪华版
 achievement_page = 0
+achievement_category = "all"  # all, combat, boss, survival, plane, roguelike, efficiency, milestone, secret
+achievement_selected = None   # 当前选中的成就ID
+achievement_scroll_y = 0      # 滚动偏移
+achievement_dragging_scrollbar = False  # 是否正在拖动滚动条
+achievement_drag_start_y = 0  # 拖动起始位置
+achievement_drag_start_scroll = 0  # 拖动起始滚动位置
+
+# 全局字体缓存（避免每帧创建字体，显著提升性能）
+_font_cache = {}
+
+def get_cached_font(name, size):
+    """获取缓存的字体对象（全局通用）"""
+    key = (name, size)
+    if key not in _font_cache:
+        _font_cache[key] = pygame.font.SysFont(name, size)
+    return _font_cache[key]
+
+# 成就界面缓存（保留向后兼容）
+_ach_fonts = _font_cache  # 共享同一缓存
+_ach_mgr_cache = None
+
+def get_ach_font(name, size):
+    """获取缓存的字体对象（向后兼容）"""
+    return get_cached_font(name, size)
+
+def get_cached_achievement_mgr():
+    """获取缓存的成就管理器"""
+    global _ach_mgr_cache
+    import os
+    if _ach_mgr_cache is None and os.path.exists("achievements.json"):
+        _ach_mgr_cache = AchievementManager()
+        _ach_mgr_cache.load_from_file("achievements.json")
+    return _ach_mgr_cache
 
 # 成就通知队列
 achievement_notifications = []  # [(achievement_obj, timer), ...]
@@ -235,6 +283,9 @@ gallery_hover_card = None  # 悬停的卡牌ID，用于显示详细Tooltip
 codex_tab = 0 # 0:Plane, 1:Boss, 2:Enemy
 codex_idx = 0
 codex_scroll_y = 0 
+codex_dragging_scrollbar = False  # 图鉴滚动条拖动
+codex_drag_start_y = 0
+codex_drag_start_scroll = 0
 
 # 涂装系统
 customization_scroll_y = 0
@@ -263,6 +314,9 @@ music_library_filter = "all"
 music_library_sort_mode = "default"
 music_library_search_query = ""
 music_library_search_active = False
+music_library_dragging_scrollbar = False  # 滚动条拖动状态
+music_library_drag_start_y = 0
+music_library_drag_start_scroll = 0
 
 # 音效实验室
 sound_lab_all_tracks = []
@@ -271,6 +325,9 @@ sound_lab_scroll_index = 0
 sound_lab_selected = 0
 sound_lab_now_playing = None
 sound_lab_filter = "all"
+sound_lab_dragging_scrollbar = False  # 滚动条拖动状态
+sound_lab_drag_start_y = 0
+sound_lab_drag_start_scroll = 0
 
 # 音乐主题 & 动态音乐
 dynamic_music_state = {"state": None, "intensity": 0.0}
@@ -278,6 +335,93 @@ dynamic_music_boss_phase = 0
 
 # 暂停菜单状态
 pause_menu_selected = 0  # 0: 继续, 1: 重新开始, 2: 退出战斗
+
+# 排行榜系统
+leaderboard_mode = "normal"  # "normal", "roguelike", "boss_challenge"
+leaderboard_sort_by = "score"  # "score", "kills", "time", "wave"
+leaderboard_scroll_y = 0
+leaderboard_stats_tab = 0  # 0: 排行榜, 1: 个人统计
+leaderboard_dragging_scrollbar = False  # 排行榜滚动条拖动
+leaderboard_drag_start_y = 0
+leaderboard_drag_start_scroll = 0
+
+# 排行榜UI缓存（性能优化）
+_leaderboard_cache = {
+    "bg_surface": None,        # 背景缓存（六边形网格+星空）
+    "bg_size": (0, 0),         # 缓存时的屏幕尺寸
+    "fonts": {},               # 字体缓存
+    "gradient_surfaces": {},   # 渐变Surface缓存
+    "last_update": 0,          # 上次动态更新时间
+}
+
+def _get_lb_font(name, size):
+    """获取缓存的字体"""
+    key = (name, size)
+    if key not in _leaderboard_cache["fonts"]:
+        _leaderboard_cache["fonts"][key] = pygame.font.SysFont(name, size)
+    return _leaderboard_cache["fonts"][key]
+
+def _get_lb_gradient(key, width, height, colors, alpha_range=(255, 0)):
+    """获取缓存的渐变Surface"""
+    cache_key = (key, width, height)
+    if cache_key not in _leaderboard_cache["gradient_surfaces"]:
+        surf = pygame.Surface((width, height), pygame.SRCALPHA)
+        # 处理单色或双色情况
+        color1 = colors[0]
+        color2 = colors[1] if len(colors) > 1 else colors[0]
+        for y in range(height):
+            ratio = y / height if height > 0 else 0
+            r = int(color1[0] * (1 - ratio) + color2[0] * ratio)
+            g = int(color1[1] * (1 - ratio) + color2[1] * ratio)
+            b = int(color1[2] * (1 - ratio) + color2[2] * ratio)
+            alpha = int(alpha_range[0] * (1 - ratio) + alpha_range[1] * ratio)
+            pygame.draw.line(surf, (r, g, b, alpha), (0, y), (width, y))
+        _leaderboard_cache["gradient_surfaces"][cache_key] = surf
+    return _leaderboard_cache["gradient_surfaces"][cache_key]
+
+def _get_lb_background():
+    """获取缓存的背景（六边形网格）"""
+    if (_leaderboard_cache["bg_surface"] is None or 
+        _leaderboard_cache["bg_size"] != (WIDTH, HEIGHT)):
+        # 创建静态背景
+        bg = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        bg.fill((5, 8, 15))
+        
+        # 六边形网格
+        hex_alpha = 18
+        hex_color = (hex_alpha, int(hex_alpha * 1.5), hex_alpha // 2)
+        hex_size = 60
+        for row in range(-1, HEIGHT // hex_size + 2):
+            for col in range(-1, WIDTH // hex_size + 2):
+                cx = col * hex_size * 1.5 + (row % 2) * hex_size * 0.75
+                cy = row * hex_size * 0.866
+                points = []
+                for angle in range(6):
+                    px = cx + hex_size * 0.4 * math.cos(math.radians(60 * angle + 30))
+                    py = cy + hex_size * 0.4 * math.sin(math.radians(60 * angle + 30))
+                    points.append((px, py))
+                if len(points) >= 3:
+                    pygame.draw.polygon(bg, hex_color, points, 1)
+        
+        _leaderboard_cache["bg_surface"] = bg
+        _leaderboard_cache["bg_size"] = (WIDTH, HEIGHT)
+    return _leaderboard_cache["bg_surface"]
+
+def _reload_leaderboard_data():
+    """重新加载排行榜数据"""
+    global leaderboard_data, leaderboard_mode, leaderboard_sort_by, leaderboard_stats_tab
+    leaderboard_data = load_leaderboard()
+    leaderboard_mode = "normal"
+    leaderboard_sort_by = "score"
+    leaderboard_stats_tab = 0
+
+# 游戏统计（每局记录）
+game_stats = {
+    "kills": 0,
+    "boss_kills": 0,
+    "start_time": 0,
+    "survival_time": 0,
+}
 
 # 房间系统状态
 show_full_map = False  # 是否显示完整地图
@@ -326,6 +470,8 @@ boss_challenge_swap_timer = 0  # 换位动画计时器
 boss_challenge_pulse_timer = 0  # 脉冲效果计时器
 boss_challenge_scroll_offset = 0  # 列表滚动偏移
 boss_challenge_key_repeat = {"up": 0, "down": 0, "left": 0, "right": 0}  # 键盘连按计时
+boss_challenge_enabled = {}  # Boss启用状态字典 {boss_key: True/False}
+boss_challenge_preset = 0  # 当前预设模式 (0=自定义, 1=快速战3, 2=标准战5, 3=持久战10, 4=全Boss战)
 
 # 属性面板卡牌列表滚动
 stats_panel_card_scroll = 0  # 卡牌列表滚动偏移（0表示顶部）
@@ -1108,6 +1254,7 @@ def reset_game():
     global normal_spawn_timer, normal_spawn_cycle
     global wave_event_timer, wave_event_active, wave_warning_timer
     global current_stage, last_kill_timer, no_damage_timer, recent_enemy_types
+    global game_stats
     
     # reset_game() called
     
@@ -1120,6 +1267,14 @@ def reset_game():
     upgrade_options = []
     upgrade_selected = 0
     levelup_ready = False
+    
+    # 初始化游戏统计
+    game_stats = {
+        "kills": 0,
+        "boss_kills": 0,
+        "start_time": pygame.time.get_ticks(),
+        "survival_time": 0,
+    }
     
     all_sprites.empty()
     mobs.empty()
@@ -1308,97 +1463,295 @@ def draw_menu_ui():
 
 
 def draw_audio_hub_ui():
-    draw_text(screen, "音乐枢纽", 64, WIDTH//2, 90, CYAN, glow=True)
-    back_rect = _get_audio_hub_back_rect()
+    """绘制音乐枢纽界面 - 赛博朋克风格"""
+    t = pygame.time.get_ticks()
     mx, my = pygame.mouse.get_pos()
-    back_hover = back_rect.collidepoint(mx, my)
-    draw_cyber_rect(screen, back_rect, (32, 34, 46) if back_hover else (20, 24, 32), alpha=240, fill=True)
-    draw_cyber_rect(screen, back_rect, CYAN if back_hover else GRAY, border_width=2, fill=False)
-    draw_text(screen, "返回主菜单", 24, back_rect.centerx, back_rect.centery - 10, WHITE if back_hover else GRAY)
+    
+    # ====== 背景 ======
+    screen.fill((6, 10, 18))
+    
+    # 动态网格背景
+    grid_alpha = int(15 + 8 * math.sin(t / 1200))
+    for gx in range(0, WIDTH, 80):
+        pygame.draw.line(screen, (0, grid_alpha, grid_alpha * 2), (gx, 0), (gx, HEIGHT), 1)
+    for gy in range(0, HEIGHT, 80):
+        pygame.draw.line(screen, (0, grid_alpha, grid_alpha * 2), (0, gy), (WIDTH, gy), 1)
+    
+    # 音波装饰线（水平波动）
+    wave_y = 160
+    for i in range(0, WIDTH, 8):
+        wave_offset = math.sin((i + t * 0.1) * 0.02) * 15
+        pygame.draw.circle(screen, (0, 60, 80), (i, int(wave_y + wave_offset)), 2)
+    
+    # 角落装饰 - 音符主题
+    corner_size = 35
+    corner_color = (0, 180, 220)
+    pygame.draw.lines(screen, corner_color, False, [(0, corner_size), (0, 0), (corner_size, 0)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(WIDTH - corner_size, 0), (WIDTH - 1, 0), (WIDTH - 1, corner_size)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(0, HEIGHT - corner_size), (0, HEIGHT - 1), (corner_size, HEIGHT - 1)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(WIDTH - corner_size, HEIGHT - 1), (WIDTH - 1, HEIGHT - 1), (WIDTH - 1, HEIGHT - corner_size)], 2)
+    
+    # ====== 标题区 ======
+    title_glow = int(180 + 60 * math.sin(t / 600))
+    # 标题背景条
+    title_bar = pygame.Rect(0, 25, WIDTH, 55)
+    title_bg = pygame.Surface((WIDTH, 55), pygame.SRCALPHA)
+    pygame.draw.rect(title_bg, (0, 35, 55, 140), (0, 0, WIDTH, 55))
+    screen.blit(title_bg, (0, 25))
+    pygame.draw.line(screen, (0, title_glow, title_glow), (80, 80), (WIDTH - 80, 80), 2)
+    
+    # 标题文字 - 音符装饰
+    title_font = pygame.font.SysFont("SimHei", 48)
+    emoji_font = pygame.font.SysFont("Segoe UI Emoji", 32)
+    
+    title_surf = title_font.render("音乐枢纽", True, (0, title_glow, title_glow))
+    note_left = emoji_font.render("🎵", True, (0, title_glow - 40, title_glow - 20))
+    note_right = emoji_font.render("🎶", True, (0, title_glow - 40, title_glow - 20))
+    
+    title_x = WIDTH//2 - title_surf.get_width()//2
+    screen.blit(note_left, (title_x - 50, 38))
+    screen.blit(title_surf, (title_x, 35))
+    screen.blit(note_right, (title_x + title_surf.get_width() + 15, 38))
+    
+    # 副标题
+    draw_text(screen, "探索霓虹深空的声音世界", 18, WIDTH//2, 100, (80, 120, 140))
+    
+    # ====== 功能卡片 ======
     rects = _get_audio_hub_card_rects()
     for idx, (rect, option) in enumerate(zip(rects, AUDIO_HUB_OPTIONS)):
         hover = rect.collidepoint(mx, my)
         selected = (idx == audio_hub_selected)
         base_color = option["color"]
-        bg = (
-            (base_color[0]//2 + 30, base_color[1]//2 + 18, base_color[2]//2 + 25)
-            if hover or selected else (20, 24, 36)
-        )
-        border = base_color if hover or selected else (70, 70, 90)
-        draw_cyber_rect(screen, rect, bg, alpha=235, fill=True)
-        draw_cyber_rect(screen, rect, border, border_width=4 if selected else 2, fill=False)
-        draw_text(screen, option["title"], 42, rect.centerx, rect.y + 60, WHITE, glow=selected)
-        draw_text(screen, option["tagline"], 24, rect.centerx, rect.y + 110, base_color)
-        desc_lines = textwrap.wrap(option["desc"], width=18)
-        text_y = rect.y + 160
-        for line in desc_lines[:5]:
-            draw_text(screen, line, 20, rect.centerx, text_y, GRAY)
-            text_y += 28
-        draw_text(screen, "点击进入", 20, rect.centerx, rect.bottom - 70, WHITE)
+        
+        # 卡片背景 - 渐变效果
+        if hover or selected:
+            bg = (base_color[0]//3 + 20, base_color[1]//3 + 15, base_color[2]//3 + 20)
+            # 发光效果
+            glow_surf = pygame.Surface((rect.width + 20, rect.height + 20), pygame.SRCALPHA)
+            pygame.draw.rect(glow_surf, (base_color[0]//4, base_color[1]//4, base_color[2]//4, 80), 
+                           (0, 0, rect.width + 20, rect.height + 20), border_radius=8)
+            screen.blit(glow_surf, (rect.x - 10, rect.y - 10))
+        else:
+            bg = (15, 20, 32)
+        
+        draw_cyber_rect(screen, rect, bg, alpha=245, fill=True)
+        
+        # 边框动画
+        border_width = 3 if selected else (2 if hover else 1)
+        border_color = base_color if (hover or selected) else (50, 60, 75)
+        draw_cyber_rect(screen, rect, border_color, border_width=border_width, fill=False)
+        
+        # 顶部装饰条
+        deco_rect = pygame.Rect(rect.x + 10, rect.y + 8, rect.width - 20, 4)
+        pygame.draw.rect(screen, base_color if (hover or selected) else (40, 50, 65), deco_rect, border_radius=2)
+        
+        # 图标区域
+        icon_y = rect.y + 50
+        icon_size = 60
+        icon_rect = pygame.Rect(rect.centerx - icon_size//2, icon_y, icon_size, icon_size)
+        pygame.draw.rect(screen, (base_color[0]//6, base_color[1]//6, base_color[2]//6), icon_rect, border_radius=8)
+        pygame.draw.rect(screen, base_color if (hover or selected) else (60, 70, 90), icon_rect, 2, border_radius=8)
+        
+        # 图标
+        icon_font = pygame.font.SysFont("Segoe UI Emoji", 32)
+        icon_text = "🎵" if option["id"] == "music_library" else "🔊"
+        icon_surf = icon_font.render(icon_text, True, WHITE)
+        screen.blit(icon_surf, (icon_rect.centerx - icon_surf.get_width()//2, icon_rect.centery - icon_surf.get_height()//2))
+        
+        # 标题
+        title_color = WHITE if (hover or selected) else (200, 200, 210)
+        draw_text(screen, option["title"], 36, rect.centerx, rect.y + 130, title_color, glow=(hover or selected))
+        
+        # 标语
+        draw_text(screen, option["tagline"], 20, rect.centerx, rect.y + 170, base_color)
+        
+        # 分隔线
+        sep_y = rect.y + 195
+        pygame.draw.line(screen, (40, 50, 65), (rect.x + 30, sep_y), (rect.x + rect.width - 30, sep_y), 1)
+        
+        # 描述
+        desc_lines = textwrap.wrap(option["desc"], width=16)
+        text_y = rect.y + 215
+        for line in desc_lines[:4]:
+            draw_text(screen, line, 17, rect.centerx, text_y, (140, 150, 165))
+            text_y += 26
+        
+        # 进入按钮
+        btn_rect = pygame.Rect(rect.centerx - 60, rect.bottom - 65, 120, 36)
+        btn_hover = btn_rect.collidepoint(mx, my)
+        btn_bg = (base_color[0]//3, base_color[1]//3, base_color[2]//3) if btn_hover else (25, 30, 42)
+        draw_cyber_rect(screen, btn_rect, btn_bg, alpha=230, fill=True)
+        draw_cyber_rect(screen, btn_rect, base_color if btn_hover else (70, 80, 100), border_width=1, fill=False)
+        # 分开渲染符号和文字
+        btn_text_col = WHITE if btn_hover else (180, 180, 190)
+        btn_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 16)
+        btn_text_font = pygame.font.SysFont("SimHei", 16)
+        btn_icon_surf = btn_emoji_font.render("▸", True, btn_text_col)
+        btn_label_surf = btn_text_font.render(" 进入", True, btn_text_col)
+        btn_total_w = btn_icon_surf.get_width() + btn_label_surf.get_width()
+        screen.blit(btn_icon_surf, (btn_rect.centerx - btn_total_w//2, btn_rect.centery - btn_icon_surf.get_height()//2))
+        screen.blit(btn_label_surf, (btn_rect.centerx - btn_total_w//2 + btn_icon_surf.get_width(), btn_rect.centery - btn_label_surf.get_height()//2))
+        
+        # 选中指示器
         if selected:
-            draw_text(screen, "●", 28, rect.centerx, rect.bottom - 30, base_color)
+            indicator_y = rect.bottom - 18
+            pygame.draw.circle(screen, base_color, (rect.centerx, indicator_y), 5)
+            pygame.draw.circle(screen, WHITE, (rect.centerx, indicator_y), 3)
+    
+    # ====== 返回按钮 ======
+    back_rect = _get_audio_hub_back_rect()
+    back_hover = back_rect.collidepoint(mx, my)
+    back_bg = (40, 35, 50) if back_hover else (20, 22, 32)
+    draw_cyber_rect(screen, back_rect, back_bg, alpha=235, fill=True)
+    draw_cyber_rect(screen, back_rect, CYAN if back_hover else (60, 70, 85), border_width=2, fill=False)
+    # 分开渲染符号和文字
+    back_text_col = WHITE if back_hover else (150, 160, 170)
+    back_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 18)
+    back_text_font = pygame.font.SysFont("SimHei", 18)
+    back_icon_surf = back_emoji_font.render("◀", True, back_text_col)
+    back_label_surf = back_text_font.render(" 返回主菜单", True, back_text_col)
+    back_total_w = back_icon_surf.get_width() + back_label_surf.get_width()
+    screen.blit(back_icon_surf, (back_rect.centerx - back_total_w//2, back_rect.centery - back_icon_surf.get_height()//2))
+    screen.blit(back_label_surf, (back_rect.centerx - back_total_w//2 + back_icon_surf.get_width(), back_rect.centery - back_label_surf.get_height()//2))
+    
+    # 底部装饰线
+    pygame.draw.line(screen, (0, 60, 80), (100, HEIGHT - 50), (WIDTH - 100, HEIGHT - 50), 1)
 
 
 def draw_music_library_ui():
-    draw_text(screen, "音乐馆", 56, WIDTH//2, 60, CYAN, glow=True)
+    """绘制音乐馆界面 - 赛博朋克风格"""
+    t = pygame.time.get_ticks()
+    mx, my = pygame.mouse.get_pos()
+    
+    # ====== 背景 ======
+    screen.fill((6, 10, 18))
+    
+    # 动态网格背景
+    grid_alpha = int(12 + 6 * math.sin(t / 1000))
+    for gx in range(0, WIDTH, 70):
+        pygame.draw.line(screen, (0, grid_alpha, grid_alpha * 2), (gx, 0), (gx, HEIGHT), 1)
+    for gy in range(0, HEIGHT, 70):
+        pygame.draw.line(screen, (0, grid_alpha, grid_alpha * 2), (0, gy), (WIDTH, gy), 1)
+    
+    # 角落装饰
+    corner_size = 28
+    corner_color = (0, 150, 200)
+    pygame.draw.lines(screen, corner_color, False, [(0, corner_size), (0, 0), (corner_size, 0)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(WIDTH - corner_size, 0), (WIDTH - 1, 0), (WIDTH - 1, corner_size)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(0, HEIGHT - corner_size), (0, HEIGHT - 1), (corner_size, HEIGHT - 1)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(WIDTH - corner_size, HEIGHT - 1), (WIDTH - 1, HEIGHT - 1), (WIDTH - 1, HEIGHT - corner_size)], 2)
+    
+    # ====== 标题区 ======
+    title_glow = int(180 + 55 * math.sin(t / 500))
+    title_bar = pygame.Rect(0, 8, WIDTH, 48)
+    title_bg = pygame.Surface((WIDTH, 48), pygame.SRCALPHA)
+    pygame.draw.rect(title_bg, (0, 35, 55, 130), (0, 0, WIDTH, 48))
+    screen.blit(title_bg, (0, 8))
+    pygame.draw.line(screen, (0, title_glow, title_glow), (60, 56), (WIDTH - 60, 56), 2)
+    
+    # 标题文字
+    title_font = pygame.font.SysFont("SimHei", 38)
+    emoji_font = pygame.font.SysFont("Segoe UI Emoji", 28)
+    title_surf = title_font.render("音乐馆", True, (0, title_glow, title_glow))
+    note_left = emoji_font.render("🎵", True, (0, title_glow - 30, title_glow - 15))
+    note_right = emoji_font.render("🎶", True, (0, title_glow - 30, title_glow - 15))
+    title_x = WIDTH//2 - title_surf.get_width()//2
+    screen.blit(note_left, (title_x - 42, 16))
+    screen.blit(title_surf, (title_x, 15))
+    screen.blit(note_right, (title_x + title_surf.get_width() + 10, 16))
+    
+    # ====== 布局获取 ======
     list_rect, info_rect, controls = get_music_library_layout()
-    draw_cyber_rect(screen, list_rect, (15, 20, 35), alpha=230, fill=True)
-    draw_cyber_rect(screen, list_rect, CYAN, border_width=2, fill=False)
-    draw_cyber_rect(screen, info_rect, (12, 16, 24), alpha=230, fill=True)
-    draw_cyber_rect(screen, info_rect, MAGENTA, border_width=2, fill=False)
-    draw_text(screen, f"曲目列表 ({len(music_library_tracks)})", 24, list_rect.x + 10, list_rect.y - 40, WHITE, align="left")
-    draw_text(screen, "曲目信息", 24, info_rect.x + 10, info_rect.y - 40, WHITE, align="left")
+    
+    # ====== 左侧列表区 ======
+    # 列表标题条
+    list_title_rect = pygame.Rect(list_rect.x, list_rect.y - 32, list_rect.width, 28)
+    draw_cyber_rect(screen, list_title_rect, (0, 40, 60), alpha=200, fill=True)
+    # 分开渲染符号和文字
+    list_title_emoji = pygame.font.SysFont("Segoe UI Emoji", 13)
+    list_title_text = pygame.font.SysFont("SimHei", 13)
+    list_icon = list_title_emoji.render("◇", True, CYAN)
+    list_label = list_title_text.render(f" 曲目列表 ({len(music_library_tracks)})", True, CYAN)
+    list_total = list_icon.get_width() + list_label.get_width()
+    screen.blit(list_icon, (list_title_rect.centerx - list_total//2, list_title_rect.y + 6))
+    screen.blit(list_label, (list_title_rect.centerx - list_total//2 + list_icon.get_width(), list_title_rect.y + 6))
+    
+    # 列表背景
+    draw_cyber_rect(screen, list_rect, (10, 16, 28), alpha=240, fill=True)
+    draw_cyber_rect(screen, list_rect, (40, 80, 100), border_width=1, fill=False)
+    # 左边高亮条
+    pygame.draw.rect(screen, CYAN, (list_rect.x, list_rect.y, 3, list_rect.height))
+    
+    # ====== 右侧信息区 ======
+    info_title_rect = pygame.Rect(info_rect.x, info_rect.y - 32, info_rect.width, 28)
+    draw_cyber_rect(screen, info_title_rect, (50, 30, 60), alpha=200, fill=True)
+    # 分开渲染符号和文字
+    info_title_emoji = pygame.font.SysFont("Segoe UI Emoji", 13)
+    info_title_text = pygame.font.SysFont("SimHei", 13)
+    info_icon = info_title_emoji.render("◆", True, MAGENTA)
+    info_label = info_title_text.render(" 曲目信息", True, MAGENTA)
+    info_total = info_icon.get_width() + info_label.get_width()
+    screen.blit(info_icon, (info_title_rect.centerx - info_total//2, info_title_rect.y + 6))
+    screen.blit(info_label, (info_title_rect.centerx - info_total//2 + info_icon.get_width(), info_title_rect.y + 6))
+    
+    draw_cyber_rect(screen, info_rect, (12, 14, 22), alpha=240, fill=True)
+    draw_cyber_rect(screen, info_rect, (80, 50, 90), border_width=1, fill=False)
+    pygame.draw.rect(screen, MAGENTA, (info_rect.x, info_rect.y, 3, info_rect.height))
 
+    # ====== 控制区域 ======
     controls_layout = build_music_library_controls(list_rect)
     search_rect = controls_layout["search_rect"]
     sort_buttons = controls_layout["sort_buttons"]
     chips = controls_layout["filter_chips"]
     content_top = controls_layout["content_top"]
 
-    mx, my = pygame.mouse.get_pos()
-
-    # Search box
+    # 搜索框
     search_hover = search_rect.collidepoint(mx, my)
     search_active = music_library_search_active
-    draw_cyber_rect(
-        screen,
-        search_rect,
-        (32, 38, 52) if (search_hover or search_active) else (22, 26, 34),
-        alpha=235,
-        fill=True,
-    )
-    draw_cyber_rect(
-        screen,
-        search_rect,
-        CYAN if search_active else (CYAN if search_hover else GRAY),
-        border_width=2,
-        fill=False,
-    )
-    search_text = music_library_search_query or "搜索曲目 / 描述"
-    color = WHITE if music_library_search_query else GRAY
-    draw_text(screen, search_text, 18, search_rect.x + 10, search_rect.y + 8, color, align="left")
+    search_bg = (25, 35, 50) if (search_hover or search_active) else (18, 22, 32)
+    draw_cyber_rect(screen, search_rect, search_bg, alpha=240, fill=True)
+    border_col = CYAN if search_active else ((0, 120, 150) if search_hover else (50, 60, 75))
+    draw_cyber_rect(screen, search_rect, border_col, border_width=2 if search_active else 1, fill=False)
+    # 搜索图标
+    search_icon_font = pygame.font.SysFont("Segoe UI Emoji", 14)
+    search_icon = search_icon_font.render("🔍", True, GRAY)
+    screen.blit(search_icon, (search_rect.x + 8, search_rect.y + 8))
+    search_text = music_library_search_query or "搜索曲目 / 描述..."
+    color = WHITE if music_library_search_query else (100, 110, 125)
+    draw_text(screen, search_text, 16, search_rect.x + 32, search_rect.y + 8, color, align="left")
 
-    # Sort buttons
+    # 排序按钮
     for mode, label, rect in sort_buttons:
         active = (mode == music_library_sort_mode)
         hover = rect.collidepoint(mx, my)
-        bg = (35, 40, 60) if (active or hover) else (22, 24, 33)
-        border = CYAN if active else (CYAN if hover else GRAY)
-        draw_cyber_rect(screen, rect, bg, alpha=220, fill=True)
-        draw_cyber_rect(screen, rect, border, border_width=2 if (active or hover) else 1, fill=False)
-        draw_text(screen, label, 16, rect.centerx, rect.centery - 8, WHITE if active else (200, 200, 210))
+        bg = (30, 50, 70) if active else ((25, 35, 50) if hover else (18, 22, 32))
+        border = CYAN if active else ((0, 100, 130) if hover else (45, 55, 70))
+        draw_cyber_rect(screen, rect, bg, alpha=230, fill=True)
+        draw_cyber_rect(screen, rect, border, border_width=2 if active else 1, fill=False)
+        text_col = WHITE if active else ((200, 210, 220) if hover else (140, 150, 165))
+        draw_text(screen, label, 14, rect.centerx, rect.centery - 7, text_col)
 
-    # Scene filter chips
+    # 场景过滤标签
     for key, label, rect in chips:
         active = (key == music_library_filter)
         hover = rect.collidepoint(mx, my)
-        base_col = CYAN if active else (80, 90, 110)
-        draw_cyber_rect(screen, rect, (30, 36, 50) if hover or active else (20, 24, 32), alpha=230, fill=True)
-        draw_cyber_rect(screen, rect, base_col if (hover or active) else GRAY, border_width=1, fill=False)
-        draw_text(screen, label, 18, rect.centerx, rect.centery - 8, WHITE if active else (200, 200, 210))
+        if active:
+            bg = (0, 60, 80)
+            border = CYAN
+        elif hover:
+            bg = (20, 35, 50)
+            border = (0, 100, 130)
+        else:
+            bg = (15, 20, 30)
+            border = (45, 55, 70)
+        draw_cyber_rect(screen, rect, bg, alpha=235, fill=True)
+        draw_cyber_rect(screen, rect, border, border_width=1, fill=False)
+        text_col = WHITE if active else ((190, 200, 210) if hover else (120, 130, 145))
+        draw_text(screen, label, 16, rect.centerx, rect.centery - 7, text_col)
 
-    padding = 12
-    row_height = MUSIC_LIBRARY_ITEM_HEIGHT - 20
+    # ====== 曲目列表 ======
+    padding = 10
+    row_height = MUSIC_LIBRARY_ITEM_HEIGHT - 18
     visible_rows = _music_library_visible_rows()
     start_idx = music_library_scroll_index
     end_idx = min(len(music_library_tracks), start_idx + visible_rows)
@@ -1406,7 +1759,7 @@ def draw_music_library_ui():
 
     if not music_library_tracks:
         msg = "未扫描到音乐文件" if getattr(sound_mgr, "enabled", True) else "音频系统未启用"
-        draw_text(screen, msg, 24, list_rect.centerx, list_rect.centery, GRAY)
+        draw_text(screen, msg, 22, list_rect.centerx, list_rect.centery, (80, 90, 105))
     else:
         for row, idx in enumerate(range(start_idx, end_idx)):
             track = music_library_tracks[idx]
@@ -1418,85 +1771,253 @@ def draw_music_library_ui():
             )
             is_selected = (idx == music_library_selected)
             is_playing = (music_library_now_playing == track["id"])
-            bg_color = (40, 50, 70)
-            if is_playing:
-                bg_color = (55, 30, 30)
+            
+            # 行背景颜色
             if is_selected:
-                bg_color = (65, 90, 130)
-            draw_cyber_rect(screen, row_rect, bg_color, alpha=220, fill=True)
-            border_color = CYAN if is_selected else (MAGENTA if is_playing else (60, 60, 80))
-            draw_cyber_rect(screen, row_rect, border_color, border_width=2, fill=False)
-            draw_text(screen, track["display"], 24, row_rect.x + 12, row_rect.y + 4, WHITE, align="left")
-            source_line = _truncate_music_text(track["source"], 36)
-            draw_text(screen, source_line, 18, row_rect.x + 12, row_rect.y + row_height - 18, GRAY, align="left")
+                bg_color = (30, 60, 90)
+            elif is_playing:
+                bg_color = (50, 25, 35)
+            else:
+                bg_color = (18, 24, 36) if row % 2 == 0 else (22, 28, 40)
+            
+            draw_cyber_rect(screen, row_rect, bg_color, alpha=230, fill=True)
+            
+            # 边框
+            if is_selected:
+                draw_cyber_rect(screen, row_rect, CYAN, border_width=2, fill=False)
+                pygame.draw.rect(screen, CYAN, (row_rect.x, row_rect.y + 2, 3, row_rect.height - 4))
+            elif is_playing:
+                draw_cyber_rect(screen, row_rect, (200, 80, 120), border_width=1, fill=False)
+            
+            # 曲目名称
+            name_color = WHITE if is_selected else ((255, 200, 220) if is_playing else (200, 205, 215))
+            draw_text(screen, track["display"], 20, row_rect.x + 14, row_rect.y + 6, name_color, align="left")
+            
+            # 场景来源
+            source_line = _truncate_music_text(track["source"], 32)
+            draw_text(screen, source_line, 14, row_rect.x + 14, row_rect.y + row_height - 16, (90, 100, 115), align="left")
+            
+            # 播放状态
             if is_playing:
-                draw_text(screen, "播放中", 18, row_rect.right - 16, row_rect.centery - 10, LIME, align="right")
+                # 播放图标 + 文字分开渲染
+                play_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 12)
+                play_text_font = pygame.font.SysFont("SimHei", 12)
+                icon_surf = play_emoji_font.render("▶", True, LIME)
+                text_surf = play_text_font.render(" 播放中", True, LIME)
+                total_w = icon_surf.get_width() + text_surf.get_width()
+                screen.blit(icon_surf, (row_rect.right - 14 - total_w, row_rect.centery - icon_surf.get_height()//2))
+                screen.blit(text_surf, (row_rect.right - 14 - total_w + icon_surf.get_width(), row_rect.centery - text_surf.get_height()//2))
 
+        # 滚动条
         if len(music_library_tracks) > visible_rows:
             scroll_track_h = list_rect.bottom - padding - base_y
             if scroll_track_h > 0:
-                indicator_h = max(20, int(scroll_track_h * (visible_rows / len(music_library_tracks))))
+                indicator_h = max(30, int(scroll_track_h * (visible_rows / len(music_library_tracks))))
                 max_scroll = max(1, len(music_library_tracks) - visible_rows)
                 indicator_y = base_y + int((scroll_track_h - indicator_h) * (music_library_scroll_index / max_scroll))
-                pygame.draw.rect(screen, (50, 50, 70), (list_rect.right - 10, base_y, 4, scroll_track_h), border_radius=2)
-                pygame.draw.rect(screen, CYAN, (list_rect.right - 10, indicator_y, 4, indicator_h), border_radius=2)
+                
+                # 轨道
+                scroll_bar_x = list_rect.right - 10
+                pygame.draw.rect(screen, (30, 40, 55), (scroll_bar_x, base_y, 8, scroll_track_h), border_radius=4)
+                
+                # 滑块 - 拖动时高亮
+                thumb_rect = pygame.Rect(scroll_bar_x, indicator_y, 8, indicator_h)
+                is_hover = thumb_rect.inflate(8, 0).collidepoint(mx, my)
+                thumb_color = (100, 220, 255) if (music_library_dragging_scrollbar or is_hover) else CYAN
+                pygame.draw.rect(screen, thumb_color, thumb_rect, border_radius=4)
 
-    draw_cyber_rect(screen, info_rect.inflate(-20, -20), (20, 28, 40), alpha=220, fill=True)
-    info_inner = info_rect.inflate(-20, -20)
-    info_y = info_inner.y + 10
+    # ====== 曲目详情面板 ======
+    info_inner = info_rect.inflate(-24, -24)
+    draw_cyber_rect(screen, info_inner, (16, 22, 35), alpha=220, fill=True)
+    
+    info_y = info_inner.y + 12
     if 0 <= music_library_selected < len(music_library_tracks):
         current = music_library_tracks[music_library_selected]
-        draw_text(screen, current["display"], 32, info_inner.x + 10, info_y, WHITE, align="left")
+        
+        # 曲目名称
+        draw_text(screen, current["display"], 28, info_inner.x + 12, info_y, WHITE, align="left")
+        info_y += 45
+        
+        # 分隔线
+        pygame.draw.line(screen, (50, 60, 80), (info_inner.x + 10, info_y), (info_inner.right - 10, info_y), 1)
+        info_y += 15
+        
+        # ID信息
+        draw_text(screen, "内部ID", 14, info_inner.x + 12, info_y, (80, 100, 120), align="left")
+        draw_text(screen, current['id'], 16, info_inner.x + 12, info_y + 18, (150, 160, 175), align="left")
         info_y += 50
-        draw_text(screen, f"内部ID：{current['id']}", 20, info_inner.x + 10, info_y, GRAY, align="left")
-        info_y += 30
-        draw_text(screen, "关联场景：", 20, info_inner.x + 10, info_y, CYBER_AMBER, align="left")
-        info_y += 30
+        
+        # 关联场景
+        scene_emoji = pygame.font.SysFont("Segoe UI Emoji", 14)
+        scene_text = pygame.font.SysFont("SimHei", 14)
+        scene_icon = scene_emoji.render("◈", True, CYBER_AMBER)
+        scene_label = scene_text.render(" 关联场景", True, CYBER_AMBER)
+        screen.blit(scene_icon, (info_inner.x + 12, info_y))
+        screen.blit(scene_label, (info_inner.x + 12 + scene_icon.get_width(), info_y))
+        info_y += 28
         full_text = "、".join(current.get("source_full", [])) or current.get("source", "未绑定场景")
-        for line in _wrap_music_sources(full_text, limit=20, max_lines=8):
-            draw_text(screen, line, 18, info_inner.x + 25, info_y, GRAY, align="left")
-            info_y += 24
+        for line in _wrap_music_sources(full_text, limit=18, max_lines=6):
+            draw_text(screen, line, 15, info_inner.x + 20, info_y, (130, 140, 155), align="left")
+            info_y += 22
     else:
-        draw_text(screen, "请选择一首曲目", 26, info_inner.centerx, info_inner.centery, GRAY)
+        draw_text(screen, "请选择一首曲目", 22, info_inner.centerx, info_inner.centery, (80, 90, 105))
 
+    # ====== 控制按钮 ======
     control_labels = {
-        "stop": "恢复默认",
-        "play": "播放选中",
-        "back": "返回音乐选择",
+        "stop": ("⏹", "恢复默认"),
+        "play": ("▶", "播放选中"),
+        "back": ("◀", "返回"),
     }
-    mx, my = pygame.mouse.get_pos()
+    ctrl_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 16)
+    ctrl_text_font = pygame.font.SysFont("SimHei", 16)
     for key, rect in controls.items():
         hover = rect.collidepoint(mx, my)
-        draw_cyber_rect(screen, rect, (35, 40, 60) if hover else (20, 24, 36), alpha=230, fill=True)
-        draw_cyber_rect(screen, rect, CYAN if hover else GRAY, border_width=2, fill=False)
-        draw_text(screen, control_labels[key], 22, rect.centerx, rect.centery - 12, WHITE if hover else GRAY)
+        icon, label = control_labels[key]
+        
+        if hover:
+            bg = (35, 50, 70)
+            border = CYAN
+        else:
+            bg = (18, 24, 36)
+            border = (50, 65, 85)
+        
+        draw_cyber_rect(screen, rect, bg, alpha=235, fill=True)
+        draw_cyber_rect(screen, rect, border, border_width=2 if hover else 1, fill=False)
+        
+        # 图标 + 文字分开渲染
+        text_col = WHITE if hover else (150, 160, 175)
+        icon_surf = ctrl_emoji_font.render(icon, True, text_col)
+        label_surf = ctrl_text_font.render(label, True, text_col)
+        total_w = icon_surf.get_width() + 6 + label_surf.get_width()
+        start_x = rect.centerx - total_w // 2
+        screen.blit(icon_surf, (start_x, rect.centery - icon_surf.get_height()//2))
+        screen.blit(label_surf, (start_x + icon_surf.get_width() + 6, rect.centery - label_surf.get_height()//2))
 
-    now_playing_label = "当前播放："
-    status_text = now_playing_label + (next((t["display"] for t in music_library_tracks if t["id"] == music_library_now_playing), _format_music_track_name(music_library_now_playing)) if music_library_now_playing else "默认菜单主题")
-    status_color = LIME if music_library_now_playing else GRAY
-    draw_text(screen, status_text, 22, WIDTH - 40, 30, status_color, align="right")
+    # ====== 当前播放状态 ======
+    status_bar = pygame.Rect(WIDTH - 350, 10, 340, 36)
+    draw_cyber_rect(screen, status_bar, (15, 25, 40), alpha=200, fill=True)
+    status_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 14)
+    status_text_font = pygame.font.SysFont("SimHei", 14)
+    if music_library_now_playing:
+        track_name = next((t["display"] for t in music_library_tracks if t["id"] == music_library_now_playing), _format_music_track_name(music_library_now_playing))
+        emoji_surf = status_emoji_font.render("🎧", True, LIME)
+        text_surf = status_text_font.render(f" 当前播放：{track_name}", True, LIME)
+        total_w = emoji_surf.get_width() + text_surf.get_width()
+        screen.blit(emoji_surf, (status_bar.right - 10 - total_w, status_bar.y + 10))
+        screen.blit(text_surf, (status_bar.right - 10 - total_w + emoji_surf.get_width(), status_bar.y + 10))
+    else:
+        emoji_surf = status_emoji_font.render("🎧", True, (100, 110, 125))
+        text_surf = status_text_font.render(" 当前播放：默认菜单主题", True, (100, 110, 125))
+        total_w = emoji_surf.get_width() + text_surf.get_width()
+        screen.blit(emoji_surf, (status_bar.right - 10 - total_w, status_bar.y + 10))
+        screen.blit(text_surf, (status_bar.right - 10 - total_w + emoji_surf.get_width(), status_bar.y + 10))
 
 def draw_sound_lab_ui():
-    draw_text(screen, "音效实验室", 56, WIDTH//2, 60, CYBER_AMBER, glow=True)
-    list_rect, info_rect, controls = get_sound_lab_layout()
-    draw_cyber_rect(screen, list_rect, (18, 20, 32), alpha=235, fill=True)
-    draw_cyber_rect(screen, list_rect, CYBER_AMBER, border_width=2, fill=False)
-    draw_cyber_rect(screen, info_rect, (14, 16, 26), alpha=235, fill=True)
-    draw_cyber_rect(screen, info_rect, (255, 180, 80), border_width=2, fill=False)
-    draw_text(screen, f"音效列表 ({len(sound_lab_tracks)})", 24, list_rect.x + 10, list_rect.y - 40, WHITE, align="left")
-    draw_text(screen, "音效详情", 24, info_rect.x + 10, info_rect.y - 40, WHITE, align="left")
-
+    """绘制音效实验室界面 - 赛博朋克风格"""
+    t = pygame.time.get_ticks()
     mx, my = pygame.mouse.get_pos()
+    
+    # ====== 背景 ======
+    screen.fill((10, 8, 14))
+    
+    # 动态网格背景 - 琥珀色调
+    grid_alpha = int(12 + 6 * math.sin(t / 900))
+    for gx in range(0, WIDTH, 70):
+        pygame.draw.line(screen, (grid_alpha * 2, grid_alpha, 0), (gx, 0), (gx, HEIGHT), 1)
+    for gy in range(0, HEIGHT, 70):
+        pygame.draw.line(screen, (grid_alpha * 2, grid_alpha, 0), (0, gy), (WIDTH, gy), 1)
+    
+    # 音波装饰 - 脉冲效果
+    pulse_alpha = int(30 + 20 * math.sin(t / 300))
+    for i in range(3):
+        wave_y = 140 + i * 8
+        for x in range(0, WIDTH, 12):
+            wave_h = int(4 + 3 * math.sin((x + t * 0.15 + i * 50) * 0.03))
+            pygame.draw.rect(screen, (pulse_alpha + 20, pulse_alpha, 0), (x, wave_y - wave_h, 6, wave_h * 2), border_radius=1)
+    
+    # 角落装饰 - 琥珀主题
+    corner_size = 28
+    corner_color = (200, 150, 50)
+    pygame.draw.lines(screen, corner_color, False, [(0, corner_size), (0, 0), (corner_size, 0)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(WIDTH - corner_size, 0), (WIDTH - 1, 0), (WIDTH - 1, corner_size)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(0, HEIGHT - corner_size), (0, HEIGHT - 1), (corner_size, HEIGHT - 1)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(WIDTH - corner_size, HEIGHT - 1), (WIDTH - 1, HEIGHT - 1), (WIDTH - 1, HEIGHT - corner_size)], 2)
+    
+    # ====== 标题区 ======
+    title_glow = int(180 + 55 * math.sin(t / 500))
+    title_bar = pygame.Rect(0, 8, WIDTH, 48)
+    title_bg = pygame.Surface((WIDTH, 48), pygame.SRCALPHA)
+    pygame.draw.rect(title_bg, (55, 40, 20, 130), (0, 0, WIDTH, 48))
+    screen.blit(title_bg, (0, 8))
+    pygame.draw.line(screen, (title_glow, int(title_glow * 0.7), 0), (60, 56), (WIDTH - 60, 56), 2)
+    
+    # 标题文字
+    title_font = pygame.font.SysFont("SimHei", 38)
+    emoji_font = pygame.font.SysFont("Segoe UI Emoji", 28)
+    title_surf = title_font.render("音效实验室", True, (title_glow, int(title_glow * 0.7), 0))
+    icon_left = emoji_font.render("🔊", True, (title_glow - 30, int((title_glow - 30) * 0.7), 0))
+    icon_right = emoji_font.render("🎚", True, (title_glow - 30, int((title_glow - 30) * 0.7), 0))
+    title_x = WIDTH//2 - title_surf.get_width()//2
+    screen.blit(icon_left, (title_x - 42, 16))
+    screen.blit(title_surf, (title_x, 15))
+    screen.blit(icon_right, (title_x + title_surf.get_width() + 10, 16))
+    
+    # ====== 布局获取 ======
+    list_rect, info_rect, controls = get_sound_lab_layout()
+    
+    # ====== 左侧列表区 ======
+    list_title_rect = pygame.Rect(list_rect.x, list_rect.y - 32, list_rect.width, 28)
+    draw_cyber_rect(screen, list_title_rect, (60, 45, 20), alpha=200, fill=True)
+    # 分开渲染符号和文字
+    lab_list_emoji = pygame.font.SysFont("Segoe UI Emoji", 13)
+    lab_list_text = pygame.font.SysFont("SimHei", 13)
+    lab_list_icon = lab_list_emoji.render("◇", True, CYBER_AMBER)
+    lab_list_label = lab_list_text.render(f" 音效列表 ({len(sound_lab_tracks)})", True, CYBER_AMBER)
+    lab_list_total = lab_list_icon.get_width() + lab_list_label.get_width()
+    screen.blit(lab_list_icon, (list_title_rect.centerx - lab_list_total//2, list_title_rect.y + 6))
+    screen.blit(lab_list_label, (list_title_rect.centerx - lab_list_total//2 + lab_list_icon.get_width(), list_title_rect.y + 6))
+    
+    draw_cyber_rect(screen, list_rect, (14, 12, 18), alpha=240, fill=True)
+    draw_cyber_rect(screen, list_rect, (80, 60, 40), border_width=1, fill=False)
+    pygame.draw.rect(screen, CYBER_AMBER, (list_rect.x, list_rect.y, 3, list_rect.height))
+    
+    # ====== 右侧信息区 ======
+    info_title_rect = pygame.Rect(info_rect.x, info_rect.y - 32, info_rect.width, 28)
+    draw_cyber_rect(screen, info_title_rect, (70, 50, 25), alpha=200, fill=True)
+    # 分开渲染符号和文字
+    lab_info_emoji = pygame.font.SysFont("Segoe UI Emoji", 13)
+    lab_info_text = pygame.font.SysFont("SimHei", 13)
+    lab_info_icon = lab_info_emoji.render("◆", True, (255, 180, 80))
+    lab_info_label = lab_info_text.render(" 音效详情", True, (255, 180, 80))
+    lab_info_total = lab_info_icon.get_width() + lab_info_label.get_width()
+    screen.blit(lab_info_icon, (info_title_rect.centerx - lab_info_total//2, info_title_rect.y + 6))
+    screen.blit(lab_info_label, (info_title_rect.centerx - lab_info_total//2 + lab_info_icon.get_width(), info_title_rect.y + 6))
+    
+    draw_cyber_rect(screen, info_rect, (12, 10, 16), alpha=240, fill=True)
+    draw_cyber_rect(screen, info_rect, (90, 65, 35), border_width=1, fill=False)
+    pygame.draw.rect(screen, (255, 180, 80), (info_rect.x, info_rect.y, 3, info_rect.height))
+
+    # ====== 分类过滤标签 ======
     chips, filter_band_height = get_sound_lab_filter_layout(list_rect)
     for key, label, rect in chips:
         active = (key == sound_lab_filter)
         hover = rect.collidepoint(mx, my)
-        base_col = CYBER_AMBER if active else (120, 100, 70)
-        draw_cyber_rect(screen, rect, (42, 32, 26) if hover or active else (24, 20, 18), alpha=230, fill=True)
-        draw_cyber_rect(screen, rect, base_col if (hover or active) else GRAY, border_width=1, fill=False)
-        draw_text(screen, label, 18, rect.centerx, rect.centery - 8, WHITE if active else (210, 200, 190))
+        if active:
+            bg = (70, 50, 25)
+            border = CYBER_AMBER
+        elif hover:
+            bg = (45, 35, 20)
+            border = (180, 130, 50)
+        else:
+            bg = (22, 18, 14)
+            border = (60, 50, 35)
+        draw_cyber_rect(screen, rect, bg, alpha=235, fill=True)
+        draw_cyber_rect(screen, rect, border, border_width=1, fill=False)
+        text_col = WHITE if active else ((220, 200, 180) if hover else (140, 120, 100))
+        draw_text(screen, label, 16, rect.centerx, rect.centery - 7, text_col)
 
-    padding = 12
+    # ====== 音效列表 ======
+    padding = 10
     visible_rows = _sound_lab_visible_rows()
     start_idx = sound_lab_scroll_index
     end_idx = min(len(sound_lab_tracks), start_idx + visible_rows)
@@ -1504,7 +2025,7 @@ def draw_sound_lab_ui():
 
     if not sound_lab_tracks:
         msg = "未加载到可用音效" if getattr(sound_mgr, "enabled", True) else "音频系统未启用"
-        draw_text(screen, msg, 24, list_rect.centerx, list_rect.centery, GRAY)
+        draw_text(screen, msg, 22, list_rect.centerx, list_rect.centery, (100, 90, 75))
     else:
         for row, idx in enumerate(range(start_idx, end_idx)):
             track = sound_lab_tracks[idx]
@@ -1512,67 +2033,148 @@ def draw_sound_lab_ui():
                 list_rect.x + padding,
                 content_top + row * SOUND_LAB_ITEM_HEIGHT,
                 list_rect.width - padding * 2,
-                SOUND_LAB_ITEM_HEIGHT - 10,
+                SOUND_LAB_ITEM_HEIGHT - 8,
             )
             is_selected = (idx == sound_lab_selected)
             is_playing = (sound_lab_now_playing == track["id"])
-            bg_color = (46, 46, 64)
-            if is_playing:
-                bg_color = (60, 38, 38)
+            
+            # 行背景
             if is_selected:
-                bg_color = (70, 80, 110)
-            draw_cyber_rect(screen, row_rect, bg_color, alpha=220, fill=True)
-            border_color = CYBER_AMBER if is_selected else ((255, 120, 120) if is_playing else (70, 70, 90))
-            draw_cyber_rect(screen, row_rect, border_color, border_width=2, fill=False)
-            draw_text(screen, track["display"], 24, row_rect.x + 10, row_rect.y + 4, WHITE, align="left")
-            draw_text(screen, track["category"], 18, row_rect.x + 10, row_rect.y + row_rect.height - 20, CYBER_AMBER, align="left")
-            draw_text(screen, _truncate_music_text(track["desc"], 26), 16, row_rect.right - 10, row_rect.y + row_rect.height - 22, GRAY, align="right")
+                bg_color = (50, 40, 25)
+            elif is_playing:
+                bg_color = (55, 30, 30)
+            else:
+                bg_color = (18, 15, 20) if row % 2 == 0 else (22, 18, 24)
+            
+            draw_cyber_rect(screen, row_rect, bg_color, alpha=230, fill=True)
+            
+            # 边框
+            if is_selected:
+                draw_cyber_rect(screen, row_rect, CYBER_AMBER, border_width=2, fill=False)
+                pygame.draw.rect(screen, CYBER_AMBER, (row_rect.x, row_rect.y + 2, 3, row_rect.height - 4))
+            elif is_playing:
+                draw_cyber_rect(screen, row_rect, (200, 100, 100), border_width=1, fill=False)
+            
+            # 音效名称
+            name_color = WHITE if is_selected else ((255, 200, 200) if is_playing else (200, 195, 185))
+            draw_text(screen, track["display"], 20, row_rect.x + 14, row_rect.y + 4, name_color, align="left")
+            
+            # 类别标签
+            cat_color = CYBER_AMBER if is_selected else (180, 140, 60)
+            draw_text(screen, track["category"], 14, row_rect.x + 14, row_rect.y + row_rect.height - 16, cat_color, align="left")
+            
+            # 描述预览
+            desc_text = _truncate_music_text(track["desc"], 22)
+            draw_text(screen, desc_text, 12, row_rect.right - 12, row_rect.y + row_rect.height - 16, (100, 95, 85), align="right")
 
+        # 滚动条
         if len(sound_lab_tracks) > visible_rows:
             scroll_track_h = list_rect.height - padding * 2 - filter_band_height
             if scroll_track_h > 0:
-                indicator_h = max(20, int(scroll_track_h * (visible_rows / len(sound_lab_tracks))))
+                indicator_h = max(30, int(scroll_track_h * (visible_rows / len(sound_lab_tracks))))
                 max_scroll = max(1, len(sound_lab_tracks) - visible_rows)
                 indicator_y = content_top + int((scroll_track_h - indicator_h) * (sound_lab_scroll_index / max_scroll))
-                pygame.draw.rect(screen, (50, 50, 70), (list_rect.right - 8, content_top, 4, scroll_track_h), border_radius=2)
-                pygame.draw.rect(screen, CYBER_AMBER, (list_rect.right - 8, indicator_y, 4, indicator_h), border_radius=2)
+                
+                # 轨道
+                scroll_bar_x = list_rect.right - 10
+                pygame.draw.rect(screen, (40, 35, 28), (scroll_bar_x, content_top, 8, scroll_track_h), border_radius=4)
+                
+                # 滑块 - 拖动时高亮
+                thumb_rect = pygame.Rect(scroll_bar_x, indicator_y, 8, indicator_h)
+                is_hover = thumb_rect.inflate(8, 0).collidepoint(mx, my)
+                thumb_color = (255, 200, 100) if (sound_lab_dragging_scrollbar or is_hover) else CYBER_AMBER
+                pygame.draw.rect(screen, thumb_color, thumb_rect, border_radius=4)
 
-    draw_cyber_rect(screen, info_rect.inflate(-20, -20), (24, 26, 40), alpha=230, fill=True)
-    info_inner = info_rect.inflate(-20, -20)
-    info_y = info_inner.y + 10
+    # ====== 音效详情面板 ======
+    info_inner = info_rect.inflate(-24, -24)
+    draw_cyber_rect(screen, info_inner, (20, 18, 25), alpha=220, fill=True)
+    
+    info_y = info_inner.y + 12
     if 0 <= sound_lab_selected < len(sound_lab_tracks):
         current = sound_lab_tracks[sound_lab_selected]
-        draw_text(screen, current["display"], 34, info_inner.x + 10, info_y, WHITE, align="left")
-        info_y += 48
-        draw_text(screen, f"类别：{current['category']}", 20, info_inner.x + 10, info_y, CYBER_AMBER, align="left")
+        
+        # 音效名称
+        draw_text(screen, current["display"], 28, info_inner.x + 12, info_y, WHITE, align="left")
+        info_y += 42
+        
+        # 分隔线
+        pygame.draw.line(screen, (60, 50, 35), (info_inner.x + 10, info_y), (info_inner.right - 10, info_y), 1)
+        info_y += 15
+        
+        # 类别
+        draw_text(screen, "类别", 14, info_inner.x + 12, info_y, (100, 90, 70), align="left")
+        draw_text(screen, current['category'], 18, info_inner.x + 12, info_y + 20, CYBER_AMBER, align="left")
+        info_y += 55
+        
+        # ID
+        draw_text(screen, "内部ID", 14, info_inner.x + 12, info_y, (100, 90, 70), align="left")
+        draw_text(screen, current['id'], 14, info_inner.x + 12, info_y + 18, (140, 130, 115), align="left")
+        info_y += 50
+        
+        # 描述
+        desc_emoji = pygame.font.SysFont("Segoe UI Emoji", 14)
+        desc_text = pygame.font.SysFont("SimHei", 14)
+        desc_icon = desc_emoji.render("◈", True, (200, 160, 80))
+        desc_label = desc_text.render(" 描述", True, (200, 160, 80))
+        screen.blit(desc_icon, (info_inner.x + 12, info_y))
+        screen.blit(desc_label, (info_inner.x + 12 + desc_icon.get_width(), info_y))
         info_y += 28
-        draw_text(screen, f"内部ID：{current['id']}", 20, info_inner.x + 10, info_y, GRAY, align="left")
-        info_y += 32
-        draw_text(screen, "描述：", 20, info_inner.x + 10, info_y, WHITE, align="left")
-        info_y += 30
-        desc_lines = textwrap.wrap(current["desc"], width=24)
-        for line in desc_lines[:6]:
-            draw_text(screen, line, 18, info_inner.x + 20, info_y, GRAY, align="left")
-            info_y += 24
+        desc_lines = textwrap.wrap(current["desc"], width=22)
+        for line in desc_lines[:5]:
+            draw_text(screen, line, 15, info_inner.x + 20, info_y, (140, 135, 120), align="left")
+            info_y += 22
     else:
-        draw_text(screen, "请选择一个音效", 26, info_inner.centerx, info_inner.centery, GRAY)
+        draw_text(screen, "请选择一个音效", 22, info_inner.centerx, info_inner.centery, (100, 90, 75))
 
+    # ====== 控制按钮 ======
     control_labels = {
-        "stop": "停止播放",
-        "play": "播放选中",
-        "back": "返回音乐选择",
+        "stop": ("⏹", "停止播放"),
+        "play": ("▶", "播放选中"),
+        "back": ("◀", "返回"),
     }
+    ctrl_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 16)
+    ctrl_text_font = pygame.font.SysFont("SimHei", 16)
     for key, rect in controls.items():
         hover = rect.collidepoint(mx, my)
-        draw_cyber_rect(screen, rect, (45, 40, 50) if hover else (25, 25, 35), alpha=230, fill=True)
-        draw_cyber_rect(screen, rect, CYBER_AMBER if hover else GRAY, border_width=2, fill=False)
-        draw_text(screen, control_labels[key], 22, rect.centerx, rect.centery - 12, WHITE if hover else GRAY)
+        icon, label = control_labels[key]
+        
+        if hover:
+            bg = (55, 45, 30)
+            border = CYBER_AMBER
+        else:
+            bg = (22, 18, 26)
+            border = (70, 55, 40)
+        
+        draw_cyber_rect(screen, rect, bg, alpha=235, fill=True)
+        draw_cyber_rect(screen, rect, border, border_width=2 if hover else 1, fill=False)
+        
+        # 图标 + 文字分开渲染
+        text_col = WHITE if hover else (160, 145, 125)
+        icon_surf = ctrl_emoji_font.render(icon, True, text_col)
+        label_surf = ctrl_text_font.render(label, True, text_col)
+        total_w = icon_surf.get_width() + 6 + label_surf.get_width()
+        start_x = rect.centerx - total_w // 2
+        screen.blit(icon_surf, (start_x, rect.centery - icon_surf.get_height()//2))
+        screen.blit(label_surf, (start_x + icon_surf.get_width() + 6, rect.centery - label_surf.get_height()//2))
 
+    # ====== 当前播放状态 ======
+    status_bar = pygame.Rect(WIDTH - 320, 10, 310, 36)
+    draw_cyber_rect(screen, status_bar, (30, 25, 18), alpha=200, fill=True)
+    status_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 14)
+    status_text_font = pygame.font.SysFont("SimHei", 14)
     if sound_lab_now_playing:
         current_name = next((t["display"] for t in sound_lab_tracks if t["id"] == sound_lab_now_playing), _format_sfx_display(sound_lab_now_playing))
-        draw_text(screen, f"当前音效：{current_name}", 22, WIDTH - 40, 30, CYBER_AMBER, align="right")
+        emoji_surf = status_emoji_font.render("🔊", True, CYBER_AMBER)
+        text_surf = status_text_font.render(f" 当前音效：{current_name}", True, CYBER_AMBER)
+        total_w = emoji_surf.get_width() + text_surf.get_width()
+        screen.blit(emoji_surf, (status_bar.right - 10 - total_w, status_bar.y + 10))
+        screen.blit(text_surf, (status_bar.right - 10 - total_w + emoji_surf.get_width(), status_bar.y + 10))
     else:
-        draw_text(screen, "当前音效：无", 22, WIDTH - 40, 30, GRAY, align="right")
+        emoji_surf = status_emoji_font.render("🔇", True, (100, 90, 75))
+        text_surf = status_text_font.render(" 当前音效：无", True, (100, 90, 75))
+        total_w = emoji_surf.get_width() + text_surf.get_width()
+        screen.blit(emoji_surf, (status_bar.right - 10 - total_w, status_bar.y + 10))
+        screen.blit(text_surf, (status_bar.right - 10 - total_w + emoji_surf.get_width(), status_bar.y + 10))
 
 
 def draw_mode_select_ui():
@@ -1659,9 +2261,11 @@ def draw_mode_select_ui():
         draw_cyber_rect(screen, card_rect, bg_color, alpha=230, fill=True)
         draw_cyber_rect(screen, card_rect, border_color, border_width=border_width, fill=False)
         
-        # 图标
+        # 图标 (使用emoji字体单独渲染)
         icon_y = card_y + 50
-        draw_text(screen, mode["icon"], 70, card_rect.centerx, icon_y, mode["title_color"])
+        emoji_font_icon = pygame.font.SysFont("Segoe UI Emoji", 70)
+        icon_surf = emoji_font_icon.render(mode["icon"], True, mode["title_color"])
+        screen.blit(icon_surf, (card_rect.centerx - icon_surf.get_width()//2, icon_y - icon_surf.get_height()//2))
         
         # 模式名称 (选中时发光)
         name_y = icon_y + 80
@@ -1691,355 +2295,908 @@ def draw_mode_select_ui():
     draw_text(screen, "返回主菜单 [ESC]", 20, back_btn_rect.centerx, back_btn_rect.y + 18, WHITE if is_back_hover else GRAY)
 
 def draw_settings_ui():
-    """绘制系统设置界面"""
+    """绘制系统设置界面 - 豪华赛博朋克风格"""
     global settings_saved_timer, settings_saved_msg
     
-    # 标题
-    draw_text(screen, "系统设置", 48, WIDTH//2, 40, ORANGE, glow=True)
-    
-    # 保存提示
-    if settings_saved_timer > 0:
-        settings_saved_timer -= 1
-        alpha = min(255, settings_saved_timer * 5)
-        draw_text(screen, settings_saved_msg, 24, WIDTH//2, 90, LIME, glow=True)
-    
+    t = pygame.time.get_ticks()
     mx, my = pygame.mouse.get_pos()
     
-    # 设置面板背景 - 增加高度
-    panel_rect = pygame.Rect(WIDTH//2 - 450, 120, 900, HEIGHT - 220)
-    draw_cyber_rect(screen, panel_rect, (10, 15, 25), alpha=230, fill=True)
-    draw_cyber_rect(screen, panel_rect, CYAN, border_width=2, fill=False)
+    # ====== 深空背景 ======
+    screen.fill((8, 12, 22))
     
-    # === 音量设置区域 ===
-    start_y = 160
-    slider_width = 400
-    slider_height = 18
+    # 动态网格背景
+    grid_alpha = 15
+    grid_color = (grid_alpha, int(grid_alpha * 1.5), grid_alpha * 2)
+    grid_size = 40
+    offset = int(t / 100) % grid_size
+    for x in range(-offset, WIDTH + grid_size, grid_size):
+        pygame.draw.line(screen, grid_color, (x, 0), (x, HEIGHT))
+    for y in range(-offset, HEIGHT + grid_size, grid_size):
+        pygame.draw.line(screen, grid_color, (0, y), (WIDTH, y))
+    
+    # 装饰性粒子
+    for i in range(30):
+        px = (i * 97 + int(t / 40)) % WIDTH
+        py = (i * 61 + int(t / 60)) % HEIGHT
+        p_alpha = int(40 + 30 * math.sin(t / 400 + i))
+        pygame.draw.circle(screen, (p_alpha, p_alpha, int(p_alpha * 1.5)), (px, py), 1)
+    
+    # 边框发光
+    glow_intensity = int(100 + 40 * math.sin(t / 500))
+    border_color = (20, glow_intensity, int(glow_intensity * 1.2))
+    pygame.draw.rect(screen, border_color, (0, 0, WIDTH, 3))
+    pygame.draw.rect(screen, border_color, (0, HEIGHT - 3, WIDTH, 3))
+    
+    # ====== 豪华标题区 ======
+    title_panel = pygame.Rect(WIDTH//2 - 200, 15, 400, 55)
+    title_bg = pygame.Surface((400, 55), pygame.SRCALPHA)
+    for ty in range(55):
+        alpha = int(180 - ty * 2)
+        pygame.draw.line(title_bg, (20, 40, 60, alpha), (0, ty), (400, ty))
+    screen.blit(title_bg, title_panel.topleft)
+    pygame.draw.rect(screen, CYAN, title_panel, 2, border_radius=8)
+    
+    # 标题文字（动态发光）
+    title_glow = int(255 * (0.8 + 0.2 * math.sin(t / 300)))
+    title_color = (title_glow, title_glow, title_glow)
+    title_font = pygame.font.SysFont("SimHei", 38)
+    emoji_font = pygame.font.SysFont("Segoe UI Emoji", 32)
+    gear_emoji = emoji_font.render("⚙️", True, CYAN)
+    title_surf = title_font.render(" 系统设置 ", True, title_color)
+    total_w = gear_emoji.get_width() + title_surf.get_width() + gear_emoji.get_width()
+    start_x = WIDTH//2 - total_w//2
+    screen.blit(gear_emoji, (start_x, 26))
+    screen.blit(title_surf, (start_x + gear_emoji.get_width(), 22))
+    screen.blit(gear_emoji, (start_x + gear_emoji.get_width() + title_surf.get_width(), 26))
+    
+    # 保存提示（浮动动画）
+    if settings_saved_timer > 0:
+        settings_saved_timer -= 1
+        msg_alpha = min(255, settings_saved_timer * 8)
+        msg_y = 78 - int(5 * math.sin(t / 100))
+        msg_font = pygame.font.SysFont("SimHei", 22)
+        msg_surf = msg_font.render(settings_saved_msg, True, LIME)
+        msg_surf.set_alpha(msg_alpha)
+        screen.blit(msg_surf, (WIDTH//2 - msg_surf.get_width()//2, msg_y))
+    
+    # ====== 主设置面板 ======
+    panel_rect = pygame.Rect(WIDTH//2 - 460, 100, 920, HEIGHT - 190)
+    panel_bg = pygame.Surface((panel_rect.width, panel_rect.height), pygame.SRCALPHA)
+    for py in range(panel_rect.height):
+        alpha = int(200 - py * 0.12)
+        pygame.draw.line(panel_bg, (12, 18, 30, alpha), (0, py), (panel_rect.width, py))
+    screen.blit(panel_bg, panel_rect.topleft)
+    pygame.draw.rect(screen, (60, 90, 120), panel_rect, 2, border_radius=12)
+    inner = panel_rect.inflate(-8, -8)
+    pygame.draw.rect(screen, (30, 50, 70), inner, 1, border_radius=10)
+    
+    # ====== 音量设置区域 ======
+    section_x = panel_rect.x + 40
+    section_y = panel_rect.y + 25
+    
+    # 音量区域标题
+    vol_title_rect = pygame.Rect(section_x, section_y, 350, 35)
+    pygame.draw.rect(screen, (20, 50, 70, 180), vol_title_rect, border_radius=6)
+    pygame.draw.rect(screen, CYAN, vol_title_rect, 1, border_radius=6)
+    vol_font = pygame.font.SysFont("SimHei", 20)
+    vol_emoji = pygame.font.SysFont("Segoe UI Emoji", 18)
+    vol_icon = vol_emoji.render("🔊", True, CYAN)
+    vol_text = vol_font.render(" 音量控制", True, CYAN)
+    screen.blit(vol_icon, (section_x + 12, section_y + 7))
+    screen.blit(vol_text, (section_x + 38, section_y + 6))
+    
+    start_y = section_y + 50
+    slider_width = 380
+    slider_height = 14
     
     volume_settings = [
-        ("主音量", "master", sound_mgr.master_volume, CYAN),
-        ("音乐音量", "music", sound_mgr.music_volume, MAGENTA),
-        ("音效音量", "sfx", sound_mgr.sfx_volume, YELLOW)
+        ("🎚️", "主音量", "master", sound_mgr.master_volume, CYAN, (0, 180, 220)),
+        ("🎵", "音乐音量", "music", sound_mgr.music_volume, MAGENTA, (200, 50, 200)),
+        ("🔔", "音效音量", "sfx", sound_mgr.sfx_volume, YELLOW, (220, 180, 0))
     ]
     
-    for idx, (label, key, value, color) in enumerate(volume_settings):
-        y_pos = start_y + idx * 75
+    for idx, (emoji, label, key, value, color, glow_color) in enumerate(volume_settings):
+        y_pos = start_y + idx * 65
         
-        # 标签
-        draw_text(screen, label, 24, WIDTH//2 - 350, y_pos, WHITE)
+        # 标签背景卡片
+        card_rect = pygame.Rect(section_x, y_pos - 5, slider_width + 120, 55)
+        card_hover = card_rect.collidepoint(mx, my)
+        card_bg_color = (25, 35, 50) if card_hover else (18, 25, 40)
+        pygame.draw.rect(screen, card_bg_color, card_rect, border_radius=8)
+        pygame.draw.rect(screen, color if card_hover else (60, 70, 90), card_rect, 1, border_radius=8)
+        
+        # Emoji和标签
+        emoji_surf = vol_emoji.render(emoji, True, color)
+        label_surf = vol_font.render(label, True, WHITE)
+        screen.blit(emoji_surf, (section_x + 12, y_pos + 5))
+        screen.blit(label_surf, (section_x + 42, y_pos + 5))
         
         # 滑块轨道
-        track_rect = pygame.Rect(WIDTH//2 - 350, y_pos + 30, slider_width, slider_height)
-        pygame.draw.rect(screen, (40, 40, 50), track_rect, border_radius=10)
-        pygame.draw.rect(screen, GRAY, track_rect, 2, border_radius=10)
+        track_rect = pygame.Rect(section_x + 15, y_pos + 32, slider_width, slider_height)
+        pygame.draw.rect(screen, (30, 35, 45), track_rect, border_radius=7)
         
-        # 进度条
+        # 进度条（渐变效果）
         progress_width = int(slider_width * value)
         if progress_width > 0:
-            progress_rect = pygame.Rect(track_rect.x, track_rect.y, progress_width, slider_height)
-            pygame.draw.rect(screen, color, progress_rect, border_radius=10)
+            progress_surf = pygame.Surface((progress_width, slider_height), pygame.SRCALPHA)
+            for px in range(progress_width):
+                ratio = px / slider_width
+                r = int(glow_color[0] * ratio + 40)
+                g = int(glow_color[1] * ratio + 40)
+                b = int(glow_color[2] * ratio + 40)
+                pygame.draw.line(progress_surf, (r, g, b, 220), (px, 0), (px, slider_height))
+            screen.blit(progress_surf, track_rect.topleft)
+            # 发光边缘
+            pygame.draw.rect(screen, color, pygame.Rect(track_rect.x, track_rect.y, progress_width, slider_height), 1, border_radius=7)
         
         # 滑块手柄
         handle_x = track_rect.x + progress_width
         handle_y = track_rect.centery
-        handle_radius = 15
-        handle_pos = (handle_x, handle_y)
+        handle_radius = 11
         
-        # 检测是否悬停在手柄上
         is_hover = math.hypot(mx - handle_x, my - handle_y) < handle_radius + 5
-        handle_color = WHITE if is_hover or settings_dragging == key else color
+        is_dragging = settings_dragging == key
         
-        pygame.draw.circle(screen, handle_color, handle_pos, handle_radius)
-        pygame.draw.circle(screen, WHITE, handle_pos, handle_radius, 2)
+        # 手柄外圈发光
+        if is_hover or is_dragging:
+            pygame.draw.circle(screen, (*color[:3], 80), (handle_x, handle_y), handle_radius + 6)
+        
+        # 手柄主体
+        handle_color = WHITE if is_dragging else (color if is_hover else (180, 180, 180))
+        pygame.draw.circle(screen, handle_color, (handle_x, handle_y), handle_radius)
+        pygame.draw.circle(screen, WHITE, (handle_x, handle_y), handle_radius, 2)
+        pygame.draw.circle(screen, color, (handle_x, handle_y), 5)  # 中心点
         
         # 百分比显示
         percentage = int(value * 100)
-        draw_text(screen, f"{percentage}%", 20, WIDTH//2 + 80, y_pos + 30, color)
+        pct_font = pygame.font.SysFont("Impact", 22)
+        pct_surf = pct_font.render(f"{percentage}%", True, color)
+        screen.blit(pct_surf, (section_x + slider_width + 45, y_pos + 18))
     
-    # === 其他设置 (左侧列) ===
-    other_y = start_y + 230
-    checkbox_size = 24
+    # ====== 游戏设置区域（右侧）======
+    right_x = panel_rect.x + 520
+    right_y = panel_rect.y + 25
     
-    # FPS显示开关
-    fps_label = "显示FPS"
-    fps_enabled = game_settings.get("show_fps", True)
-    fps_checkbox = pygame.Rect(WIDTH//2 - 350, other_y, checkbox_size, checkbox_size)
+    # 游戏设置标题
+    game_title_rect = pygame.Rect(right_x, right_y, 350, 35)
+    pygame.draw.rect(screen, (50, 30, 20, 180), game_title_rect, border_radius=6)
+    pygame.draw.rect(screen, ORANGE, game_title_rect, 1, border_radius=6)
+    game_icon = vol_emoji.render("🎮", True, ORANGE)
+    game_text = vol_font.render(" 游戏设置", True, ORANGE)
+    screen.blit(game_icon, (right_x + 12, right_y + 7))
+    screen.blit(game_text, (right_x + 38, right_y + 6))
     
-    # 复选框
-    pygame.draw.rect(screen, (40, 40, 50), fps_checkbox, border_radius=5)
-    pygame.draw.rect(screen, CYAN if fps_enabled else GRAY, fps_checkbox, 2, border_radius=5)
-    if fps_enabled:
-        # 打勾
-        pygame.draw.line(screen, CYAN, 
-                        (fps_checkbox.x + 6, fps_checkbox.centery),
-                        (fps_checkbox.centerx - 2, fps_checkbox.y + 20), 3)
-        pygame.draw.line(screen, CYAN,
-                        (fps_checkbox.centerx - 2, fps_checkbox.y + 20),
-                        (fps_checkbox.x + 22, fps_checkbox.y + 8), 3)
+    other_y = right_y + 50
+    checkbox_size = 26
+    label_font = pygame.font.SysFont("SimHei", 18)
     
-    # 标签 - 紧贴复选框右侧，稍微上移
-    draw_text(screen, fps_label, 22, fps_checkbox.right + 10, fps_checkbox.centery - 17, WHITE, align="left")
+    # 设置项列表
+    checkbox_settings = [
+        ("fps", "📊", "显示FPS计数器", game_settings.get("show_fps", True), CYAN),
+        ("shake", "📳", "屏幕震动效果", game_settings.get("screen_shake", True), MAGENTA),
+        ("damage", "💥", "显示伤害数字", game_settings.get("show_damage_numbers", True), YELLOW),
+    ]
     
-    # 屏幕震动开关
-    shake_y = other_y + 40
-    shake_label = "屏幕震动效果"
-    shake_enabled = game_settings.get("screen_shake", True)
-    shake_checkbox = pygame.Rect(WIDTH//2 - 350, shake_y, checkbox_size, checkbox_size)
+    checkboxes = {}
+    for idx, (key, emoji, label, enabled, color) in enumerate(checkbox_settings):
+        y_pos = other_y + idx * 45
+        
+        # 设置项卡片
+        item_rect = pygame.Rect(right_x, y_pos - 5, 350, 40)
+        item_hover = item_rect.collidepoint(mx, my)
+        pygame.draw.rect(screen, (25, 30, 40) if item_hover else (18, 22, 32), item_rect, border_radius=6)
+        pygame.draw.rect(screen, color if enabled else (50, 55, 65), item_rect, 1, border_radius=6)
+        
+        # 复选框
+        cb_rect = pygame.Rect(right_x + 12, y_pos + 2, checkbox_size, checkbox_size)
+        checkboxes[key] = cb_rect
+        
+        # 复选框背景
+        cb_bg_color = (color[0]//4, color[1]//4, color[2]//4) if enabled else (30, 35, 45)
+        pygame.draw.rect(screen, cb_bg_color, cb_rect, border_radius=5)
+        pygame.draw.rect(screen, color if enabled else (70, 75, 85), cb_rect, 2, border_radius=5)
+        
+        # 勾选标记
+        if enabled:
+            pygame.draw.line(screen, color, (cb_rect.x + 6, cb_rect.centery), (cb_rect.centerx - 1, cb_rect.bottom - 6), 3)
+            pygame.draw.line(screen, color, (cb_rect.centerx - 1, cb_rect.bottom - 6), (cb_rect.right - 5, cb_rect.y + 6), 3)
+        
+        # Emoji和标签
+        emoji_surf = vol_emoji.render(emoji, True, color if enabled else GRAY)
+        label_surf = label_font.render(label, True, WHITE if enabled else (120, 120, 130))
+        screen.blit(emoji_surf, (cb_rect.right + 10, y_pos + 3))
+        screen.blit(label_surf, (cb_rect.right + 38, y_pos + 7))
     
-    pygame.draw.rect(screen, (40, 40, 50), shake_checkbox, border_radius=5)
-    pygame.draw.rect(screen, CYAN if shake_enabled else GRAY, shake_checkbox, 2, border_radius=5)
-    if shake_enabled:
-        pygame.draw.line(screen, CYAN,
-                        (shake_checkbox.x + 6, shake_checkbox.centery),
-                        (shake_checkbox.centerx - 2, shake_checkbox.y + 20), 3)
-        pygame.draw.line(screen, CYAN,
-                        (shake_checkbox.centerx - 2, shake_checkbox.y + 20),
-                        (shake_checkbox.x + 22, shake_checkbox.y + 8), 3)
+    # ====== 粒子效果质量 ======
+    particle_y = other_y + 145
+    particle_rect = pygame.Rect(right_x, particle_y - 5, 350, 75)
+    pygame.draw.rect(screen, (18, 22, 32), particle_rect, border_radius=6)
+    pygame.draw.rect(screen, (60, 70, 90), particle_rect, 1, border_radius=6)
     
-    # 标签 - 紧贴复选框右侧，稍微上移
-    draw_text(screen, shake_label, 22, shake_checkbox.right + 10, shake_checkbox.centery - 17, WHITE, align="left")
+    particle_icon = vol_emoji.render("✨", True, LIME)
+    particle_label = label_font.render("粒子效果质量", True, WHITE)
+    screen.blit(particle_icon, (right_x + 12, particle_y + 3))
+    screen.blit(particle_label, (right_x + 40, particle_y + 5))
     
-    # 粒子效果质量 (按钮选择)
-    particle_y = other_y + 80
-    particle_label = "粒子效果质量"
     particle_quality = game_settings.get("particle_quality", "high")
     quality_options = ["low", "medium", "high"]
     quality_names = {"low": "低", "medium": "中", "high": "高"}
+    quality_colors = {"low": (100, 100, 100), "medium": YELLOW, "high": LIME}
     
-    draw_text(screen, particle_label, 22, WIDTH//2 - 350, particle_y - 10, WHITE, align="left")
-    
-    # 绘制三个选项按钮
+    particle_btns = []
     for i, quality in enumerate(quality_options):
-        btn_x = WIDTH//2 - 350 + i * 75
-        btn_rect = pygame.Rect(btn_x, particle_y + 20, 70, 32)
+        btn_x = right_x + 15 + i * 110
+        btn_rect = pygame.Rect(btn_x, particle_y + 35, 100, 30)
+        particle_btns.append((btn_rect, quality))
         is_selected = (particle_quality == quality)
         is_hover = btn_rect.collidepoint(mx, my)
         
-        btn_color = LIME if is_selected else (YELLOW if is_hover else GRAY)
-        pygame.draw.rect(screen, (40, 40, 50) if not is_selected else (0, 80, 0), btn_rect, border_radius=5)
-        pygame.draw.rect(screen, btn_color, btn_rect, 2, border_radius=5)
-        draw_text(screen, quality_names[quality], 18, btn_rect.centerx, btn_rect.centery - 10, WHITE if is_selected else GRAY)
+        btn_bg = quality_colors[quality] if is_selected else ((50, 55, 65) if is_hover else (30, 35, 45))
+        if is_selected:
+            btn_bg = (btn_bg[0]//3, btn_bg[1]//3, btn_bg[2]//3)
+        pygame.draw.rect(screen, btn_bg, btn_rect, border_radius=5)
+        pygame.draw.rect(screen, quality_colors[quality] if is_selected or is_hover else (60, 65, 75), btn_rect, 2, border_radius=5)
+        
+        btn_text = label_font.render(quality_names[quality], True, quality_colors[quality] if is_selected else (WHITE if is_hover else GRAY))
+        screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
     
-    # 伤害数字显示
-    damage_y = other_y + 145
-    damage_label = "显示伤害数字"
-    damage_enabled = game_settings.get("show_damage_numbers", True)
-    damage_checkbox = pygame.Rect(WIDTH//2 - 350, damage_y, checkbox_size, checkbox_size)
+    # ====== 射击模式 ======
+    fire_y = other_y + 230
+    fire_rect = pygame.Rect(right_x, fire_y - 5, 350, 75)
+    pygame.draw.rect(screen, (18, 22, 32), fire_rect, border_radius=6)
+    pygame.draw.rect(screen, (60, 70, 90), fire_rect, 1, border_radius=6)
     
-    pygame.draw.rect(screen, (40, 40, 50), damage_checkbox, border_radius=5)
-    pygame.draw.rect(screen, CYAN if damage_enabled else GRAY, damage_checkbox, 2, border_radius=5)
-    if damage_enabled:
-        pygame.draw.line(screen, CYAN,
-                        (damage_checkbox.x + 6, damage_checkbox.centery),
-                        (damage_checkbox.centerx - 2, damage_checkbox.y + 20), 3)
-        pygame.draw.line(screen, CYAN,
-                        (damage_checkbox.centerx - 2, damage_checkbox.y + 20),
-                        (damage_checkbox.x + 22, damage_checkbox.y + 8), 3)
+    fire_icon = vol_emoji.render("🔫", True, RED)
+    fire_label = label_font.render("射击模式", True, WHITE)
+    screen.blit(fire_icon, (right_x + 12, fire_y + 3))
+    screen.blit(fire_label, (right_x + 40, fire_y + 5))
     
-    # 标签 - 紧贴复选框右侧，稍微上移
-    draw_text(screen, damage_label, 22, damage_checkbox.right + 10, damage_checkbox.centery - 17, WHITE, align="left")
-    
-    # 射击模式切换 (自动/手动)
-    fire_y = other_y + 180
-    fire_label = "射击模式"
     auto_fire = game_settings.get("auto_fire", True)
-    fire_mode_options = [True, False]
-    fire_mode_names = {True: "自动射击", False: "手动(空格)"}
+    fire_options = [(True, "自动射击", LIME), (False, "手动(空格)", ORANGE)]
     
-    draw_text(screen, fire_label, 22, WIDTH//2 - 350, fire_y - 10, WHITE, align="left")
-    
-    # 绘制两个选项按钮
-    for i, mode in enumerate(fire_mode_options):
-        btn_x = WIDTH//2 - 350 + i * 110
-        btn_rect = pygame.Rect(btn_x, fire_y + 15, 105, 30)
+    fire_btns = []
+    for i, (mode, name, color) in enumerate(fire_options):
+        btn_x = right_x + 15 + i * 165
+        btn_rect = pygame.Rect(btn_x, fire_y + 35, 155, 30)
+        fire_btns.append((btn_rect, mode))
         is_selected = (auto_fire == mode)
         is_hover = btn_rect.collidepoint(mx, my)
         
-        btn_color = LIME if is_selected else (YELLOW if is_hover else GRAY)
-        pygame.draw.rect(screen, (40, 40, 50) if not is_selected else (0, 80, 0), btn_rect, border_radius=5)
-        pygame.draw.rect(screen, btn_color, btn_rect, 2, border_radius=5)
-        draw_text(screen, fire_mode_names[mode], 18, btn_rect.centerx, btn_rect.centery - 10, WHITE if is_selected else GRAY)
+        btn_bg = (color[0]//4, color[1]//4, color[2]//4) if is_selected else ((50, 55, 65) if is_hover else (30, 35, 45))
+        pygame.draw.rect(screen, btn_bg, btn_rect, border_radius=5)
+        pygame.draw.rect(screen, color if is_selected or is_hover else (60, 65, 75), btn_rect, 2, border_radius=5)
+        
+        btn_text = label_font.render(name, True, color if is_selected else (WHITE if is_hover else GRAY))
+        screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
     
-    # === 按钮区域 ===
-    btn_y = HEIGHT - 60
-    btn_width = 160
-    btn_height = 45
+    # ====== 底部按钮区域 ======
+    btn_y = HEIGHT - 75
+    btn_width = 150
+    btn_height = 48
     
     # 保存按钮
-    save_btn = pygame.Rect(WIDTH//2 - btn_width - 100, btn_y, btn_width, btn_height)
+    save_btn = pygame.Rect(WIDTH//2 - btn_width - 120, btn_y, btn_width, btn_height)
     save_hover = save_btn.collidepoint(mx, my)
-    draw_cyber_rect(screen, save_btn, LIME if save_hover else (0, 100, 0), alpha=200, fill=True)
-    draw_cyber_rect(screen, save_btn, LIME, border_width=2, fill=False)
-    draw_text(screen, "保存设置", 20, save_btn.centerx, save_btn.centery - 12, WHITE, glow=save_hover)
+    save_bg = pygame.Surface((btn_width, btn_height), pygame.SRCALPHA)
+    for by in range(btn_height):
+        alpha = 200 - by * 2
+        color = (0, 120 if save_hover else 80, 0)
+        pygame.draw.line(save_bg, (*color, alpha), (0, by), (btn_width, by))
+    screen.blit(save_bg, save_btn.topleft)
+    pygame.draw.rect(screen, LIME if save_hover else (0, 150, 0), save_btn, 2, border_radius=8)
+    if save_hover:
+        pygame.draw.rect(screen, (100, 255, 100, 50), save_btn.inflate(4, 4), 2, border_radius=10)
+    save_font = pygame.font.SysFont("SimHei", 20)
+    save_icon = vol_emoji.render("💾", True, LIME)
+    save_text = save_font.render(" 保存", True, WHITE)
+    screen.blit(save_icon, (save_btn.centerx - 35, btn_y + 12))
+    screen.blit(save_text, (save_btn.centerx - 10, btn_y + 12))
     
     # 恢复默认按钮
     reset_btn = pygame.Rect(WIDTH//2 - btn_width//2, btn_y, btn_width, btn_height)
     reset_hover = reset_btn.collidepoint(mx, my)
-    draw_cyber_rect(screen, reset_btn, YELLOW if reset_hover else (100, 100, 0), alpha=200, fill=True)
-    draw_cyber_rect(screen, reset_btn, YELLOW, border_width=2, fill=False)
-    draw_text(screen, "恢复默认", 20, reset_btn.centerx, reset_btn.centery - 12, WHITE, glow=reset_hover)
+    reset_bg = pygame.Surface((btn_width, btn_height), pygame.SRCALPHA)
+    for by in range(btn_height):
+        alpha = 200 - by * 2
+        color = (120 if reset_hover else 80, 100 if reset_hover else 60, 0)
+        pygame.draw.line(reset_bg, (*color, alpha), (0, by), (btn_width, by))
+    screen.blit(reset_bg, reset_btn.topleft)
+    pygame.draw.rect(screen, YELLOW if reset_hover else (180, 150, 0), reset_btn, 2, border_radius=8)
+    if reset_hover:
+        pygame.draw.rect(screen, (255, 255, 100, 50), reset_btn.inflate(4, 4), 2, border_radius=10)
+    reset_icon = vol_emoji.render("🔄", True, YELLOW)
+    reset_text = save_font.render(" 重置", True, WHITE)
+    screen.blit(reset_icon, (reset_btn.centerx - 35, btn_y + 12))
+    screen.blit(reset_text, (reset_btn.centerx - 10, btn_y + 12))
     
     # 返回按钮
-    back_btn = pygame.Rect(WIDTH//2 + 100, btn_y, btn_width, btn_height)
+    back_btn = pygame.Rect(WIDTH//2 + 120, btn_y, btn_width, btn_height)
     back_hover = back_btn.collidepoint(mx, my)
-    draw_cyber_rect(screen, back_btn, RED if back_hover else (100, 0, 0), alpha=200, fill=True)
-    draw_cyber_rect(screen, back_btn, RED, border_width=2, fill=False)
-    draw_text(screen, "返回", 20, back_btn.centerx, back_btn.centery - 12, WHITE, glow=back_hover)
+    back_bg = pygame.Surface((btn_width, btn_height), pygame.SRCALPHA)
+    for by in range(btn_height):
+        alpha = 200 - by * 2
+        color = (120 if back_hover else 80, 30, 30)
+        pygame.draw.line(back_bg, (*color, alpha), (0, by), (btn_width, by))
+    screen.blit(back_bg, back_btn.topleft)
+    pygame.draw.rect(screen, RED if back_hover else (180, 50, 50), back_btn, 2, border_radius=8)
+    if back_hover:
+        pygame.draw.rect(screen, (255, 100, 100, 50), back_btn.inflate(4, 4), 2, border_radius=10)
+    back_icon = vol_emoji.render("◀", True, RED)
+    back_text = save_font.render(" 返回", True, WHITE)
+    screen.blit(back_icon, (back_btn.centerx - 35, btn_y + 12))
+    screen.blit(back_text, (back_btn.centerx - 10, btn_y + 12))
     
-    # 返回按钮引用（用于点击检测）
+    # 返回UI元素引用
     return {
         'save': save_btn,
         'reset': reset_btn,
         'back': back_btn,
-        'fps_checkbox': fps_checkbox,
-        'shake_checkbox': shake_checkbox,
-        'damage_checkbox': damage_checkbox,
-        'particle_quality_btns': [
-            (pygame.Rect(WIDTH//2 - 350 + i * 75, particle_y + 20, 70, 32), quality)
-            for i, quality in enumerate(quality_options)
-        ],
-        'fire_mode_btns': [
-            (pygame.Rect(WIDTH//2 - 350 + i * 110, other_y + 180 + 15, 105, 30), mode)
-            for i, mode in enumerate([True, False])
-        ],
+        'fps_checkbox': checkboxes['fps'],
+        'shake_checkbox': checkboxes['shake'],
+        'damage_checkbox': checkboxes['damage'],
+        'particle_quality_btns': particle_btns,
+        'fire_mode_btns': fire_btns,
         'sliders': [
-            (pygame.Rect(WIDTH//2 - 350, start_y + 0*75 + 30, slider_width, slider_height), 'master'),
-            (pygame.Rect(WIDTH//2 - 350, start_y + 1*75 + 30, slider_width, slider_height), 'music'),
-            (pygame.Rect(WIDTH//2 - 350, start_y + 2*75 + 30, slider_width, slider_height), 'sfx')
+            (pygame.Rect(section_x + 15, start_y + 0*65 + 32, slider_width, slider_height), 'master'),
+            (pygame.Rect(section_x + 15, start_y + 1*65 + 32, slider_width, slider_height), 'music'),
+            (pygame.Rect(section_x + 15, start_y + 2*65 + 32, slider_width, slider_height), 'sfx')
         ]
     }
 
 def draw_arsenal_ui():
-    draw_text(screen, "轨道武器库", 40, WIDTH//2, 30, ORANGE, glow=True)
-    draw_text(screen, f"核心: {arsenal_save_data['currencies']['cores']}", 20, WIDTH-250, 30, CYAN, align="left")
-    draw_text(screen, f"芯片: {arsenal_save_data['currencies']['chips']}", 20, WIDTH-130, 30, YELLOW, align="left")
-
-    if arsenal_msg_timer > 0:
-        draw_text(screen, arsenal_msg, 24, WIDTH//2, 70, RED, glow=True)
-
+    """绘制武器库界面 - 精致典雅风格（放大版）"""
+    global arsenal_selected_weapon_idx
+    
+    t = pygame.time.get_ticks()
     mx, my = pygame.mouse.get_pos()
+    
+    # ====== 深邃背景 ======
+    for y in range(HEIGHT):
+        ratio = y / HEIGHT
+        r = int(8 + ratio * 6)
+        g = int(10 + ratio * 8)
+        b = int(16 + ratio * 10)
+        pygame.draw.line(screen, (r, g, b), (0, y), (WIDTH, y))
+    
+    # 精致的装饰线条
+    accent_gold = (180, 150, 90)
+    accent_gold_dim = (90, 75, 45)
+    
+    # 顶部金色细线
+    pygame.draw.line(screen, accent_gold_dim, (30, 58), (WIDTH - 30, 58), 1)
+    pygame.draw.circle(screen, accent_gold, (30, 58), 3)
+    pygame.draw.circle(screen, accent_gold, (WIDTH - 30, 58), 3)
+    
+    # ====== 标题 ======
+    title_font = pygame.font.SysFont("SimHei", 32)
+    title_surf = title_font.render("轨道武器库", True, (230, 225, 210))
+    screen.blit(title_surf, (WIDTH // 2 - title_surf.get_width() // 2, 15))
+    
+    # 标题下装饰
+    title_w = title_surf.get_width()
+    pygame.draw.line(screen, accent_gold, (WIDTH//2 - title_w//2 - 30, 52), (WIDTH//2 - 40, 52), 1)
+    pygame.draw.line(screen, accent_gold, (WIDTH//2 + 40, 52), (WIDTH//2 + title_w//2 + 30, 52), 1)
+    
+    # 货币显示 - 右上角精致徽章
+    cores = arsenal_save_data['currencies']['cores']
+    chips = arsenal_save_data['currencies']['chips']
+    
+    # 核心徽章
+    core_x = WIDTH - 220
+    pygame.draw.polygon(screen, (20, 35, 45), [(core_x, 18), (core_x + 95, 18), (core_x + 88, 42), (core_x + 7, 42)])
+    pygame.draw.polygon(screen, (60, 120, 140), [(core_x, 18), (core_x + 95, 18), (core_x + 88, 42), (core_x + 7, 42)], 1)
+    curr_font = pygame.font.SysFont("SimHei", 14)
+    core_label = curr_font.render("核心", True, (80, 140, 160))
+    screen.blit(core_label, (core_x + 10, 23))
+    core_val = pygame.font.SysFont("SimHei", 15).render(str(cores), True, (140, 200, 220))
+    screen.blit(core_val, (core_x + 52, 22))
+    
+    # 芯片徽章
+    chip_x = WIDTH - 115
+    pygame.draw.polygon(screen, (35, 30, 20), [(chip_x, 18), (chip_x + 95, 18), (chip_x + 88, 42), (chip_x + 7, 42)])
+    pygame.draw.polygon(screen, accent_gold_dim, [(chip_x, 18), (chip_x + 95, 18), (chip_x + 88, 42), (chip_x + 7, 42)], 1)
+    chip_label = curr_font.render("芯片", True, accent_gold_dim)
+    screen.blit(chip_label, (chip_x + 10, 23))
+    chip_val = pygame.font.SysFont("SimHei", 15).render(str(chips), True, accent_gold)
+    screen.blit(chip_val, (chip_x + 52, 22))
+    
+    # 消息提示
+    if arsenal_msg_timer > 0:
+        msg_font = pygame.font.SysFont("SimHei", 16)
+        msg_surf = msg_font.render(arsenal_msg, True, (220, 120, 120))
+        screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 60))
+    
     r = ARSENAL_UI
-
-    # --- 左栏列表 (含滚动逻辑) ---
-    draw_cyber_rect(screen, r['list_area'], (20,20,25), alpha=230, fill=True)
-
-    # 设置剪裁区域，只在这个矩形内绘制列表内容
-    screen.set_clip(r['list_area'])
-
     weapons = arsenal_save_data["weapons"]
-    item_height = 60
-
-    # 简单的可见性剔除
-    start_y = r['list_area'].y + 10 - arsenal_scroll_y
-
+    
+    # ====== 左栏：武器列表 ======
+    list_area = r['list_area']
+    
+    # 面板背景
+    panel_bg = pygame.Surface((list_area.width, list_area.height), pygame.SRCALPHA)
+    for py in range(list_area.height):
+        alpha = 225
+        shade = int(12 + (py / list_area.height) * 4)
+        pygame.draw.line(panel_bg, (shade, shade + 2, shade + 6, alpha), (0, py), (list_area.width, py))
+    screen.blit(panel_bg, list_area.topleft)
+    
+    # 精致边框 - 双线效果
+    pygame.draw.rect(screen, (25, 30, 40), list_area, 1)
+    inner_rect = list_area.inflate(-4, -4)
+    pygame.draw.rect(screen, (40, 50, 65), inner_rect, 1)
+    
+    # 顶部标题栏
+    header_h = 38
+    header_rect = pygame.Rect(list_area.x + 2, list_area.y + 2, list_area.width - 4, header_h)
+    pygame.draw.rect(screen, (22, 28, 38), header_rect)
+    pygame.draw.line(screen, accent_gold_dim, (header_rect.x, header_rect.bottom), (header_rect.right, header_rect.bottom), 1)
+    
+    header_font = pygame.font.SysFont("SimHei", 15)
+    header_text = header_font.render(f"武器仓库", True, (160, 155, 140))
+    screen.blit(header_text, (list_area.x + 18, list_area.y + 10))
+    count_text = header_font.render(f"{len(weapons)}", True, accent_gold)
+    screen.blit(count_text, (list_area.right - 35, list_area.y + 10))
+    
+    # 列表内容区
+    list_inner = pygame.Rect(list_area.x + 3, list_area.y + header_h + 5, list_area.width - 10, list_area.height - header_h - 10)
+    screen.set_clip(list_inner)
+    
+    item_height = 65
+    start_y = list_inner.y - arsenal_scroll_y
+    
     if not weapons:
-        draw_text(screen, "暂无武器", 20, r['list_area'].centerx, r['list_area'].centery, GRAY)
+        empty_font = pygame.font.SysFont("SimHei", 16)
+        empty_surf = empty_font.render("暂无武器", True, (60, 65, 75))
+        screen.blit(empty_surf, (list_area.centerx - empty_surf.get_width() // 2, list_area.centery))
     else:
         for i, w in enumerate(weapons):
             item_y = start_y + i * item_height
-        
-            # 如果项目完全跑出可视区域，就不绘制
-            if item_y + 50 < r['list_area'].top or item_y > r['list_area'].bottom:
+            
+            if item_y + item_height < list_inner.top - 10 or item_y > list_inner.bottom + 10:
                 continue
             
-            item_rect = pygame.Rect(r['list_area'].x + 10, item_y, r['list_area'].width - 20, 50)
-        
+            item_rect = pygame.Rect(list_inner.x + 2, item_y, list_inner.width - 8, item_height - 5)
             info = WEAPON_TYPES[w['type']]
             is_sel = (i == arsenal_selected_weapon_idx)
             is_eq = (w in arsenal_save_data["loadout"])
-        
-            bg = (50, 50, 70) if is_sel else (30, 30, 40)
-            draw_cyber_rect(screen, item_rect, bg, fill=True)
-            if is_eq: pygame.draw.rect(screen, GREEN, item_rect, 2)
-        
-            draw_text(screen, info['name'], 18, item_rect.x+10, item_rect.y+12, info['color'], align="left")
-            draw_text(screen, f"{w['stars']}★", 16, item_rect.right-10, item_rect.y+12, WHITE, align="right")
-
-    # 绘制滚动条指示器 (简单版)
-    total_h = len(weapons) * item_height
-    view_h = r['list_area'].height
-    if total_h > view_h:
-        bar_h = max(20, (view_h / total_h) * view_h)
-        bar_y = r['list_area'].y + (arsenal_scroll_y / total_h) * view_h
-        pygame.draw.rect(screen, GRAY, (r['list_area'].right - 5, bar_y, 4, bar_h), border_radius=2)
-
-    # 取消剪裁
+            is_hov = item_rect.collidepoint(mx, my) and not is_sel
+            
+            # 卡片背景
+            card_bg = pygame.Surface((item_rect.width, item_rect.height), pygame.SRCALPHA)
+            if is_sel:
+                for cy in range(item_rect.height):
+                    ratio = cy / item_rect.height
+                    cr = int(info['color'][0] * 0.12 + 18)
+                    cg = int(info['color'][1] * 0.12 + 20)
+                    cb = int(info['color'][2] * 0.12 + 28)
+                    pygame.draw.line(card_bg, (cr, cg, cb, 250), (0, cy), (item_rect.width, cy))
+            elif is_hov:
+                for cy in range(item_rect.height):
+                    pygame.draw.line(card_bg, (22, 26, 35, 240), (0, cy), (item_rect.width, cy))
+            else:
+                for cy in range(item_rect.height):
+                    pygame.draw.line(card_bg, (16, 19, 26, 230), (0, cy), (item_rect.width, cy))
+            screen.blit(card_bg, item_rect.topleft)
+            
+            # 边框
+            if is_sel:
+                pygame.draw.rect(screen, info['color'], item_rect, 1)
+                pygame.draw.rect(screen, info['color'], (item_rect.x, item_rect.y + 5, 4, item_rect.height - 10))
+            elif is_hov:
+                pygame.draw.rect(screen, (55, 65, 80), item_rect, 1)
+            
+            # 武器图标 - 精致的菱形框
+            icon_cx = item_rect.x + 32
+            icon_cy = item_rect.centery
+            icon_size = 18
+            diamond = [(icon_cx, icon_cy - icon_size), (icon_cx + icon_size, icon_cy), 
+                       (icon_cx, icon_cy + icon_size), (icon_cx - icon_size, icon_cy)]
+            pygame.draw.polygon(screen, info['color'], diamond)
+            pygame.draw.polygon(screen, (255, 255, 255, 80), diamond, 1)
+            
+            # 武器名称
+            name_font = pygame.font.SysFont("SimHei", 17)
+            name_col = (235, 230, 220) if is_sel else ((200, 195, 185) if is_hov else (140, 135, 125))
+            name_surf = name_font.render(info['name'], True, name_col)
+            screen.blit(name_surf, (item_rect.x + 58, item_rect.y + 10))
+            
+            # 星级 - 精致小菱形
+            star_y = item_rect.y + 38
+            for si in range(5):
+                sx = item_rect.x + 62 + si * 16
+                if si < w['stars']:
+                    pts = [(sx, star_y - 5), (sx + 5, star_y), (sx, star_y + 5), (sx - 5, star_y)]
+                    pygame.draw.polygon(screen, accent_gold, pts)
+                else:
+                    pts = [(sx, star_y - 4), (sx + 4, star_y), (sx, star_y + 4), (sx - 4, star_y)]
+                    pygame.draw.polygon(screen, (40, 42, 50), pts)
+            
+            # 已装备标记
+            if is_eq:
+                eq_x = item_rect.right - 50
+                eq_y = item_rect.centery - 8
+                pygame.draw.rect(screen, (25, 50, 35), (eq_x, eq_y, 42, 18), border_radius=3)
+                pygame.draw.rect(screen, (70, 130, 90), (eq_x, eq_y, 42, 18), 1, border_radius=3)
+                eq_font = pygame.font.SysFont("SimHei", 11)
+                eq_text = eq_font.render("装备中", True, (100, 180, 120))
+                screen.blit(eq_text, (eq_x + 4, eq_y + 2))
+                pygame.draw.rect(screen, (70, 130, 90), (eq_x, eq_y, 32, 14), 1, border_radius=2)
+                eq_font = pygame.font.SysFont("SimHei", 9)
+                eq_text = eq_font.render("装备中", True, (100, 180, 120))
+                screen.blit(eq_text, (eq_x + 3, eq_y + 1))
+    
     screen.set_clip(None)
-
-    # 绘制边框覆盖
-    draw_cyber_rect(screen, r['list_area'], GRAY, border_width=1, fill=False)
-
-    # --- 中栏槽位 ---
+    
+    # 滚动条 - 精致细长
+    total_h = len(weapons) * item_height
+    view_h = list_inner.height
+    if total_h > view_h:
+        track_x = list_area.right - 8
+        track_y = list_inner.y + 2
+        track_h = list_inner.height - 4
+        thumb_h = max(25, int(track_h * view_h / total_h))
+        thumb_y = track_y + int((track_h - thumb_h) * arsenal_scroll_y / max(1, total_h - view_h))
+        
+        pygame.draw.rect(screen, (25, 30, 40), (track_x, track_y, 4, track_h), border_radius=2)
+        pygame.draw.rect(screen, accent_gold_dim, (track_x, thumb_y, 4, thumb_h), border_radius=2)
+    
+    # ====== 中栏：装备配置 ======
+    mid_x = 375
+    
+    # 区域标题
+    sec_font = pygame.font.SysFont("SimHei", 13)
+    sec_text = sec_font.render("装备配置", True, (160, 155, 140))
+    screen.blit(sec_text, (mid_x, 88))
+    pygame.draw.line(screen, accent_gold_dim, (mid_x + 70, 96), (mid_x + 255, 96), 1)
+    pygame.draw.circle(screen, accent_gold, (mid_x + 255, 96), 2)
+    
     slots = [r['slot_0'], r['slot_1'], r['slot_2']]
-    for i, slot_rect in enumerate(slots):
-        draw_cyber_rect(screen, slot_rect, (30,30,40), fill=True)
+    slot_names = ["主武装", "副武装", "辅助系统"]
+    
+    for i, (slot_rect, sname) in enumerate(zip(slots, slot_names)):
         w = arsenal_save_data["loadout"][i]
-        bc = GRAY
+        is_hov = slot_rect.collidepoint(mx, my)
+        
+        # 槽位背景 - 精致渐变
+        slot_bg = pygame.Surface((slot_rect.width, slot_rect.height), pygame.SRCALPHA)
+        for sy in range(slot_rect.height):
+            ratio = sy / slot_rect.height
+            shade = int(18 + ratio * 6)
+            pygame.draw.line(slot_bg, (shade, shade + 2, shade + 4, 240), (0, sy), (slot_rect.width, sy))
+        screen.blit(slot_bg, slot_rect.topleft)
+        
         if w:
             info = WEAPON_TYPES[w['type']]
-            bc = info['color']
-            draw_text(screen, info['name'], 20, slot_rect.centerx, slot_rect.y+20, bc)
-            draw_text(screen, f"★{w['stars']}", 16, slot_rect.centerx, slot_rect.y+50, WHITE)
+            # 左边武器色条
+            pygame.draw.rect(screen, info['color'], (slot_rect.x, slot_rect.y, 4, slot_rect.height))
+            border_col = (60, 70, 85) if not is_hov else (80, 90, 105)
         else:
-            draw_text(screen, "空槽位", 18, slot_rect.centerx, slot_rect.centery-10, GRAY)
-        draw_cyber_rect(screen, slot_rect, bc, border_width=2, fill=False)
-        draw_text(screen, f"槽位{chr(65+i)}", 14, slot_rect.x, slot_rect.y-20, GRAY, align="left")
-
-    # --- 按钮 ---
-    hn = r['btn_research_normal'].collidepoint(mx, my)
-    he = r['btn_research_elite'].collidepoint(mx, my)
-
-    draw_cyber_rect(screen, r['btn_research_normal'], (100,0,100) if hn else (60,0,60), fill=True)
-    draw_text(screen, "标准研发（消耗20核心）", 16, r['btn_research_normal'].centerx, r['btn_research_normal'].centery-8, WHITE)
-
-    draw_cyber_rect(screen, r['btn_research_elite'], (200,150,0) if he else (150,100,0), fill=True)
-    draw_text(screen, "精密研发（消耗3芯片）", 16, r['btn_research_elite'].centerx, r['btn_research_elite'].centery-8, WHITE)
-
-    # --- 右栏详情 ---
-    draw_cyber_rect(screen, r['detail_area'], (15,15,20), fill=True)
-    draw_cyber_rect(screen, r['detail_area'], CYAN, border_width=1, fill=False)
-
+            border_col = (40, 45, 55) if not is_hov else (55, 60, 70)
+        
+        # 双线边框
+        pygame.draw.rect(screen, (25, 30, 40), slot_rect, 1)
+        pygame.draw.rect(screen, border_col, slot_rect.inflate(-3, -3), 1)
+        
+        # 槽位标签
+        label_font = pygame.font.SysFont("SimHei", 12)
+        label_surf = label_font.render(f"[{chr(65+i)}] {sname}", True, (100, 95, 85))
+        screen.blit(label_surf, (slot_rect.x + 10, slot_rect.y - 18))
+        
+        if w:
+            info = WEAPON_TYPES[w['type']]
+            
+            # 武器图标 - 菱形
+            icon_cx = slot_rect.x + 35
+            icon_cy = slot_rect.centery
+            diamond = [(icon_cx, icon_cy - 20), (icon_cx + 20, icon_cy), 
+                       (icon_cx, icon_cy + 20), (icon_cx - 20, icon_cy)]
+            pygame.draw.polygon(screen, info['color'], diamond)
+            pygame.draw.polygon(screen, (255, 255, 255, 50), diamond, 1)
+            
+            # 武器名
+            wname_font = pygame.font.SysFont("SimHei", 17)
+            wname_surf = wname_font.render(info['name'], True, (220, 215, 205))
+            screen.blit(wname_surf, (slot_rect.x + 65, slot_rect.y + 20))
+            
+            # 星级菱形
+            for si in range(w['stars']):
+                sx = slot_rect.x + 68 + si * 14
+                sy = slot_rect.y + 55
+                pts = [(sx, sy - 5), (sx + 5, sy), (sx, sy + 5), (sx - 5, sy)]
+                pygame.draw.polygon(screen, accent_gold, pts)
+            
+            # 倍率
+            mult = 1 + (w['stars'] - 1) * 0.3
+            mult_font = pygame.font.SysFont("SimHei", 13)
+            mult_surf = mult_font.render(f"×{mult:.1f}", True, (120, 160, 120))
+            screen.blit(mult_surf, (slot_rect.right - 45, slot_rect.centery - 7))
+        else:
+            empty_font = pygame.font.SysFont("SimHei", 14)
+            empty_surf = empty_font.render("- 空 -", True, (50, 55, 65))
+            screen.blit(empty_surf, (slot_rect.centerx - empty_surf.get_width() // 2, slot_rect.centery - 8))
+    
+    # 研发区域
+    research_y = HEIGHT - 148
+    sec_text2 = sec_font.render("武器研发", True, (160, 155, 140))
+    screen.blit(sec_text2, (mid_x, research_y))
+    pygame.draw.line(screen, accent_gold_dim, (mid_x + 75, research_y + 8), (mid_x + 270, research_y + 8), 1)
+    pygame.draw.circle(screen, accent_gold, (mid_x + 270, research_y + 8), 2)
+    
+    # 标准研发按钮
+    btn_normal = r['btn_research_normal']
+    hn = btn_normal.collidepoint(mx, my)
+    can_normal = cores >= 20
+    
+    # 按钮渐变背景
+    btn_bg = pygame.Surface((btn_normal.width, btn_normal.height), pygame.SRCALPHA)
+    for by in range(btn_normal.height):
+        ratio = by / btn_normal.height
+        if can_normal:
+            shade = int(30 + ratio * 8) if hn else int(22 + ratio * 6)
+            pygame.draw.line(btn_bg, (shade - 5, shade, shade + 15, 245), (0, by), (btn_normal.width, by))
+        else:
+            shade = int(20 + ratio * 4)
+            pygame.draw.line(btn_bg, (shade, shade, shade + 2, 230), (0, by), (btn_normal.width, by))
+    screen.blit(btn_bg, btn_normal.topleft)
+    
+    border_n = (80, 100, 140) if can_normal else (45, 50, 60)
+    pygame.draw.rect(screen, (25, 30, 40), btn_normal, 1)
+    pygame.draw.rect(screen, border_n, btn_normal.inflate(-3, -3), 1)
+    
+    btn_font = pygame.font.SysFont("SimHei", 15)
+    btn_text = btn_font.render("标准研发", True, (200, 200, 210) if can_normal else (80, 85, 95))
+    screen.blit(btn_text, (btn_normal.x + btn_normal.width//2 - btn_text.get_width()//2, btn_normal.y + 12))
+    cost_font = pygame.font.SysFont("SimHei", 12)
+    cost_text = cost_font.render("消耗 20 核心", True, (100, 150, 180) if can_normal else (55, 60, 70))
+    screen.blit(cost_text, (btn_normal.x + btn_normal.width//2 - cost_text.get_width()//2, btn_normal.y + 35))
+    
+    # 精密研发按钮
+    btn_elite = r['btn_research_elite']
+    he = btn_elite.collidepoint(mx, my)
+    can_elite = chips >= 3
+    
+    btn_bg2 = pygame.Surface((btn_elite.width, btn_elite.height), pygame.SRCALPHA)
+    for by in range(btn_elite.height):
+        ratio = by / btn_elite.height
+        if can_elite:
+            shade = int(30 + ratio * 8) if he else int(24 + ratio * 6)
+            pygame.draw.line(btn_bg2, (shade + 8, shade + 2, shade - 10, 245), (0, by), (btn_elite.width, by))
+        else:
+            shade = int(20 + ratio * 4)
+            pygame.draw.line(btn_bg2, (shade + 2, shade, shade - 2, 230), (0, by), (btn_elite.width, by))
+    screen.blit(btn_bg2, btn_elite.topleft)
+    
+    border_e = accent_gold_dim if can_elite else (45, 42, 38)
+    pygame.draw.rect(screen, (30, 28, 25), btn_elite, 1)
+    pygame.draw.rect(screen, border_e, btn_elite.inflate(-3, -3), 1)
+    
+    btn_text2 = btn_font.render("精密研发", True, (210, 200, 180) if can_elite else (85, 80, 70))
+    screen.blit(btn_text2, (btn_elite.x + btn_elite.width//2 - btn_text2.get_width()//2, btn_elite.y + 12))
+    cost_text2 = cost_font.render("消耗 3 芯片", True, accent_gold_dim if can_elite else (60, 55, 45))
+    screen.blit(cost_text2, (btn_elite.x + btn_elite.width//2 - cost_text2.get_width()//2, btn_elite.y + 35))
+    
+    # ====== 右栏：武器详情 ======
+    detail_area = r['detail_area']
+    
+    # 面板背景
+    detail_bg = pygame.Surface((detail_area.width, detail_area.height), pygame.SRCALPHA)
+    for dy in range(detail_area.height):
+        ratio = dy / detail_area.height
+        shade = int(14 + ratio * 5)
+        pygame.draw.line(detail_bg, (shade, shade + 1, shade + 4, 235), (0, dy), (detail_area.width, dy))
+    screen.blit(detail_bg, detail_area.topleft)
+    
+    # 双线边框
+    pygame.draw.rect(screen, (25, 30, 40), detail_area, 1)
+    pygame.draw.rect(screen, (45, 55, 70), detail_area.inflate(-4, -4), 1)
+    
     if 0 <= arsenal_selected_weapon_idx < len(weapons):
         w = weapons[arsenal_selected_weapon_idx]
         info = WEAPON_TYPES[w['type']]
-        cx = r['detail_area'].centerx
-        y_start = r['detail_area'].y
-    
-        t = pygame.time.get_ticks() * 0.002
-        pts = [(cx + math.cos(t+j*1.5)*40, y_start + 80 + math.sin(t+j*1.5)*30) for j in range(4)]
-        pygame.draw.lines(screen, info['color'], True, pts, 3)
-    
-        draw_text(screen, info['name'], 28, cx, y_start+130, info['color'], glow=True)
-        draw_text(screen, f"{w['stars']} 星级", 20, cx, y_start+170, WHITE)
+        
+        # 顶部武器色条
+        pygame.draw.rect(screen, info['color'], (detail_area.x + 2, detail_area.y + 2, detail_area.width - 4, 3))
+        
+        cx = detail_area.centerx
+        base_y = detail_area.y
+        
+        # 武器图标区域 - 大号菱形
+        icon_y = base_y + 85
+        icon_size = 45
+        
+        # 外层装饰环
+        outer_size = icon_size + 14
+        outer_diamond = [(cx, icon_y - outer_size), (cx + outer_size, icon_y),
+                         (cx, icon_y + outer_size), (cx - outer_size, icon_y)]
+        pygame.draw.polygon(screen, (30, 35, 45), outer_diamond)
+        pygame.draw.polygon(screen, (50, 60, 75), outer_diamond, 1)
+        
+        # 内层图标
+        inner_diamond = [(cx, icon_y - icon_size), (cx + icon_size, icon_y),
+                         (cx, icon_y + icon_size), (cx - icon_size, icon_y)]
+        pygame.draw.polygon(screen, info['color'], inner_diamond)
+        pygame.draw.polygon(screen, (255, 255, 255, 60), inner_diamond, 2)
+        
+        # 武器名称
+        name_y = icon_y + icon_size + 28
+        name_font = pygame.font.SysFont("SimHei", 24)
+        name_surf = name_font.render(info['name'], True, (235, 230, 220))
+        screen.blit(name_surf, (cx - name_surf.get_width() // 2, name_y))
+        
+        # 名称下装饰线
+        line_w = name_surf.get_width() + 50
+        pygame.draw.line(screen, accent_gold_dim, (cx - line_w//2, name_y + 35), (cx - 10, name_y + 35), 1)
+        pygame.draw.line(screen, accent_gold_dim, (cx + 10, name_y + 35), (cx + line_w//2, name_y + 35), 1)
+        pygame.draw.circle(screen, accent_gold, (cx, name_y + 35), 4)
+        
+        # 星级
+        star_y = name_y + 58
+        for si in range(5):
+            sx = cx - 42 + si * 21
+            if si < w['stars']:
+                pts = [(sx, star_y - 8), (sx + 8, star_y), (sx, star_y + 8), (sx - 8, star_y)]
+                pygame.draw.polygon(screen, accent_gold, pts)
+                pygame.draw.polygon(screen, (255, 240, 180), pts, 1)
+            else:
+                pts = [(sx, star_y - 6), (sx + 6, star_y), (sx, star_y + 6), (sx - 6, star_y)]
+                pygame.draw.polygon(screen, (35, 38, 48), pts)
+                pygame.draw.polygon(screen, (55, 60, 70), pts, 1)
+        
+        # 属性区域
+        stat_y = star_y + 32
+        stat_rect = pygame.Rect(detail_area.x + 20, stat_y, detail_area.width - 40, 90)
+        pygame.draw.rect(screen, (18, 22, 30), stat_rect)
+        pygame.draw.rect(screen, (40, 48, 60), stat_rect, 1)
+        
+        stat_font = pygame.font.SysFont("SimHei", 14)
         mult = 1 + (w['stars'] - 1) * 0.3
-        draw_text(screen, f"伤害: {mult:.1f}x", 18, cx, y_start+200, LIME)
-    
+        
+        # 伤害
+        pygame.draw.line(screen, (35, 40, 50), (stat_rect.x + 12, stat_y + 28), (stat_rect.right - 12, stat_y + 28), 1)
+        dmg_label = stat_font.render("伤害倍率", True, (110, 105, 95))
+        screen.blit(dmg_label, (stat_rect.x + 15, stat_y + 8))
+        dmg_val = stat_font.render(f"×{mult:.2f}", True, (140, 180, 140))
+        screen.blit(dmg_val, (stat_rect.right - 60, stat_y + 8))
+        
+        # 等级
+        pygame.draw.line(screen, (35, 40, 50), (stat_rect.x + 12, stat_y + 56), (stat_rect.right - 12, stat_y + 56), 1)
+        lvl_label = stat_font.render("强化等级", True, (110, 105, 95))
+        screen.blit(lvl_label, (stat_rect.x + 15, stat_y + 34))
+        lvl_val = stat_font.render(f"Lv.{w['stars']}", True, accent_gold)
+        screen.blit(lvl_val, (stat_rect.right - 55, stat_y + 34))
+        
+        # 类型
+        type_label = stat_font.render("武器类型", True, (110, 105, 95))
+        screen.blit(type_label, (stat_rect.x + 15, stat_y + 62))
+        type_val = stat_font.render(w['type'], True, info['color'])
+        screen.blit(type_val, (stat_rect.right - 60, stat_y + 62))
+        
+        # 描述
+        desc_y = stat_y + 105
+        desc_font = pygame.font.SysFont("SimHei", 13)
         desc = info['desc']
-        lines = [desc[k:k+13] for k in range(0, len(desc), 13)]
-        for k, line in enumerate(lines):
-            draw_text(screen, line, 18, cx, y_start+240+k*25, GRAY)
-    
+        desc_lines = textwrap.wrap(desc, width=16)
+        for di, dline in enumerate(desc_lines[:3]):
+            dsurf = desc_font.render(dline, True, (120, 115, 105))
+            screen.blit(dsurf, (detail_area.x + 25, desc_y + di * 20))
+        
+        # 升级按钮
+        btn_upgrade = r['btn_upgrade']
+        h_up = btn_upgrade.collidepoint(mx, my)
         cost = w['stars'] * 10
-        can_up = arsenal_save_data["currencies"]["cores"] >= cost
-        h_up = r['btn_upgrade'].collidepoint(mx, my)
-        c_up = LIME if can_up else RED
-        draw_cyber_rect(screen, r['btn_upgrade'], (40,40,40), fill=True)
-        draw_cyber_rect(screen, r['btn_upgrade'], c_up, border_width=2, fill=False)
-        draw_text(screen, f"升级 (-{cost}核心)", 20, r['btn_upgrade'].centerx, r['btn_upgrade'].centery-10, c_up)
+        can_up = cores >= cost and w['stars'] < 5
+        
+        # 按钮渐变
+        up_bg = pygame.Surface((btn_upgrade.width, btn_upgrade.height), pygame.SRCALPHA)
+        for uy in range(btn_upgrade.height):
+            ratio = uy / btn_upgrade.height
+            if can_up:
+                shade = int(28 + ratio * 8) if h_up else int(22 + ratio * 6)
+                pygame.draw.line(up_bg, (shade - 5, shade + 5, shade - 2, 245), (0, uy), (btn_upgrade.width, uy))
+            elif w['stars'] >= 5:
+                shade = int(25 + ratio * 5)
+                pygame.draw.line(up_bg, (shade + 5, shade + 3, shade - 5, 230), (0, uy), (btn_upgrade.width, uy))
+            else:
+                shade = int(20 + ratio * 4)
+                pygame.draw.line(up_bg, (shade, shade, shade, 220), (0, uy), (btn_upgrade.width, uy))
+        screen.blit(up_bg, btn_upgrade.topleft)
+        
+        if w['stars'] >= 5:
+            border_up = accent_gold_dim
+            pygame.draw.rect(screen, (35, 32, 25), btn_upgrade, 1)
+        elif can_up:
+            border_up = (80, 130, 90)
+            pygame.draw.rect(screen, (25, 35, 30), btn_upgrade, 1)
+        else:
+            border_up = (50, 50, 55)
+            pygame.draw.rect(screen, (25, 28, 32), btn_upgrade, 1)
+        pygame.draw.rect(screen, border_up, btn_upgrade.inflate(-3, -3), 1)
+        
+        up_font = pygame.font.SysFont("SimHei", 15)
+        if w['stars'] >= 5:
+            up_text = up_font.render("已达满级", True, accent_gold)
+            screen.blit(up_text, (btn_upgrade.centerx - up_text.get_width() // 2, btn_upgrade.centery - 9))
+        else:
+            up_text = up_font.render("升级强化", True, (200, 210, 200) if can_up else (90, 90, 95))
+            screen.blit(up_text, (btn_upgrade.centerx - up_text.get_width() // 2, btn_upgrade.y + 12))
+            up_cost = cost_font.render(f"消耗 {cost} 核心", True, (100, 160, 120) if can_up else (65, 70, 75))
+            screen.blit(up_cost, (btn_upgrade.centerx - up_cost.get_width() // 2, btn_upgrade.y + 34))
     else:
-        draw_text(screen, "请选择左侧武器", 20, r['detail_area'].centerx, r['detail_area'].centery, GRAY)
-
-    hb = r['btn_back'].collidepoint(mx, my)
-    draw_cyber_rect(screen, r['btn_back'], GRAY, fill=True)
-    if hb: draw_cyber_rect(screen, r['btn_back'], WHITE, border_width=2, fill=False)
-    draw_text(screen, "返回", 20, r['btn_back'].centerx, r['btn_back'].centery-10, WHITE)
+        hint_font = pygame.font.SysFont("SimHei", 15)
+        hint_surf = hint_font.render("选择武器查看详情", True, (70, 75, 85))
+        screen.blit(hint_surf, (detail_area.centerx - hint_surf.get_width() // 2, detail_area.centery - 10))
+    
+    # ====== 返回按钮 ======
+    btn_back = r['btn_back']
+    hb = btn_back.collidepoint(mx, my)
+    
+    back_bg = pygame.Surface((btn_back.width, btn_back.height), pygame.SRCALPHA)
+    for by in range(btn_back.height):
+        ratio = by / btn_back.height
+        shade = int(28 + ratio * 6) if hb else int(20 + ratio * 5)
+        pygame.draw.line(back_bg, (shade + 5, shade - 2, shade - 2, 240), (0, by), (btn_back.width, by))
+    screen.blit(back_bg, btn_back.topleft)
+    
+    pygame.draw.rect(screen, (30, 25, 25), btn_back, 1)
+    pygame.draw.rect(screen, (100, 70, 70) if hb else (65, 50, 50), btn_back.inflate(-3, -3), 1)
+    
+    back_font = pygame.font.SysFont("SimHei", 14)
+    back_surf = back_font.render("返回", True, (180, 175, 170) if hb else (130, 125, 120))
+    screen.blit(back_surf, (btn_back.centerx - back_surf.get_width() // 2, btn_back.centery - 8))
 
 def draw_background_settings_ui():
-    """背景设置界面 - 分页版本"""
-    draw_text(screen, "背景设置", 40, WIDTH//2, 30, (100, 200, 255), glow=True)
+    """背景设置界面 - 使用当前装备的背景"""
+    global background_settings_page
     
+    t = pygame.time.get_ticks()
     mx, my = pygame.mouse.get_pos()
     
-    # 获取所有可用背景
+    # ====== 使用当前装备的背景 ======
+    bg_manager.draw(screen)
+    
+    # 添加半透明遮罩让UI更清晰
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 100))
+    screen.blit(overlay, (0, 0))
+    
+    # 边框装饰
+    glow_intensity = int(80 + 40 * math.sin(t / 400))
+    border_color = (glow_intensity // 2, glow_intensity, int(glow_intensity * 1.3))
+    pygame.draw.rect(screen, border_color, (0, 0, WIDTH, 2))
+    pygame.draw.rect(screen, border_color, (0, HEIGHT - 2, WIDTH, 2))
+    
+    # 角落霓虹装饰
+    corner_size = 40
+    for corner in [(0, 0, 1, 1), (WIDTH, 0, -1, 1), (0, HEIGHT, 1, -1), (WIDTH, HEIGHT, -1, -1)]:
+        cx, cy, dx, dy = corner
+        pygame.draw.line(screen, CYAN, (cx, cy + dy * 3), (cx, cy + dy * corner_size), 2)
+        pygame.draw.line(screen, CYAN, (cx + dx * 3, cy), (cx + dx * corner_size, cy), 2)
+    
+    # ====== 豪华标题区 ======
+    title_panel = pygame.Rect(WIDTH//2 - 180, 12, 360, 50)
+    title_bg = pygame.Surface((360, 50), pygame.SRCALPHA)
+    for ty in range(50):
+        alpha = int(180 - ty * 2.5)
+        pygame.draw.line(title_bg, (15, 40, 60, alpha), (0, ty), (360, ty))
+    screen.blit(title_bg, title_panel.topleft)
+    pygame.draw.rect(screen, CYAN, title_panel, 2, border_radius=8)
+    
+    # 标题动态发光
+    title_glow = int(255 * (0.8 + 0.2 * math.sin(t / 300)))
+    title_color = (title_glow // 2, title_glow, title_glow)
+    
+    title_font = pygame.font.SysFont("SimHei", 34)
+    emoji_font = pygame.font.SysFont("Segoe UI Emoji", 28)
+    icon_l = emoji_font.render("🎨", True, CYAN)
+    title_surf = title_font.render(" 背景设置 ", True, title_color)
+    icon_r = emoji_font.render("🖼️", True, CYAN)
+    total_w = icon_l.get_width() + title_surf.get_width() + icon_r.get_width()
+    start_x = WIDTH//2 - total_w//2
+    screen.blit(icon_l, (start_x, 22))
+    screen.blit(title_surf, (start_x + icon_l.get_width(), 20))
+    screen.blit(icon_r, (start_x + icon_l.get_width() + title_surf.get_width(), 22))
+    
+    # 获取背景数据
     from systems import BackgroundManager
     bg_styles = BackgroundManager.BG_STYLES
     bg_list = list(bg_styles.items())
@@ -2047,32 +3204,34 @@ def draw_background_settings_ui():
     # 分页配置
     cards_per_row = 4
     rows_per_page = 2
-    cards_per_page = cards_per_row * rows_per_page  # 每页8个
+    cards_per_page = cards_per_row * rows_per_page
     total_pages = (len(bg_list) + cards_per_page - 1) // cards_per_page
-    
-    # 确保页码有效
-    global background_settings_page
     background_settings_page = max(0, min(background_settings_page, total_pages - 1))
     
-    # 获取当前页的背景
+    # 页码指示器（豪华版）
+    page_indicator_rect = pygame.Rect(WIDTH//2 - 80, 70, 160, 28)
+    pygame.draw.rect(screen, (20, 35, 50), page_indicator_rect, border_radius=14)
+    pygame.draw.rect(screen, (60, 100, 140), page_indicator_rect, 1, border_radius=14)
+    
+    page_font = pygame.font.SysFont("SimHei", 16)
+    page_text = page_font.render(f"◀  {background_settings_page + 1} / {total_pages}  ▶", True, CYAN)
+    screen.blit(page_text, (page_indicator_rect.centerx - page_text.get_width()//2, 
+                           page_indicator_rect.centery - page_text.get_height()//2))
+    
+    # 获取当前页数据
     page_start = background_settings_page * cards_per_page
     page_end = min(page_start + cards_per_page, len(bg_list))
     page_items = bg_list[page_start:page_end]
     
-    # 绘制页码指示器
-    page_text = f"第 {background_settings_page + 1}/{total_pages} 页"
-    draw_text(screen, page_text, 20, WIDTH//2, 80, CYAN)
-    
-    # 绘制背景选项卡
-    card_w = 280
-    card_h = 200
-    gap = 30
+    # ====== 背景卡片区域 ======
+    card_w = 270
+    card_h = 195
+    gap = 25
     start_x = (WIDTH - (cards_per_row * card_w + (cards_per_row - 1) * gap)) // 2
-    start_y = 130
+    start_y = 110
     
-    # 绘制当前页的背景卡片
     for local_idx, (style_key, style_data) in enumerate(page_items):
-        global_idx = page_start + local_idx  # 全局索引
+        global_idx = page_start + local_idx
         row = local_idx // cards_per_row
         col = local_idx % cards_per_row
         
@@ -2080,197 +3239,374 @@ def draw_background_settings_ui():
         y = start_y + row * (card_h + gap)
         
         card_rect = pygame.Rect(x, y, card_w, card_h)
-        
-        # 检查是否是当前选中的背景
         is_selected = (bg_manager.current_style == style_key)
         is_hover = card_rect.collidepoint(mx, my) and not is_selected
-        is_keyboard_selected = (global_idx == background_settings_selected)  # 键盘选中
+        is_keyboard_selected = (global_idx == background_settings_selected)
         
-        # 绘制卡片背景
+        # 卡片背景（带渐变）
+        card_bg = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
         if is_selected:
-            # 当前使用的背景 - 蓝色高亮
-            draw_cyber_rect(screen, card_rect, (50, 100, 150), fill=True)
-            draw_cyber_rect(screen, card_rect, (100, 200, 255), border_width=3, fill=False)
+            for cy in range(card_h):
+                alpha = int(200 - cy * 0.5)
+                pygame.draw.line(card_bg, (30, 80, 120, alpha), (0, cy), (card_w, cy))
         elif is_keyboard_selected:
-            # 键盘选中但未应用
-            draw_cyber_rect(screen, card_rect, (60, 60, 80), fill=True)
-            draw_cyber_rect(screen, card_rect, YELLOW, border_width=3, fill=False)
+            for cy in range(card_h):
+                alpha = int(180 - cy * 0.5)
+                pygame.draw.line(card_bg, (60, 50, 20, alpha), (0, cy), (card_w, cy))
         elif is_hover:
-            # 鼠标悬停预览 - 轻微高亮,不改变背景
-            draw_cyber_rect(screen, card_rect, (35, 35, 45), fill=True)
-            draw_cyber_rect(screen, card_rect, (150, 150, 150), border_width=1, fill=False)
+            for cy in range(card_h):
+                alpha = int(160 - cy * 0.4)
+                pygame.draw.line(card_bg, (40, 50, 60, alpha), (0, cy), (card_w, cy))
         else:
-            # 默认状态
-            draw_cyber_rect(screen, card_rect, (30, 30, 40), fill=True)
-            draw_cyber_rect(screen, card_rect, GRAY, border_width=1, fill=False)
+            for cy in range(card_h):
+                alpha = int(140 - cy * 0.3)
+                pygame.draw.line(card_bg, (20, 25, 35, alpha), (0, cy), (card_w, cy))
+        screen.blit(card_bg, (x, y))
         
-        # 绘制背景预览（小型版本）
-        preview_surf = pygame.Surface((card_w - 20, 120))
+        # 卡片边框
+        if is_selected:
+            pygame.draw.rect(screen, CYAN, card_rect, 3, border_radius=10)
+            # 发光效果
+            glow_rect = card_rect.inflate(6, 6)
+            pygame.draw.rect(screen, (0, 150, 200, 80), glow_rect, 2, border_radius=12)
+        elif is_keyboard_selected:
+            pygame.draw.rect(screen, YELLOW, card_rect, 3, border_radius=10)
+        elif is_hover:
+            pygame.draw.rect(screen, (120, 140, 160), card_rect, 2, border_radius=10)
+        else:
+            pygame.draw.rect(screen, (50, 60, 80), card_rect, 1, border_radius=10)
+        
+        # 预览区域
+        preview_rect = pygame.Rect(x + 10, y + 10, card_w - 20, 115)
+        preview_surf = pygame.Surface((preview_rect.width, preview_rect.height))
         preview_surf.fill(style_data["base_color"])
         
-        # 获取元素配置
+        # 绘制预览元素
         elements = style_data.get("elements", {})
-        
-        # 绘制一些星星作为预览
         star_count = elements.get("stars", 0)
         if star_count > 0:
-            for _ in range(min(30, star_count // 5)):
-                sx = random.randint(0, card_w - 20)
-                sy = random.randint(0, 120)
-                pygame.draw.circle(preview_surf, (200, 200, 200), (sx, sy), 1)
+            random.seed(global_idx)  # 固定随机种子使预览一致
+            for _ in range(min(40, star_count // 4)):
+                sx = random.randint(0, preview_rect.width)
+                sy = random.randint(0, preview_rect.height)
+                pygame.draw.circle(preview_surf, (180, 180, 200), (sx, sy), 1)
         
-        # 如果有网格，绘制简化网格
         if elements.get("grid", False) and style_data.get("grid_color"):
             grid_color = style_data["grid_color"]
-            for gx in range(0, card_w - 20, 40):
-                pygame.draw.line(preview_surf, (*grid_color, 80), (gx, 0), (gx, 120), 1)
-            for gy in range(0, 120, 40):
-                pygame.draw.line(preview_surf, (*grid_color, 80), (0, gy), (card_w - 20, gy), 1)
+            for gx in range(0, preview_rect.width, 30):
+                pygame.draw.line(preview_surf, (*grid_color[:3], 60), (gx, 0), (gx, preview_rect.height), 1)
+            for gy in range(0, preview_rect.height, 30):
+                pygame.draw.line(preview_surf, (*grid_color[:3], 60), (0, gy), (preview_rect.width, gy), 1)
         
-        screen.blit(preview_surf, (x + 10, y + 10))
+        screen.blit(preview_surf, preview_rect.topleft)
+        pygame.draw.rect(screen, (60, 80, 100), preview_rect, 1, border_radius=5)
         
-        # 绘制背景名称
-        name_color = (100, 200, 255) if is_selected else WHITE
-        draw_text(screen, style_data["name"], 24, card_rect.centerx, y + 150, name_color)
+        # 背景名称
+        name_font = pygame.font.SysFont("SimHei", 20)
+        name_color = CYAN if is_selected else (YELLOW if is_keyboard_selected else WHITE)
+        name_surf = name_font.render(style_data["name"], True, name_color)
+        screen.blit(name_surf, (card_rect.centerx - name_surf.get_width()//2, y + 135))
         
-        # 绘制选中标记
+        # 选中状态标记
         if is_selected:
-            check_text = "✓ 当前使用"
-            draw_text(screen, check_text, 18, card_rect.centerx, y + 175, LIME)
+            status_font = pygame.font.SysFont("SimHei", 14)
+            check_emoji = emoji_font.render("✓", True, LIME)
+            status_text = status_font.render(" 使用中", True, LIME)
+            total_w = check_emoji.get_width() + status_text.get_width()
+            screen.blit(check_emoji, (card_rect.centerx - total_w//2, y + 162))
+            screen.blit(status_text, (card_rect.centerx - total_w//2 + check_emoji.get_width(), y + 168))
     
-    # 绘制上一页/下一页按钮（放在卡片下方那一行的左右两侧）
-    button_y = start_y + rows_per_page * (card_h + gap) + 30
-    button_w = 100
-    button_h = 50
+    # ====== 翻页按钮 ======
+    button_y = start_y + rows_per_page * (card_h + gap) + 20
+    button_w = 120
+    button_h = 45
     
-    # 上一页按钮（左侧）
-    prev_btn = pygame.Rect(80, button_y, button_w, button_h)
+    # 上一页按钮
+    prev_btn = pygame.Rect(60, button_y, button_w, button_h)
     if background_settings_page > 0:
         prev_hover = prev_btn.collidepoint(mx, my)
-        prev_color = YELLOW if prev_hover else CYAN
-        draw_cyber_rect(screen, prev_btn, (30, 30, 40), fill=True)
-        draw_cyber_rect(screen, prev_btn, prev_color, border_width=2, fill=False)
-        draw_text(screen, "上一页", 20, prev_btn.centerx, prev_btn.centery - 10, prev_color)
+        prev_bg = pygame.Surface((button_w, button_h), pygame.SRCALPHA)
+        for by in range(button_h):
+            alpha = 180 - by * 2
+            color = (40, 80, 100) if prev_hover else (25, 50, 70)
+            pygame.draw.line(prev_bg, (*color, alpha), (0, by), (button_w, by))
+        screen.blit(prev_bg, prev_btn.topleft)
+        pygame.draw.rect(screen, CYAN if prev_hover else (60, 120, 160), prev_btn, 2, border_radius=8)
+        
+        prev_font = pygame.font.SysFont("SimHei", 18)
+        prev_icon = emoji_font.render("◀", True, CYAN if prev_hover else WHITE)
+        prev_text = prev_font.render(" 上一页", True, WHITE)
+        screen.blit(prev_icon, (prev_btn.centerx - 40, button_y + 10))
+        screen.blit(prev_text, (prev_btn.centerx - 20, button_y + 12))
     else:
-        draw_cyber_rect(screen, prev_btn, (20, 20, 25), fill=True)
-        draw_cyber_rect(screen, prev_btn, GRAY, border_width=1, fill=False)
-        draw_text(screen, "上一页", 20, prev_btn.centerx, prev_btn.centery - 10, GRAY)
+        pygame.draw.rect(screen, (25, 30, 40), prev_btn, border_radius=8)
+        pygame.draw.rect(screen, (50, 55, 65), prev_btn, 1, border_radius=8)
+        prev_font = pygame.font.SysFont("SimHei", 18)
+        prev_text = prev_font.render("◀ 上一页", True, (80, 85, 95))
+        screen.blit(prev_text, (prev_btn.centerx - prev_text.get_width()//2, button_y + 12))
     
-    # 下一页按钮（右侧）
-    next_btn = pygame.Rect(WIDTH - 180, button_y, button_w, button_h)
+    # 下一页按钮
+    next_btn = pygame.Rect(WIDTH - 60 - button_w, button_y, button_w, button_h)
     if background_settings_page < total_pages - 1:
         next_hover = next_btn.collidepoint(mx, my)
-        next_color = YELLOW if next_hover else CYAN
-        draw_cyber_rect(screen, next_btn, (30, 30, 40), fill=True)
-        draw_cyber_rect(screen, next_btn, next_color, border_width=2, fill=False)
-        draw_text(screen, "下一页", 20, next_btn.centerx, next_btn.centery - 10, next_color)
+        next_bg = pygame.Surface((button_w, button_h), pygame.SRCALPHA)
+        for by in range(button_h):
+            alpha = 180 - by * 2
+            color = (40, 80, 100) if next_hover else (25, 50, 70)
+            pygame.draw.line(next_bg, (*color, alpha), (0, by), (button_w, by))
+        screen.blit(next_bg, next_btn.topleft)
+        pygame.draw.rect(screen, CYAN if next_hover else (60, 120, 160), next_btn, 2, border_radius=8)
+        
+        next_font = pygame.font.SysFont("SimHei", 18)
+        next_text = next_font.render("下一页 ", True, WHITE)
+        next_icon = emoji_font.render("▶", True, CYAN if next_hover else WHITE)
+        screen.blit(next_text, (next_btn.centerx - 35, button_y + 12))
+        screen.blit(next_icon, (next_btn.centerx + 20, button_y + 10))
     else:
-        draw_cyber_rect(screen, next_btn, (20, 20, 25), fill=True)
-        draw_cyber_rect(screen, next_btn, GRAY, border_width=1, fill=False)
-        draw_text(screen, "下一页", 20, next_btn.centerx, next_btn.centery - 10, GRAY)
+        pygame.draw.rect(screen, (25, 30, 40), next_btn, border_radius=8)
+        pygame.draw.rect(screen, (50, 55, 65), next_btn, 1, border_radius=8)
+        next_font = pygame.font.SysFont("SimHei", 18)
+        next_text = next_font.render("下一页 ▶", True, (80, 85, 95))
+        screen.blit(next_text, (next_btn.centerx - next_text.get_width()//2, button_y + 12))
     
-    # 操作提示
-    draw_text(screen, "点击卡片切换背景 | 方向键导航 | Enter确认 | 鼠标滚轮翻页", 16, WIDTH//2, HEIGHT - 110, (150, 150, 150))
+    # ====== 操作提示 ======
+    tip_font = pygame.font.SysFont("SimHei", 14)
+    tip_text = tip_font.render("● 点击卡片切换背景  |  ◆ 方向键导航  |  ◇ Enter确认  |  ● 滚轮翻页", True, (100, 110, 130))
+    screen.blit(tip_text, (WIDTH//2 - tip_text.get_width()//2, HEIGHT - 100))
     
-    # 返回按钮
-    back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 80, 120, 50)
-    hb = back_btn.collidepoint(mx, my)
-    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
-    if hb: draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
-    draw_text(screen, "返回", 22, back_btn.centerx, back_btn.centery-10, WHITE)
+    # ====== 返回按钮 ======
+    back_btn = pygame.Rect(WIDTH//2 - 70, HEIGHT - 70, 140, 45)
+    back_hover = back_btn.collidepoint(mx, my)
+    
+    back_bg = pygame.Surface((140, 45), pygame.SRCALPHA)
+    for by in range(45):
+        alpha = 180 - by * 2
+        color = (100, 40, 40) if back_hover else (60, 30, 30)
+        pygame.draw.line(back_bg, (*color, alpha), (0, by), (140, by))
+    screen.blit(back_bg, back_btn.topleft)
+    pygame.draw.rect(screen, RED if back_hover else (150, 60, 60), back_btn, 2, border_radius=8)
+    if back_hover:
+        pygame.draw.rect(screen, (200, 80, 80, 50), back_btn.inflate(4, 4), 2, border_radius=10)
+    
+    back_font = pygame.font.SysFont("SimHei", 18)
+    back_icon = emoji_font.render("◀", True, RED if back_hover else WHITE)
+    back_text = back_font.render(" 返回", True, WHITE)
+    screen.blit(back_icon, (back_btn.centerx - 30, back_btn.centery - 12))
+    screen.blit(back_text, (back_btn.centerx - 5, back_btn.centery - 10))
 
 def draw_codex_ui():
-    draw_text(screen, "机密档案", 40, WIDTH//2, 30, BLUE, glow=True)
+    """绘制机密档案界面 - 赛博朋克风格"""
     r = CODEX_UI
     mx, my = pygame.mouse.get_pos()
+    t = pygame.time.get_ticks()
     
-    # Tabs - 3个标签
-    tab_width = 120
-    tab_height = 40
-    tab_y = 80
-    tab_start_x = WIDTH//2 - (tab_width * 3 + 20) // 2
+    # ====== 背景 ======
+    screen.fill((8, 12, 22))
     
-    # 机体数据标签
-    tab_plane_rect = pygame.Rect(tab_start_x, tab_y, tab_width, tab_height)
-    c1 = CYAN if codex_tab == 0 else GRAY
-    draw_cyber_rect(screen, tab_plane_rect, (30,30,40), fill=True)
-    if codex_tab == 0: draw_cyber_rect(screen, tab_plane_rect, c1, border_width=2, fill=False)
-    draw_text(screen, "机体数据", 18, tab_plane_rect.centerx, tab_plane_rect.centery-10, c1)
+    # 动态网格背景
+    grid_alpha = int(20 + 10 * math.sin(t / 1000))
+    for gx in range(0, WIDTH, 60):
+        pygame.draw.line(screen, (0, grid_alpha, grid_alpha * 2), (gx, 0), (gx, HEIGHT), 1)
+    for gy in range(0, HEIGHT, 60):
+        pygame.draw.line(screen, (0, grid_alpha, grid_alpha * 2), (0, gy), (WIDTH, gy), 1)
     
-    # 领主图鉴标签
-    tab_boss_rect = pygame.Rect(tab_start_x + tab_width + 10, tab_y, tab_width, tab_height)
-    c2 = RED if codex_tab == 1 else GRAY
-    draw_cyber_rect(screen, tab_boss_rect, (30,30,40), fill=True)
-    if codex_tab == 1: draw_cyber_rect(screen, tab_boss_rect, c2, border_width=2, fill=False)
-    draw_text(screen, "领主图鉴", 18, tab_boss_rect.centerx, tab_boss_rect.centery-10, c2)
+    # 扫描线效果
+    scan_y = (t // 20) % HEIGHT
+    pygame.draw.line(screen, (0, 60, 80, 100), (0, scan_y), (WIDTH, scan_y), 2)
     
-    # 敌人图鉴标签
-    tab_enemy_rect = pygame.Rect(tab_start_x + (tab_width + 10) * 2, tab_y, tab_width, tab_height)
-    c3 = ORANGE if codex_tab == 2 else GRAY
-    draw_cyber_rect(screen, tab_enemy_rect, (30,30,40), fill=True)
-    if codex_tab == 2: draw_cyber_rect(screen, tab_enemy_rect, c3, border_width=2, fill=False)
-    draw_text(screen, "敌人图鉴", 18, tab_enemy_rect.centerx, tab_enemy_rect.centery-10, c3)
+    # 角落装饰
+    corner_size = 30
+    corner_color = (0, 150, 200)
+    # 左上
+    pygame.draw.lines(screen, corner_color, False, [(0, corner_size), (0, 0), (corner_size, 0)], 2)
+    # 右上
+    pygame.draw.lines(screen, corner_color, False, [(WIDTH - corner_size, 0), (WIDTH - 1, 0), (WIDTH - 1, corner_size)], 2)
+    # 左下
+    pygame.draw.lines(screen, corner_color, False, [(0, HEIGHT - corner_size), (0, HEIGHT - 1), (corner_size, HEIGHT - 1)], 2)
+    # 右下
+    pygame.draw.lines(screen, corner_color, False, [(WIDTH - corner_size, HEIGHT - 1), (WIDTH - 1, HEIGHT - 1), (WIDTH - 1, HEIGHT - corner_size)], 2)
     
-    # 保存标签矩形供点击检测使用
-    r['tab_plane'] = tab_plane_rect
-    r['tab_boss'] = tab_boss_rect
-    r['tab_enemy'] = tab_enemy_rect
+    # ====== 标题区 ======
+    title_glow = int(200 + 55 * math.sin(t / 500))
+    # 标题背景条
+    title_bar = pygame.Rect(0, 10, WIDTH, 50)
+    title_bg = pygame.Surface((WIDTH, 50), pygame.SRCALPHA)
+    pygame.draw.rect(title_bg, (0, 40, 60, 150), (0, 0, WIDTH, 50))
+    screen.blit(title_bg, (0, 10))
+    pygame.draw.line(screen, (0, title_glow, title_glow), (50, 60), (WIDTH - 50, 60), 2)
+    
+    # 标题文字 - 分开渲染符号和文字
+    codex_title_emoji = pygame.font.SysFont("Segoe UI Emoji", 28)
+    codex_title_text = pygame.font.SysFont("SimHei", 36)
+    codex_icon_l = codex_title_emoji.render("◆", True, (0, title_glow, title_glow))
+    codex_title = codex_title_text.render(" 机密档案 ", True, (0, title_glow, title_glow))
+    codex_icon_r = codex_title_emoji.render("◆", True, (0, title_glow, title_glow))
+    codex_total_w = codex_icon_l.get_width() + codex_title.get_width() + codex_icon_r.get_width()
+    codex_start_x = WIDTH//2 - codex_total_w//2
+    screen.blit(codex_icon_l, (codex_start_x, 24))
+    screen.blit(codex_title, (codex_start_x + codex_icon_l.get_width(), 20))
+    screen.blit(codex_icon_r, (codex_start_x + codex_icon_l.get_width() + codex_title.get_width(), 24))
+    
+    # ====== 标签栏 ======
+    tab_width = 140
+    tab_height = 42
+    tab_y = 75
+    tab_start_x = WIDTH//2 - (tab_width * 3 + 30) // 2
+    
+    tab_configs = [
+        ("机体数据", CYAN),
+        ("领主图鉴", RED),
+        ("敌人图鉴", ORANGE)
+    ]
+    
+    for i, (label, color) in enumerate(tab_configs):
+        tab_rect = pygame.Rect(tab_start_x + i * (tab_width + 15), tab_y, tab_width, tab_height)
+        is_selected = (codex_tab == i)
+        is_hover = tab_rect.collidepoint(mx, my)
+        
+        # 标签背景
+        if is_selected:
+            bg_color = (color[0]//4, color[1]//4, color[2]//4)
+            draw_cyber_rect(screen, tab_rect, bg_color, alpha=220, fill=True)
+            draw_cyber_rect(screen, tab_rect, color, border_width=2, fill=False)
+            # 底部高亮条
+            pygame.draw.line(screen, color, (tab_rect.left + 5, tab_rect.bottom - 2), 
+                           (tab_rect.right - 5, tab_rect.bottom - 2), 3)
+        else:
+            bg_color = (25, 30, 40) if is_hover else (18, 22, 32)
+            draw_cyber_rect(screen, tab_rect, bg_color, alpha=200, fill=True)
+            draw_cyber_rect(screen, tab_rect, (60, 70, 80) if is_hover else (40, 50, 60), border_width=1, fill=False)
+        
+        # 标签文字
+        text_color = color if is_selected else (GRAY if not is_hover else WHITE)
+        draw_text(screen, label, 18, tab_rect.centerx, tab_rect.centery - 8, text_color)
+        
+        # 保存标签矩形
+        if i == 0: r['tab_plane'] = tab_rect
+        elif i == 1: r['tab_boss'] = tab_rect
+        else: r['tab_enemy'] = tab_rect
 
     def _enemy_preview(enemy_id: str, color: tuple) -> pygame.Surface:
         """使用真实敌人渲染逻辑生成图鉴预览。"""
         try:
-            t = pygame.time.get_ticks() * 0.06  # 约等于游戏内每秒 60 tick 的节奏
+            t = pygame.time.get_ticks() * 0.06
             return build_enemy_preview_surface(enemy_id, t=t, box=180, color_override=color)
         except Exception:
             fallback = pygame.Surface((180, 180), pygame.SRCALPHA)
             pygame.draw.circle(fallback, color, (90, 90), 26, 2)
             return fallback
     
-    # List View (Scrolled)
+    # ====== 数据准备 ======
     if codex_tab == 0:
         keys = plane_keys
         db = PLANES
         color_theme = CYAN
+        theme_name = "机体"
     elif codex_tab == 1:
         keys = list(BOSS_DB.keys())
         db = BOSS_DB
         color_theme = RED
-    else:  # codex_tab == 2
+        theme_name = "领主"
+    else:
         from enemy_manager import enemy_type_manager
         enemy_data = enemy_type_manager.get_regular_types()
         keys = [e["id"] for e in enemy_data]
         db = {e["id"]: e for e in enemy_data}
         color_theme = ORANGE
+        theme_name = "敌人"
 
-    draw_cyber_rect(screen, r['list_view'], (20,20,25), fill=True)
-    screen.set_clip(r['list_view'])
-    start_y = r['list_view'].y + 5 - codex_scroll_y
-    item_h = 45
+    # ====== 左侧列表区 ======
+    list_rect = r['list_view']
+    
+    # 列表标题
+    list_title_rect = pygame.Rect(list_rect.x, list_rect.y - 30, list_rect.width, 28)
+    draw_cyber_rect(screen, list_title_rect, (color_theme[0]//6, color_theme[1]//6, color_theme[2]//6), alpha=200, fill=True)
+    draw_text(screen, f"◇ {theme_name}列表 ({len(keys)})", 14, list_title_rect.centerx, list_title_rect.y + 5, color_theme)
+    
+    # 列表背景
+    draw_cyber_rect(screen, list_rect, (12, 16, 24), alpha=240, fill=True)
+    draw_cyber_rect(screen, list_rect, (40, 50, 65), border_width=1, fill=False)
+    
+    # 列表内容
+    screen.set_clip(list_rect)
+    start_y = list_rect.y + 8 - codex_scroll_y
+    item_h = 48
+    
     for i, key in enumerate(keys):
         y = start_y + i * item_h
-        if y + item_h < r['list_view'].top or y > r['list_view'].bottom: continue
-        item_rect = pygame.Rect(r['list_view'].x + 5, y, r['list_view'].width - 10, 40)
+        if y + item_h < list_rect.top or y > list_rect.bottom: 
+            continue
+            
+        item_rect = pygame.Rect(list_rect.x + 6, y, list_rect.width - 12, item_h - 4)
         is_sel = (i == codex_idx)
-        if is_sel: draw_cyber_rect(screen, item_rect, (50,50,70), fill=True)
-        draw_text(screen, db[key]["name"], 16, item_rect.centerx, item_rect.y+10, color_theme if is_sel else GRAY)
+        is_hover = item_rect.collidepoint(mx, my) and not is_sel
+        
+        if is_sel:
+            # 选中项 - 发光边框
+            sel_bg = (color_theme[0]//5, color_theme[1]//5, color_theme[2]//5)
+            draw_cyber_rect(screen, item_rect, sel_bg, alpha=220, fill=True)
+            draw_cyber_rect(screen, item_rect, color_theme, border_width=2, fill=False)
+            # 左侧指示条
+            pygame.draw.rect(screen, color_theme, (item_rect.x, item_rect.y + 4, 4, item_rect.height - 8))
+        elif is_hover:
+            draw_cyber_rect(screen, item_rect, (35, 40, 55), alpha=180, fill=True)
+            draw_cyber_rect(screen, item_rect, (70, 80, 100), border_width=1, fill=False)
+        
+        # 序号
+        idx_color = color_theme if is_sel else (60, 70, 85)
+        draw_text(screen, f"{i+1:02d}", 12, item_rect.x + 20, item_rect.y + 12, idx_color)
+        
+        # 名称
+        name_color = WHITE if is_sel else (GRAY if not is_hover else (200, 200, 210))
+        draw_text(screen, db[key]["name"], 16, item_rect.x + 50, item_rect.y + 10, name_color, align="left")
+        
     screen.set_clip(None)
+    
+    # 滚动条
+    if len(keys) * item_h > list_rect.height:
+        scroll_height = list_rect.height - 10
+        content_height = len(keys) * item_h
+        thumb_height = max(30, int(scroll_height * list_rect.height / content_height))
+        thumb_y = list_rect.y + 5 + int((scroll_height - thumb_height) * codex_scroll_y / (content_height - list_rect.height))
+        
+        # 滚动条轨道
+        pygame.draw.rect(screen, (30, 35, 45), (list_rect.right - 8, list_rect.y + 5, 4, scroll_height), border_radius=2)
+        # 滚动条滑块
+        pygame.draw.rect(screen, color_theme, (list_rect.right - 8, thumb_y, 4, thumb_height), border_radius=2)
 
-    # Detail View
-    draw_cyber_rect(screen, r['detail_area'], (15,15,20), fill=True)
-    draw_cyber_rect(screen, r['detail_area'], color_theme, border_width=1, fill=False)
+    # ====== 右侧详情区 ======
+    detail_rect = r['detail_area']
+    
+    # 详情区标题
+    detail_title_rect = pygame.Rect(detail_rect.x, detail_rect.y - 30, detail_rect.width, 28)
+    draw_cyber_rect(screen, detail_title_rect, (color_theme[0]//6, color_theme[1]//6, color_theme[2]//6), alpha=200, fill=True)
+    draw_text(screen, "◆ 详细资料", 14, detail_title_rect.centerx, detail_title_rect.y + 5, color_theme)
+    
+    # 详情区背景
+    draw_cyber_rect(screen, detail_rect, (10, 14, 22), alpha=240, fill=True)
+    draw_cyber_rect(screen, detail_rect, color_theme, border_width=1, fill=False)
+    
+    # 内边框装饰
+    inner_rect = detail_rect.inflate(-20, -20)
+    pygame.draw.rect(screen, (color_theme[0]//4, color_theme[1]//4, color_theme[2]//4), inner_rect, 1)
     
     if 0 <= codex_idx < len(keys):
         key = keys[codex_idx]
         data = db[key]
-        cx = r['detail_area'].centerx
-        cy = r['detail_area'].y + 50
+        cx = detail_rect.centerx
+        cy = detail_rect.y + 60
+        
+        # 预览图区域背景
+        preview_bg_rect = pygame.Rect(cx - 90, cy - 10, 180, 180)
+        pygame.draw.rect(screen, (20, 25, 35), preview_bg_rect, border_radius=8)
+        pygame.draw.rect(screen, (color_theme[0]//3, color_theme[1]//3, color_theme[2]//3), preview_bg_rect, 2, border_radius=8)
         
         # 绘制预览图
         if codex_tab == 0:
             preview = get_plane_surf(key, PLANES.get(key, {}).get('visual', None))
         elif codex_tab == 1:
             preview = get_boss_surf(key, data["color"])
-        else:  # codex_tab == 2 - 敌人图鉴
+        else:
             enemy_color = tuple(data.get("color", (200, 100, 100)))
             preview = _enemy_preview(key, enemy_color)
         
@@ -2278,113 +3614,197 @@ def draw_codex_ui():
             preview = pygame.transform.scale(preview, (150, 150))
 
         pw, ph = preview.get_width(), preview.get_height()
-        safe_blit(screen, preview, (cx - pw // 2, cy))
+        safe_blit(screen, preview, (cx - pw // 2, cy + 5))
 
-        name_y = cy + ph + 20
-        draw_text(screen, data["name"], 30, cx, name_y, data.get("color", WHITE), glow=True)
+        # 名称区
+        name_y = cy + 180
+        # 名称背景条
+        name_bg = pygame.Rect(detail_rect.x + 20, name_y - 5, detail_rect.width - 40, 40)
+        pygame.draw.rect(screen, (color_theme[0]//6, color_theme[1]//6, color_theme[2]//6), name_bg, border_radius=4)
         
-        # 多行描述显示
+        entity_color = data.get("color", color_theme)
+        draw_text(screen, data["name"], 28, cx, name_y + 5, entity_color, glow=True)
+        
+        # 描述区
         desc = data.get("desc", "")
         desc_lines = 0
         if desc:
-            # 按字符宽度换行，每行约40个中文字符
-            max_chars_per_line = 40
+            max_chars_per_line = 38
             lines = []
             for i in range(0, len(desc), max_chars_per_line):
                 lines.append(desc[i:i+max_chars_per_line])
             
-            desc_start = name_y + 40
+            desc_start = name_y + 50
             desc_lines = len(lines)
             for idx, line in enumerate(lines):
-                draw_text(screen, line, 16, cx, desc_start + idx * 28, WHITE)
+                draw_text(screen, line, 14, cx, desc_start + idx * 24, (180, 190, 200))
         
+        # 属性区
         stats = []
         if codex_tab == 0:
-            stats = [("生命", data["hp"], 200), ("速度", data["speed"]*10, 100), ("火力", data["damage"]*2, 200)]
+            stats = [("生命", data["hp"], 200, LIME), ("速度", data["speed"]*10, 100, CYAN), ("火力", data["damage"]*2, 200, ORANGE)]
         elif codex_tab == 1:
-            stats = [(k, v, 100) for k,v in data["stats"]]
-        else:  # codex_tab == 2 - 敌人数据
+            stats = [(k, v, 100, color_theme) for k,v in data["stats"]]
+        else:
             stats = [
-                ("生命", data.get("hp", 50), 300),
-                ("速度", int(data.get("speed", 2) * 20), 100),
-                ("威胁", data.get("threat_level", 1), 5)
+                ("生命", data.get("hp", 50), 300, LIME),
+                ("速度", int(data.get("speed", 2) * 20), 100, CYAN),
+                ("威胁", data.get("threat_level", 1), 5, RED)
             ]
         
-        # 敌人图鉴使用更紧凑的布局
-        stat_spacing = 35 if codex_tab == 2 else 40
-
-        desc_offset = desc_lines * 28 if desc_lines else 0
-        stats_base = name_y + 70 + desc_offset
-
-        for j, (lbl, val, mxv) in enumerate(stats):
-            y_off = stats_base + j*stat_spacing
-            draw_text(screen, lbl, 18, r['detail_area'].x + 150, y_off, WHITE, align="left")
-            pygame.draw.rect(screen, (40,40,40), (r['detail_area'].x + 230, y_off+5, 200, 10))
-            fill = min(200, (val/mxv)*200)
-            pygame.draw.rect(screen, data.get("color", WHITE), (r['detail_area'].x + 230, y_off+5, fill, 10))
+        stat_spacing = 38
+        desc_offset = desc_lines * 24 if desc_lines else 0
+        stats_base = name_y + 80 + desc_offset
+        
+        # 属性标题
+        draw_text(screen, "— 属性数据 —", 12, cx, stats_base - 15, (80, 90, 110))
+        
+        for j, stat_data in enumerate(stats):
+            if len(stat_data) == 4:
+                lbl, val, mxv, stat_color = stat_data
+            else:
+                lbl, val, mxv = stat_data
+                stat_color = color_theme
+                
+            y_off = stats_base + j * stat_spacing + 10
+            
+            # 属性标签
+            draw_text(screen, lbl, 16, detail_rect.x + 80, y_off, WHITE, align="left")
+            
+            # 属性条背景
+            bar_x = detail_rect.x + 140
+            bar_w = 200
+            pygame.draw.rect(screen, (30, 35, 45), (bar_x, y_off + 4, bar_w, 14), border_radius=3)
+            
+            # 属性条填充
+            fill = min(bar_w, int((val / mxv) * bar_w))
+            if fill > 0:
+                fill_rect = pygame.Rect(bar_x, y_off + 4, fill, 14)
+                pygame.draw.rect(screen, stat_color, fill_rect, border_radius=3)
+                # 高光
+                pygame.draw.line(screen, (255, 255, 255, 100), (bar_x + 2, y_off + 6), (bar_x + fill - 2, y_off + 6), 1)
+            
+            # 数值
+            draw_text(screen, str(int(val)), 14, bar_x + bar_w + 30, y_off, stat_color)
         
         # 敌人图鉴额外显示分数
         if codex_tab == 2:
-            score_y = stats_base + len(stats) * stat_spacing + 5
-            draw_text(screen, f"分数: {data.get('score', 100)}", 16, r['detail_area'].x + 150, score_y, GOLD, align="left")
+            score_y = stats_base + len(stats) * stat_spacing + 20
+            draw_text(screen, f"击杀分数: {data.get('score', 100)}", 16, cx, score_y, GOLD)
 
-    hb = r['btn_back'].collidepoint(mx, my)
-    draw_cyber_rect(screen, r['btn_back'], GRAY, fill=True)
-    if hb: draw_cyber_rect(screen, r['btn_back'], WHITE, border_width=2, fill=False)
-    draw_text(screen, "返回", 20, r['btn_back'].centerx, r['btn_back'].centery-10, WHITE)
+    # ====== 返回按钮 ======
+    back_btn = r['btn_back']
+    hb = back_btn.collidepoint(mx, my)
+    
+    if hb:
+        draw_cyber_rect(screen, back_btn, (60, 30, 30), alpha=220, fill=True)
+        draw_cyber_rect(screen, back_btn, RED, border_width=2, fill=False)
+        btn_text_color = WHITE
+    else:
+        draw_cyber_rect(screen, back_btn, (30, 30, 40), alpha=200, fill=True)
+        draw_cyber_rect(screen, back_btn, (80, 80, 100), border_width=1, fill=False)
+        btn_text_color = GRAY
+    
+    draw_text(screen, "返回", 18, back_btn.centerx, back_btn.centery - 8, btn_text_color)
 
 def draw_gallery_ui():
-    draw_text(screen, "战术图鉴", 40, WIDTH//2, 30, MAGENTA, glow=True)
+    """绘制战术图鉴界面 - 赛博朋克风格"""
     mx, my = pygame.mouse.get_pos()
+    t = pygame.time.get_ticks()
     
-    # 按1-6星品质分类（扩展到神话和至高）
+    # ====== 背景 ======
+    screen.fill((8, 12, 22))
+    
+    # 动态网格背景
+    grid_alpha = int(20 + 10 * math.sin(t / 1000))
+    for gx in range(0, WIDTH, 60):
+        pygame.draw.line(screen, (grid_alpha, 0, grid_alpha * 2), (gx, 0), (gx, HEIGHT), 1)
+    for gy in range(0, HEIGHT, 60):
+        pygame.draw.line(screen, (grid_alpha, 0, grid_alpha * 2), (0, gy), (WIDTH, gy), 1)
+    
+    # 扫描线效果
+    scan_y = (t // 25) % HEIGHT
+    pygame.draw.line(screen, (80, 0, 60, 100), (0, scan_y), (WIDTH, scan_y), 2)
+    
+    # 角落装饰
+    corner_size = 30
+    corner_color = (200, 0, 150)
+    pygame.draw.lines(screen, corner_color, False, [(0, corner_size), (0, 0), (corner_size, 0)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(WIDTH - corner_size, 0), (WIDTH - 1, 0), (WIDTH - 1, corner_size)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(0, HEIGHT - corner_size), (0, HEIGHT - 1), (corner_size, HEIGHT - 1)], 2)
+    pygame.draw.lines(screen, corner_color, False, [(WIDTH - corner_size, HEIGHT - 1), (WIDTH - 1, HEIGHT - 1), (WIDTH - 1, HEIGHT - corner_size)], 2)
+    
+    # ====== 标题区 ======
+    title_glow = int(200 + 55 * math.sin(t / 500))
+    title_bar = pygame.Rect(0, 10, WIDTH, 50)
+    title_bg = pygame.Surface((WIDTH, 50), pygame.SRCALPHA)
+    pygame.draw.rect(title_bg, (40, 0, 60, 150), (0, 0, WIDTH, 50))
+    screen.blit(title_bg, (0, 10))
+    pygame.draw.line(screen, (title_glow, 0, title_glow), (50, 60), (WIDTH - 50, 60), 2)
+    
+    title_font = pygame.font.SysFont("SimHei", 36)
+    title_surf = title_font.render("◆ 战术图鉴 ◆", True, (title_glow, 0, title_glow))
+    screen.blit(title_surf, (WIDTH//2 - title_surf.get_width()//2, 20))
+    
+    # ====== 标签栏 ======
     tab_labels = ["全部", "1★", "2★", "3★", "4★", "5★", "6★"]
     tab_colors = [WHITE, (150, 150, 150), (100, 200, 255), (200, 100, 255), (255, 200, 50), (255, 100, 200), (255, 255, 255)]
-    tab_w = 90
+    tab_w = 95
+    tab_h = 38
     start_tx = (WIDTH - (7 * tab_w + 60)) // 2
     
     for i, lbl in enumerate(tab_labels):
-        rect = pygame.Rect(start_tx + i*(tab_w+10), 80, tab_w, 40)
+        rect = pygame.Rect(start_tx + i*(tab_w+10), 75, tab_w, tab_h)
         is_sel = (i == gallery_tab)
+        is_hover = rect.collidepoint(mx, my)
         c = tab_colors[i]
-        draw_cyber_rect(screen, rect, (30,30,40), fill=True)
-        if is_sel: draw_cyber_rect(screen, rect, c, border_width=2, fill=False)
-        draw_text(screen, lbl, 16, rect.centerx, rect.centery-10, c if is_sel else GRAY)
+        
+        if is_sel:
+            bg_color = (c[0]//5, c[1]//5, c[2]//5)
+            draw_cyber_rect(screen, rect, bg_color, alpha=220, fill=True)
+            draw_cyber_rect(screen, rect, c, border_width=2, fill=False)
+            pygame.draw.line(screen, c, (rect.left + 5, rect.bottom - 2), (rect.right - 5, rect.bottom - 2), 3)
+        else:
+            bg_color = (30, 25, 40) if is_hover else (20, 18, 30)
+            draw_cyber_rect(screen, rect, bg_color, alpha=200, fill=True)
+            draw_cyber_rect(screen, rect, (70, 60, 80) if is_hover else (45, 40, 55), border_width=1, fill=False)
+        
+        text_color = c if is_sel else (GRAY if not is_hover else WHITE)
+        draw_text(screen, lbl, 16, rect.centerx, rect.centery - 8, text_color)
 
     # 加载肉鸽卡牌数据
     from roguelite import BASE_CARDS, MODIFIER_CARDS, SYNERGY_RULES
     all_cards = []
-    # 基础卡牌
     for key, card in BASE_CARDS.items():
         all_cards.append({"id": key, "name": card["name"], "rarity": card["rarity"], 
                         "desc": card.get("desc", ""), "type": "base", "data": card})
-    # 参数卡牌
     for key, card in MODIFIER_CARDS.items():
         all_cards.append({"id": key, "name": card["name"], "rarity": card["rarity"],
                         "desc": card.get("desc", ""), "type": "modifier", "data": card})
-    # 协同规则
     for key, synergy in SYNERGY_RULES.items():
         all_cards.append({"id": key, "name": synergy["name"], "rarity": synergy["rarity"],
                         "desc": synergy.get("desc", ""), "type": "synergy", "data": synergy})
     
-    # 按品质筛选 (tab 0=全部, 1=1星, 2=2星, 3=3星, 4=4星, 5=5星, 6=6星)
     if gallery_tab == 0: 
         items = all_cards
     else: 
         items = [it for it in all_cards if it['rarity'] == gallery_tab]
     
-    start_y = 140
-    cols = 3  # 改为3列,让每个卡片更宽
-    card_w = 360  # 增大卡片宽度
-    card_h = 180  # 增大卡片高度
-    gap = 30  # 增大间距
+    # ====== 卡牌网格 ======
+    start_y = 130
+    cols = 3
+    card_w = 360
+    card_h = 180
+    gap = 30
     start_gx = (WIDTH - (cols*card_w + (cols-1)*gap)) // 2
     
-    items_per_page = 6  # 每页6个(2行×3列)
+    items_per_page = 6
     start_idx = gallery_page * items_per_page
     end_idx = min(start_idx + items_per_page, len(items))
     
-    if not items: draw_text(screen, "无相关数据", 24, WIDTH//2, HEIGHT//2, GRAY)
+    if not items: 
+        draw_text(screen, "暂无相关数据", 28, WIDTH//2, HEIGHT//2, GRAY)
+        draw_text(screen, "请选择其他分类", 18, WIDTH//2, HEIGHT//2 + 40, (80, 80, 100))
     
     for i in range(start_idx, end_idx):
         item = items[i]
@@ -2395,34 +3815,38 @@ def draw_gallery_ui():
         y = start_y + r * (card_h + gap)
         rect = pygame.Rect(x, y, card_w, card_h)
         rc = RARITY_COLORS[item['rarity']]
-        # 渐变背景
+        
+        # 卡牌背景 - 渐变效果
         card_surf = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
-        for i in range(card_h):
-            alpha = int(220 - i / card_h * 40)
-            pygame.draw.rect(card_surf, (30, 30, 50, alpha), (0, i, card_w, 1))
+        for j in range(card_h):
+            alpha = int(220 - j / card_h * 50)
+            grad_color = (rc[0]//10, rc[1]//10, rc[2]//10, alpha)
+            pygame.draw.rect(card_surf, grad_color, (0, j, card_w, 1))
         screen.blit(card_surf, (x, y))
         
-        # 边框
+        # 卡牌边框
         draw_cyber_rect(screen, rect, rc, border_width=2, fill=False)
         
         # 顶部标题栏
-        pygame.draw.rect(screen, (*rc, 120), (x+2, y+2, card_w-4, 40))
+        title_bar_rect = pygame.Rect(x+2, y+2, card_w-4, 42)
+        pygame.draw.rect(screen, (*rc, 100), title_bar_rect, border_radius=4)
+        pygame.draw.line(screen, rc, (x + 10, y + 44), (x + card_w - 10, y + 44), 1)
         
-        # 显示卡牌名称和品质星级
+        # 卡牌名称和品质星级
         stars = "★" * item['rarity']
         draw_text(screen, item['name'], 22, x+15, y+12, WHITE, align="left", glow=True)
-        draw_text(screen, stars, 20, x+card_w-15, y+12, rc, align="right")
+        draw_text(screen, stars, 18, x+card_w-15, y+14, rc, align="right")
         
-        # 显示卡牌类型标签和信息（右侧，避开图案）
+        # 卡牌类型和信息
         if "data" in item:
             type_label = {"base": "基础", "modifier": "参数", "synergy": "协同"}.get(item["type"], "")
-            draw_text(screen, f"[{type_label}]", 15, x+100, y+52, rc, align="left")
+            type_bg = pygame.Rect(x + 10, y + 50, 50, 20)
+            pygame.draw.rect(screen, (*rc, 80), type_bg, border_radius=3)
+            draw_text(screen, type_label, 13, type_bg.centerx, type_bg.y + 2, rc)
             
-            # 显示类别和流派
             card_data = item["data"]
             info_parts = []
             
-            # 类别汉化
             if "category" in card_data:
                 category_names = {
                     "attack": "攻击", "defense": "防御", 
@@ -2432,7 +3856,6 @@ def draw_gallery_ui():
                 cat_cn = category_names.get(card_data["category"], card_data["category"])
                 info_parts.append(cat_cn)
             
-            # 流派汉化
             if "archetype" in card_data:
                 archetype_names = {
                     "barrage": "弹幕流", "sniper": "狙击流",
@@ -2441,7 +3864,6 @@ def draw_gallery_ui():
                 arch_cn = archetype_names.get(card_data["archetype"], card_data["archetype"])
                 info_parts.append(arch_cn)
             
-            # 类型标签（参数卡）
             if "type" in card_data and item["type"] == "modifier":
                 type_names = {"numeric": "数值", "trait": "特性"}
                 type_cn = type_names.get(card_data["type"], card_data["type"])
@@ -2449,7 +3871,7 @@ def draw_gallery_ui():
             
             if info_parts:
                 info_text = " · ".join(info_parts)
-                draw_text(screen, info_text, 14, x+100, y+72, (180, 180, 200))
+                draw_text(screen, info_text, 13, x+70, y+52, (160, 160, 180))
             
             # 显示效果 - 属性名全面汉化（包含所有76张卡牌的属性）
             attr_names = {
@@ -2830,72 +4252,442 @@ def draw_gallery_ui():
                     info_y += 26
                     draw_text(screen, f"当前等级: Lv.{level}", 15, right_x, info_y, (150, 255, 150), align="left")
 
-    back_btn = pygame.Rect(WIDTH//2 - 50, HEIGHT - 60, 100, 40)
+    # ====== 返回按钮 ======
+    back_btn = pygame.Rect(WIDTH//2 - 55, HEIGHT - 55, 110, 42)
     h = back_btn.collidepoint(mx, my)
-    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
-    if h: draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
-    draw_text(screen, "返回", 20, back_btn.centerx, back_btn.centery-10, WHITE)
     
+    if h:
+        draw_cyber_rect(screen, back_btn, (60, 20, 50), alpha=220, fill=True)
+        draw_cyber_rect(screen, back_btn, MAGENTA, border_width=2, fill=False)
+        btn_text_color = WHITE
+    else:
+        draw_cyber_rect(screen, back_btn, (30, 25, 40), alpha=200, fill=True)
+        draw_cyber_rect(screen, back_btn, (100, 80, 120), border_width=1, fill=False)
+        btn_text_color = GRAY
+    
+    draw_text(screen, "返回", 18, back_btn.centerx, back_btn.centery - 8, btn_text_color)
+    
+    # ====== 翻页控制 ======
     max_p = max(1, (len(items) + items_per_page - 1) // items_per_page)
     if max_p > 1:
+        # 上一页按钮 - 贴近左边缘
         if gallery_page > 0:
-            prev_btn = pygame.Rect(20, HEIGHT//2 - 25, 50, 50)
-            draw_cyber_rect(screen, prev_btn, WHITE if prev_btn.collidepoint(mx,my) else GRAY, border_width=2, fill=False)
-            draw_text(screen, "<", 30, prev_btn.centerx, prev_btn.centery-15, WHITE)
+            prev_btn = pygame.Rect(8, HEIGHT//2 - 30, 50, 60)
+            prev_hover = prev_btn.collidepoint(mx, my)
+            if prev_hover:
+                draw_cyber_rect(screen, prev_btn, (50, 30, 60), alpha=200, fill=True)
+                draw_cyber_rect(screen, prev_btn, MAGENTA, border_width=2, fill=False)
+            else:
+                draw_cyber_rect(screen, prev_btn, (25, 20, 35), alpha=180, fill=True)
+                draw_cyber_rect(screen, prev_btn, (80, 60, 100), border_width=1, fill=False)
+            arrow_font = pygame.font.SysFont("Segoe UI Emoji", 28)
+            arrow_color = WHITE if prev_hover else GRAY
+            arrow_surf = arrow_font.render("◀", True, arrow_color)
+            screen.blit(arrow_surf, (prev_btn.centerx - arrow_surf.get_width()//2, prev_btn.centery - arrow_surf.get_height()//2))
+        
+        # 下一页按钮 - 贴近右边缘
         if gallery_page < max_p - 1:
-            next_btn = pygame.Rect(WIDTH-70, HEIGHT//2 - 25, 50, 50)
-            draw_cyber_rect(screen, next_btn, WHITE if next_btn.collidepoint(mx,my) else GRAY, border_width=2, fill=False)
-            draw_text(screen, ">", 30, next_btn.centerx, next_btn.centery-15, WHITE)
-        draw_text(screen, f"页码 {gallery_page+1}/{max_p}", 18, WIDTH//2, HEIGHT - 100, GRAY)
+            next_btn = pygame.Rect(WIDTH - 58, HEIGHT//2 - 30, 50, 60)
+            next_hover = next_btn.collidepoint(mx, my)
+            if next_hover:
+                draw_cyber_rect(screen, next_btn, (50, 30, 60), alpha=200, fill=True)
+                draw_cyber_rect(screen, next_btn, MAGENTA, border_width=2, fill=False)
+            else:
+                draw_cyber_rect(screen, next_btn, (25, 20, 35), alpha=180, fill=True)
+                draw_cyber_rect(screen, next_btn, (80, 60, 100), border_width=1, fill=False)
+            arrow_font = pygame.font.SysFont("Segoe UI Emoji", 28)
+            arrow_color = WHITE if next_hover else GRAY
+            arrow_surf = arrow_font.render("▶", True, arrow_color)
+            screen.blit(arrow_surf, (next_btn.centerx - arrow_surf.get_width()//2, next_btn.centery - arrow_surf.get_height()//2))
+        
+        # 页码显示
+        page_bg = pygame.Rect(WIDTH//2 - 60, HEIGHT - 100, 120, 28)
+        pygame.draw.rect(screen, (20, 15, 30, 180), page_bg, border_radius=5)
+        draw_text(screen, f"第 {gallery_page+1} / {max_p} 页", 16, WIDTH//2, HEIGHT - 92, (150, 130, 180))
 
 def draw_select_plane_ui():
-    draw_text(screen, "选择出击机体", 40, WIDTH//2, 50, CYAN, glow=True)
+    """绘制机体选择界面 - 简洁现代风格"""
+    global current_plane_idx
+    
+    t = pygame.time.get_ticks()
     mx, my = pygame.mouse.get_pos()
-
-    left_arrow = pygame.Rect(100, HEIGHT//2 - 40, 60, 80)
-    right_arrow = pygame.Rect(WIDTH-160, HEIGHT//2 - 40, 60, 80)
-    draw_text(screen, "<", 60, left_arrow.centerx, left_arrow.y, WHITE if left_arrow.collidepoint(mx,my) else GRAY)
-    draw_text(screen, ">", 60, right_arrow.centerx, right_arrow.y, WHITE if right_arrow.collidepoint(mx,my) else GRAY)
-
+    pulse = 0.5 + 0.5 * math.sin(t / 500)
+    
+    # ====== 背景 ======
+    screen.fill((8, 12, 24))
+    
+    # 粒子星空
+    random.seed(123)
+    for i in range(60):
+        sx = random.randint(0, WIDTH)
+        sy = random.randint(0, HEIGHT)
+        brightness = int(60 + 40 * math.sin(t / 400 + i * 0.5))
+        pygame.draw.circle(screen, (brightness, brightness, brightness + 20), (sx, sy), 1)
+    
+    # 扫描线效果
+    scan_y = (t // 20) % HEIGHT
+    pygame.draw.line(screen, (0, 40, 60, 30), (0, scan_y), (WIDTH, scan_y), 1)
+    
+    # ====== 标题 ======
+    title_y = 35
+    # emoji字体
+    try:
+        emoji_font_lg = pygame.font.SysFont("Segoe UI Emoji", 32)
+        rocket_emoji = emoji_font_lg.render("🚀", True, CYAN)
+    except:
+        rocket_emoji = None
+    
+    title_font = pygame.font.SysFont("SimHei", 36)
+    title_surf = title_font.render("选择出击机体", True, WHITE)
+    
+    if rocket_emoji:
+        total_w = rocket_emoji.get_width() + title_surf.get_width() + rocket_emoji.get_width() + 20
+        tx = WIDTH // 2 - total_w // 2
+        screen.blit(rocket_emoji, (tx, title_y - 5))
+        screen.blit(title_surf, (tx + rocket_emoji.get_width() + 10, title_y))
+        screen.blit(rocket_emoji, (tx + rocket_emoji.get_width() + title_surf.get_width() + 20, title_y - 5))
+    else:
+        screen.blit(title_surf, (WIDTH // 2 - title_surf.get_width() // 2, title_y))
+    
+    # 标题下划线
+    line_w = 200 + int(40 * pulse)
+    pygame.draw.line(screen, CYAN, (WIDTH//2 - line_w//2, 75), (WIDTH//2 + line_w//2, 75), 2)
+    
+    # ====== 布局参数 ======
+    content_y = 90
+    content_h = HEIGHT - 170
+    margin = 20
+    gap = 12
+    
+    # 两栏布局：左侧列表 + 右侧详情
+    list_width = 280
+    detail_width = WIDTH - margin * 2 - list_width - gap
+    
+    list_x = margin
+    detail_x = list_x + list_width + gap
+    
+    # ====== 左栏：机体列表 ======
+    list_rect = pygame.Rect(list_x, content_y, list_width, content_h)
+    pygame.draw.rect(screen, (12, 18, 32), list_rect, border_radius=8)
+    pygame.draw.rect(screen, (40, 60, 90), list_rect, 2, border_radius=8)
+    
+    # 列表标题栏
+    header_rect = pygame.Rect(list_x, content_y, list_width, 36)
+    pygame.draw.rect(screen, (20, 35, 55), header_rect, border_top_left_radius=8, border_top_right_radius=8)
+    draw_text(screen, f"可用机体 ({len(plane_keys)})", 14, list_x + list_width // 2, content_y + 10, CYAN)
+    
+    # 机体卡片
+    card_h = 50
+    card_gap = 6
+    list_inner_y = content_y + 42
+    list_inner_h = content_h - 48
+    max_visible = list_inner_h // (card_h + card_gap)
+    
+    # 滚动
+    scroll_offset = max(0, min(current_plane_idx - max_visible // 2, len(plane_keys) - max_visible))
+    
+    for i in range(scroll_offset, min(scroll_offset + max_visible, len(plane_keys))):
+        pid = plane_keys[i]
+        pdata = PLANES[pid]
+        idx = i - scroll_offset
+        cy = list_inner_y + idx * (card_h + card_gap)
+        card = pygame.Rect(list_x + 8, cy, list_width - 16, card_h)
+        
+        is_sel = (i == current_plane_idx)
+        is_hov = card.collidepoint(mx, my) and not is_sel
+        
+        # 卡片背景
+        if is_sel:
+            pygame.draw.rect(screen, (pdata["color"][0]//5, pdata["color"][1]//5, pdata["color"][2]//5), card, border_radius=6)
+            pygame.draw.rect(screen, pdata["color"], card, 2, border_radius=6)
+            # 选中指示器
+            pygame.draw.rect(screen, pdata["color"], (card.x, card.y + 8, 4, card.height - 16), border_radius=2)
+        elif is_hov:
+            pygame.draw.rect(screen, (25, 35, 55), card, border_radius=6)
+            pygame.draw.rect(screen, (80, 100, 130), card, 1, border_radius=6)
+        else:
+            pygame.draw.rect(screen, (15, 22, 38), card, border_radius=6)
+        
+        # 颜色点
+        pygame.draw.circle(screen, pdata["color"], (card.x + 22, card.y + card_h // 2), 8)
+        pygame.draw.circle(screen, WHITE, (card.x + 22, card.y + card_h // 2), 8, 1)
+        
+        # 名称
+        name_col = WHITE if is_sel else ((200, 210, 230) if is_hov else (140, 150, 170))
+        name_font = pygame.font.SysFont("SimHei", 15)
+        name_surf = name_font.render(pdata["name"], True, name_col)
+        screen.blit(name_surf, (card.x + 40, card.y + 8))
+        
+        # 简要属性
+        small_font = pygame.font.SysFont("SimHei", 10)
+        stats_text = f"HP:{pdata['hp']}  ATK:{pdata['damage']}  SPD:{pdata['speed']}"
+        stats_col = (100, 110, 130) if not is_sel else (150, 160, 180)
+        stats_surf = small_font.render(stats_text, True, stats_col)
+        screen.blit(stats_surf, (card.x + 40, card.y + 28))
+    
+    # 滚动条
+    if len(plane_keys) > max_visible:
+        track_h = list_inner_h - 10
+        thumb_h = max(30, int(track_h * max_visible / len(plane_keys)))
+        thumb_y = list_inner_y + 5 + int((track_h - thumb_h) * scroll_offset / max(1, len(plane_keys) - max_visible))
+        pygame.draw.rect(screen, (30, 40, 60), (list_x + list_width - 10, list_inner_y + 5, 4, track_h), border_radius=2)
+        pygame.draw.rect(screen, CYAN, (list_x + list_width - 10, thumb_y, 4, thumb_h), border_radius=2)
+    
+    # ====== 右栏：机体详情 ======
     pid = plane_keys[current_plane_idx]
-    data = PLANES[pid]
-    cx, cy = WIDTH//2, HEIGHT//2
-    card_rect = pygame.Rect(cx - 200, cy - 200, 400, 400)
-    draw_cyber_rect(screen, card_rect, (20,20,30), alpha=200, fill=True)
-    draw_cyber_rect(screen, card_rect, data["color"], border_width=2, fill=False)
-
-    # 获取当前装备的涂装预览
+    pdata = PLANES[pid]
+    pcolor = pdata["color"]
+    
+    detail_rect = pygame.Rect(detail_x, content_y, detail_width, content_h)
+    pygame.draw.rect(screen, (12, 18, 32), detail_rect, border_radius=8)
+    # 动态边框
+    border_col = (min(255, pcolor[0] + int(20 * pulse)), min(255, pcolor[1] + int(20 * pulse)), min(255, pcolor[2] + int(20 * pulse)))
+    pygame.draw.rect(screen, border_col, detail_rect, 2, border_radius=8)
+    
+    # 详情区分为左右两半
+    detail_left_w = detail_width // 2 - 10
+    detail_right_x = detail_x + detail_width // 2 + 10
+    detail_right_w = detail_width // 2 - 20
+    
+    # === 左半：预览 + 名称 + 描述 ===
+    preview_cx = detail_x + detail_left_w // 2 + 20
+    preview_cy = content_y + 120
+    
+    # 光晕
+    glow_r = int(90 + 20 * pulse)
+    glow_surf = pygame.Surface((glow_r * 2, glow_r * 2), pygame.SRCALPHA)
+    for r in range(glow_r, 0, -3):
+        alpha = int(40 * (1 - r / glow_r))
+        pygame.draw.circle(glow_surf, (*pcolor, alpha), (glow_r, glow_r), r)
+    screen.blit(glow_surf, (preview_cx - glow_r, preview_cy - glow_r))
+    
+    # 机体图像
     visual = customization_manager.get_theme_visual(pid, PLANES.get(pid, {}).get('visual', None))
-    preview = get_plane_surf(pid, visual)
-    preview = pygame.transform.scale(preview, (180, 180))
-    safe_blit(screen, preview, (cx - 90, cy - 200))
-
-    draw_text(screen, data["name"], 36, cx, cy - 50, data["color"], glow=True)
-    draw_text(screen, data["desc"], 18, cx, cy, GRAY)
-
-    def draw_bar(label, val, max_v, y_off):
-        draw_text(screen, label, 16, card_rect.x + 50, card_rect.y + y_off, WHITE, align="left")
-        pygame.draw.rect(screen, (40,40,40), (card_rect.x + 120, card_rect.y + y_off + 5, 200, 8))
-        fill = (val / max_v) * 200
-        pygame.draw.rect(screen, data["color"], (card_rect.x + 120, card_rect.y + y_off + 5, fill, 8))
-    draw_bar("速度", data["speed"], 10, 280)
-    draw_bar("火力", data["damage"], 80, 310)
-    draw_bar("装甲", data["hp"], 200, 340)
-
-    start_btn = pygame.Rect(cx - 100, HEIGHT - 120, 200, 60)
-    h = start_btn.collidepoint(mx, my)
-    draw_cyber_rect(screen, start_btn, data["color"] if h else (50,50,50), fill=True)
-    draw_text(screen, "确认出击", 24, start_btn.centerx, start_btn.centery-12, WHITE)
-
-    # 调试信息：显示按钮矩形（仅用于测试）
-    if h:
-        draw_text(screen, "[按钮可点击]", 14, start_btn.centerx, start_btn.bottom + 10, CYAN)
-
-    back_btn = pygame.Rect(50, HEIGHT - 80, 100, 40)
-    h2 = back_btn.collidepoint(mx, my)
-    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
-    if h2: draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
-    draw_text(screen, "返回", 20, back_btn.centerx, back_btn.centery-10, WHITE)
+    plane_img = get_plane_surf(pid, visual)
+    img_size = int(140 + 8 * pulse)
+    plane_img = pygame.transform.scale(plane_img, (img_size, img_size))
+    screen.blit(plane_img, (preview_cx - img_size // 2, preview_cy - img_size // 2))
+    
+    # 机体名称
+    name_y = preview_cy + img_size // 2 + 25
+    name_font = pygame.font.SysFont("SimHei", 28)
+    name_surf = name_font.render(pdata["name"], True, pcolor)
+    screen.blit(name_surf, (preview_cx - name_surf.get_width() // 2, name_y))
+    
+    # 名称装饰线
+    line_w = name_surf.get_width() + 40
+    pygame.draw.line(screen, pcolor, (preview_cx - line_w // 2, name_y + 35), (preview_cx + line_w // 2, name_y + 35), 2)
+    pygame.draw.circle(screen, pcolor, (preview_cx - line_w // 2, name_y + 35), 4)
+    pygame.draw.circle(screen, pcolor, (preview_cx + line_w // 2, name_y + 35), 4)
+    
+    # 描述
+    desc_y = name_y + 50
+    desc_font = pygame.font.SysFont("SimHei", 13)
+    desc_lines = textwrap.wrap(pdata["desc"], width=18)
+    for i, line in enumerate(desc_lines[:3]):
+        desc_surf = desc_font.render(line, True, (160, 170, 190))
+        screen.blit(desc_surf, (preview_cx - desc_surf.get_width() // 2, desc_y + i * 20))
+    
+    # 终极技能
+    ult_y = desc_y + 75
+    ult_name = pdata.get("ult_name", "未知技能")
+    ult_color = pdata.get("ult_color", pcolor)
+    
+    ult_box = pygame.Rect(detail_x + 25, ult_y, detail_left_w - 10, 45)
+    pygame.draw.rect(screen, (ult_color[0]//8, ult_color[1]//8, ult_color[2]//8), ult_box, border_radius=6)
+    pygame.draw.rect(screen, ult_color, ult_box, 1, border_radius=6)
+    
+    # 终极技能标签 + emoji
+    try:
+        ult_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 16)
+        ult_emoji = ult_emoji_font.render("⚡", True, ult_color)
+        screen.blit(ult_emoji, (ult_box.x + 10, ult_box.y + 12))
+    except:
+        pass
+    
+    ult_label_font = pygame.font.SysFont("SimHei", 11)
+    ult_label = ult_label_font.render("终极技能", True, (120, 130, 150))
+    screen.blit(ult_label, (ult_box.x + 32, ult_box.y + 6))
+    
+    ult_name_font = pygame.font.SysFont("SimHei", 16)
+    ult_name_surf = ult_name_font.render(ult_name, True, ult_color)
+    screen.blit(ult_name_surf, (ult_box.x + 32, ult_box.y + 22))
+    
+    # === 右半：属性 + 战术信息 ===
+    stat_y = content_y + 25
+    
+    # 属性标题
+    stat_title_font = pygame.font.SysFont("SimHei", 14)
+    stat_title = stat_title_font.render("◆ 能力属性", True, CYAN)
+    screen.blit(stat_title, (detail_right_x, stat_y))
+    pygame.draw.line(screen, (40, 60, 80), (detail_right_x + 80, stat_y + 8), (detail_x + detail_width - 25, stat_y + 8), 1)
+    
+    # emoji字体
+    try:
+        stat_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 14)
+    except:
+        stat_emoji_font = None
+    
+    # 属性条
+    bar_y = stat_y + 30
+    bar_w = detail_right_w - 50
+    bar_h = 14
+    
+    def draw_attr_bar(emoji, label, val, max_val, y, color):
+        # emoji
+        if stat_emoji_font:
+            e_surf = stat_emoji_font.render(emoji, True, color)
+            screen.blit(e_surf, (detail_right_x, y))
+        # 标签
+        lbl_font = pygame.font.SysFont("SimHei", 12)
+        lbl_surf = lbl_font.render(label, True, (140, 150, 170))
+        screen.blit(lbl_surf, (detail_right_x + 22, y + 1))
+        # 进度条背景
+        bar_rect = pygame.Rect(detail_right_x + 60, y + 2, bar_w, bar_h)
+        pygame.draw.rect(screen, (25, 32, 50), bar_rect, border_radius=3)
+        # 填充
+        fill_w = int(bar_w * min(1, val / max_val))
+        if fill_w > 0:
+            fill_rect = pygame.Rect(detail_right_x + 60, y + 2, fill_w, bar_h)
+            pygame.draw.rect(screen, color, fill_rect, border_radius=3)
+        # 数值
+        val_font = pygame.font.SysFont("SimHei", 11)
+        val_text = f"{val:.1f}" if isinstance(val, float) else str(val)
+        val_surf = val_font.render(val_text, True, color)
+        screen.blit(val_surf, (detail_right_x + 65 + bar_w, y + 1))
+    
+    draw_attr_bar("⚡", "速度", pdata["speed"], 6.0, bar_y, LIME)
+    draw_attr_bar("🔥", "火力", pdata["damage"], 50, bar_y + 28, ORANGE)
+    draw_attr_bar("🛡", "装甲", pdata["hp"], 320, bar_y + 56, CYAN)
+    draw_attr_bar("💫", "射速", 1000 / pdata["delay"], 18, bar_y + 84, MAGENTA)
+    
+    # 战术信息
+    tact_y = bar_y + 130
+    tact_title = stat_title_font.render("◆ 战术信息", True, (100, 120, 160))
+    screen.blit(tact_title, (detail_right_x, tact_y))
+    pygame.draw.line(screen, (40, 50, 70), (detail_right_x + 80, tact_y + 8), (detail_x + detail_width - 25, tact_y + 8), 1)
+    
+    # 弹药类型
+    info_y = tact_y + 28
+    info_font = pygame.font.SysFont("SimHei", 12)
+    bullet_type = pdata.get("bullet_type", "standard").replace("_", " ").upper()
+    
+    info_label = info_font.render("弹药:", True, (100, 110, 130))
+    screen.blit(info_label, (detail_right_x, info_y))
+    info_val = info_font.render(bullet_type, True, pcolor)
+    screen.blit(info_val, (detail_right_x + 45, info_y))
+    
+    # 特殊能力
+    visual_data = pdata.get("visual", {})
+    ability = visual_data.get("ability", "standard").replace("_", " ").title()
+    
+    info_label2 = info_font.render("能力:", True, (100, 110, 130))
+    screen.blit(info_label2, (detail_right_x, info_y + 22))
+    info_val2 = info_font.render(ability, True, (170, 180, 200))
+    screen.blit(info_val2, (detail_right_x + 45, info_y + 22))
+    
+    # 综合评级
+    total_power = pdata["speed"] * 12 + pdata["damage"] * 1.2 + pdata["hp"] / 2.5
+    if total_power > 170:
+        rank, rank_col = "S", GOLD
+    elif total_power > 145:
+        rank, rank_col = "A", MAGENTA
+    elif total_power > 120:
+        rank, rank_col = "B", CYAN
+    else:
+        rank, rank_col = "C", GRAY
+    
+    rank_y = info_y + 60
+    rank_label = info_font.render("评级:", True, (100, 110, 130))
+    screen.blit(rank_label, (detail_right_x, rank_y))
+    rank_font = pygame.font.SysFont("SimHei", 32)
+    rank_surf = rank_font.render(rank, True, rank_col)
+    screen.blit(rank_surf, (detail_right_x + 50, rank_y - 8))
+    
+    # 技能列表（如有）
+    skills = pdata.get("skills", {})
+    if skills:
+        skill_y = rank_y + 50
+        skill_title = stat_title_font.render("◆ 技能组", True, YELLOW)
+        screen.blit(skill_title, (detail_right_x, skill_y))
+        pygame.draw.line(screen, (60, 55, 30), (detail_right_x + 60, skill_y + 8), (detail_x + detail_width - 25, skill_y + 8), 1)
+        
+        sk_y = skill_y + 22
+        sk_font = pygame.font.SysFont("SimHei", 11)
+        for sk_key, sk_data in list(skills.items())[:3]:
+            sk_name = sk_data.get("name", sk_key)
+            sk_box = pygame.Rect(detail_right_x, sk_y, detail_right_w - 10, 24)
+            pygame.draw.rect(screen, (22, 28, 42), sk_box, border_radius=4)
+            pygame.draw.rect(screen, (60, 65, 85), sk_box, 1, border_radius=4)
+            sk_surf = sk_font.render(sk_name, True, (150, 160, 180))
+            screen.blit(sk_surf, (sk_box.x + 8, sk_box.y + 5))
+            sk_y += 28
+    
+    # ====== 底部按钮 ======
+    btn_y = HEIGHT - 65
+    
+    # 左右导航
+    nav_btn_w = 70
+    nav_btn_h = 45
+    
+    # 箭头字体（使用支持箭头符号的字体）
+    try:
+        arrow_emoji_font = pygame.font.SysFont("Segoe UI Symbol", 24)
+    except:
+        arrow_emoji_font = pygame.font.SysFont("SimHei", 24)
+    
+    left_btn = pygame.Rect(list_x, btn_y, nav_btn_w, nav_btn_h)
+    left_hov = left_btn.collidepoint(mx, my)
+    pygame.draw.rect(screen, (35, 45, 65) if left_hov else (20, 28, 45), left_btn, border_radius=6)
+    pygame.draw.rect(screen, CYAN if left_hov else (50, 60, 80), left_btn, 2, border_radius=6)
+    # 使用纯文本箭头代替Unicode符号
+    left_arrow = arrow_emoji_font.render("<", True, WHITE if left_hov else GRAY)
+    screen.blit(left_arrow, (left_btn.centerx - left_arrow.get_width() // 2, left_btn.centery - left_arrow.get_height() // 2 - 4))
+    draw_text(screen, "A", 10, left_btn.centerx, left_btn.bottom - 10, (80, 90, 110))
+    
+    right_btn = pygame.Rect(list_x + list_width - nav_btn_w, btn_y, nav_btn_w, nav_btn_h)
+    right_hov = right_btn.collidepoint(mx, my)
+    pygame.draw.rect(screen, (35, 45, 65) if right_hov else (20, 28, 45), right_btn, border_radius=6)
+    pygame.draw.rect(screen, CYAN if right_hov else (50, 60, 80), right_btn, 2, border_radius=6)
+    right_arrow = arrow_emoji_font.render(">", True, WHITE if right_hov else GRAY)
+    screen.blit(right_arrow, (right_btn.centerx - right_arrow.get_width() // 2, right_btn.centery - right_arrow.get_height() // 2 - 4))
+    draw_text(screen, "D", 10, right_btn.centerx, right_btn.bottom - 10, (80, 90, 110))
+    
+    # 确认出击按钮
+    start_btn_w = 220
+    start_btn_h = 50
+    start_btn = pygame.Rect(detail_x + detail_width // 2 - start_btn_w // 2, btn_y - 2, start_btn_w, start_btn_h)
+    start_hov = start_btn.collidepoint(mx, my)
+    
+    if start_hov:
+        pygame.draw.rect(screen, (pcolor[0]//2, pcolor[1]//2, pcolor[2]//2), start_btn, border_radius=8)
+        pygame.draw.rect(screen, pcolor, start_btn, 3, border_radius=8)
+    else:
+        pygame.draw.rect(screen, (pcolor[0]//5, pcolor[1]//5, pcolor[2]//5), start_btn, border_radius=8)
+        pygame.draw.rect(screen, pcolor, start_btn, 2, border_radius=8)
+    
+    start_font = pygame.font.SysFont("SimHei", 22)
+    start_text = start_font.render("确认出击", True, WHITE)
+    screen.blit(start_text, (start_btn.centerx - start_text.get_width() // 2, start_btn.centery - 14))
+    hint_font = pygame.font.SysFont("SimHei", 10)
+    hint_text = hint_font.render("[ENTER]", True, (130, 140, 160))
+    screen.blit(hint_text, (start_btn.centerx - hint_text.get_width() // 2, start_btn.bottom - 14))
+    
+    # 返回按钮
+    back_btn = pygame.Rect(detail_x + detail_width - 90, btn_y, 85, nav_btn_h)
+    back_hov = back_btn.collidepoint(mx, my)
+    pygame.draw.rect(screen, (50, 30, 35) if back_hov else (28, 22, 28), back_btn, border_radius=6)
+    pygame.draw.rect(screen, RED if back_hov else (70, 50, 55), back_btn, 2, border_radius=6)
+    back_font = pygame.font.SysFont("SimHei", 15)
+    back_text = back_font.render("返回", True, WHITE if back_hov else (140, 130, 135))
+    screen.blit(back_text, (back_btn.centerx - back_text.get_width() // 2, back_btn.centery - 10))
+    esc_text = hint_font.render("[ESC]", True, (100, 85, 90))
+    screen.blit(esc_text, (back_btn.centerx - esc_text.get_width() // 2, back_btn.bottom - 12))
+    
+    # 底部提示
+    tip_font = pygame.font.SysFont("SimHei", 11)
+    tip_text = tip_font.render("A/D或↑↓切换机体  |  点击列表选择  |  ENTER确认  |  ESC返回", True, (60, 70, 90))
+    screen.blit(tip_text, (WIDTH // 2 - tip_text.get_width() // 2, HEIGHT - 18))
 
 def draw_boss_challenge_complete_ui():
     """Boss挑战模式完成界面，显示完成统计和奖励"""
@@ -2904,9 +4696,16 @@ def draw_boss_challenge_complete_ui():
     title_font = pygame.font.SysFont("SimHei", 56)
     font = pygame.font.SysFont("SimHei", 32)
     small_font = pygame.font.SysFont("SimHei", 24)
+    emoji_font_title = pygame.font.SysFont("Segoe UI Emoji", 56)
     
-    title = title_font.render("🏆 挑战完成！🏆", True, GOLD)
-    screen.blit(title, (WIDTH//2 - title.get_width()//2, 60))
+    # 分开渲染emoji和文字
+    trophy_emoji = emoji_font_title.render("🏆", True, GOLD)
+    title_text = title_font.render(" 挑战完成！ ", True, GOLD)
+    title_width = trophy_emoji.get_width() * 2 + title_text.get_width()
+    title_x = WIDTH//2 - title_width//2
+    screen.blit(trophy_emoji, (title_x, 60))
+    screen.blit(title_text, (title_x + trophy_emoji.get_width(), 60))
+    screen.blit(trophy_emoji, (title_x + trophy_emoji.get_width() + title_text.get_width(), 60))
     
     y = 180
     # 显示挑战数据
@@ -2928,307 +4727,643 @@ def draw_boss_challenge_complete_ui():
     draw_text(screen, "按 Enter 返回主菜单，按 Esc 继续游戏", 20, WIDTH//2, HEIGHT - 80, GRAY)
 
 def draw_boss_challenge_ui():
-    """Boss挑战模式主界面，玩家可选择Boss顺序并开始挑战 - 赛博朋克风格，带动画效果和滚动"""
+    """Boss挑战模式主界面 - 赛博朋克风格 + 预设模式"""
     global boss_challenge_selected, boss_challenge_order, boss_challenge_swap_timer, boss_challenge_pulse_timer, boss_challenge_scroll_offset
+    global boss_challenge_enabled, boss_challenge_preset
     
     # 动画计时器更新
-    boss_challenge_pulse_timer = (boss_challenge_pulse_timer + 1) % 60
+    boss_challenge_pulse_timer = (boss_challenge_pulse_timer + 1) % 360
+    t = boss_challenge_pulse_timer / 360.0
+    pulse = 0.5 + 0.5 * math.sin(t * math.pi * 2)  # 0-1 脉冲
     
-    # ====== 华丽背景效果 ======
-    # 基础背景：深蓝色渐变
-    screen.fill((10, 10, 25))
-    for y in range(HEIGHT):
-        alpha = int(20 * (y / HEIGHT))
-        col = (10 + alpha//3, 10 + alpha//3, 25 + alpha)
-        pygame.draw.line(screen, col, (0, y), (WIDTH, y))
+    # ====== 背景 ======
+    screen.fill((5, 8, 18))
     
-    # 网格背景效果：远处的赛博朋克网格
-    grid_size = 60
-    grid_offset_x = int(boss_challenge_pulse_timer * 0.5) % grid_size
-    grid_offset_y = int(boss_challenge_pulse_timer * 0.2) % grid_size
-    for x in range(-grid_size, WIDTH + grid_size, grid_size):
-        pygame.draw.line(screen, (20, 40, 60, 30), 
-                        (x + grid_offset_x, 0), 
-                        (x + grid_offset_x, HEIGHT), 1)
-    for y in range(-grid_size, HEIGHT + grid_size, grid_size):
-        pygame.draw.line(screen, (20, 40, 60, 30), 
-                        (0, y + grid_offset_y), 
-                        (WIDTH, y + grid_offset_y), 1)
+    # 动态星空背景
+    random.seed(42)
+    for i in range(60):
+        sx = random.randint(0, WIDTH)
+        sy = random.randint(0, HEIGHT)
+        base_b = random.randint(50, 140)
+        twinkle = int(30 * math.sin(t * math.pi * 4 + i * 0.5))
+        brightness = max(30, min(180, base_b + twinkle))
+        size = 1 if i % 3 else 2
+        pygame.draw.circle(screen, (brightness, brightness, brightness + 30), (sx, sy), size)
     
-    # 动态光束效果（从屏幕边缘投射）
-    beam_angle = boss_challenge_pulse_timer / 60 * math.pi * 2
-    for beam_idx in range(3):
-        angle = beam_angle + (beam_idx * math.pi * 2 / 3)
-        beam_start_x = WIDTH // 2 + int(500 * math.cos(angle))
-        beam_start_y = HEIGHT // 2 + int(500 * math.sin(angle))
-        beam_brightness = int(30 + 20 * math.sin(boss_challenge_pulse_timer / 60 * math.pi * 2))
-        beam_color = (beam_brightness // 2, beam_brightness, beam_brightness)
-        pygame.draw.line(screen, beam_color, 
-                        (beam_start_x, beam_start_y), 
-                        (WIDTH // 2, HEIGHT // 2), 1)
+    # 背景装饰网格线
+    for gx in range(0, WIDTH, 80):
+        alpha = int(15 + 10 * math.sin(t * math.pi * 2 + gx * 0.02))
+        pygame.draw.line(screen, (0, alpha, alpha), (gx, 0), (gx, HEIGHT), 1)
+    for gy in range(0, HEIGHT, 80):
+        alpha = int(15 + 10 * math.sin(t * math.pi * 2 + gy * 0.02))
+        pygame.draw.line(screen, (0, alpha, alpha), (0, gy), (WIDTH, gy), 1)
     
-    # 粒子效果（随机发光星点）
-    random.seed(boss_challenge_pulse_timer // 10)  # 使粒子位置稳定但变化
-    particle_count = 40
-    for i in range(particle_count):
-        px = random.randint(0, WIDTH)
-        py = random.randint(0, HEIGHT)
-        # 脉冲大小
-        pulse = math.sin(boss_challenge_pulse_timer / 60 * math.pi * 2 + i)
-        particle_size = max(1, int(2 + pulse))
-        particle_brightness = int(100 + 80 * pulse)
-        particle_color = (particle_brightness // 3, particle_brightness // 2, particle_brightness)
-        pygame.draw.circle(screen, particle_color, (px, py), particle_size)
-    
-    # 顶部和底部的光晕条
-    top_glow_height = 80
-    for y_offset in range(top_glow_height):
-        glow_alpha = int(40 * (1 - y_offset / top_glow_height))
-        glow_col = (glow_alpha // 3, glow_alpha, glow_alpha + 10)
-        pygame.draw.line(screen, glow_col, (0, y_offset), (WIDTH, y_offset), 1)
-    
-    for y_offset in range(bottom_glow_height := 60):
-        glow_alpha = int(40 * (1 - y_offset / bottom_glow_height))
-        glow_col = (glow_alpha // 3, glow_alpha, glow_alpha + 10)
-        pygame.draw.line(screen, glow_col, (0, HEIGHT - y_offset), (WIDTH, HEIGHT - y_offset), 1)
-    
-    title_font = pygame.font.SysFont("SimHei", 56)
-    font = pygame.font.SysFont("SimHei", 28)
-    small_font = pygame.font.SysFont("SimHei", 20)
-    tiny_font = pygame.font.SysFont("SimHei", 16)
-    
-    # Boss列表
+    # Boss列表初始化
     boss_keys = list(BOSS_DB.keys())
+    if not boss_challenge_enabled:
+        boss_challenge_enabled = {k: True for k in boss_keys}
     if not boss_challenge_order:
         boss_challenge_order = boss_keys[:]
     
-    # 标题 + 光晕效果（脉冲）
-    pulse_offset = int(5 * math.sin(boss_challenge_pulse_timer / 60 * math.pi * 2))
-    title = title_font.render("⚔ Boss 挑战模式 ⚔", True, CYAN)
-    title_glow = title_font.render("⚔ Boss 挑战模式 ⚔", True, (50, 180, 200))
-    screen.blit(title_glow, (WIDTH//2 - title.get_width()//2 + 2 + pulse_offset//2, 45))
-    screen.blit(title, (WIDTH//2 - title.get_width()//2, 40))
+    # 获取已启用的Boss列表
+    enabled_bosses = [k for k in boss_challenge_order if boss_challenge_enabled.get(k, True)]
+    enabled_count = len(enabled_bosses)
     
-    # 副标题
-    subtitle = small_font.render(f"选择 {len(boss_challenge_order)} 个Boss的挑战顺序", True, (150, 150, 150))
-    screen.blit(subtitle, (WIDTH//2 - subtitle.get_width()//2, 110))
+    mx, my = pygame.mouse.get_pos()
     
-    # 装饰线
-    pygame.draw.line(screen, CYAN, (80, 155), (WIDTH-80, 155), 2)
+    # ====== 标题区 ======
+    title_glow = int(180 + 40 * pulse)
+    # 分离渲染: emoji用专用字体，文字用常规字体
+    title_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 44)
+    title_text_font = pygame.font.SysFont("SimHei", 44)
+    sword_emoji = title_emoji_font.render("⚔", True, (0, title_glow, title_glow))
+    title_text = title_text_font.render(" BOSS 挑战模式 ", True, (0, title_glow, title_glow))
+    total_w = sword_emoji.get_width() * 2 + title_text.get_width()
+    title_start_x = WIDTH//2 - total_w//2
+    screen.blit(sword_emoji, (title_start_x, 40 - sword_emoji.get_height()//2))
+    screen.blit(title_text, (title_start_x + sword_emoji.get_width(), 40 - title_text.get_height()//2))
+    screen.blit(sword_emoji, (title_start_x + sword_emoji.get_width() + title_text.get_width(), 40 - sword_emoji.get_height()//2))
     
-    # 左列：Boss列表（卡片样式，可滚动）
-    card_width = 380
-    card_height = 50
-    start_y = 180
-    gap = 12
-    max_visible = 8  # 最多显示8个Boss
+    # ====== 预设模式按钮 ======
+    preset_emojis = ["⚙️", "🎯", "⚔️", "🔥", "💀"]
+    preset_labels = ["自定义", "快速战", "标准战", "持久战", "全Boss"]
+    preset_counts = [0, 3, 5, 10, len(boss_keys)]  # 0表示自定义
+    preset_colors = [(100, 100, 100), LIME, CYAN, ORANGE, RED]
+    preset_btn_w = 95
+    preset_btn_h = 32
+    preset_start_x = WIDTH//2 - (len(preset_labels) * preset_btn_w + (len(preset_labels)-1) * 8) // 2
+    preset_y = 72
+    
+    # emoji字体
+    try:
+        emoji_font = pygame.font.SysFont("Segoe UI Emoji", 14)
+    except:
+        emoji_font = pygame.font.SysFont("Arial", 14)
+    
+    for i, (emoji, label, count, color) in enumerate(zip(preset_emojis, preset_labels, preset_counts, preset_colors)):
+        btn_x = preset_start_x + i * (preset_btn_w + 8)
+        btn_rect = pygame.Rect(btn_x, preset_y, preset_btn_w, preset_btn_h)
+        is_selected = (boss_challenge_preset == i)
+        is_hover = btn_rect.collidepoint(mx, my)
+        
+        # 按钮背景
+        if is_selected:
+            bg_col = (color[0]//3, color[1]//3, color[2]//3)
+            draw_cyber_rect(screen, btn_rect, bg_col, alpha=220, cut_size=5, fill=True)
+            draw_cyber_rect(screen, btn_rect, color, cut_size=5, border_width=2, fill=False)
+        elif is_hover:
+            draw_cyber_rect(screen, btn_rect, (40, 50, 70), alpha=200, cut_size=5, fill=True)
+            draw_cyber_rect(screen, btn_rect, color, cut_size=5, border_width=1, fill=False)
+        else:
+            draw_cyber_rect(screen, btn_rect, (20, 28, 45), alpha=180, cut_size=5, fill=True)
+            draw_cyber_rect(screen, btn_rect, (60, 70, 90), cut_size=5, border_width=1, fill=False)
+        
+        # 按钮文字 - emoji用专用字体渲染
+        text_col = WHITE if is_selected else (color if is_hover else (150, 160, 180))
+        # 渲染emoji
+        emoji_surf = emoji_font.render(emoji, True, text_col)
+        emoji_x = btn_rect.centerx - emoji_surf.get_width()//2 - 22
+        screen.blit(emoji_surf, (emoji_x, btn_rect.centery - emoji_surf.get_height()//2))
+        # 渲染文字标签
+        draw_text(screen, label, 13, btn_rect.centerx + 8, btn_rect.centery - 7, text_col, glow=is_selected)
+        # 数量提示
+        if count > 0:
+            draw_text(screen, f"×{count}", 10, btn_rect.centerx, btn_rect.bottom - 10, (120, 130, 150))
+    
+    # 标题下装饰线
+    line_w = 300 + int(50 * pulse)
+    pygame.draw.line(screen, CYAN, (WIDTH//2 - line_w//2, 108), (WIDTH//2 + line_w//2, 108), 1)
+    
+    # ====== 三栏布局 ======
+    content_y = 118
+    content_height = HEIGHT - 195
+    
+    # 左栏：Boss列表
+    left_x = 28
+    left_width = 268
+    
+    # 中栏：Boss详情
+    mid_x = left_x + left_width + 10
+    mid_width = 282
+    
+    # 右栏：挑战预览
+    right_x = mid_x + mid_width + 10
+    right_width = WIDTH - right_x - 28
+    
+    # ====== 左栏：Boss列表 ======
+    card_height = 46
+    gap = 4
+    max_visible = int((content_height - 38) / (card_height + gap))
     visible_height = max_visible * (card_height + gap)
     
-    # 自动调整滚动偏移，确保选中项可见
+    # 自动滚动
     if boss_challenge_selected < boss_challenge_scroll_offset:
         boss_challenge_scroll_offset = boss_challenge_selected
     elif boss_challenge_selected >= boss_challenge_scroll_offset + max_visible:
         boss_challenge_scroll_offset = boss_challenge_selected - max_visible + 1
     
-    # 绘制列表容器（带边框）
-    list_container = pygame.Rect(60, start_y, card_width, visible_height + 10)
-    pygame.draw.rect(screen, (20, 20, 35), list_container, 1)
+    # 列表面板 - 赛博风格 + 角落装饰
+    list_panel = pygame.Rect(left_x, content_y, left_width, content_height)
+    draw_cyber_rect(screen, list_panel, (12, 18, 32), alpha=230, fill=True)
+    draw_cyber_rect(screen, list_panel, CYAN, border_width=2, fill=False)
     
-    # 绘制可见的Boss卡片
+    # 角落装饰
+    corner_size = 8
+    pygame.draw.line(screen, CYAN, (left_x, content_y + corner_size), (left_x, content_y), 2)
+    pygame.draw.line(screen, CYAN, (left_x, content_y), (left_x + corner_size, content_y), 2)
+    pygame.draw.line(screen, CYAN, (left_x + left_width - corner_size, content_y + content_height), (left_x + left_width, content_y + content_height), 2)
+    pygame.draw.line(screen, CYAN, (left_x + left_width, content_y + content_height - corner_size), (left_x + left_width, content_y + content_height), 2)
+    
+    # 面板标题 + 装饰
+    draw_text(screen, "◆ 挑战顺序", 15, left_x + left_width//2, content_y + 12, CYAN)
+    pygame.draw.line(screen, (0, 80, 80), (left_x + 15, content_y + 30), (left_x + left_width - 15, content_y + 30), 1)
+    
+    # Boss卡片
+    card_start_y = content_y + 38
+    
     for i in range(boss_challenge_scroll_offset, min(boss_challenge_scroll_offset + max_visible, len(boss_challenge_order))):
         bkey = boss_challenge_order[i]
-        boss_name = BOSS_DB[bkey]["name"]
-        boss_color = BOSS_DB[bkey]["color"]
-        boss_stats = BOSS_DB[bkey].get("stats", [])
+        boss_data = BOSS_DB[bkey]
+        boss_color = boss_data["color"]
+        is_enabled = boss_challenge_enabled.get(bkey, True)
         
-        # 计算显示位置（相对于滚动）
         display_idx = i - boss_challenge_scroll_offset
-        y_pos = start_y + 5 + display_idx * (card_height + gap)
+        card_y = card_start_y + display_idx * (card_height + gap)
+        card_rect = pygame.Rect(left_x + 8, card_y, left_width - 20, card_height)
         
-        # 换位动画：如果这是被交换的项，加上偏移
-        anim_offset = 0
-        if boss_challenge_swap_timer > 0:
-            anim_progress = 1 - (boss_challenge_swap_timer / 15)  # 15帧动画
-            if anim_progress < 0:
-                anim_progress = 0
-            boss_challenge_swap_timer -= 1
+        is_selected = (i == boss_challenge_selected)
+        is_hovered = card_rect.collidepoint(mx, my) and not is_selected
         
-        card_rect = pygame.Rect(60, y_pos + anim_offset, card_width, card_height)
+        # 禁用状态灰化
+        display_color = boss_color if is_enabled else (60, 60, 70)
         
-        # 卡片背景
-        if i == boss_challenge_selected:
-            # 选中高亮：发光边框
-            pygame.draw.rect(screen, boss_color, card_rect, 3)
-            bg_color = (30, 30, 50)
-            # 脉冲光晕
-            pulse = int(2 * math.sin(boss_challenge_pulse_timer / 60 * math.pi * 2))
-            pygame.draw.rect(screen, (boss_color[0]//3, boss_color[1]//3, boss_color[2]//3), card_rect, max(1, pulse + 1))
-            # 左侧指示条（脉冲）
-            indicator_width = max(2, int(3 + 2 * math.sin(boss_challenge_pulse_timer / 60 * math.pi * 2)))
-            pygame.draw.rect(screen, boss_color, (card_rect.x - 5, card_rect.y, indicator_width, card_rect.height))
+        # 卡片背景 - 赛博风格 + 动态效果
+        if is_selected:
+            # 选中状态 - 呼吸光效
+            glow_alpha = int(180 + 40 * pulse)
+            bg_col = (display_color[0]//3, display_color[1]//3, display_color[2]//3)
+            draw_cyber_rect(screen, card_rect, bg_col, alpha=220 if is_enabled else 150, cut_size=6, fill=True)
+            border_col = (min(255, display_color[0] + int(30 * pulse)), 
+                         min(255, display_color[1] + int(30 * pulse)), 
+                         min(255, display_color[2] + int(30 * pulse)))
+            draw_cyber_rect(screen, card_rect, border_col, cut_size=6, border_width=2, fill=False)
+            # 左侧指示条
+            pygame.draw.rect(screen, display_color, (card_rect.x, card_rect.y + 4, 3, card_rect.height - 8), border_radius=1)
+        elif is_hovered:
+            draw_cyber_rect(screen, card_rect, (35, 45, 70), alpha=200 if is_enabled else 120, cut_size=6, fill=True)
+            draw_cyber_rect(screen, card_rect, CYAN if is_enabled else (80, 80, 90), cut_size=6, border_width=1, fill=False)
         else:
-            pygame.draw.rect(screen, (40, 40, 60), card_rect, 1)
-            bg_color = (20, 20, 35)
+            draw_cyber_rect(screen, card_rect, (18, 24, 40), alpha=180 if is_enabled else 100, cut_size=6, fill=True)
+            draw_cyber_rect(screen, card_rect, (60, 70, 90) if is_enabled else (40, 45, 55), cut_size=6, border_width=1, fill=False)
         
-        pygame.draw.rect(screen, bg_color, card_rect, 0)
+        # 勾选框
+        checkbox_x = card_rect.x + 12
+        checkbox_y = card_rect.y + card_height // 2 - 8
+        checkbox_rect = pygame.Rect(checkbox_x, checkbox_y, 16, 16)
+        pygame.draw.rect(screen, (50, 60, 80), checkbox_rect, border_radius=3)
+        pygame.draw.rect(screen, display_color if is_enabled else (80, 80, 90), checkbox_rect, 2, border_radius=3)
+        if is_enabled:
+            # 绘制勾选标记
+            pygame.draw.line(screen, LIME, (checkbox_x + 3, checkbox_y + 8), (checkbox_x + 6, checkbox_y + 12), 2)
+            pygame.draw.line(screen, LIME, (checkbox_x + 6, checkbox_y + 12), (checkbox_x + 13, checkbox_y + 4), 2)
         
-        # 序号 + Boss名称
-        num_text = font.render(f"{i+1}.", True, CYAN)
-        name_text = font.render(f"{boss_name}", True, boss_color)
-        screen.blit(num_text, (card_rect.x + 12, card_rect.y + 10))
-        screen.blit(name_text, (card_rect.x + 55, card_rect.y + 10))
+        # 序号圆圈 (移到勾选框右边)
+        num_cx = card_rect.x + 38
+        num_cy = card_rect.y + card_height // 2
+        if is_selected:
+            pygame.draw.circle(screen, display_color, (num_cx, num_cy), 12)
+            pygame.draw.circle(screen, WHITE if is_enabled else (120, 120, 130), (num_cx, num_cy), 8)
+            # 显示在已启用列表中的序号
+            enabled_idx = enabled_bosses.index(bkey) + 1 if bkey in enabled_bosses else "-"
+            draw_text(screen, str(enabled_idx), 11, num_cx, num_cy - 6, display_color)
+        else:
+            pygame.draw.circle(screen, (40, 50, 70), (num_cx, num_cy), 10, 1)
+            enabled_idx = enabled_bosses.index(bkey) + 1 if bkey in enabled_bosses else "-"
+            draw_text(screen, str(enabled_idx), 10, num_cx, num_cy - 5, GRAY if not is_hovered else CYAN)
         
-        # Boss强度指示（星形）
-        if boss_stats:
-            avg_stat = sum([s[1] for s in boss_stats]) / len(boss_stats)
-            stars = min(5, int(avg_stat/20))
-            star_text = small_font.render(f"{'★' * stars}", True, (255, 200, 0))
-            screen.blit(star_text, (card_rect.right - 80, card_rect.y + 12))
+        # 名称
+        name_color = (WHITE if is_enabled else (100, 100, 110)) if is_selected else (CYAN if is_hovered and is_enabled else ((150, 160, 180) if is_enabled else (80, 85, 95)))
+        draw_text(screen, boss_data["name"], 16, card_rect.x + 58, card_rect.y + 14, name_color, align="left", glow=is_selected and is_enabled)
+        
+        # 威胁指示条 - 渐变色
+        stats = boss_data.get("stats", [])
+        if stats:
+            total = sum([s[1] for s in stats])
+            threat = min(5, max(1, total // 55))
+            threat_colors = [LIME, CYAN, YELLOW, ORANGE, RED]
+            for ti in range(threat):
+                col = boss_color if is_selected else threat_colors[min(ti, 4)]
+                pygame.draw.rect(screen, col, (card_rect.right - 58 + ti * 11, card_rect.y + 15, 7, 16), border_radius=2)
+            # 空槽
+            for ti in range(threat, 5):
+                pygame.draw.rect(screen, (35, 45, 60), (card_rect.right - 58 + ti * 11, card_rect.y + 15, 7, 16), border_radius=2)
+                pygame.draw.rect(screen, (50, 60, 80), (card_rect.right - 58 + ti * 11, card_rect.y + 15, 7, 16), 1, border_radius=2)
     
-    # 滚动指示器
+    # 滚动条
     if len(boss_challenge_order) > max_visible:
-        scroll_bar_height = int((max_visible / len(boss_challenge_order)) * visible_height)
-        scroll_pos = int((boss_challenge_scroll_offset / len(boss_challenge_order)) * visible_height)
-        pygame.draw.rect(screen, (80, 80, 100), (card_width + 70, start_y + scroll_pos, 4, scroll_bar_height))
+        scroll_h = max(25, int(visible_height * max_visible / len(boss_challenge_order)))
+        scroll_y = int(card_start_y + (visible_height - scroll_h) * boss_challenge_scroll_offset / max(1, len(boss_challenge_order) - max_visible))
+        pygame.draw.rect(screen, (25, 35, 55), (left_x + left_width - 8, card_start_y, 4, visible_height), border_radius=2)
+        pygame.draw.rect(screen, CYAN, (left_x + left_width - 8, scroll_y, 4, scroll_h), border_radius=2)
     
-    # 右列：选中Boss详细信息卡片
+    # ====== 中栏：Boss详情 ======
     if boss_challenge_selected < len(boss_challenge_order):
-        sel_bkey = boss_challenge_order[boss_challenge_selected]
-        sel_boss = BOSS_DB[sel_bkey]
+        sel_key = boss_challenge_order[boss_challenge_selected]
+        sel_boss = BOSS_DB[sel_key]
+        boss_color = sel_boss["color"]
         
-        # 信息卡片
-        info_card_x = 480
-        info_card_y = start_y
-        info_card_width = 260
-        info_card_height = visible_height + 10
-        info_rect = pygame.Rect(info_card_x, info_card_y, info_card_width, info_card_height)
+        # 详情面板 - 赛博风格 + 角落装饰
+        detail_panel = pygame.Rect(mid_x, content_y, mid_width, content_height)
+        draw_cyber_rect(screen, detail_panel, (12, 18, 32), alpha=230, fill=True)
         
-        # 卡片框架（脉冲效果）
-        pulse_width = max(2, int(2 + 1 * math.sin(boss_challenge_pulse_timer / 60 * math.pi * 2)))
-        pygame.draw.rect(screen, sel_boss["color"], info_rect, pulse_width)
-        pygame.draw.rect(screen, (15, 15, 30), info_rect, 0)
+        # 动态边框颜色
+        border_pulse = (min(255, boss_color[0] + int(20 * pulse)),
+                       min(255, boss_color[1] + int(20 * pulse)),
+                       min(255, boss_color[2] + int(20 * pulse)))
+        draw_cyber_rect(screen, detail_panel, border_pulse, border_width=2, fill=False)
         
-        # Boss名称区域
-        pygame.draw.line(screen, sel_boss["color"], (info_card_x + 10, info_card_y + 40), 
-                        (info_card_x + info_card_width - 10, info_card_y + 40), 1)
+        # 角落装饰
+        pygame.draw.line(screen, boss_color, (mid_x + mid_width - corner_size, content_y), (mid_x + mid_width, content_y), 2)
+        pygame.draw.line(screen, boss_color, (mid_x + mid_width, content_y), (mid_x + mid_width, content_y + corner_size), 2)
         
-        name_surf = font.render(sel_boss["name"], True, sel_boss["color"])
-        screen.blit(name_surf, (info_card_x + 15, info_card_y + 8))
+        # Boss名称 + 装饰
+        draw_text(screen, sel_boss["name"], 26, mid_x + mid_width//2, content_y + 22, boss_color, glow=True)
         
-        # 描述文本
+        # 名称下划线装饰
+        name_line_w = 120 + int(20 * pulse)
+        pygame.draw.line(screen, boss_color, (mid_x + mid_width//2 - name_line_w//2, content_y + 48), 
+                        (mid_x + mid_width//2 + name_line_w//2, content_y + 48), 2)
+        pygame.draw.circle(screen, boss_color, (mid_x + mid_width//2 - name_line_w//2, content_y + 48), 3)
+        pygame.draw.circle(screen, boss_color, (mid_x + mid_width//2 + name_line_w//2, content_y + 48), 3)
+        
+        # 描述框
+        desc_box = pygame.Rect(mid_x + 12, content_y + 55, mid_width - 24, 65)
+        draw_cyber_rect(screen, desc_box, (20, 28, 45), alpha=180, cut_size=5, fill=True)
+        draw_cyber_rect(screen, desc_box, (60, 80, 110), cut_size=5, border_width=1, fill=False)
+        
         desc = sel_boss.get("desc", "")
-        desc_lines = [desc[i:i+13] for i in range(0, len(desc), 13)]  # 按长度换行
-        desc_y = info_card_y + 55
-        for line in desc_lines[:3]:
-            if desc_y - info_card_y > 60:  # 最多显示3行
+        desc_y = content_y + 62
+        for i in range(0, len(desc), 17):
+            line = desc[i:i+17]
+            draw_text(screen, line, 13, mid_x + mid_width//2, desc_y, (170, 180, 200))
+            desc_y += 18
+            if desc_y > content_y + 115:
                 break
-            desc_surf = tiny_font.render(line, True, (200, 200, 200))
-            screen.blit(desc_surf, (info_card_x + 12, desc_y))
-            desc_y += 22
         
-        # 属性显示
+        # 属性区
+        attr_y = content_y + 128
+        draw_text(screen, "◇ 能力指数", 14, mid_x + 20, attr_y, CYAN, align="left")
+        pygame.draw.line(screen, (0, 60, 60), (mid_x + 90, attr_y + 8), (mid_x + mid_width - 15, attr_y + 8), 1)
+        attr_y += 22
+        
         stats = sel_boss.get("stats", [])
-        attr_y = info_card_y + 130
-        pygame.draw.line(screen, (80, 80, 100), (info_card_x + 10, attr_y - 5), 
-                        (info_card_x + info_card_width - 10, attr_y - 5), 1)
-        
-        attr_label_y = attr_y
+        stat_icons = {"装甲": "◈", "毁灭": "◆", "机动": "◇"}
         for stat_name, stat_val in stats:
-            # 属性标签
-            label = tiny_font.render(stat_name, True, (180, 180, 200))
-            screen.blit(label, (info_card_x + 12, attr_label_y))
+            # 图标 + 标签
+            icon = stat_icons.get(stat_name, "●")
+            draw_text(screen, f"{icon} {stat_name}", 13, mid_x + 20, attr_y, (130, 150, 180), align="left")
             
-            # 属性条
-            bar_width = 160
-            bar_height = 6
-            bar_x = info_card_x + 90
-            bar_y = attr_label_y + 2
-            pygame.draw.rect(screen, (40, 40, 60), (bar_x, bar_y, bar_width, bar_height))
+            # 进度条背景
+            bar_x = mid_x + 75
+            bar_w = 140
+            bar_h = 14
+            draw_cyber_rect(screen, (bar_x, attr_y + 1, bar_w, bar_h), (25, 32, 50), alpha=200, cut_size=3, fill=True)
             
-            # 填充
-            fill_width = int(bar_width * (stat_val / 120))
-            pygame.draw.rect(screen, sel_boss["color"], (bar_x, bar_y, fill_width, bar_height))
+            # 进度条填充
+            fill_w = int(bar_w * min(1, stat_val / 150))
+            if stat_val < 50:
+                bar_col = CYAN
+            elif stat_val < 90:
+                bar_col = LIME
+            else:
+                bar_col = MAGENTA
+            
+            if fill_w > 4:
+                draw_cyber_rect(screen, (bar_x, attr_y + 1, fill_w, bar_h), bar_col, alpha=230, cut_size=3, fill=True)
+                # 高光
+                pygame.draw.line(screen, WHITE, (bar_x + 2, attr_y + 3), (bar_x + fill_w - 3, attr_y + 3), 1)
             
             # 数值
-            val_text = tiny_font.render(str(stat_val), True, (255, 200, 100))
-            screen.blit(val_text, (bar_x + bar_width + 8, attr_label_y))
-            
-            attr_label_y += 28
+            draw_text(screen, str(stat_val), 14, bar_x + bar_w + 18, attr_y, bar_col, glow=(stat_val >= 90))
+            attr_y += 26
         
         # 阶段信息
         phases = sel_boss.get("phases", [])
-        phase_y = attr_label_y + 15
-        if phase_y - info_card_y < info_card_height - 30:  # 确保不超出卡片
-            pygame.draw.line(screen, (80, 80, 100), (info_card_x + 10, phase_y - 5), 
-                            (info_card_x + info_card_width - 10, phase_y - 5), 1)
-            phase_label = tiny_font.render(f"战斗阶段: {len(phases)}", True, (180, 200, 255))
-            screen.blit(phase_label, (info_card_x + 12, phase_y))
+        phase_y = attr_y + 8
+        draw_text(screen, f"◇ 战斗阶段: {len(phases)}", 14, mid_x + 20, phase_y, CYAN, align="left")
+        pygame.draw.line(screen, (0, 60, 60), (mid_x + 115, phase_y + 8), (mid_x + mid_width - 15, phase_y + 8), 1)
+        
+        # 阶段条
+        phase_bar_y = phase_y + 22
+        phase_bar_w = mid_width - 35
+        phase_bar_h = 20
+        draw_cyber_rect(screen, (mid_x + 18, phase_bar_y, phase_bar_w, phase_bar_h), (25, 32, 50), alpha=200, cut_size=4, fill=True)
+        
+        prev = 1.0
+        phase_cols = [LIME, YELLOW, ORANGE, RED]
+        phase_labels = ["P1", "P2", "P3", "终"]
+        for idx, phase in enumerate(phases):
+            th = phase.get("threshold", 0)
+            start = int(phase_bar_w * (1 - prev))
+            end = int(phase_bar_w * (1 - th))
+            col = phase_cols[min(idx, 3)]
+            if end - start > 3:
+                pygame.draw.rect(screen, col, (mid_x + 18 + start, phase_bar_y, end - start, phase_bar_h))
+                # 阶段标签
+                if end - start > 20:
+                    draw_text(screen, phase_labels[min(idx, 3)], 11, mid_x + 18 + start + (end - start)//2, phase_bar_y + 3, (30, 30, 30))
+            prev = th
+        
+        # 最后阶段
+        if phases:
+            start = int(phase_bar_w * (1 - phases[-1].get("threshold", 0)))
+            pygame.draw.rect(screen, RED, (mid_x + 18 + start, phase_bar_y, phase_bar_w - start, phase_bar_h))
+            if phase_bar_w - start > 20:
+                draw_text(screen, "狂", 11, mid_x + 18 + start + (phase_bar_w - start)//2, phase_bar_y + 3, (30, 30, 30))
+        
+        # Boss预览 - 使用真实Boss图像
+        preview_y = phase_bar_y + 60
+        preview_cx = mid_x + mid_width // 2
+        preview_size = 150  # 预览尺寸
+        preview_cy = preview_y + preview_size // 2 + 10
+        
+        # 外层光环背景（动态）
+        ring_size = preview_size // 2 + 15 + int(5 * pulse)
+        
+        # 多层光环效果
+        for i in range(3):
+            alpha_ring = 60 - i * 20
+            ring_col = (min(255, boss_color[0]//3 + i*10), 
+                       min(255, boss_color[1]//3 + i*10), 
+                       min(255, boss_color[2]//3 + i*10))
+            pygame.draw.circle(screen, ring_col, (preview_cx, preview_cy), ring_size + i*8, 2)
+        
+        # 装饰粒子环
+        for angle in range(0, 360, 30):
+            rad = math.radians(angle + boss_challenge_pulse_timer * 0.5)
+            particle_dist = ring_size + 18 + int(3 * math.sin(boss_challenge_pulse_timer * 0.03 + angle * 0.1))
+            dx = int(math.cos(rad) * particle_dist)
+            dy = int(math.sin(rad) * particle_dist)
+            particle_size = 2 + int(abs(pulse))
+            pygame.draw.circle(screen, boss_color, (preview_cx + dx, preview_cy + dy), particle_size)
+        
+        # 内部发光背景
+        glow_surf = pygame.Surface((preview_size + 40, preview_size + 40), pygame.SRCALPHA)
+        for r in range(preview_size//2 + 20, 0, -3):
+            alpha = int(80 * (1 - r / (preview_size//2 + 20)))
+            glow_col = (boss_color[0], boss_color[1], boss_color[2], alpha)
+            pygame.draw.circle(glow_surf, glow_col, (preview_size//2 + 20, preview_size//2 + 20), r)
+        screen.blit(glow_surf, (preview_cx - preview_size//2 - 20, preview_cy - preview_size//2 - 20))
+        
+        # 获取并绘制真实Boss图像
+        boss_surf = get_boss_surf(sel_key, boss_color, sel_boss.get("visual"))
+        # 缩放到合适大小
+        scaled_boss = pygame.transform.smoothscale(boss_surf, (preview_size, preview_size))
+        screen.blit(scaled_boss, (preview_cx - preview_size//2, preview_cy - preview_size//2))
+        
+        # 边框装饰
+        pygame.draw.circle(screen, boss_color, (preview_cx, preview_cy), preview_size//2 + 5, 2)
     
-    # 装饰线
-    pygame.draw.line(screen, CYAN, (80, start_y + visible_height + 30), 
-                     (WIDTH-80, start_y + visible_height + 30), 2)
+    # ====== 右栏：挑战预览/统计 ======
+    right_panel = pygame.Rect(right_x, content_y, right_width, content_height)
+    draw_cyber_rect(screen, right_panel, (12, 18, 32), alpha=230, fill=True)
     
-    # 操作提示面板
-    tip_y = start_y + visible_height + 50
-    pygame.draw.rect(screen, (20, 20, 40), (50, tip_y, WIDTH-100, 100), 1)
-    pygame.draw.rect(screen, (10, 10, 20), (50, tip_y, WIDTH-100, 100), 0)
+    # 动态边框
+    magenta_pulse = (min(255, 255 + int(20 * pulse)), int(50 * pulse), min(255, 255 + int(20 * pulse)))
+    draw_cyber_rect(screen, right_panel, magenta_pulse, border_width=2, fill=False)
     
-    tips = [
-        "↑ ↓  选择序号    |    ← →  交换位置    |    Enter  开始挑战",
-        "Esc 返回主菜单"
+    # 角落装饰
+    pygame.draw.line(screen, MAGENTA, (right_x, content_y + content_height - corner_size), (right_x, content_y + content_height), 2)
+    pygame.draw.line(screen, MAGENTA, (right_x, content_y + content_height), (right_x + corner_size, content_y + content_height), 2)
+    
+    # 标题
+    draw_text(screen, f"◆ 挑战预览 ({len(enabled_bosses)})", 15, right_x + right_width//2, content_y + 12, MAGENTA)
+    pygame.draw.line(screen, (80, 0, 80), (right_x + 15, content_y + 30), (right_x + right_width - 15, content_y + 30), 1)
+    
+    # 挑战顺序预览（只显示已启用的Boss小图标）
+    preview_y = content_y + 38
+    icon_size = 30
+    icons_per_row = max(1, (right_width - 16) // (icon_size + 5))
+    
+    for i, bkey in enumerate(enabled_bosses):
+        boss_data = BOSS_DB[bkey]
+        boss_color = boss_data["color"]
+        
+        row = i // icons_per_row
+        col = i % icons_per_row
+        ix = right_x + 8 + col * (icon_size + 5)
+        iy = preview_y + row * (icon_size + 5)
+        
+        # 小图标 - 赛博风格
+        # 检查是否是当前选中的Boss
+        is_current = (bkey == boss_challenge_order[boss_challenge_selected] if boss_challenge_selected < len(boss_challenge_order) else False)
+        
+        icon_rect = pygame.Rect(ix, iy, icon_size, icon_size)
+        
+        # 当前选中 - 动态光环
+        if is_current:
+            glow_rect = icon_rect.inflate(6 + int(2 * pulse), 6 + int(2 * pulse))
+            draw_cyber_rect(screen, glow_rect, boss_color, alpha=200, cut_size=5, fill=False, border_width=2)
+        
+        bg_col = (boss_color[0]//3, boss_color[1]//3, boss_color[2]//3) if is_current else (25, 30, 45)
+        draw_cyber_rect(screen, icon_rect, bg_col, alpha=200, cut_size=4, fill=True)
+        draw_cyber_rect(screen, icon_rect, boss_color if is_current else (60, 70, 90), cut_size=4, border_width=1, fill=False)
+        
+        # 序号
+        num_col = WHITE if is_current else (100, 110, 130)
+        draw_text(screen, str(i + 1), 11, ix + icon_size//2, iy + icon_size//2 - 5, num_col, glow=is_current)
+    
+    # 统计信息框
+    stat_y = preview_y + ((len(enabled_bosses) + icons_per_row - 1) // icons_per_row) * (icon_size + 5) + 12
+    
+    # 分隔装饰
+    pygame.draw.line(screen, MAGENTA, (right_x + 12, stat_y), (right_x + right_width - 12, stat_y), 1)
+    pygame.draw.circle(screen, MAGENTA, (right_x + 12, stat_y), 2)
+    pygame.draw.circle(screen, MAGENTA, (right_x + right_width - 12, stat_y), 2)
+    stat_y += 15
+    
+    # 计算总难度 - 只计算已启用的Boss
+    total_armor = sum(BOSS_DB[k].get("stats", [(0,0)])[0][1] if BOSS_DB[k].get("stats") else 0 for k in enabled_bosses)
+    total_damage = sum(BOSS_DB[k].get("stats", [(0,0),(0,0)])[1][1] if len(BOSS_DB[k].get("stats", [])) > 1 else 0 for k in enabled_bosses)
+    
+    stats_info = [
+        ("◈", "已选Boss", f"{len(enabled_bosses)}/{len(boss_challenge_order)}", CYAN),
+        ("◆", "总装甲值", f"{total_armor}", LIME),
+        ("◇", "总毁灭力", f"{total_damage}", ORANGE),
+        ("○", "预计时长", f"{len(enabled_bosses) * 2}~{len(enabled_bosses) * 4}分", (150, 160, 180)),
     ]
     
-    for idx, tip in enumerate(tips):
-        tip_text = small_font.render(tip, True, (180, 180, 200))
-        screen.blit(tip_text, (70, tip_y + 15 + idx*30))
+    # 统计背景框
+    stat_box = pygame.Rect(right_x + 8, stat_y - 5, right_width - 16, len(stats_info) * 22 + 10)
+    draw_cyber_rect(screen, stat_box, (18, 25, 42), alpha=180, cut_size=5, fill=True)
+    
+    stat_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 12)
+    for icon, label, value, col in stats_info:
+        # emoji图标单独渲染
+        icon_surf = stat_emoji_font.render(icon, True, (120, 130, 150))
+        screen.blit(icon_surf, (right_x + 18, stat_y - icon_surf.get_height()//2))
+        draw_text(screen, label, 12, right_x + 18 + icon_surf.get_width() + 2, stat_y, (120, 130, 150), align="left")
+        draw_text(screen, value, 13, right_x + right_width - 18, stat_y, col, align="right", glow=(col != (150, 160, 180)))
+        stat_y += 22
+    
+    # 难度评级
+    stat_y += 12
+    pygame.draw.line(screen, MAGENTA, (right_x + 12, stat_y - 5), (right_x + right_width - 12, stat_y - 5), 1)
+    
+    difficulty = min(5, max(1, (total_armor + total_damage) // 200))
+    diff_labels = ["轻松", "普通", "困难", "噩梦", "地狱"]
+    diff_colors = [LIME, CYAN, YELLOW, ORANGE, RED]
+    
+    draw_text(screen, "◆ 难度评级", 13, right_x + 18, stat_y, (120, 130, 150), align="left")
+    draw_text(screen, diff_labels[difficulty - 1], 15, right_x + right_width - 18, stat_y, diff_colors[difficulty - 1], align="right", glow=True)
+    
+    # 难度条 - 更精致
+    stat_y += 26
+    bar_total_w = right_width - 36
+    bar_w = bar_total_w // 5
+    for i in range(5):
+        bx = right_x + 18 + i * bar_w
+        bar_rect = pygame.Rect(bx, stat_y, bar_w - 3, 16)
+        if i < difficulty:
+            draw_cyber_rect(screen, bar_rect, diff_colors[i], alpha=230, cut_size=3, fill=True)
+            # 高光
+            pygame.draw.line(screen, WHITE, (bx + 2, stat_y + 2), (bx + bar_w - 6, stat_y + 2), 1)
+        else:
+            draw_cyber_rect(screen, bar_rect, (28, 35, 52), alpha=180, cut_size=3, fill=True)
+            draw_cyber_rect(screen, bar_rect, (50, 60, 80), cut_size=3, border_width=1, fill=False)
+    
+    # ====== 底部：开始按钮 ======
+    btn_y = HEIGHT - 60
+    btn_width = 240
+    btn_height = 50
+    btn_x = WIDTH // 2 - btn_width // 2
+    btn_rect = pygame.Rect(btn_x, btn_y, btn_width, btn_height)
+    
+    btn_hover = btn_rect.collidepoint(mx, my)
+    can_start = len(enabled_bosses) > 0  # 至少选择1个Boss才能开始
+    
+    # 按钮光晕效果
+    if btn_hover and can_start:
+        glow_rect = btn_rect.inflate(8 + int(4 * pulse), 8 + int(4 * pulse))
+        draw_cyber_rect(screen, glow_rect, CYAN, alpha=80, fill=True)
+    
+    # 赛博风格按钮
+    if can_start:
+        btn_bg = (50, 80, 130) if btn_hover else (25, 40, 70)
+        btn_border = (0, 255, 255) if btn_hover else (80, 160, 220)
+    else:
+        btn_bg = (40, 40, 50)
+        btn_border = (80, 80, 100)
+    draw_cyber_rect(screen, btn_rect, btn_bg, alpha=240, fill=True)
+    draw_cyber_rect(screen, btn_rect, btn_border, border_width=3 if btn_hover and can_start else 2, fill=False)
+    
+    # 按钮装饰
+    pygame.draw.line(screen, btn_border, (btn_x + 15, btn_y + btn_height//2), (btn_x + 30, btn_y + btn_height//2), 2)
+    pygame.draw.line(screen, btn_border, (btn_x + btn_width - 30, btn_y + btn_height//2), (btn_x + btn_width - 15, btn_y + btn_height//2), 2)
+    
+    if can_start:
+        # 分离渲染: ▶◀用emoji字体
+        btn_color = WHITE if btn_hover else CYAN
+        btn_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 22)
+        btn_text_font = pygame.font.SysFont("SimHei", 22)
+        left_arrow = btn_emoji_font.render("▶", True, btn_color)
+        right_arrow = btn_emoji_font.render("◀", True, btn_color)
+        btn_txt = btn_text_font.render(f" 开始挑战 ({len(enabled_bosses)}) ", True, btn_color)
+        btn_total_w = left_arrow.get_width() + btn_txt.get_width() + right_arrow.get_width()
+        btn_start_x = btn_rect.centerx - btn_total_w//2
+        btn_y_pos = btn_rect.centery - left_arrow.get_height()//2
+        screen.blit(left_arrow, (btn_start_x, btn_y_pos))
+        screen.blit(btn_txt, (btn_start_x + left_arrow.get_width(), btn_rect.centery - btn_txt.get_height()//2))
+        screen.blit(right_arrow, (btn_start_x + left_arrow.get_width() + btn_txt.get_width(), btn_y_pos))
+    else:
+        draw_text(screen, "请至少选择1个Boss", 18, btn_rect.centerx, btn_rect.centery - 9, (120, 120, 130))
 
 def draw_achievement_notifications():
-    """绘制成就通知弹窗 - 从右侧弹出停留后弹回"""
+    """绘制成就通知弹窗 - 豪华版：从右侧弹出停留后弹回"""
     global achievement_notifications
+    
+    t = pygame.time.get_ticks()
     
     # 更新和绘制所有通知
     for i, (achievement, timer) in enumerate(achievement_notifications[:3]):  # 最多显示3个
-        y = 80 + i * 100
+        y = 80 + i * 110
         total_time = 180.0  # 3秒
         
         # 分三个阶段：弹入(60帧) + 停留(60帧) + 弹回(60帧)
         if timer > 120:  # 弹入阶段 (60-180帧)
             phase_progress = (total_time - timer) / 60.0  # 0 -> 1
-            slide_x = WIDTH + 20 - int(380 * phase_progress)  # 从屏幕外滑入
+            # 缓动函数：ease-out
+            ease_progress = 1 - (1 - phase_progress) ** 3
+            slide_x = WIDTH + 20 - int(400 * ease_progress)
             alpha = int(255 * min(1, phase_progress * 2))
         elif timer > 60:  # 停留阶段 (60-120帧)
-            slide_x = WIDTH - 350
+            slide_x = WIDTH - 380
             alpha = 255
         else:  # 弹回阶段 (0-60帧)
             phase_progress = (60 - timer) / 60.0  # 0 -> 1
-            slide_x = WIDTH - 350 + int(380 * phase_progress)  # 滑出屏幕
+            # 缓动函数：ease-in
+            ease_progress = phase_progress ** 2
+            slide_x = WIDTH - 380 + int(400 * ease_progress)
             alpha = int(255 * max(0, 1 - phase_progress * 2))
         
         # 绘制通知背景
-        surface = pygame.Surface((360, 85), pygame.SRCALPHA)
+        surface = pygame.Surface((380, 95), pygame.SRCALPHA)
         
-        # 背景框 - 赛博朋克风格
-        pygame.draw.rect(surface, (15, 30, 50, 220), (0, 0, 360, 85), border_radius=4)
-        pygame.draw.rect(surface, (0, 255, 200, alpha), (0, 0, 360, 85), 2, border_radius=4)
+        # 背景框 - 渐变效果 + 金色高亮
+        for sy in range(95):
+            bg_alpha = int(220 * (alpha / 255))
+            ratio = sy / 95
+            r = int(20 + 15 * ratio)
+            g = int(35 + 20 * ratio)
+            b = int(55 + 25 * ratio)
+            pygame.draw.line(surface, (r, g, b, bg_alpha), (0, sy), (380, sy))
         
-        # 左侧装饰条 - 强调成就解锁
-        pygame.draw.rect(surface, (0, 255, 200, alpha), (0, 0, 4, 85))
+        # 外边框 - 金色发光
+        glow_alpha = int(alpha * 0.4)
+        pygame.draw.rect(surface, (255, 200, 50, glow_alpha), (0, 0, 380, 95), 3, border_radius=8)
+        pygame.draw.rect(surface, (255, 220, 100, alpha), (0, 0, 380, 95), 2, border_radius=6)
+        
+        # 左侧金色装饰条
+        pygame.draw.rect(surface, (255, 200, 50, alpha), (0, 0, 5, 95), border_radius=2)
+        
+        # 内部光效（脉冲）
+        pulse = int(30 + 20 * math.sin(t / 150))
+        pygame.draw.rect(surface, (255, 220, 100, pulse), (5, 5, 370, 85), 1, border_radius=4)
         
         # 绘制到屏幕
         screen.blit(surface, (slide_x, y))
         
-        # 绘制文本内容
-        text_x = slide_x + 20
-        text_y = y + 10
+        # 绘制星星装饰（使用缓存字体）
+        star_font = get_ach_font("Segoe UI Emoji", 22)
+        star_left = star_font.render("⭐", True, GOLD)
+        screen.blit(star_left, (slide_x + 15, y + 12))
         
-        # 标题（无星装饰）- 向右移动30像素
-        draw_text(screen, "成就解锁", 16, text_x + 30, text_y, LIME)
+        # 标题
+        title_font = get_ach_font("SimHei", 16)
+        title_text = title_font.render("成就解锁!", True, GOLD)
+        screen.blit(title_text, (slide_x + 45, y + 15))
         
-        # 成就名称（加粗效果通过多次绘制）
-        draw_text(screen, achievement.name, 20, text_x, text_y + 28, WHITE, align="left")
+        # 成就名称（大字）
+        name_font = get_ach_font("SimHei", 22)
+        name_text = name_font.render(achievement.name, True, WHITE)
+        screen.blit(name_text, (slide_x + 20, y + 40))
         
-        # 奖励分数
-        draw_text(screen, f"+{achievement.reward} 分", 16, slide_x + 340, text_y + 28, YELLOW, align="right")
+        # 稀有度标签
+        rarity_font = get_ach_font("SimHei", 13)
+        rarity_text = rarity_font.render(f"【{achievement.rarity_name}】", True, achievement.rarity_color)
+        screen.blit(rarity_text, (slide_x + 25 + name_text.get_width(), y + 45))
+        
+        # 奖励分数（右下角）
+        reward_emoji = get_ach_font("Segoe UI Emoji", 14)
+        reward_font = get_ach_font("SimHei", 16)
+        gem_icon = reward_emoji.render("💎", True, GOLD)
+        reward_text = reward_font.render(f"+{achievement.reward:,}", True, GOLD)
+        screen.blit(gem_icon, (slide_x + 300, y + 65))
+        screen.blit(reward_text, (slide_x + 322, y + 67))
+        
+        # 底部装饰线
+        line_alpha = int(100 * (alpha / 255))
+        pygame.draw.line(screen, (255, 200, 50, line_alpha), (slide_x + 20, y + 88), (slide_x + 360, y + 88), 1)
         
         # 递减计时器
         achievement_notifications[achievement_notifications.index((achievement, timer))] = (achievement, timer - 1)
@@ -3296,101 +5431,1297 @@ def draw_synergy_notifications():
     synergy_notifications[:] = [(s, t, time) for s, t, time in synergy_notifications if t > 0]
 
 def draw_achievements_ui():
-    """绘制成就菜单"""
-    global player, achievement_page
+    """绘制成就殿堂 - 至尊豪华版"""
+    global player, achievement_page, achievement_category, achievement_selected, achievement_scroll_y
     
-    draw_text(screen, "成就", 40, WIDTH//2, 30, LIME, glow=True)
+    try:
+        _draw_achievements_ui_inner()
+    except Exception as e:
+        # 防止渲染异常导致界面卡死（参考Bug #002/#003）
+        log_error(f"成就界面渲染异常: {e}")
+        import traceback
+        traceback.print_exc()
+        # 显示错误提示并允许返回
+        screen.fill((20, 20, 30))
+        draw_text(screen, "成就界面加载出错", 24, WIDTH//2, HEIGHT//2 - 30, (255, 100, 100))
+        draw_text(screen, f"错误: {str(e)[:50]}", 16, WIDTH//2, HEIGHT//2 + 10, GRAY)
+        draw_text(screen, "按 ESC 返回主菜单", 18, WIDTH//2, HEIGHT//2 + 50, WHITE)
+
+def _draw_achievements_ui_inner():
+    """成就界面内部渲染（被try-except包裹）"""
+    global player, achievement_page, achievement_category, achievement_selected, achievement_scroll_y
     
-    # 获取成就管理器
+    t = pygame.time.get_ticks()
+    mx, my = pygame.mouse.get_pos()
+    
+    # ========== 布局常量 (1280x720) ==========
+    MARGIN = 30           # 边距
+    HEADER_H = 70         # 标题区高度（增大）
+    STATS_H = 45          # 统计栏高度（增大）
+    TAB_H = 45            # 分类标签高度
+    FOOTER_H = 70         # 底部区高度
+    CONTENT_GAP = 8       # 内容间距
+    
+    # 计算内容区域
+    content_top = MARGIN + HEADER_H + STATS_H + TAB_H + CONTENT_GAP
+    content_bottom = HEIGHT - FOOTER_H - MARGIN
+    content_h = content_bottom - content_top
+    
+    # ====== 豪华深空背景 ======
+    screen.fill((5, 8, 15))
+    
+    # 动态星云背景层
+    for i in range(3):
+        nebula_x = WIDTH // 2 + int(150 * math.sin(t / 3000 + i * 2))
+        nebula_y = HEIGHT // 2 + int(100 * math.cos(t / 2500 + i * 1.5))
+        nebula_size = 250 + int(50 * math.sin(t / 2000 + i))
+        nebula_surf = pygame.Surface((nebula_size * 2, nebula_size * 2), pygame.SRCALPHA)
+        nebula_colors = [(40, 20, 60), (20, 40, 60), (50, 30, 40)]
+        for r in range(nebula_size, 0, -5):
+            alpha = int(15 * (1 - r / nebula_size))
+            pygame.draw.circle(nebula_surf, (*nebula_colors[i], alpha), (nebula_size, nebula_size), r)
+        screen.blit(nebula_surf, (nebula_x - nebula_size, nebula_y - nebula_size))
+    
+    # 动态星空粒子（多层次）
+    for i in range(60):
+        star_x = (i * 137 + int(t / (40 + i % 30))) % WIDTH
+        star_y = (i * 89 + int(t / (60 + i % 40))) % HEIGHT
+        depth = (i % 3) + 1  # 深度层次
+        star_alpha = int((40 + 30 * depth) + 30 * math.sin(t / (300 + i * 10) + i))
+        # 使用确定性计算避免闪烁
+        star_size = 2 if (depth >= 2 and i % 7 == 0) else 1
+        star_color = (star_alpha, int(star_alpha * 1.05), int(star_alpha * 1.2))
+        pygame.draw.circle(screen, star_color, (star_x, star_y), star_size)
+    
+    # 流星效果（偶尔出现）
+    if (t // 100) % 80 < 3:
+        meteor_progress = ((t // 100) % 80) / 3.0
+        meteor_x = int(200 + meteor_progress * 400)
+        meteor_y = int(50 + meteor_progress * 150)
+        for trail in range(8):
+            trail_alpha = int(180 * (1 - trail / 8))
+            trail_x = meteor_x - trail * 15
+            trail_y = meteor_y - trail * 6
+            pygame.draw.circle(screen, (255, 220, 150, trail_alpha), (trail_x, trail_y), 3 - trail // 3)
+    
+    # 六边形网格背景（淡雅）
+    hex_alpha = int(12 + 6 * math.sin(t / 1500))
+    hex_color = (hex_alpha, int(hex_alpha * 1.3), int(hex_alpha * 0.8))
+    hex_size = 80
+    for row in range(-1, HEIGHT // hex_size + 2):
+        for col in range(-1, WIDTH // hex_size + 2):
+            cx = col * hex_size * 1.5 + (row % 2) * hex_size * 0.75
+            cy = row * hex_size * 0.866
+            points = []
+            for angle in range(6):
+                px = cx + hex_size * 0.35 * math.cos(math.radians(60 * angle + 30))
+                py = cy + hex_size * 0.35 * math.sin(math.radians(60 * angle + 30))
+                points.append((px, py))
+            if len(points) >= 3:
+                pygame.draw.polygon(screen, hex_color, points, 1)
+    
+    # 边框发光装饰
+    glow_intensity = int(120 + 60 * math.sin(t / 500))
+    border_color = (int(glow_intensity * 0.9), glow_intensity, int(glow_intensity * 0.5))
+    pygame.draw.rect(screen, border_color, (0, 0, WIDTH, 2))
+    pygame.draw.rect(screen, border_color, (0, HEIGHT - 2, WIDTH, 2))
+    
+    # 角落霓虹装饰
+    corner_size = 40
+    for corner in [(0, 0, 1, 1), (WIDTH, 0, -1, 1), (0, HEIGHT, 1, -1), (WIDTH, HEIGHT, -1, -1)]:
+        cx, cy, dx, dy = corner
+        pygame.draw.line(screen, GOLD, (cx, cy + dy * 3), (cx, cy + dy * corner_size), 2)
+        pygame.draw.line(screen, GOLD, (cx + dx * 3, cy), (cx + dx * corner_size, cy), 2)
+        pygame.draw.circle(screen, (255, 200, 50), (cx + dx * 6, cy + dy * 6), 2)
+    
+    # 获取成就管理器（使用缓存）
     achievement_mgr = None
     if player and hasattr(player, 'achievement_manager'):
         achievement_mgr = player.achievement_manager
+    else:
+        achievement_mgr = get_cached_achievement_mgr()
+    
+    # ====== 豪华标题区 ======
+    title_panel = pygame.Rect(WIDTH//2 - 220, 12, 440, 58)
+    # 标题背景渐变
+    title_bg = pygame.Surface((440, 58), pygame.SRCALPHA)
+    for ty in range(58):
+        alpha = int(180 - ty * 2.5)
+        pygame.draw.line(title_bg, (50, 45, 20, alpha), (0, ty), (440, ty))
+    screen.blit(title_bg, title_panel.topleft)
+    # 标题边框
+    pygame.draw.rect(screen, GOLD, title_panel, 2, border_radius=8)
+    # 内发光
+    inner_rect = title_panel.inflate(-6, -6)
+    pygame.draw.rect(screen, (255, 220, 100, 40), inner_rect, 1, border_radius=6)
+    
+    # 标题文字带光晕
+    title_glow = int(255 * (0.85 + 0.15 * math.sin(t / 350)))
+    title_y = MARGIN
+    emoji_font = get_ach_font("Segoe UI Emoji", 32)
+    title_font = get_ach_font("SimHei", 36)
+    trophy_left = emoji_font.render("🏆", True, (title_glow, int(title_glow * 0.85), 0))
+    title_text = title_font.render("成就殿堂", True, (title_glow, int(title_glow * 0.85), 0))
+    trophy_right = emoji_font.render("🏆", True, (title_glow, int(title_glow * 0.85), 0))
+    total_w = trophy_left.get_width() + 15 + title_text.get_width() + 15 + trophy_right.get_width()
+    start_x = WIDTH//2 - total_w//2
+    screen.blit(trophy_left, (start_x, title_y + 3))
+    screen.blit(title_text, (start_x + trophy_left.get_width() + 15, title_y))
+    screen.blit(trophy_right, (start_x + trophy_left.get_width() + 15 + title_text.get_width() + 15, title_y + 3))
+    
+    # 标题下方装饰线
+    line_y = title_y + 50
+    line_w = 350
+    pygame.draw.line(screen, (80, 70, 35), (WIDTH//2 - line_w//2, line_y), (WIDTH//2 + line_w//2, line_y), 1)
+    # 中心菱形装饰
+    diamond_x = WIDTH // 2
+    pygame.draw.polygon(screen, GOLD, [(diamond_x, line_y - 5), (diamond_x + 6, line_y), (diamond_x, line_y + 5), (diamond_x - 6, line_y)])
     
     if not achievement_mgr:
-        draw_text(screen, "尚未开始游戏", 24, WIDTH//2, HEIGHT//2, GRAY)
-    else:
-        unlocked_count = sum(1 for a in achievement_mgr.achievements.values() if a.unlocked)
-        total_count = len(achievement_mgr.achievements)
-        draw_text(screen, f"已解锁: {unlocked_count}/{total_count}", 22, WIDTH//2, 80, CYAN)
-        draw_text(screen, f"总奖励分数: {achievement_mgr.get_total_reward()}", 22, WIDTH//2, 110, YELLOW)
+        # 未加载状态 - 美化版
+        empty_surf = pygame.Surface((400, 200), pygame.SRCALPHA)
+        pygame.draw.rect(empty_surf, (25, 28, 38, 200), (0, 0, 400, 200), border_radius=15)
+        pygame.draw.rect(empty_surf, (100, 100, 120), (0, 0, 400, 200), 2, border_radius=15)
+        screen.blit(empty_surf, (WIDTH//2 - 200, HEIGHT//2 - 100))
         
-        # 成就列表
-        start_y = 160
-        ach_list = list(achievement_mgr.achievements.values())
-        page_size = 6
-        max_page = (len(ach_list) + page_size - 1) // page_size
-        current_page = achievement_page % max_page if max_page > 0 else 0
+        empty_emoji = get_ach_font("Segoe UI Emoji", 48)
+        empty_icon = empty_emoji.render("🎮", True, (80, 85, 100))
+        screen.blit(empty_icon, (WIDTH//2 - empty_icon.get_width()//2, HEIGHT//2 - 70))
+        draw_text(screen, "尚未开始游戏", 22, WIDTH//2, HEIGHT//2 + 10, (150, 155, 170))
+        draw_text(screen, "成就数据将在游戏后加载", 16, WIDTH//2, HEIGHT//2 + 40, GRAY)
         
-        start_idx = current_page * page_size
-        end_idx = min(start_idx + page_size, len(ach_list))
-        
-        for i in range(start_idx, end_idx):
-            ach = ach_list[i]
-            y = start_y + (i - start_idx) * 80
-            
-            # 成就框
-            rect = pygame.Rect(100, y, WIDTH - 200, 70)
-            bg_color = (40, 50, 60) if ach.unlocked else (20, 20, 25)
-            draw_cyber_rect(screen, rect, bg_color, fill=True)
-            border_color = LIME if ach.unlocked else GRAY
-            draw_cyber_rect(screen, rect, border_color, border_width=2, fill=False)
-            
-            # 图标
-            icon_color = LIME if ach.unlocked else GRAY
-            draw_text(screen, ach.icon_char, 28, 130, y + 20, icon_color)
-            
-            # 成就名称
-            text_color = WHITE if ach.unlocked else (100, 100, 100)
-            draw_text(screen, ach.name, 20, 200, y + 10, text_color, align="left")
-            
-            # 描述
-            draw_text(screen, ach.description, 16, 200, y + 35, GRAY, align="left")
-            
-            # 奖励
-            draw_text(screen, f"+{ach.reward} 分", 18, WIDTH - 150, y + 20, ORANGE if ach.unlocked else GRAY)
-        
-        # 分页显示
-        if max_page > 1:
-            draw_text(screen, f"第 {current_page + 1}/{max_page} 页", 18, WIDTH//2, HEIGHT - 120, GRAY)
-            
-            # 前后按钮
-            if current_page > 0:
-                prev_btn = pygame.Rect(WIDTH//2 - 200, HEIGHT - 100, 80, 40)
-                h = prev_btn.collidepoint(pygame.mouse.get_pos())
-                draw_cyber_rect(screen, prev_btn, CYAN if h else GRAY, fill=True)
-                draw_text(screen, "上一页", 18, prev_btn.centerx, prev_btn.centery-10, WHITE if h else GRAY)
-            
-            if current_page < max_page - 1:
-                next_btn = pygame.Rect(WIDTH//2 + 120, HEIGHT - 100, 80, 40)
-                h = next_btn.collidepoint(pygame.mouse.get_pos())
-                draw_cyber_rect(screen, next_btn, CYAN if h else GRAY, fill=True)
-                draw_text(screen, "下一页", 18, next_btn.centerx, next_btn.centery-10, WHITE if h else GRAY)
+        back_btn = pygame.Rect(WIDTH//2 - 70, HEIGHT//2 + 75, 140, 42)
+        h = back_btn.collidepoint(mx, my)
+        pygame.draw.rect(screen, (40, 45, 55) if not h else (60, 65, 80), back_btn, border_radius=10)
+        pygame.draw.rect(screen, GOLD if h else (100, 100, 120), back_btn, 2, border_radius=10)
+        draw_text(screen, "返 回", 18, back_btn.centerx, back_btn.centery - 9, WHITE)
+        return
     
-    # 返回按钮
-    back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 50, 120, 40)
-    h = back_btn.collidepoint(pygame.mouse.get_pos())
-    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
-    if h: draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
-    draw_text(screen, "返回", 20, back_btn.centerx, back_btn.centery-10, WHITE)
+    # ====== 豪华统计栏 ======
+    stats_y = MARGIN + HEADER_H
+    stats_panel = pygame.Rect(MARGIN + 10, stats_y, WIDTH - MARGIN * 2 - 20, 40)
+    # 统计栏背景
+    stats_bg = pygame.Surface((stats_panel.width, stats_panel.height), pygame.SRCALPHA)
+    pygame.draw.rect(stats_bg, (20, 25, 35, 200), (0, 0, stats_panel.width, stats_panel.height), border_radius=8)
+    screen.blit(stats_bg, stats_panel.topleft)
+    pygame.draw.rect(screen, (60, 65, 80), stats_panel, 1, border_radius=8)
+    
+    stats_font = get_ach_font("SimHei", 17)
+    stats_emoji = get_ach_font("Segoe UI Emoji", 16)
+    
+    unlocked_count = sum(1 for a in achievement_mgr.achievements.values() if a.unlocked)
+    total_count = len(achievement_mgr.achievements)
+    percent = int(unlocked_count / total_count * 100) if total_count > 0 else 0
+    total_reward = achievement_mgr.get_total_reward()
+    legendary_count = sum(1 for a in achievement_mgr.achievements.values() if a.unlocked and a.rarity == "legendary")
+    legendary_total = sum(1 for a in achievement_mgr.achievements.values() if a.rarity == "legendary")
+    
+    # 左：解锁进度 + 进度条
+    trophy_icon = stats_emoji.render("🏆", True, CYAN)
+    prog_text = stats_font.render(f"已解锁 {unlocked_count}/{total_count}", True, CYAN)
+    screen.blit(trophy_icon, (stats_panel.x + 15, stats_y + 8))
+    screen.blit(prog_text, (stats_panel.x + 40, stats_y + 10))
+    
+    # 小进度条
+    prog_bar_x = stats_panel.x + 175
+    prog_bar_w = 120
+    prog_bar_h = 10
+    pygame.draw.rect(screen, (40, 45, 55), (prog_bar_x, stats_y + 15, prog_bar_w, prog_bar_h), border_radius=5)
+    fill_w = int(prog_bar_w * percent / 100)
+    if fill_w > 0:
+        # 渐变填充
+        fill_surf = pygame.Surface((fill_w, prog_bar_h), pygame.SRCALPHA)
+        for px in range(fill_w):
+            ratio = px / prog_bar_w
+            color = (int(80 + 175 * ratio), int(200 - 50 * ratio), int(220 - 100 * ratio))
+            pygame.draw.line(fill_surf, color, (px, 0), (px, prog_bar_h))
+        screen.blit(fill_surf, (prog_bar_x, stats_y + 15))
+        # 边框高光
+        pygame.draw.rect(screen, CYAN, (prog_bar_x, stats_y + 15, fill_w, prog_bar_h), 1, border_radius=5)
+    percent_text = get_ach_font("SimHei", 11)
+    pct_surf = percent_text.render(f"{percent}%", True, WHITE)
+    screen.blit(pct_surf, (prog_bar_x + prog_bar_w + 8, stats_y + 12))
+    
+    # 中：总奖励
+    gem_icon = stats_emoji.render("💎", True, GOLD)
+    reward_text = stats_font.render(f"总奖励 {total_reward:,}分", True, GOLD)
+    mid_x = WIDTH // 2 - 80
+    screen.blit(gem_icon, (mid_x, stats_y + 8))
+    screen.blit(reward_text, (mid_x + 28, stats_y + 10))
+    
+    # 右：传说成就
+    star_icon = stats_emoji.render("⭐", True, (255, 180, 50))
+    rare_text = stats_font.render(f"传说成就 {legendary_count}/{legendary_total}", True, (255, 180, 50))
+    screen.blit(star_icon, (stats_panel.right - 200, stats_y + 8))
+    screen.blit(rare_text, (stats_panel.right - 172, stats_y + 10))
+    
+    # ====== 豪华分类标签 ======
+    categories = [
+        ("all", "📚", "全部", (100, 180, 255)),
+        ("combat", "⚔️", "战斗", (255, 80, 80)),
+        ("boss", "👹", "Boss", (220, 100, 220)),
+        ("survival", "🛡️", "生存", (80, 200, 80)),
+        ("plane", "✈️", "机体", (80, 180, 240)),
+        ("roguelike", "🚪", "肉鸽", (220, 160, 80)),
+        ("milestone", "🏅", "里程碑", (200, 200, 80)),
+        ("secret", "🌙", "隐藏", (150, 120, 180)),
+    ]
+    
+    tab_y = MARGIN + HEADER_H + STATS_H + 5
+    tab_h = 38
+    tab_emoji_font = get_ach_font("Segoe UI Emoji", 16)
+    tab_font = get_ach_font("SimHei", 15)
+    
+    # 计算所有标签总宽度来居中
+    tab_widths = []
+    for cat_id, cat_emoji, cat_name, _ in categories:
+        emoji_surf = tab_emoji_font.render(cat_emoji, True, WHITE)
+        text_surf = tab_font.render(cat_name, True, WHITE)
+        tab_widths.append(emoji_surf.get_width() + text_surf.get_width() + 26)
+    total_tabs_w = sum(tab_widths) + 6 * (len(categories) - 1)
+    tab_start_x = (WIDTH - total_tabs_w) // 2
+    
+    for i, (cat_id, cat_emoji, cat_name, cat_color) in enumerate(categories):
+        tab_w = tab_widths[i]
+        tab_rect = pygame.Rect(tab_start_x, tab_y, tab_w, tab_h)
+        is_selected = (achievement_category == cat_id)
+        is_hover = tab_rect.collidepoint(mx, my)
+        
+        # 标签背景 - 渐变效果
+        tab_bg = pygame.Surface((tab_w, tab_h), pygame.SRCALPHA)
+        if is_selected:
+            for ty in range(tab_h):
+                alpha = int(200 - ty * 3)
+                r, g, b = cat_color
+                pygame.draw.line(tab_bg, (r//3, g//3, b//3, alpha), (0, ty), (tab_w, ty))
+            screen.blit(tab_bg, tab_rect.topleft)
+            pygame.draw.rect(screen, cat_color, tab_rect, 2, border_radius=6)
+            # 底部高亮条
+            pygame.draw.rect(screen, cat_color, (tab_rect.x + 8, tab_rect.bottom - 3, tab_rect.width - 16, 3), border_radius=2)
+            # 发光效果
+            glow_rect = tab_rect.inflate(3, 3)
+            pygame.draw.rect(screen, (*cat_color, 60), glow_rect, 1, border_radius=8)
+        elif is_hover:
+            pygame.draw.rect(tab_bg, (50, 55, 68, 220), (0, 0, tab_w, tab_h), border_radius=6)
+            screen.blit(tab_bg, tab_rect.topleft)
+            pygame.draw.rect(screen, (140, 145, 160), tab_rect, 1, border_radius=6)
+        else:
+            pygame.draw.rect(tab_bg, (28, 32, 42, 200), (0, 0, tab_w, tab_h), border_radius=6)
+            screen.blit(tab_bg, tab_rect.topleft)
+            pygame.draw.rect(screen, (55, 60, 75), tab_rect, 1, border_radius=6)
+        
+        # 标签内容
+        text_color = cat_color if is_selected else (WHITE if is_hover else (160, 165, 180))
+        emoji_s = tab_emoji_font.render(cat_emoji, True, text_color)
+        text_s = tab_font.render(cat_name, True, text_color)
+        total_content_w = emoji_s.get_width() + 4 + text_s.get_width()
+        content_start = tab_rect.x + (tab_w - total_content_w) // 2
+        screen.blit(emoji_s, (content_start, tab_rect.y + 9))
+        screen.blit(text_s, (content_start + emoji_s.get_width() + 4, tab_rect.y + 10))
+        
+        tab_start_x += tab_w + 6
+    
+    # ====== 内容区：左边收藏墙 + 右边详情 ======
+    wall_w = int((WIDTH - MARGIN * 3) * 0.58)  # 58%给收藏墙
+    detail_w = WIDTH - MARGIN * 3 - wall_w
+    
+    wall_rect = pygame.Rect(MARGIN, content_top, wall_w, content_h)
+    detail_rect = pygame.Rect(MARGIN * 2 + wall_w, content_top, detail_w, content_h)
+    
+    # --- 收藏墙（豪华版）---
+    wall_bg = pygame.Surface((wall_rect.width, wall_rect.height), pygame.SRCALPHA)
+    # 渐变背景
+    for wy in range(wall_rect.height):
+        alpha = int(240 - wy * 0.15)
+        pygame.draw.line(wall_bg, (15, 18, 28, alpha), (0, wy), (wall_rect.width, wy))
+    screen.blit(wall_bg, wall_rect.topleft)
+    # 双层边框
+    pygame.draw.rect(screen, (70, 75, 95), wall_rect, 2, border_radius=12)
+    inner_wall = wall_rect.inflate(-6, -6)
+    pygame.draw.rect(screen, (40, 45, 60), inner_wall, 1, border_radius=10)
+    
+    # 获取当前分类的成就
+    if achievement_category == "all":
+        filtered_achievements = list(achievement_mgr.achievements.values())
+    else:
+        filtered_achievements = achievement_mgr.get_achievements_by_category(achievement_category)
+    
+    # 网格布局（更大的徽章）
+    grid_cell = 95
+    grid_gap = 12
+    grid_cols = max(1, (wall_w - 40) // (grid_cell + grid_gap))  # 至少1列，防止除零
+    grid_start_x = wall_rect.x + (wall_w - grid_cols * (grid_cell + grid_gap) + grid_gap) // 2
+    grid_start_y = wall_rect.y + 18
+    
+    # 绘制成就徽章网格
+    emoji_icon_font = get_ach_font("Segoe UI Emoji", 34)
+    check_emoji_font = get_ach_font("Segoe UI Emoji", 15)
+    name_font = get_ach_font("SimHei", 11)
+    cat_emojis = {"combat": "⚔️", "boss": "👹", "survival": "🛡️", "plane": "✈️", "roguelike": "🚪", "efficiency": "⚡", "milestone": "🏅", "secret": "🌙"}
+    
+    # 裁剪区域 - 防止badge溢出wall_rect边界
+    clip_rect = pygame.Rect(wall_rect.x, wall_rect.y, wall_rect.width, wall_rect.height - 35)
+    old_clip = screen.get_clip()
+    screen.set_clip(clip_rect)
+    
+    for i, ach in enumerate(filtered_achievements):
+        col = i % grid_cols
+        row = i // grid_cols
+        
+        bx = grid_start_x + col * (grid_cell + grid_gap)
+        by = grid_start_y + row * (grid_cell + grid_gap) - achievement_scroll_y
+        
+        # 跳过不在可见区域的
+        if by < wall_rect.y - grid_cell or by > wall_rect.bottom:
+            continue
+        
+        badge_rect = pygame.Rect(bx, by, grid_cell, grid_cell)
+        is_hover = badge_rect.collidepoint(mx, my) and wall_rect.collidepoint(mx, my)
+        is_selected = (achievement_selected == ach.id)
+        
+        # 徽章背景（渐变）
+        badge_bg = pygame.Surface((grid_cell, grid_cell), pygame.SRCALPHA)
+        if ach.unlocked:
+            rarity_bg = {
+                "legendary": [(80, 65, 15), (50, 40, 10)], 
+                "epic": [(60, 35, 70), (40, 20, 50)], 
+                "rare": [(25, 55, 35), (15, 40, 25)], 
+                "common": [(40, 45, 55), (30, 35, 45)]
+            }
+            bg_colors = rarity_bg.get(ach.rarity, [(40, 45, 55), (30, 35, 45)])
+        else:
+            bg_colors = [(30, 32, 38), (22, 24, 30)]
+        
+        for grad_y in range(grid_cell):
+            ratio = grad_y / grid_cell
+            r = int(bg_colors[0][0] * (1 - ratio) + bg_colors[1][0] * ratio)
+            g = int(bg_colors[0][1] * (1 - ratio) + bg_colors[1][1] * ratio)
+            b = int(bg_colors[0][2] * (1 - ratio) + bg_colors[1][2] * ratio)
+            pygame.draw.line(badge_bg, (r, g, b, 230), (0, grad_y), (grid_cell, grad_y))
+        
+        # 圆角遮罩效果
+        pygame.draw.rect(badge_bg, (0, 0, 0, 0), (0, 0, grid_cell, grid_cell), border_radius=10)
+        screen.blit(badge_bg, badge_rect.topleft)
+        pygame.draw.rect(screen, (0, 0, 0, 0), badge_rect, border_radius=10)
+        
+        # 边框（多层效果）
+        if is_selected:
+            # 选中态 - 金色发光
+            glow_rect = badge_rect.inflate(6, 6)
+            pygame.draw.rect(screen, (*GOLD, 80), glow_rect, 2, border_radius=12)
+            pygame.draw.rect(screen, GOLD, badge_rect, 3, border_radius=10)
+        elif is_hover:
+            pygame.draw.rect(screen, WHITE, badge_rect, 2, border_radius=10)
+        elif ach.unlocked:
+            pygame.draw.rect(screen, ach.rarity_color, badge_rect, 2, border_radius=10)
+            # 内发光
+            inner_badge = badge_rect.inflate(-4, -4)
+            pygame.draw.rect(screen, (*ach.rarity_color, 40), inner_badge, 1, border_radius=8)
+        else:
+            pygame.draw.rect(screen, (55, 58, 68), badge_rect, 1, border_radius=10)
+        
+        # 图标
+        if ach.unlocked or not ach.hidden:
+            icon_color = ach.rarity_color if ach.unlocked else (90, 92, 100)
+            icon_char = cat_emojis.get(ach.category, "⭐")
+            icon_surf = emoji_icon_font.render(icon_char, True, icon_color)
+        else:
+            icon_surf = emoji_icon_font.render("❓", True, (65, 68, 75))
+        screen.blit(icon_surf, (bx + grid_cell//2 - icon_surf.get_width()//2, by + 8))
+        
+        # 勾选标记（更精致）
+        if ach.unlocked:
+            check_bg = pygame.Surface((22, 22), pygame.SRCALPHA)
+            pygame.draw.circle(check_bg, (30, 180, 80, 200), (11, 11), 10)
+            screen.blit(check_bg, (bx + grid_cell - 24, by + grid_cell - 24))
+            check = check_emoji_font.render("✓", True, WHITE)
+            screen.blit(check, (bx + grid_cell - 20, by + grid_cell - 22))
+        
+        # 稀有度指示点（传说成就）
+        if ach.rarity == "legendary":
+            for dot in range(3):
+                dot_x = bx + 10 + dot * 8
+                dot_color = GOLD if ach.unlocked else (80, 70, 40)
+                pygame.draw.circle(screen, dot_color, (dot_x, by + grid_cell - 10), 3)
+        
+        # 名称
+        if ach.hidden and not ach.unlocked:
+            short_name = "???"
+        else:
+            short_name = ach.name[:6] if len(ach.name) > 6 else ach.name
+        name_color = WHITE if ach.unlocked else (80, 82, 90)
+        name_surf = name_font.render(short_name, True, name_color)
+        screen.blit(name_surf, (bx + grid_cell//2 - name_surf.get_width()//2, by + 50))
+    
+    # 恢复裁剪区域
+    screen.set_clip(old_clip)
+    
+    # --- 滚动条指示器（美化版）---
+    rows = (len(filtered_achievements) + grid_cols - 1) // grid_cols
+    total_content_h = rows * (grid_cell + grid_gap)
+    view_h = wall_rect.height - TAB_H - 60
+    if total_content_h > view_h:
+        scroll_bar_x = wall_rect.right - 14
+        scroll_bar_y = grid_start_y
+        scroll_bar_h = view_h
+        max_scroll = total_content_h - view_h
+        # 滚动条轨道
+        pygame.draw.rect(screen, (35, 40, 52), (scroll_bar_x, scroll_bar_y, 8, scroll_bar_h), border_radius=4)
+        # 滚动条滑块（渐变）
+        thumb_h = max(35, int(scroll_bar_h * view_h / total_content_h))
+        thumb_y = scroll_bar_y + int((scroll_bar_h - thumb_h) * achievement_scroll_y / max_scroll) if max_scroll > 0 else scroll_bar_y
+        thumb_surf = pygame.Surface((8, thumb_h), pygame.SRCALPHA)
+        for ty in range(thumb_h):
+            ratio = ty / thumb_h
+            r = int(100 + 40 * (1 - ratio))
+            g = int(110 + 50 * (1 - ratio))
+            b = int(140 + 60 * (1 - ratio))
+            pygame.draw.line(thumb_surf, (r, g, b, 220), (0, ty), (8, ty))
+        screen.blit(thumb_surf, (scroll_bar_x, thumb_y))
+        pygame.draw.rect(screen, (150, 160, 190), (scroll_bar_x, thumb_y, 8, thumb_h), 1, border_radius=4)
+    
+    # 收藏墙底部分类统计（美化版）
+    cat_label_font = get_ach_font("SimHei", 14)
+    cat_emoji_font = get_ach_font("Segoe UI Emoji", 12)
+    if achievement_category == "all":
+        cat_label = f"全部成就 {unlocked_count}/{total_count}"
+        cat_emoji = "📚"
+    else:
+        cat_stats = achievement_mgr.get_category_stats().get(achievement_category, {"unlocked": 0, "total": 0})
+        cat_names = {"combat": "战斗", "boss": "Boss", "survival": "生存", "plane": "机体", "roguelike": "肉鸽", "efficiency": "效率", "milestone": "里程碑", "secret": "隐藏"}
+        cat_emojis_map = {"combat": "⚔️", "boss": "👹", "survival": "🛡️", "plane": "✈️", "roguelike": "🚪", "efficiency": "⚡", "milestone": "🏅", "secret": "🌙"}
+        cat_label = f"{cat_names.get(achievement_category, achievement_category)}成就 {cat_stats['unlocked']}/{cat_stats['total']}"
+        cat_emoji = cat_emojis_map.get(achievement_category, "📚")
+    
+    emoji_surf = cat_emoji_font.render(cat_emoji, True, (140, 145, 165))
+    cat_label_surf = cat_label_font.render(cat_label, True, (140, 145, 165))
+    screen.blit(emoji_surf, (wall_rect.x + 15, wall_rect.bottom - 28))
+    screen.blit(cat_label_surf, (wall_rect.x + 38, wall_rect.bottom - 26))
+    
+    # --- 详情面板（豪华版）---
+    detail_bg = pygame.Surface((detail_rect.width, detail_rect.height), pygame.SRCALPHA)
+    # 渐变背景
+    for dy in range(detail_rect.height):
+        alpha = int(235 - dy * 0.12)
+        pygame.draw.line(detail_bg, (20, 24, 35, alpha), (0, dy), (detail_rect.width, dy))
+    screen.blit(detail_bg, detail_rect.topleft)
+    # 双层边框
+    pygame.draw.rect(screen, (80, 85, 105), detail_rect, 2, border_radius=12)
+    inner_detail = detail_rect.inflate(-6, -6)
+    pygame.draw.rect(screen, (45, 50, 65), inner_detail, 1, border_radius=10)
+    
+    selected_ach = None
+    if achievement_selected and achievement_selected in achievement_mgr.achievements:
+        selected_ach = achievement_mgr.achievements[achievement_selected]
+    
+    if selected_ach:
+        px = detail_rect.x + 25
+        py = detail_rect.y + 22
+        
+        # 稀有度标签（带背景）
+        rarity_font = get_ach_font("SimHei", 15)
+        rarity_text = f"【{selected_ach.rarity_name}】"
+        rarity_surf = rarity_font.render(rarity_text, True, selected_ach.rarity_color)
+        rarity_bg = pygame.Surface((rarity_surf.get_width() + 16, 26), pygame.SRCALPHA)
+        pygame.draw.rect(rarity_bg, (*selected_ach.rarity_color, 40), (0, 0, rarity_surf.get_width() + 16, 26), border_radius=5)
+        screen.blit(rarity_bg, (px - 8, py - 3))
+        screen.blit(rarity_surf, (px, py))
+        
+        # 成就名称（大字+图标）
+        py += 35
+        name_font = get_ach_font("SimHei", 26)
+        emoji_font = get_ach_font("Segoe UI Emoji", 24)
+        icon_char = cat_emojis.get(selected_ach.category, "⭐")
+        icon_surf = emoji_font.render(icon_char, True, selected_ach.rarity_color if selected_ach.unlocked else GRAY)
+        name_surf = name_font.render(selected_ach.name, True, WHITE if selected_ach.unlocked else (140, 140, 150))
+        screen.blit(icon_surf, (px, py))
+        screen.blit(name_surf, (px + 40, py))
+        
+        # 优雅分隔线
+        py += 48
+        line_w = detail_rect.width - 50
+        pygame.draw.line(screen, (50, 55, 70), (px, py), (px + line_w, py), 1)
+        # 中心装饰
+        mid_x = px + line_w // 2
+        pygame.draw.circle(screen, selected_ach.rarity_color if selected_ach.unlocked else (80, 85, 100), (mid_x, py), 4)
+        pygame.draw.circle(screen, (30, 35, 48), (mid_x, py), 2)
+        
+        # 描述区域（带引号装饰）
+        py += 18
+        desc_font = get_ach_font("SimHei", 17)
+        desc_text = "完成特定条件解锁..." if (selected_ach.hidden and not selected_ach.unlocked) else selected_ach.description
+        
+        # 引号装饰 - 简化版，避免字体渲染问题
+        desc_surf = desc_font.render(desc_text, True, (190, 195, 210))
+        screen.blit(desc_surf, (px + 5, py + 5))
+        
+        # 进度条（豪华版）
+        py += 55
+        current, target = achievement_mgr.get_progress(selected_ach.id)
+        if target > 0:
+            bar_w = detail_rect.width - 55
+            bar_h = 26
+            # 进度条背景
+            bar_bg = pygame.Surface((bar_w, bar_h), pygame.SRCALPHA)
+            pygame.draw.rect(bar_bg, (30, 35, 48, 220), (0, 0, bar_w, bar_h), border_radius=13)
+            screen.blit(bar_bg, (px, py))
+            pygame.draw.rect(screen, (55, 60, 78), (px, py, bar_w, bar_h), 1, border_radius=13)
+            
+            fill_ratio = min(current / target, 1.0)
+            fill_w = int((bar_w - 4) * fill_ratio)
+            if fill_w > 0:
+                # 渐变填充
+                fill_surf = pygame.Surface((fill_w, bar_h - 4), pygame.SRCALPHA)
+                for fx in range(fill_w):
+                    ratio = fx / bar_w
+                    if selected_ach.unlocked:
+                        r, g, b = selected_ach.rarity_color
+                        color = (int(r * 0.7 + r * 0.3 * ratio), int(g * 0.7 + g * 0.3 * ratio), int(b * 0.7 + b * 0.3 * ratio))
+                    else:
+                        color = (int(60 + 40 * ratio), int(100 + 50 * ratio), int(80 + 40 * ratio))
+                    pygame.draw.line(fill_surf, (*color, 230), (fx, 0), (fx, bar_h - 4))
+                screen.blit(fill_surf, (px + 2, py + 2))
+                # 高光效果
+                pygame.draw.line(screen, (255, 255, 255, 60), (px + 2, py + 4), (px + fill_w, py + 4), 1)
+            
+            # 进度文字
+            progress_font = get_ach_font("SimHei", 14)
+            progress_text = f"{current:,} / {target:,}"
+            percent_text = f"({int(fill_ratio * 100)}%)"
+            progress_surf = progress_font.render(progress_text, True, WHITE)
+            percent_surf = progress_font.render(percent_text, True, (180, 185, 200))
+            screen.blit(progress_surf, (px + bar_w//2 - (progress_surf.get_width() + percent_surf.get_width() + 5)//2, py + 5))
+            screen.blit(percent_surf, (px + bar_w//2 - (progress_surf.get_width() + percent_surf.get_width() + 5)//2 + progress_surf.get_width() + 5, py + 5))
+        
+        # 信息区域（卡片式）
+        py += 50
+        info_card = pygame.Rect(px, py, detail_rect.width - 50, 95)
+        info_bg = pygame.Surface((info_card.width, info_card.height), pygame.SRCALPHA)
+        pygame.draw.rect(info_bg, (28, 32, 45, 200), (0, 0, info_card.width, info_card.height), border_radius=10)
+        screen.blit(info_bg, info_card.topleft)
+        pygame.draw.rect(screen, (55, 60, 78), info_card, 1, border_radius=10)
+        
+        info_font = get_ach_font("SimHei", 16)
+        info_emoji = get_ach_font("Segoe UI Emoji", 16)
+        
+        # 奖励
+        info_y = py + 12
+        gift_icon = info_emoji.render("🎁", True, ORANGE if selected_ach.unlocked else (120, 100, 80))
+        reward_label = info_font.render("奖励: ", True, (140, 145, 160))
+        reward_value = info_font.render(f"+{selected_ach.reward:,}分", True, ORANGE if selected_ach.unlocked else (120, 100, 80))
+        screen.blit(gift_icon, (px + 15, info_y))
+        screen.blit(reward_label, (px + 42, info_y + 2))
+        screen.blit(reward_value, (px + 95, info_y + 2))
+        
+        # 状态/日期
+        info_y += 28
+        if selected_ach.unlocked and selected_ach.unlock_date:
+            cal_icon = info_emoji.render("📅", True, (100, 180, 180))
+            date_label = info_font.render("解锁于: ", True, (140, 145, 160))
+            date_value = info_font.render(selected_ach.unlock_date, True, (100, 180, 180))
+            screen.blit(cal_icon, (px + 15, info_y))
+            screen.blit(date_label, (px + 42, info_y + 2))
+            screen.blit(date_value, (px + 115, info_y + 2))
+        elif selected_ach.unlocked:
+            check_icon = info_emoji.render("✅", True, LIME)
+            status_text = info_font.render("已解锁", True, LIME)
+            screen.blit(check_icon, (px + 15, info_y))
+            screen.blit(status_text, (px + 42, info_y + 2))
+        else:
+            lock_icon = info_emoji.render("🔒", True, (110, 100, 90))
+            status_text = info_font.render("未解锁 - 继续努力!", True, (110, 100, 90))
+            screen.blit(lock_icon, (px + 15, info_y))
+            screen.blit(status_text, (px + 42, info_y + 2))
+        
+        # 分类
+        info_y += 28
+        cat_names = {"combat": "战斗", "boss": "Boss", "survival": "生存", "plane": "机体", "roguelike": "肉鸽", "efficiency": "效率", "milestone": "里程碑", "secret": "隐藏"}
+        folder_icon = info_emoji.render("📁", True, (130, 140, 160))
+        cat_label = info_font.render("分类: ", True, (140, 145, 160))
+        cat_value = info_font.render(cat_names.get(selected_ach.category, selected_ach.category), True, (150, 160, 180))
+        screen.blit(folder_icon, (px + 15, info_y))
+        screen.blit(cat_label, (px + 42, info_y + 2))
+        screen.blit(cat_value, (px + 95, info_y + 2))
+        
+    else:
+        # 未选中提示（美化版）
+        hint_y = detail_rect.centery - 50
+        
+        # 装饰图标
+        hint_emoji = get_ach_font("Segoe UI Emoji", 56)
+        pointer_icon = hint_emoji.render("👈", True, (70, 75, 95))
+        screen.blit(pointer_icon, (detail_rect.centerx - pointer_icon.get_width()//2, hint_y - 30))
+        
+        hint_font = get_ach_font("SimHei", 20)
+        hint_text = hint_font.render("点击左侧徽章查看详情", True, (110, 115, 135))
+        screen.blit(hint_text, (detail_rect.centerx - hint_text.get_width()//2, hint_y + 45))
+        
+        hint_sub_font = get_ach_font("SimHei", 14)
+        hint_sub = hint_sub_font.render("完成成就获取丰厚奖励", True, (80, 85, 100))
+        screen.blit(hint_sub, (detail_rect.centerx - hint_sub.get_width()//2, hint_y + 75))
+    
+    # ====== 豪华底部区 ======
+    footer_y = HEIGHT - FOOTER_H
+    
+    # 底部面板背景
+    footer_panel = pygame.Rect(MARGIN, footer_y + 5, WIDTH - MARGIN * 2, 55)
+    footer_bg = pygame.Surface((footer_panel.width, footer_panel.height), pygame.SRCALPHA)
+    pygame.draw.rect(footer_bg, (18, 22, 32, 220), (0, 0, footer_panel.width, footer_panel.height), border_radius=10)
+    screen.blit(footer_bg, footer_panel.topleft)
+    pygame.draw.rect(screen, (55, 60, 78), footer_panel, 1, border_radius=10)
+    
+    # 统计数据（图标+文字）
+    bottom_font = get_ach_font("SimHei", 15)
+    bottom_emoji = get_ach_font("Segoe UI Emoji", 14)
+    stats = achievement_mgr.stats
+    
+    stat_items = [
+        ("💀", "击杀", stats.get('total_kills', 0), ORANGE),
+        ("👹", "Boss", stats.get('bosses_killed', 0), MAGENTA),
+        ("🌊", "最高波次", stats.get('max_wave', 0), CYAN),
+        ("🎮", "游戏局数", stats.get('runs_completed', 0), LIME),
+    ]
+    
+    stat_x = footer_panel.x + 25
+    for emoji_char, label, value, color in stat_items:
+        emoji_surf = bottom_emoji.render(emoji_char, True, color)
+        label_surf = bottom_font.render(f"{label}: ", True, (130, 135, 155))
+        value_surf = bottom_font.render(f"{value:,}" if isinstance(value, int) and value >= 1000 else str(value), True, color)
+        
+        screen.blit(emoji_surf, (stat_x, footer_y + 22))
+        screen.blit(label_surf, (stat_x + 22, footer_y + 24))
+        screen.blit(value_surf, (stat_x + 22 + label_surf.get_width(), footer_y + 24))
+        
+        stat_x += emoji_surf.get_width() + label_surf.get_width() + value_surf.get_width() + 40
+    
+    # 返回按钮（豪华版）
+    back_btn = pygame.Rect(WIDTH - MARGIN - 130, footer_y + 12, 110, 40)
+    h = back_btn.collidepoint(mx, my)
+    
+    # 按钮背景渐变
+    btn_bg = pygame.Surface((back_btn.width, back_btn.height), pygame.SRCALPHA)
+    if h:
+        for by in range(back_btn.height):
+            alpha = int(200 - by * 3)
+            pygame.draw.line(btn_bg, (70, 65, 35, alpha), (0, by), (back_btn.width, by))
+    else:
+        for by in range(back_btn.height):
+            alpha = int(180 - by * 2)
+            pygame.draw.line(btn_bg, (40, 45, 55, alpha), (0, by), (back_btn.width, by))
+    screen.blit(btn_bg, back_btn.topleft)
+    
+    # 按钮边框
+    pygame.draw.rect(screen, GOLD if h else (100, 105, 125), back_btn, 2, border_radius=10)
+    if h:
+        glow_btn = back_btn.inflate(4, 4)
+        pygame.draw.rect(screen, (*GOLD, 50), glow_btn, 1, border_radius=12)
+    
+    # 按钮文字
+    back_emoji = get_ach_font("Segoe UI Emoji", 16)
+    back_font = get_ach_font("SimHei", 17)
+    arrow_surf = back_emoji.render("◀", True, GOLD if h else WHITE)
+    back_text = back_font.render(" 返回", True, GOLD if h else WHITE)
+    total_btn_w = arrow_surf.get_width() + back_text.get_width()
+    screen.blit(arrow_surf, (back_btn.centerx - total_btn_w//2, back_btn.centery - arrow_surf.get_height()//2))
+    screen.blit(back_text, (back_btn.centerx - total_btn_w//2 + arrow_surf.get_width(), back_btn.centery - back_text.get_height()//2))
 
 def draw_leaderboard_ui():
-    draw_text(screen, "排行榜", 40, WIDTH//2, 50, GOLD, glow=True)
-    start_y = 150
-    for i, entry in enumerate(leaderboard_data[:5]):
-        y = start_y + i * 60
-        rect = pygame.Rect(WIDTH//2 - 300, y, 600, 50)
-        draw_cyber_rect(screen, rect, (30,30,40), fill=True)  
-        color = GOLD if i == 0 else WHITE
-        draw_text(screen, f"NO.{i+1}", 20, rect.x + 50, y + 15, color)
-        draw_text(screen, entry.get("name", "Unknown"), 20, rect.centerx, y + 15, WHITE)
-        draw_text(screen, str(entry.get("score", 0)), 20, rect.right - 50, y + 15, ORANGE)
-    if not leaderboard_data: draw_text(screen, "暂无数据", 30, WIDTH//2, HEIGHT//2, GRAY)
+    """绘制排行榜界面 - 赛博朋克风格 豪华版（性能优化版）"""
+    global leaderboard_mode, leaderboard_sort_by, leaderboard_scroll_y, leaderboard_stats_tab
     
-    back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 100, 120, 50)
-    h = back_btn.collidepoint(pygame.mouse.get_pos())
-    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
-    if h: draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
-    draw_text(screen, "返回", 24, back_btn.centerx, back_btn.centery-12, WHITE)
+    t = pygame.time.get_ticks()
+    mx, my = pygame.mouse.get_pos()
+    
+    # ====== 缓存的静态背景 ======
+    screen.blit(_get_lb_background(), (0, 0))
+    
+    # 动态星空粒子（保留完整特效）
+    for i in range(80):
+        star_x = (i * 137 + int(t / 50)) % WIDTH
+        star_y = (i * 89 + int(t / 80)) % HEIGHT
+        star_alpha = int(80 + 60 * math.sin(t / 300 + i))
+        star_size = 1 if i % 3 else 2
+        star_color = (star_alpha, star_alpha, int(star_alpha * 1.2))
+        pygame.draw.circle(screen, star_color, (star_x, star_y), star_size)
+    
+    # 流光扫描线（降低更新频率 - 每3帧更新一次位置计算）
+    scan_y = int((t / 15) % (HEIGHT + 100)) - 50
+    scan_color = (200, 180, 50, 35)
+    pygame.draw.rect(screen, scan_color[:3], (0, scan_y, WIDTH, 2))
+    
+    # 边框发光装饰（动态）
+    glow_intensity = int(150 + 80 * math.sin(t / 400))
+    border_color = (glow_intensity, int(glow_intensity * 0.85), 20)
+    # 顶部横条
+    pygame.draw.rect(screen, border_color, (0, 0, WIDTH, 3))
+    pygame.draw.rect(screen, (border_color[0]//3, border_color[1]//3, 10), (0, 3, WIDTH, 2))
+    # 底部横条
+    pygame.draw.rect(screen, border_color, (0, HEIGHT - 3, WIDTH, 3))
+    pygame.draw.rect(screen, (border_color[0]//3, border_color[1]//3, 10), (0, HEIGHT - 5, WIDTH, 2))
+    
+    # 角落霓虹装饰
+    corner_size = 50
+    for corner in [(0, 0, 1, 1), (WIDTH, 0, -1, 1), (0, HEIGHT, 1, -1), (WIDTH, HEIGHT, -1, -1)]:
+        cx, cy, dx, dy = corner
+        pygame.draw.line(screen, GOLD, (cx, cy + dy * 5), (cx, cy + dy * corner_size), 2)
+        pygame.draw.line(screen, GOLD, (cx + dx * 5, cy), (cx + dx * corner_size, cy), 2)
+        pygame.draw.circle(screen, (255, 200, 50), (cx + dx * 8, cy + dy * 8), 3)
+    
+    # ====== 豪华标题区（使用缓存渐变）======
+    title_panel = pygame.Rect(WIDTH//2 - 250, 12, 500, 55)
+    title_bg = _get_lb_gradient("title", 500, 55, [(60, 50, 20), (40, 35, 15)], (180, 100))
+    screen.blit(title_bg, title_panel.topleft)
+    pygame.draw.rect(screen, GOLD, title_panel, 2, border_radius=5)
+    # 内发光
+    inner_rect = title_panel.inflate(-6, -6)
+    pygame.draw.rect(screen, (255, 220, 100), inner_rect, 1, border_radius=3)
+    
+    # 标题文字（使用缓存字体，动态颜色）
+    title_glow = int(255 * (0.8 + 0.2 * math.sin(t / 300)))
+    title_emoji = _get_lb_font("Segoe UI Emoji", 36)
+    title_text = _get_lb_font("SimHei", 42)
+    trophy = title_emoji.render("🏆", True, (title_glow, int(title_glow * 0.85), 0))
+    title = title_text.render(" 荣耀战绩 ", True, (title_glow, int(title_glow * 0.85), 0))
+    trophy2 = title_emoji.render("🏆", True, (title_glow, int(title_glow * 0.85), 0))
+    total_w = trophy.get_width() + title.get_width() + trophy2.get_width()
+    start_x = WIDTH//2 - total_w//2
+    screen.blit(trophy, (start_x, 22))
+    screen.blit(title, (start_x + trophy.get_width(), 18))
+    screen.blit(trophy2, (start_x + trophy.get_width() + title.get_width(), 22))
+    
+    # 标题下方装饰线
+    line_y = 70
+    line_w = 400
+    pygame.draw.line(screen, (80, 70, 30), (WIDTH//2 - line_w//2, line_y), (WIDTH//2 + line_w//2, line_y), 1)
+    # 中心菱形
+    diamond_x = WIDTH // 2
+    pygame.draw.polygon(screen, GOLD, [(diamond_x, line_y - 5), (diamond_x + 6, line_y), (diamond_x, line_y + 5), (diamond_x - 6, line_y)])
+    
+    # ====== 主标签栏（排行榜 / 个人统计）======
+    main_tab_y = 82
+    main_tabs = [("📋", "排行榜", 0), ("📊", "个人统计", 1)]
+    main_tab_width = 160
+    main_tab_start = WIDTH//2 - (main_tab_width * 2 + 30) // 2
+    
+    for i, (emoji, label, idx) in enumerate(main_tabs):
+        tab_rect = pygame.Rect(main_tab_start + i * (main_tab_width + 30), main_tab_y, main_tab_width, 40)
+        is_selected = (leaderboard_stats_tab == idx)
+        is_hover = tab_rect.collidepoint(mx, my)
+        
+        # 标签背景 - 简化为纯色
+        if is_selected:
+            pygame.draw.rect(screen, (60, 55, 25), tab_rect, border_radius=8)
+            pygame.draw.rect(screen, GOLD, tab_rect, 2, border_radius=8)
+            # 底部高亮条
+            pygame.draw.rect(screen, GOLD, (tab_rect.x + 10, tab_rect.bottom - 3, tab_rect.width - 20, 3), border_radius=2)
+        else:
+            pygame.draw.rect(screen, (35, 32, 28) if is_hover else (25, 23, 20), tab_rect, border_radius=8)
+            pygame.draw.rect(screen, (100, 90, 70) if is_hover else (60, 55, 45), tab_rect, 1, border_radius=8)
+        
+        # 分开渲染emoji和文字
+        text_col = GOLD if is_selected else (WHITE if is_hover else (160, 150, 130))
+        emoji_font = _get_lb_font("Segoe UI Emoji", 18)
+        text_font = _get_lb_font("SimHei", 18)
+        emoji_surf = emoji_font.render(emoji, True, text_col)
+        text_surf = text_font.render(label, True, text_col)
+        total_w = emoji_surf.get_width() + 5 + text_surf.get_width()
+        start_x = tab_rect.centerx - total_w // 2
+        screen.blit(emoji_surf, (start_x, tab_rect.centery - emoji_surf.get_height()//2))
+        screen.blit(text_surf, (start_x + emoji_surf.get_width() + 5, tab_rect.centery - text_surf.get_height()//2))
+    
+    if leaderboard_stats_tab == 0:
+        # ====== 模式切换标签 ======
+        mode_y = 135
+        modes = [("⚔", "普通模式", "normal", YELLOW), ("🏠", "房间模式", "roguelike", MAGENTA), ("👹", "Boss挑战", "boss_challenge", CYAN)]
+        mode_tab_width = 140
+        mode_start = WIDTH//2 - (mode_tab_width * 3 + 40) // 2
+        
+        for i, (emoji, label, mode_id, color) in enumerate(modes):
+            tab_rect = pygame.Rect(mode_start + i * (mode_tab_width + 20), mode_y, mode_tab_width, 35)
+            is_selected = (leaderboard_mode == mode_id)
+            is_hover = tab_rect.collidepoint(mx, my)
+            
+            if is_selected:
+                # 选中态：纯色背景
+                pygame.draw.rect(screen, (color[0]//4, color[1]//4, color[2]//4), tab_rect, border_radius=6)
+                pygame.draw.rect(screen, color, tab_rect, 2, border_radius=6)
+            else:
+                pygame.draw.rect(screen, (35, 33, 30) if is_hover else (25, 23, 20), tab_rect, border_radius=6)
+                pygame.draw.rect(screen, (90, 85, 75) if is_hover else (55, 50, 45), tab_rect, 1, border_radius=6)
+            
+            # 分开渲染emoji和文字
+            text_col = color if is_selected else (WHITE if is_hover else (140, 135, 125))
+            emoji_font = _get_lb_font("Segoe UI Emoji", 15)
+            text_font = _get_lb_font("SimHei", 14)
+            emoji_surf = emoji_font.render(emoji, True, text_col)
+            text_surf = text_font.render(label, True, text_col)
+            total_w = emoji_surf.get_width() + 3 + text_surf.get_width()
+            start_x = tab_rect.centerx - total_w // 2
+            screen.blit(emoji_surf, (start_x, tab_rect.centery - emoji_surf.get_height()//2))
+            screen.blit(text_surf, (start_x + emoji_surf.get_width() + 3, tab_rect.centery - text_surf.get_height()//2))
+        
+        # ====== 排序选项 ======
+        sort_y = 182
+        sort_options = [("🎯", "分数", "score"), ("💀", "击杀", "kills"), ("⏱", "时间", "time"), ("🌊", "波次", "wave")]
+        sort_btn_w = 90
+        sort_start = WIDTH//2 - (sort_btn_w * 4 + 45) // 2
+        
+        # 排序标签
+        sort_label_font = _get_lb_font("SimHei", 14)
+        sort_label = sort_label_font.render("排序方式：", True, (100, 95, 85))
+        screen.blit(sort_label, (sort_start - 80, sort_y + 8))
+        
+        for i, (emoji, label, sort_id) in enumerate(sort_options):
+            btn_rect = pygame.Rect(sort_start + i * (sort_btn_w + 15), sort_y, sort_btn_w, 30)
+            is_selected = (leaderboard_sort_by == sort_id)
+            is_hover = btn_rect.collidepoint(mx, my)
+            
+            if is_selected:
+                pygame.draw.rect(screen, (55, 50, 30), btn_rect, border_radius=5)
+                pygame.draw.rect(screen, GOLD, btn_rect, 2, border_radius=5)
+            else:
+                pygame.draw.rect(screen, (35, 32, 28) if is_hover else (22, 20, 18), btn_rect, border_radius=5)
+                pygame.draw.rect(screen, (70, 65, 55) if is_hover else (45, 42, 38), btn_rect, 1, border_radius=5)
+            
+            # 分开渲染emoji和文字
+            text_col = GOLD if is_selected else (WHITE if is_hover else (130, 125, 115))
+            emoji_font = _get_lb_font("Segoe UI Emoji", 13)
+            text_font = _get_lb_font("SimHei", 13)
+            emoji_surf = emoji_font.render(emoji, True, text_col)
+            text_surf = text_font.render(label, True, text_col)
+            total_w = emoji_surf.get_width() + 3 + text_surf.get_width()
+            start_x = btn_rect.centerx - total_w // 2
+            screen.blit(emoji_surf, (start_x, btn_rect.centery - emoji_surf.get_height()//2))
+            screen.blit(text_surf, (start_x + emoji_surf.get_width() + 3, btn_rect.centery - text_surf.get_height()//2))
+        
+        # ====== 排行榜主面板 ======
+        list_rect = pygame.Rect(WIDTH//2 - 480, 225, 960, HEIGHT - 320)
+        
+        # 面板背景渐变（使用缓存）
+        panel_bg = _get_lb_gradient("panel_bg", list_rect.width, list_rect.height, [(15, 18, 28)], (220, int(220 - list_rect.height * 0.15)))
+        screen.blit(panel_bg, list_rect.topleft)
+        
+        # 面板边框（双层）
+        pygame.draw.rect(screen, (80, 75, 55), list_rect, 2, border_radius=10)
+        inner = list_rect.inflate(-8, -8)
+        pygame.draw.rect(screen, (45, 42, 35), inner, 1, border_radius=8)
+        
+        # 表头区域（使用缓存）
+        header_rect = pygame.Rect(list_rect.x + 5, list_rect.y + 5, list_rect.width - 10, 35)
+        header_bg = _get_lb_gradient("header_bg", header_rect.width, 35, [(40, 38, 30)], (200, 200))
+        screen.blit(header_bg, header_rect.topleft)
+        
+        # 表头文字
+        header_y = list_rect.y + 15
+        headers = [("排名", 70), ("玩家", 180), ("机体", 150), ("分数", 130), ("击杀", 90), ("时间", 90), ("波次", 80), ("日期", 150)]
+        header_x = list_rect.x + 25
+        header_font = _get_lb_font("SimHei", 15)
+        for label, width in headers:
+            text_surf = header_font.render(label, True, (140, 135, 120))
+            screen.blit(text_surf, (header_x + width//2 - text_surf.get_width()//2, header_y))
+            header_x += width
+        
+        # 表头分隔线
+        pygame.draw.line(screen, (60, 55, 45), (list_rect.x + 20, list_rect.y + 45), (list_rect.right - 20, list_rect.y + 45), 1)
+        
+        # 获取当前模式的数据
+        mode_data = leaderboard_data.get(leaderboard_mode, [])
+        
+        # 排序
+        if leaderboard_sort_by == "score":
+            mode_data = sorted(mode_data, key=lambda x: x.get("score", 0), reverse=True)
+        elif leaderboard_sort_by == "kills":
+            mode_data = sorted(mode_data, key=lambda x: x.get("kills", 0), reverse=True)
+        elif leaderboard_sort_by == "time":
+            mode_data = sorted(mode_data, key=lambda x: x.get("survival_time", 0), reverse=True)
+        elif leaderboard_sort_by == "wave":
+            mode_data = sorted(mode_data, key=lambda x: x.get("wave", 0) + x.get("rooms", 0), reverse=True)
+        
+        # 显示记录（支持滚动）
+        row_height = 55
+        content_y = list_rect.y + 55
+        content_height = list_rect.height - 70  # 内容区域高度
+        visible_rows = content_height // row_height
+        total_rows = len(mode_data)
+        total_content_height = total_rows * row_height
+        max_scroll = max(0, total_content_height - content_height)
+        
+        # 限制滚动范围
+        leaderboard_scroll_y = max(0, min(leaderboard_scroll_y, max_scroll))
+        
+        # 创建裁剪区域
+        content_rect = pygame.Rect(list_rect.x, content_y, list_rect.width, content_height)
+        
+        if not mode_data:
+            # 空状态
+            empty_emoji = _get_lb_font("Segoe UI Emoji", 60)
+            empty_text = empty_emoji.render("🎮", True, (60, 55, 50))
+            screen.blit(empty_text, (list_rect.centerx - empty_text.get_width()//2, list_rect.centery - 60))
+            draw_text(screen, "暂无战绩记录", 28, list_rect.centerx, list_rect.centery + 20, (90, 85, 75))
+            draw_text(screen, "完成游戏后将在此展示你的荣耀", 16, list_rect.centerx, list_rect.centery + 55, (65, 60, 55))
+        else:
+            # 设置裁剪区域
+            screen.set_clip(content_rect)
+            
+            # 计算起始索引优化渲染
+            start_idx = max(0, int(leaderboard_scroll_y // row_height) - 1)
+            end_idx = min(total_rows, start_idx + visible_rows + 3)
+            
+            for i in range(start_idx, end_idx):
+                entry = mode_data[i]
+                row_y = content_y + i * row_height - leaderboard_scroll_y
+                
+                # 跳过不可见的行
+                if row_y + row_height < content_rect.y or row_y > content_rect.bottom:
+                    continue
+                    
+                row_rect = pygame.Rect(list_rect.x + 12, row_y, list_rect.width - 44, row_height - 6)
+                
+                # 排名特效
+                if i == 0:  # 金牌
+                    rank_color = GOLD
+                    row_bg_colors = [(70, 60, 25), (50, 45, 20)]
+                    glow_color = (255, 215, 0, 40)
+                elif i == 1:  # 银牌
+                    rank_color = (200, 200, 215)
+                    row_bg_colors = [(50, 50, 60), (40, 40, 48)]
+                    glow_color = (200, 200, 220, 30)
+                elif i == 2:  # 铜牌
+                    rank_color = (200, 140, 90)
+                    row_bg_colors = [(50, 40, 30), (40, 32, 25)]
+                    glow_color = (200, 140, 90, 25)
+                else:
+                    rank_color = (140, 135, 125)
+                    row_bg_colors = [(28, 30, 38), (24, 26, 34)] if i % 2 == 0 else [(32, 34, 42), (28, 30, 38)]
+                    glow_color = None
+                
+                # 行背景渐变
+                row_bg = pygame.Surface((row_rect.width, row_rect.height), pygame.SRCALPHA)
+                for ry in range(row_rect.height):
+                    ratio = ry / row_rect.height
+                    r = int(row_bg_colors[0][0] * (1 - ratio) + row_bg_colors[1][0] * ratio)
+                    g = int(row_bg_colors[0][1] * (1 - ratio) + row_bg_colors[1][1] * ratio)
+                    b = int(row_bg_colors[0][2] * (1 - ratio) + row_bg_colors[1][2] * ratio)
+                    pygame.draw.line(row_bg, (r, g, b, 230), (0, ry), (row_rect.width, ry))
+                screen.blit(row_bg, row_rect.topleft)
+                
+                # 前三名发光边框
+                if i < 3:
+                    pygame.draw.rect(screen, rank_color, row_rect, 2, border_radius=8)
+                    if glow_color:
+                        glow_rect = row_rect.inflate(4, 4)
+                        pygame.draw.rect(screen, glow_color[:3], glow_rect, 1, border_radius=10)
+                else:
+                    pygame.draw.rect(screen, (50, 48, 42), row_rect, 1, border_radius=6)
+                
+                # 数据显示
+                col_x = list_rect.x + 25
+                row_center_y = row_y + row_height // 2 - 3
+                
+                # 排名（带奖牌emoji）
+                rank_emoji = _get_lb_font("Segoe UI Emoji", 22)
+                if i == 0:
+                    rank_surf = rank_emoji.render("🥇", True, GOLD)
+                elif i == 1:
+                    rank_surf = rank_emoji.render("🥈", True, (200, 200, 215))
+                elif i == 2:
+                    rank_surf = rank_emoji.render("🥉", True, (200, 140, 90))
+                else:
+                    rank_font = _get_lb_font("SimHei", 20)
+                    rank_surf = rank_font.render(f"#{i+1}", True, rank_color)
+                screen.blit(rank_surf, (col_x + 20, row_center_y - rank_surf.get_height()//2 + 3))
+                col_x += 70
+                
+                # 玩家名（高亮）
+                name_font = _get_lb_font("SimHei", 18)
+                name_surf = name_font.render(entry.get("name", "未知")[:10], True, WHITE)
+                screen.blit(name_surf, (col_x + 90 - name_surf.get_width()//2, row_center_y - name_surf.get_height()//2 + 3))
+                col_x += 180
+                
+                # 机体
+                plane_id = entry.get("plane", "unknown")
+                plane_name = PLANES.get(plane_id, {}).get("name", plane_id)[:7]
+                plane_font = _get_lb_font("SimHei", 15)
+                plane_surf = plane_font.render(plane_name, True, CYAN)
+                screen.blit(plane_surf, (col_x + 75 - plane_surf.get_width()//2, row_center_y - plane_surf.get_height()//2 + 3))
+                col_x += 150
+                
+                # 分数（金色高亮）
+                score_font = _get_lb_font("SimHei", 18)
+                score_surf = score_font.render(f"{entry.get('score', 0):,}", True, GOLD)
+                screen.blit(score_surf, (col_x + 65 - score_surf.get_width()//2, row_center_y - score_surf.get_height()//2 + 3))
+                col_x += 130
+                
+                # 击杀
+                kills_font = _get_lb_font("SimHei", 16)
+                kills_surf = kills_font.render(str(entry.get("kills", 0)), True, ORANGE)
+                screen.blit(kills_surf, (col_x + 45 - kills_surf.get_width()//2, row_center_y - kills_surf.get_height()//2 + 3))
+                col_x += 90
+                
+                # 时间
+                survival = entry.get("survival_time", 0)
+                time_str = f"{survival//60}:{survival%60:02d}"
+                time_font = _get_lb_font("SimHei", 16)
+                time_surf = time_font.render(time_str, True, (150, 200, 255))
+                screen.blit(time_surf, (col_x + 45 - time_surf.get_width()//2, row_center_y - time_surf.get_height()//2 + 3))
+                col_x += 90
+                
+                # 波次/房间
+                wave_val = entry.get("wave", 0) or entry.get("rooms", 0)
+                wave_font = _get_lb_font("SimHei", 16)
+                wave_surf = wave_font.render(str(wave_val), True, LIME)
+                screen.blit(wave_surf, (col_x + 40 - wave_surf.get_width()//2, row_center_y - wave_surf.get_height()//2 + 3))
+                col_x += 80
+                
+                # 日期
+                date_str = entry.get("date", "")[:10]
+                date_font = _get_lb_font("SimHei", 13)
+                date_surf = date_font.render(date_str, True, (110, 108, 100))
+                screen.blit(date_surf, (col_x + 75 - date_surf.get_width()//2, row_center_y - date_surf.get_height()//2 + 3))
+            
+            # 取消裁剪
+            screen.set_clip(None)
+            
+            # ====== 滚动条 ======
+            scrollbar_x = list_rect.right - 18
+            scrollbar_track_rect = pygame.Rect(scrollbar_x, content_rect.y + 5, 10, content_height - 10)
+            
+            # 计算滑块大小和位置
+            thumb_ratio = content_height / max(total_content_height, 1)
+            thumb_height = max(30, int(scrollbar_track_rect.height * thumb_ratio))
+            scroll_ratio = leaderboard_scroll_y / max_scroll if max_scroll > 0 else 0
+            thumb_y = scrollbar_track_rect.y + int((scrollbar_track_rect.height - thumb_height) * scroll_ratio)
+            scrollbar_thumb_rect = pygame.Rect(scrollbar_x, thumb_y, 10, thumb_height)
+            
+            # 存储滚动条信息供点击处理使用（无论是否显示都需要存储）
+            _leaderboard_cache["scrollbar_info"] = {
+                "track_rect": scrollbar_track_rect,
+                "thumb_rect": scrollbar_thumb_rect,
+                "max_scroll": max_scroll,
+                "content_height": content_height,
+                "total_content_height": total_content_height
+            }
+            
+            # 只有内容超出时才绘制滚动条
+            if total_content_height > content_height:
+                # 检测悬停
+                is_thumb_hover = scrollbar_thumb_rect.collidepoint(mx, my)
+                is_track_hover = scrollbar_track_rect.collidepoint(mx, my)
+                
+                # 绘制轨道
+                track_color = (50, 48, 42) if is_track_hover else (35, 33, 30)
+                pygame.draw.rect(screen, track_color, scrollbar_track_rect, border_radius=5)
+                
+                # 绘制滑块
+                if leaderboard_dragging_scrollbar:
+                    thumb_color = (220, 180, 60)  # 拖动时金色
+                elif is_thumb_hover:
+                    thumb_color = (180, 150, 50)  # 悬停时亮金色
+                else:
+                    thumb_color = (120, 100, 40)  # 普通状态暗金色
+                pygame.draw.rect(screen, thumb_color, scrollbar_thumb_rect, border_radius=5)
+                
+                # 滑块高光
+                highlight_rect = pygame.Rect(scrollbar_thumb_rect.x + 2, scrollbar_thumb_rect.y + 2, 
+                                            scrollbar_thumb_rect.width - 4, 3)
+                pygame.draw.rect(screen, (255, 220, 100), highlight_rect, border_radius=2)
+    
+    else:
+        # ====== 个人统计面板（豪华版）======
+        stats_rect = pygame.Rect(WIDTH//2 - 420, 135, 840, HEIGHT - 290)
+        
+        # 面板背景渐变（使用缓存）
+        stats_bg = _get_lb_gradient("stats_bg", stats_rect.width, stats_rect.height, [(12, 15, 25)], (220, int(220 - stats_rect.height * 0.12)))
+        screen.blit(stats_bg, stats_rect.topleft)
+        
+        # 边框
+        pygame.draw.rect(screen, (70, 65, 50), stats_rect, 2, border_radius=12)
+        inner = stats_rect.inflate(-8, -8)
+        pygame.draw.rect(screen, (40, 38, 32), inner, 1, border_radius=10)
+        
+        player_stats = leaderboard_data.get("player_stats", {})
+        
+        # 统计标题（使用缓存）
+        title_rect = pygame.Rect(stats_rect.x + 20, stats_rect.y + 15, stats_rect.width - 40, 45)
+        title_bg = _get_lb_gradient("stats_title_bg", title_rect.width, 45, [(30, 40, 55)], (180, 180))
+        screen.blit(title_bg, title_rect.topleft)
+        
+        stats_emoji = _get_lb_font("Segoe UI Emoji", 28)
+        stats_text = _get_lb_font("SimHei", 30)
+        icon = stats_emoji.render("📊", True, CYAN)
+        title = stats_text.render(" 战斗生涯统计", True, CYAN)
+        screen.blit(icon, (title_rect.x + 20, title_rect.y + 8))
+        screen.blit(title, (title_rect.x + 20 + icon.get_width(), title_rect.y + 7))
+        
+        pygame.draw.line(screen, (50, 60, 75), (stats_rect.x + 30, stats_rect.y + 70), (stats_rect.right - 30, stats_rect.y + 70), 1)
+        
+        # 统计项卡片
+        stat_items = [
+            ("🎮", "总游戏次数", str(player_stats.get("total_games", 0)) + " 局", CYAN, (20, 50, 60)),
+            ("💀", "总击杀数", f"{player_stats.get('total_kills', 0):,} 敌人", ORANGE, (60, 40, 20)),
+            ("⏱", "总游戏时间", f"{player_stats.get('total_time', 0) // 3600}小时{(player_stats.get('total_time', 0) % 3600) // 60}分钟", (150, 200, 255), (30, 45, 60)),
+            ("🏆", "历史最高分", f"{player_stats.get('best_score', 0):,} 分", GOLD, (60, 50, 20)),
+            ("✈", "最爱机体", PLANES.get(player_stats.get("favorite_plane", ""), {}).get("name", "暂无数据") if player_stats.get("favorite_plane") else "暂无数据", MAGENTA, (50, 30, 50)),
+        ]
+        
+        item_y = stats_rect.y + 75
+        for emoji_char, label, value, color, bg_tint in stat_items:
+            # 卡片背景 - 压缩高度
+            item_rect = pygame.Rect(stats_rect.x + 50, item_y, stats_rect.width - 100, 50)
+            item_bg = pygame.Surface((item_rect.width, 50), pygame.SRCALPHA)
+            for iy in range(50):
+                alpha = int(200 - iy * 2.5)
+                tint = (bg_tint[0] + iy//4, bg_tint[1] + iy//4, bg_tint[2] + iy//4)
+                pygame.draw.line(item_bg, (*tint, alpha), (0, iy), (item_rect.width, iy))
+            screen.blit(item_bg, item_rect.topleft)
+            pygame.draw.rect(screen, color, item_rect, 1, border_radius=6)
+            
+            # 左侧色条
+            pygame.draw.rect(screen, color, (item_rect.x, item_rect.y + 8, 3, item_rect.height - 16), border_radius=2)
+            
+            # Emoji图标
+            item_emoji = _get_lb_font("Segoe UI Emoji", 24)
+            icon_surf = item_emoji.render(emoji_char, True, color)
+            screen.blit(icon_surf, (item_rect.x + 20, item_rect.centery - icon_surf.get_height()//2))
+            
+            # 标签
+            label_font = _get_lb_font("SimHei", 16)
+            label_surf = label_font.render(label, True, (170, 165, 155))
+            screen.blit(label_surf, (item_rect.x + 65, item_rect.centery - label_surf.get_height()//2))
+            
+            # 数值（右对齐）
+            value_font = _get_lb_font("SimHei", 20)
+            value_surf = value_font.render(value, True, color)
+            screen.blit(value_surf, (item_rect.right - 25 - value_surf.get_width(), item_rect.centery - value_surf.get_height()//2))
+            
+            item_y += 50
+        
+        # 机体使用统计 - 颁奖典礼领奖台样式
+        usage = player_stats.get("plane_usage", {})
+        remaining_h = stats_rect.bottom - item_y - 55
+        
+        if usage:  # 只要有使用数据就显示
+            # 分隔线
+            pygame.draw.line(screen, (50, 60, 75), (stats_rect.x + 30, item_y), (stats_rect.right - 30, item_y), 1)
+            item_y += 5
+            
+            # 取前3个机体
+            sorted_usage = sorted(usage.items(), key=lambda x: x[1], reverse=True)[:3]
+            total_count = sum(count for _, count in sorted_usage)
+            
+            # 动态计算领奖台高度（根据剩余空间）
+            max_height = min(75, remaining_h - 40)
+            
+            # 领奖台配置 [emoji, 颜色, 台高度比例]
+            podium_config = [
+                ("🥇", GOLD, 1.0),           # 第1名在中间，最高
+                ("🥈", (200, 200, 220), 0.73),  # 第2名在左边
+                ("🥉", (205, 140, 85), 0.53),   # 第3名在右边
+            ]
+            
+            # 计算领奖台区域
+            podium_width = 90
+            podium_gap = 8
+            total_width = podium_width * 3 + podium_gap * 2
+            start_x = stats_rect.x + (stats_rect.width - total_width) // 2
+            base_y = item_y + remaining_h - 5  # 领奖台底部对齐
+            
+            # 按显示顺序绘制 (左2 中1 右3)
+            display_order = [1, 0, 2]  # 第二名、第一名、第三名的索引
+            
+            for display_idx, rank_idx in enumerate(display_order):
+                if rank_idx >= len(sorted_usage):
+                    continue
+                    
+                plane_id, count = sorted_usage[rank_idx]
+                emoji, color, height_ratio = podium_config[rank_idx]
+                height = int(max_height * height_ratio)
+                plane_name = PLANES.get(plane_id, {}).get("name", plane_id)
+                
+                # 计算位置
+                px = start_x + display_idx * (podium_width + podium_gap)
+                podium_top = base_y - height
+                
+                # 领奖台
+                podium_rect = pygame.Rect(px, podium_top, podium_width, height)
+                
+                # 渐变背景
+                podium_surf = pygame.Surface((podium_width, height), pygame.SRCALPHA)
+                for py in range(height):
+                    ratio = py / max(height, 1)
+                    r = int(color[0] * 0.3 * (1 - ratio * 0.5))
+                    g = int(color[1] * 0.3 * (1 - ratio * 0.5))
+                    b = int(color[2] * 0.3 * (1 - ratio * 0.5))
+                    alpha = 200 - int(ratio * 50)
+                    pygame.draw.line(podium_surf, (r, g, b, alpha), (0, py), (podium_width, py))
+                screen.blit(podium_surf, podium_rect.topleft)
+                
+                # 领奖台边框
+                pygame.draw.rect(screen, color, podium_rect, 2, border_radius=4)
+                
+                # 顶部高光
+                pygame.draw.line(screen, color, (px + 5, podium_top + 2), (px + podium_width - 5, podium_top + 2), 2)
+                
+                # 排名数字（大号）
+                rank_num = str(rank_idx + 1)
+                num_font = _get_lb_font("Impact", 24)
+                num_surf = num_font.render(rank_num, True, color)
+                num_x = px + (podium_width - num_surf.get_width()) // 2
+                num_y = podium_top + 3
+                screen.blit(num_surf, (num_x, num_y))
+                
+                # 机体名（在排名数字下方）
+                name_font = _get_lb_font("SimHei", 13)
+                display_name = plane_name if len(plane_name) <= 6 else plane_name[:5] + ".."
+                name_surf = name_font.render(display_name, True, WHITE)
+                name_x = px + (podium_width - name_surf.get_width()) // 2
+                name_y = podium_top + 28
+                screen.blit(name_surf, (name_x, name_y))  # 直接显示，不加条件
+                
+                # 使用次数（在机体名下方）
+                if total_count > 0:
+                    percent = int(count / total_count * 100)
+                    count_text = f"{count}次({percent}%)"
+                    count_font = _get_lb_font("SimHei", 10)
+                    count_surf = count_font.render(count_text, True, (180, 175, 165))
+                    count_x = px + (podium_width - count_surf.get_width()) // 2
+                    count_y = podium_top + 46
+                    if height > 55:  # 只有高度足够才显示次数
+                        screen.blit(count_surf, (count_x, count_y))
+                
+                # 奖牌图标（在领奖台上方）
+                medal_font = _get_lb_font("Segoe UI Emoji", 20)
+                medal_surf = medal_font.render(emoji, True, color)
+                medal_x = px + (podium_width - medal_surf.get_width()) // 2
+                medal_y = podium_top - 28
+                screen.blit(medal_surf, (medal_x, medal_y))
+    
+    # ====== 返回按钮（豪华版）======
+    back_btn = pygame.Rect(WIDTH//2 - 80, HEIGHT - 75, 160, 50)
+    back_hover = back_btn.collidepoint(mx, my)
+    
+    # 按钮背景渐变
+    btn_bg = pygame.Surface((160, 50), pygame.SRCALPHA)
+    for by in range(50):
+        alpha = int(220 - by * 2)
+        color = (60, 55, 35) if back_hover else (35, 32, 25)
+        pygame.draw.line(btn_bg, (*color, alpha), (0, by), (160, by))
+    screen.blit(btn_bg, back_btn.topleft)
+    
+    # 按钮边框
+    pygame.draw.rect(screen, GOLD if back_hover else (100, 90, 60), back_btn, 2, border_radius=10)
+    if back_hover:
+        glow_btn = back_btn.inflate(6, 6)
+        pygame.draw.rect(screen, (255, 200, 50, 50), glow_btn, 2, border_radius=12)
+    
+    # 返回按钮文字
+    back_emoji = _get_lb_font("Segoe UI Emoji", 18)
+    back_text = _get_lb_font("SimHei", 20)
+    icon_surf = back_emoji.render("◀", True, GOLD if back_hover else (180, 170, 140))
+    text_surf = back_text.render(" 返回", True, GOLD if back_hover else (180, 170, 140))
+    total_w = icon_surf.get_width() + text_surf.get_width()
+    screen.blit(icon_surf, (back_btn.centerx - total_w//2, back_btn.centery - icon_surf.get_height()//2))
+    screen.blit(text_surf, (back_btn.centerx - total_w//2 + icon_surf.get_width(), back_btn.centery - text_surf.get_height()//2))
 
 def handle_plane_customization_click(mx, my):
     """处理机体涂装点击事件"""
@@ -3398,28 +6729,22 @@ def handle_plane_customization_click(mx, my):
     
     print(f"[DEBUG] handle_plane_customization_click called: mx={mx}, my={my}, tab={customization_tab}, plane={customization_selected_plane}")
     
-    # 返回按钮
-    back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 80, 120, 50)
-    if back_btn.collidepoint(mx, my):
-        sound_mgr.play("select")
-        customization_manager.save_data()
-        game_state = "menu"
-        return
+    # 返回按钮已移到主界面的draw_customization_ui中处理
     
-    # 选择飞机
-    plane_list_area = pygame.Rect(30, 100, 280, HEIGHT - 180)
-    list_content_rect = pygame.Rect(plane_list_area.x, plane_list_area.y + 40, plane_list_area.width, plane_list_area.height - 40)
+    # 选择飞机 - 必须与绘制代码一致！
+    plane_list_area = pygame.Rect(25, 115, 290, HEIGHT - 195)
+    list_content_rect = pygame.Rect(plane_list_area.x, plane_list_area.y + 48, plane_list_area.width, plane_list_area.height - 48)
     plane_start_y = list_content_rect.y + 5 - customization_plane_scroll_y
     
     if list_content_rect.collidepoint(mx, my):
         for i, plane_id in enumerate(plane_keys):
-            rect = pygame.Rect(40, plane_start_y + i * 45, 260, 40)
+            rect = pygame.Rect(plane_list_area.x + 8, plane_start_y + i * 52, plane_list_area.width - 16, 48)
             if rect.collidepoint(mx, my):
                 sound_mgr.play("select")
                 customization_selected_plane = plane_id
                 return
     
-    # 涂装按钮点击
+    # 涂装按钮点击 - 必须与绘制代码一致！
     if customization_selected_plane:
         categories = [None, "common", "rare", "epic", "legendary", "exclusive", "bullet"]
         filtered_themes = []
@@ -3442,12 +6767,14 @@ def handle_plane_customization_click(mx, my):
                     if theme.get("category") == target_cat:
                         filtered_themes.append((tid, theme, False))
         
-        theme_y_start = 180
-        theme_list_area = pygame.Rect(330, 100, 600, HEIGHT - 180)
-        list_view_rect = pygame.Rect(theme_list_area.x, theme_y_start, theme_list_area.width, theme_list_area.height - (theme_y_start - theme_list_area.y))
+        # 涂装列表区域 - 必须与绘制代码一致！
+        theme_list_area = pygame.Rect(330, 115, 620, HEIGHT - 195)
+        theme_y_start = theme_list_area.y + 85
+        list_view_rect = pygame.Rect(theme_list_area.x, theme_y_start, theme_list_area.width, theme_list_area.height - 85)
         
         for i, (theme_id, theme, is_bullet) in enumerate(filtered_themes):
-            card_rect = pygame.Rect(350, theme_y_start + i * 100 - customization_scroll_y, 560, 90)
+            # 卡片尺寸 - 必须与绘制代码一致！
+            card_rect = pygame.Rect(theme_list_area.x + 10, theme_y_start + i * 95 - customization_scroll_y, theme_list_area.width - 20, 88)
             
             if card_rect.bottom < list_view_rect.top or card_rect.top > list_view_rect.bottom:
                 continue
@@ -3457,9 +6784,11 @@ def handle_plane_customization_click(mx, my):
                 is_unlocked = customization_manager.unlocked_bullet_themes.get(theme_id, False)
             else:
                 is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
-            btn_x = card_rect.right - 120
-            btn_y = card_rect.y + 25
-            btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
+            
+            # 按钮尺寸 - 必须与绘制代码一致！
+            btn_w = 95
+            btn_h = 36
+            btn_rect = pygame.Rect(card_rect.right - btn_w - 12, card_rect.y + 26, btn_w, btn_h)
             
             if btn_rect.collidepoint(mx, my):
                 print(f"[DEBUG] 点击涂装按钮: theme_id={theme_id}, plane={customization_selected_plane}")
@@ -3511,22 +6840,23 @@ def handle_wingman_customization_click(mx, my):
     """处理僚机涂装界面的点击事件"""
     global customization_selected_wingman, customization_msg, customization_msg_timer, wingman_theme_filter, customization_scroll_y
     
-    # 槽位选择
-    list_content_rect = pygame.Rect(30, 140, 280, HEIGHT - 220)
+    # 槽位选择 - 必须与绘制代码一致！
+    wingman_list_area = pygame.Rect(25, 115, 290, HEIGHT - 195)
+    list_content_rect = pygame.Rect(wingman_list_area.x, wingman_list_area.y + 48, wingman_list_area.width, wingman_list_area.height - 48)
     wingman_start_y = list_content_rect.y + 5
     
     for i in range(4):
-        rect = pygame.Rect(40, wingman_start_y + i * 60, 260, 55)
+        rect = pygame.Rect(wingman_list_area.x + 8, wingman_start_y + i * 70, wingman_list_area.width - 16, 65)
         if rect.collidepoint(mx, my):
             customization_selected_wingman = i
             return
     
-    # 机体筛选按钮点击
-    theme_list_area = pygame.Rect(330, 100, 600, HEIGHT - 180)
-    filter_y = 140
-    filter_btn_w = 55
-    filter_btn_h = 25
-    filter_start_x = theme_list_area.x + 5
+    # 机体筛选按钮点击 - 必须与绘制代码一致！
+    theme_list_area = pygame.Rect(330, 115, 620, HEIGHT - 195)
+    filter_y = theme_list_area.y + 48
+    filter_btn_w = 52
+    filter_btn_h = 24
+    filter_start_x = theme_list_area.x + 10
     
     # "全部"按钮
     all_btn = pygame.Rect(filter_start_x, filter_y, filter_btn_w, filter_btn_h)
@@ -3538,8 +6868,8 @@ def handle_wingman_customization_click(mx, my):
     # 第一行机体筛选按钮
     plane_keys_list = list(PLANES.keys())
     for pi, plane_id in enumerate(plane_keys_list[:10]):
-        btn_x = filter_start_x + (pi + 1) * (filter_btn_w + 3)
-        if btn_x + filter_btn_w > theme_list_area.right - 5:
+        btn_x = filter_start_x + (pi + 1) * (filter_btn_w + 4)
+        if btn_x + filter_btn_w > theme_list_area.right - 10:
             break
         plane_btn = pygame.Rect(btn_x, filter_y, filter_btn_w, filter_btn_h)
         if plane_btn.collidepoint(mx, my):
@@ -3548,10 +6878,10 @@ def handle_wingman_customization_click(mx, my):
             return
     
     # 第二行机体筛选按钮
-    filter_y2 = filter_y + filter_btn_h + 3
+    filter_y2 = filter_y + filter_btn_h + 4
     for pi, plane_id in enumerate(plane_keys_list[10:]):
-        btn_x = filter_start_x + pi * (filter_btn_w + 3)
-        if btn_x + filter_btn_w > theme_list_area.right - 5:
+        btn_x = filter_start_x + pi * (filter_btn_w + 4)
+        if btn_x + filter_btn_w > theme_list_area.right - 10:
             break
         plane_btn = pygame.Rect(btn_x, filter_y2, filter_btn_w, filter_btn_h)
         if plane_btn.collidepoint(mx, my):
@@ -3559,8 +6889,8 @@ def handle_wingman_customization_click(mx, my):
             customization_scroll_y = 0
             return
     
-    # 涂装卡片点击
-    theme_y_start = 200
+    # 涂装卡片点击 - 必须与绘制代码一致！
+    theme_y_start = theme_list_area.y + 105
     
     # 筛选涂装（按机体筛选）
     filtered_themes = []
@@ -3573,7 +6903,8 @@ def handle_wingman_customization_click(mx, my):
         filtered_themes.append((tid, theme))
     
     for i, (theme_id, theme) in enumerate(filtered_themes):
-        card_rect = pygame.Rect(350, theme_y_start + i * 100 - customization_scroll_y, 560, 90)
+        # 卡片尺寸 - 必须与绘制代码一致！
+        card_rect = pygame.Rect(theme_list_area.x + 10, theme_y_start + i * 95 - customization_scroll_y, theme_list_area.width - 20, 88)
         
         if not card_rect.collidepoint(mx, my):
             continue
@@ -3582,10 +6913,10 @@ def handle_wingman_customization_click(mx, my):
         current_equipped = customization_manager.equipped_wingman_themes.get(f"slot_{customization_selected_wingman}", "default")
         is_equipped = (current_equipped == theme_id)
         
-        # 按钮区域
-        btn_x = card_rect.right - 120
-        btn_y = card_rect.y + 25
-        btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
+        # 按钮区域 - 必须与绘制代码一致！
+        btn_w = 95
+        btn_h = 36
+        btn_rect = pygame.Rect(card_rect.right - btn_w - 12, card_rect.y + 26, btn_w, btn_h)
         
         if btn_rect.collidepoint(mx, my):
             if is_unlocked and not is_equipped:
@@ -3613,18 +6944,64 @@ def handle_wingman_customization_click(mx, my):
             break
 
 def draw_customization_ui():
-    """绘制涂装自定义界面"""
+    """绘制涂装自定义界面 - 豪华赛博朋克风格"""
     global customization_mode, game_state
     
+    t = pygame.time.get_ticks()
     mx, my = pygame.mouse.get_pos()
     
-    # 左上角返回按钮
-    back_btn = pygame.Rect(30, 30, 100, 40)
+    # ====== 动态深空背景 ======
+    screen.fill((5, 8, 15))
+    
+    # 动态星空粒子
+    for i in range(40):
+        px = (i * 79 + int(t / 60)) % WIDTH
+        py = (i * 53 + int(t / 80)) % HEIGHT
+        p_alpha = int(40 + 35 * math.sin(t / 400 + i * 0.5))
+        size = 1 if i % 3 else 2
+        p_color = (p_alpha, int(p_alpha * 1.2), int(p_alpha * 1.8))
+        pygame.draw.circle(screen, p_color, (px, py), size)
+    
+    # 网格背景
+    grid_alpha = 12
+    grid_color = (grid_alpha, int(grid_alpha * 1.5), grid_alpha * 2)
+    grid_size = 50
+    offset = int(t / 150) % grid_size
+    for x in range(-offset, WIDTH + grid_size, grid_size):
+        pygame.draw.line(screen, grid_color, (x, 0), (x, HEIGHT))
+    for y in range(-offset, HEIGHT + grid_size, grid_size):
+        pygame.draw.line(screen, grid_color, (0, y), (WIDTH, y))
+    
+    # 边框发光
+    glow_intensity = int(80 + 40 * math.sin(t / 500))
+    border_color = (glow_intensity // 3, glow_intensity, int(glow_intensity * 1.2))
+    pygame.draw.rect(screen, border_color, (0, 0, WIDTH, 2))
+    pygame.draw.rect(screen, border_color, (0, HEIGHT - 2, WIDTH, 2))
+    
+    # 角落霓虹装饰
+    corner_size = 50
+    for corner in [(0, 0, 1, 1), (WIDTH, 0, -1, 1), (0, HEIGHT, 1, -1), (WIDTH, HEIGHT, -1, -1)]:
+        cx, cy, dx, dy = corner
+        pygame.draw.line(screen, CYAN, (cx, cy + dy * 3), (cx, cy + dy * corner_size), 2)
+        pygame.draw.line(screen, CYAN, (cx + dx * 3, cy), (cx + dx * corner_size, cy), 2)
+    
+    # ====== 左上角返回按钮（豪华版）======
+    back_btn = pygame.Rect(25, 20, 110, 42)
     hb = back_btn.collidepoint(mx, my)
-    draw_cyber_rect(screen, back_btn, GRAY, fill=True)
-    if hb: 
-        draw_cyber_rect(screen, back_btn, WHITE, border_width=2, fill=False)
-    draw_text(screen, "返回", 20, back_btn.centerx, back_btn.centery - 8, WHITE)
+    
+    back_bg = pygame.Surface((110, 42), pygame.SRCALPHA)
+    for by in range(42):
+        alpha = 180 - by * 3
+        color = (100, 40, 40) if hb else (50, 25, 35)
+        pygame.draw.line(back_bg, (*color, alpha), (0, by), (110, by))
+    screen.blit(back_bg, back_btn.topleft)
+    pygame.draw.rect(screen, RED if hb else (150, 60, 80), back_btn, 2, border_radius=8)
+    if hb:
+        pygame.draw.rect(screen, (200, 80, 80, 60), back_btn.inflate(4, 4), 2, border_radius=10)
+    
+    back_font = pygame.font.SysFont("SimHei", 18)
+    back_text = back_font.render("◀ 返回", True, WHITE)
+    screen.blit(back_text, (back_btn.centerx - back_text.get_width()//2, back_btn.centery - back_text.get_height()//2))
     
     # 处理返回按钮点击
     if hb and pygame.mouse.get_pressed()[0]:
@@ -3632,23 +7009,82 @@ def draw_customization_ui():
         pygame.mouse.set_visible(True)
         return
     
-    # 模式切换按钮（居中）
-    mode_btn_y = 30
-    plane_btn = pygame.Rect(WIDTH // 2 - 120, mode_btn_y, 100, 40)
-    wingman_btn = pygame.Rect(WIDTH // 2 + 20, mode_btn_y, 100, 40)
+    # ====== 中央标题区 ======
+    title_panel = pygame.Rect(WIDTH//2 - 200, 15, 400, 52)
+    title_bg = pygame.Surface((400, 52), pygame.SRCALPHA)
+    for ty in range(52):
+        alpha = int(180 - ty * 2.5)
+        pygame.draw.line(title_bg, (15, 35, 55, alpha), (0, ty), (400, ty))
+    screen.blit(title_bg, title_panel.topleft)
+    pygame.draw.rect(screen, MAGENTA, title_panel, 2, border_radius=8)
+    
+    title_glow = int(255 * (0.85 + 0.15 * math.sin(t / 350)))
+    title_color = (title_glow, int(title_glow * 0.7), title_glow)
+    title_font = pygame.font.SysFont("SimHei", 32)
+    emoji_font = pygame.font.SysFont("Segoe UI Emoji", 26)
+    icon_l = emoji_font.render("🎨", True, MAGENTA)
+    title_surf = title_font.render(" 涂装工坊 ", True, title_color)
+    icon_r = emoji_font.render("✨", True, CYAN)
+    total_w = icon_l.get_width() + title_surf.get_width() + icon_r.get_width()
+    start_x = WIDTH//2 - total_w//2
+    screen.blit(icon_l, (start_x, 24))
+    screen.blit(title_surf, (start_x + icon_l.get_width(), 22))
+    screen.blit(icon_r, (start_x + icon_l.get_width() + title_surf.get_width(), 24))
+    
+    # ====== 模式切换按钮（豪华版）======
+    mode_btn_y = 25
+    btn_w = 130
+    btn_h = 40
+    plane_btn = pygame.Rect(WIDTH // 2 - btn_w - 85, mode_btn_y + 50, btn_w, btn_h)
+    wingman_btn = pygame.Rect(WIDTH // 2 + 85, mode_btn_y + 50, btn_w, btn_h)
     
     plane_active = (customization_mode == "plane")
     wingman_active = (customization_mode == "wingman")
+    plane_hover = plane_btn.collidepoint(mx, my)
+    wingman_hover = wingman_btn.collidepoint(mx, my)
     
-    draw_cyber_rect(screen, plane_btn, (0, 100, 100) if plane_active else (40, 40, 50), fill=True)
+    # 机体涂装按钮
+    plane_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+    for by in range(btn_h):
+        alpha = 180 - by * 3
+        if plane_active:
+            color = (0, 100, 120)
+        elif plane_hover:
+            color = (40, 70, 90)
+        else:
+            color = (25, 40, 55)
+        pygame.draw.line(plane_bg, (*color, alpha), (0, by), (btn_w, by))
+    screen.blit(plane_bg, plane_btn.topleft)
+    pygame.draw.rect(screen, CYAN if plane_active else ((80, 140, 180) if plane_hover else (50, 70, 90)), plane_btn, 2, border_radius=8)
     if plane_active:
-        draw_cyber_rect(screen, plane_btn, CYAN, border_width=2, fill=False)
-    draw_text(screen, "机体涂装", 18, plane_btn.centerx, plane_btn.centery - 8, CYAN if plane_active else WHITE)
+        pygame.draw.rect(screen, (0, 200, 220, 40), plane_btn.inflate(4, 4), 2, border_radius=10)
     
-    draw_cyber_rect(screen, wingman_btn, (0, 100, 100) if wingman_active else (40, 40, 50), fill=True)
+    plane_font = pygame.font.SysFont("SimHei", 17)
+    plane_icon = emoji_font.render("✈", True, CYAN if plane_active else WHITE)
+    plane_text = plane_font.render(" 机体涂装", True, CYAN if plane_active else WHITE)
+    screen.blit(plane_icon, (plane_btn.x + 12, plane_btn.centery - 10))
+    screen.blit(plane_text, (plane_btn.x + 38, plane_btn.centery - 10))
+    
+    # 僚机涂装按钮
+    wingman_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+    for by in range(btn_h):
+        alpha = 180 - by * 3
+        if wingman_active:
+            color = (100, 60, 100)
+        elif wingman_hover:
+            color = (70, 45, 70)
+        else:
+            color = (40, 30, 50)
+        pygame.draw.line(wingman_bg, (*color, alpha), (0, by), (btn_w, by))
+    screen.blit(wingman_bg, wingman_btn.topleft)
+    pygame.draw.rect(screen, MAGENTA if wingman_active else ((150, 80, 150) if wingman_hover else (80, 50, 80)), wingman_btn, 2, border_radius=8)
     if wingman_active:
-        draw_cyber_rect(screen, wingman_btn, CYAN, border_width=2, fill=False)
-    draw_text(screen, "僚机涂装", 18, wingman_btn.centerx, wingman_btn.centery - 8, CYAN if wingman_active else WHITE)
+        pygame.draw.rect(screen, (200, 100, 200, 40), wingman_btn.inflate(4, 4), 2, border_radius=10)
+    
+    wingman_icon = emoji_font.render("👥", True, MAGENTA if wingman_active else WHITE)
+    wingman_text = plane_font.render(" 僚机涂装", True, MAGENTA if wingman_active else WHITE)
+    screen.blit(wingman_icon, (wingman_btn.x + 12, wingman_btn.centery - 10))
+    screen.blit(wingman_text, (wingman_btn.x + 42, wingman_btn.centery - 10))
     
     # 处理按钮点击
     if plane_btn.collidepoint(mx, my) and pygame.mouse.get_pressed()[0]:
@@ -3666,130 +7102,241 @@ def draw_customization_ui():
 
 
 def draw_plane_customization_ui():
-    """绘制机体涂装界面"""
+    """绘制机体涂装界面 - 豪华赛博朋克风格"""
     global customization_selected_plane, customization_msg_timer, customization_tab, customization_scroll_y, customization_plane_scroll_y
     
+    t = pygame.time.get_ticks()
     mx, my = pygame.mouse.get_pos()
     
-    # 右上角显示核心和进度
-    currency_text = f"核心: {arsenal_save_data['currencies']['cores']}"
-    draw_text(screen, currency_text, 20, WIDTH - 200, 30, GOLD, align="left")
+    # ====== 预加载所有字体（性能优化）======
+    font_18 = get_cached_font("SimHei", 18)
+    font_17 = get_cached_font("SimHei", 17)
+    font_16 = get_cached_font("SimHei", 16)
+    font_15 = get_cached_font("SimHei", 15)
+    font_14 = get_cached_font("SimHei", 14)
+    font_13 = get_cached_font("SimHei", 13)
+    font_12 = get_cached_font("SimHei", 12)
+    font_11 = get_cached_font("SimHei", 11)
+    font_10 = get_cached_font("SimHei", 10)
+    emoji_16 = get_cached_font("Segoe UI Emoji", 16)
+    emoji_12 = get_cached_font("Segoe UI Emoji", 12)
+    
+    # ====== 右上角资源显示（豪华版）======
+    res_panel = pygame.Rect(WIDTH - 280, 20, 250, 70)
+    res_bg = pygame.Surface((250, 70), pygame.SRCALPHA)
+    for ry in range(70):
+        alpha = int(160 - ry * 1.5)
+        pygame.draw.line(res_bg, (20, 35, 50, alpha), (0, ry), (250, ry))
+    screen.blit(res_bg, res_panel.topleft)
+    pygame.draw.rect(screen, (60, 100, 140), res_panel, 1, border_radius=8)
+    
+    # 核心数量
+    core_icon = emoji_16.render("💎", True, GOLD)
+    core_text = font_18.render(f"核心: {arsenal_save_data['currencies']['cores']}", True, GOLD)
+    screen.blit(core_icon, (res_panel.x + 15, res_panel.y + 12))
+    screen.blit(core_text, (res_panel.x + 42, res_panel.y + 12))
+    
+    # 解锁进度
     unlocked_count = customization_manager.get_unlocked_count()
     total_count = customization_manager.get_total_count()
-    progress_text = f"已解锁: {unlocked_count}/{total_count}"
-    draw_text(screen, progress_text, 18, WIDTH - 200, 60, CYAN, align="left")
+    progress_pct = unlocked_count / total_count if total_count > 0 else 0
     
-    # 左侧：飞机列表
-    plane_list_area = pygame.Rect(30, 100, 280, HEIGHT - 180)
-    draw_cyber_rect(screen, plane_list_area, (20, 20, 30), alpha=220, fill=True)
-    draw_text(screen, "选择机体", 22, plane_list_area.centerx, 110, CYAN)
+    progress_icon = emoji_16.render("📊", True, CYAN)
+    progress_text = font_18.render(f"解锁: {unlocked_count}/{total_count}", True, CYAN)
+    screen.blit(progress_icon, (res_panel.x + 15, res_panel.y + 40))
+    screen.blit(progress_text, (res_panel.x + 42, res_panel.y + 40))
     
-    # 列表内容区域（排除标题）
-    list_content_rect = pygame.Rect(plane_list_area.x, plane_list_area.y + 40, plane_list_area.width, plane_list_area.height - 40)
+    # 进度条
+    bar_x = res_panel.x + 140
+    bar_w = 95
+    bar_h = 8
+    pygame.draw.rect(screen, (30, 40, 55), (bar_x, res_panel.y + 45, bar_w, bar_h), border_radius=4)
+    fill_w = int(bar_w * progress_pct)
+    if fill_w > 0:
+        pygame.draw.rect(screen, CYAN, (bar_x, res_panel.y + 45, fill_w, bar_h), border_radius=4)
+    
+    # ====== 左侧：飞机列表面板（豪华版）======
+    plane_list_area = pygame.Rect(25, 115, 290, HEIGHT - 195)
+    
+    # 面板背景渐变
+    plane_bg = pygame.Surface((plane_list_area.width, plane_list_area.height), pygame.SRCALPHA)
+    for py in range(plane_list_area.height):
+        alpha = int(200 - py * 0.1)
+        pygame.draw.line(plane_bg, (12, 18, 30, alpha), (0, py), (plane_list_area.width, py))
+    screen.blit(plane_bg, plane_list_area.topleft)
+    pygame.draw.rect(screen, (50, 80, 120), plane_list_area, 2, border_radius=10)
+    
+    # 面板标题
+    title_rect = pygame.Rect(plane_list_area.x + 10, plane_list_area.y + 8, plane_list_area.width - 20, 32)
+    pygame.draw.rect(screen, (20, 45, 70, 200), title_rect, border_radius=6)
+    pygame.draw.rect(screen, CYAN, title_rect, 1, border_radius=6)
+    
+    list_icon = emoji_16.render("✈", True, CYAN)
+    list_title = font_18.render(" 选择机体", True, CYAN)
+    screen.blit(list_icon, (title_rect.x + 15, title_rect.y + 6))
+    screen.blit(list_title, (title_rect.x + 38, title_rect.y + 6))
+    
+    # 列表内容区域
+    list_content_rect = pygame.Rect(plane_list_area.x, plane_list_area.y + 48, plane_list_area.width, plane_list_area.height - 48)
     screen.set_clip(list_content_rect)
     
     plane_start_y = list_content_rect.y + 5 - customization_plane_scroll_y
     for i, plane_id in enumerate(plane_keys):
         plane_data = PLANES[plane_id]
-        rect = pygame.Rect(40, plane_start_y + i * 45, 260, 40)
+        rect = pygame.Rect(plane_list_area.x + 8, plane_start_y + i * 52, plane_list_area.width - 16, 48)
         
-        # 简单的可见性剔除
+        # 可见性剔除
         if rect.bottom < list_content_rect.top or rect.top > list_content_rect.bottom:
             continue
             
         equipped_theme = customization_manager.get_equipped_theme(plane_id)
         is_selected = (customization_selected_plane == plane_id)
-        h = rect.collidepoint(mx, my) or is_selected
-        bg_color = (plane_data["color"][0]//3, plane_data["color"][1]//3, plane_data["color"][2]//3) if h else (30, 30, 40)
-        draw_cyber_rect(screen, rect, bg_color, fill=True)
-        if is_selected: draw_cyber_rect(screen, rect, CYAN, border_width=2, fill=False)
+        is_hover = rect.collidepoint(mx, my)
         
-        # 简单绘制飞机图标（使用当前装备的涂装）
+        # 卡片背景渐变
+        card_bg = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+        for cy in range(rect.height):
+            alpha = 180 - cy * 2
+            if is_selected:
+                color = (plane_data["color"][0]//3, plane_data["color"][1]//3, plane_data["color"][2]//3)
+            elif is_hover:
+                color = (40, 55, 75)
+            else:
+                color = (25, 32, 45)
+            pygame.draw.line(card_bg, (*color, alpha), (0, cy), (rect.width, cy))
+        screen.blit(card_bg, rect.topleft)
+        
+        # 边框
+        if is_selected:
+            pygame.draw.rect(screen, CYAN, rect, 2, border_radius=8)
+            pygame.draw.rect(screen, plane_data["color"], rect.inflate(-6, -6), 1, border_radius=6)
+        elif is_hover:
+            pygame.draw.rect(screen, (80, 120, 160), rect, 1, border_radius=8)
+        else:
+            pygame.draw.rect(screen, (50, 60, 80), rect, 1, border_radius=8)
+        
+        # 飞机图标
         plane_visual = customization_manager.get_theme_visual(plane_id, PLANES[plane_id].get('visual', None))
-        # 使用静态缓存模式
         icon = get_plane_surf(plane_id, plane_visual, static=True)
-        icon = pygame.transform.scale(icon, (30, 30))
-        safe_blit(screen, icon, (rect.x + 5, rect.y + 5))
+        icon = pygame.transform.scale(icon, (36, 36))
+        safe_blit(screen, icon, (rect.x + 8, rect.y + 6))
         
-        draw_text(screen, plane_data["name"], 16, rect.x + 130, rect.y + 8, WHITE, align="center")
+        # 机体名称
+        name_surf = font_15.render(plane_data["name"], True, WHITE if is_selected else (200, 200, 210))
+        screen.blit(name_surf, (rect.x + 52, rect.y + 8))
+        
+        # 装备的涂装名称
         if equipped_theme != "default":
-            # 容错处理：如果主题不存在，使用默认主题
             if equipped_theme in PAINT_THEMES:
                 theme_name = PAINT_THEMES[equipped_theme]["name"]
-                draw_text(screen, f"[{theme_name}]", 12, rect.x + 130, rect.y + 24, plane_data["color"], align="center")
+                cat = PAINT_THEMES[equipped_theme].get("category", "default")
+                quality_colors = {"default": (150, 150, 150), "common": (200, 200, 200), "rare": (100, 150, 255), "epic": (200, 100, 255), "legendary": (255, 215, 0), "exclusive": (255, 80, 150)}
+                q_color = quality_colors.get(cat, GRAY)
+                theme_surf = font_12.render(f"[{theme_name}]", True, q_color)
+                screen.blit(theme_surf, (rect.x + 52, rect.y + 28))
             else:
-                log_info(f"Theme {equipped_theme} not found for {plane_id}, resetting to default")
                 customization_manager.equip_theme(plane_id, "default")
+        else:
+            theme_surf = font_12.render("[默认涂装]", True, (100, 105, 115))
+            screen.blit(theme_surf, (rect.x + 52, rect.y + 28))
             
     screen.set_clip(None)
 
-    # 右侧：涂装列表
-    theme_list_area = pygame.Rect(330, 100, 600, HEIGHT - 180)
-    draw_cyber_rect(screen, theme_list_area, (20, 20, 30), alpha=220, fill=True)
+    # ====== 右侧：涂装列表面板（豪华版）======
+    theme_list_area = pygame.Rect(330, 115, 620, HEIGHT - 195)
+    
+    # 面板背景渐变
+    theme_bg = pygame.Surface((theme_list_area.width, theme_list_area.height), pygame.SRCALPHA)
+    for ty in range(theme_list_area.height):
+        alpha = int(200 - ty * 0.08)
+        pygame.draw.line(theme_bg, (12, 18, 30, alpha), (0, ty), (theme_list_area.width, ty))
+    screen.blit(theme_bg, theme_list_area.topleft)
+    pygame.draw.rect(screen, (60, 90, 130), theme_list_area, 2, border_radius=10)
     
     if customization_selected_plane:
         plane_data = PLANES[customization_selected_plane]
-        draw_text(screen, f"{plane_data['name']} - 涂装方案", 22, theme_list_area.centerx, 110, CYAN)
         
-        # --- 分类标签页 ---
+        # 面板标题
+        panel_title_rect = pygame.Rect(theme_list_area.x + 10, theme_list_area.y + 8, theme_list_area.width - 20, 32)
+        pygame.draw.rect(screen, (25, 50, 75, 200), panel_title_rect, border_radius=6)
+        pygame.draw.rect(screen, plane_data["color"], panel_title_rect, 1, border_radius=6)
+        
+        panel_icon = emoji_16.render("🎨", True, plane_data["color"])
+        panel_title = font_17.render(f" {plane_data['name']} - 涂装方案", True, WHITE)
+        screen.blit(panel_icon, (panel_title_rect.x + 12, panel_title_rect.y + 6))
+        screen.blit(panel_title, (panel_title_rect.x + 38, panel_title_rect.y + 7))
+        
+        # ====== 分类标签页（豪华版）======
         tabs = ["全部", "普通", "稀有", "史诗", "传说", "专属", "子弹"]
         categories = [None, "common", "rare", "epic", "legendary", "exclusive", "bullet"]
-        tab_w = 70
-        tab_h = 30
-        start_x = theme_list_area.x + 10
-        tab_y = 140
+        tab_colors = [CYAN, (200, 200, 200), (100, 150, 255), (200, 100, 255), (255, 215, 0), (255, 80, 150), ORANGE]
+        tab_w = 78
+        tab_h = 28
+        start_x = theme_list_area.x + 12
+        tab_y = theme_list_area.y + 48
         
         for i, tab_name in enumerate(tabs):
-            tab_rect = pygame.Rect(start_x + i * (tab_w + 5), tab_y, tab_w, tab_h)
+            tab_rect = pygame.Rect(start_x + i * (tab_w + 6), tab_y, tab_w, tab_h)
             is_active = (customization_tab == i)
+            is_hover = tab_rect.collidepoint(mx, my)
             
             # 处理点击
-            if tab_rect.collidepoint(mx, my) and pygame.mouse.get_pressed()[0]:
+            if is_hover and pygame.mouse.get_pressed()[0]:
                 if customization_tab != i:
                     customization_tab = i
-                    customization_scroll_y = 0 # 切换标签重置滚动
+                    customization_scroll_y = 0
             
-            color = CYAN if is_active else GRAY
-            draw_cyber_rect(screen, tab_rect, (40, 40, 50), fill=True)
-            if is_active:
-                draw_cyber_rect(screen, tab_rect, CYAN, border_width=2, fill=False)
-            draw_text(screen, tab_name, 16, tab_rect.centerx, tab_rect.centery - 8, color)
+            # 标签背景
+            tab_bg = pygame.Surface((tab_w, tab_h), pygame.SRCALPHA)
+            for ty in range(tab_h):
+                alpha = 160 - ty * 4
+                if is_active:
+                    color = (tab_colors[i][0]//4, tab_colors[i][1]//4, tab_colors[i][2]//4)
+                elif is_hover:
+                    color = (45, 55, 70)
+                else:
+                    color = (30, 38, 50)
+                pygame.draw.line(tab_bg, (*color, alpha), (0, ty), (tab_w, ty))
+            screen.blit(tab_bg, tab_rect.topleft)
+            
+            # 边框
+            border_color = tab_colors[i] if is_active else ((80, 100, 130) if is_hover else (50, 60, 75))
+            pygame.draw.rect(screen, border_color, tab_rect, 2 if is_active else 1, border_radius=6)
+            
+            # 文字
+            tab_text = font_13.render(tab_name, True, tab_colors[i] if is_active else (WHITE if is_hover else (160, 165, 175)))
+            screen.blit(tab_text, (tab_rect.centerx - tab_text.get_width()//2, tab_rect.centery - tab_text.get_height()//2))
 
-        # --- 筛选涂装 ---
+        # ====== 筛选涂装 ======
         filtered_themes = []
         
-        # 判断是否为子弹涂装标签
         if customization_tab == 6:  # 子弹标签
-            # 显示子弹涂装
             for tid, theme in BULLET_THEMES.items():
-                # 过滤掉其他飞机的专属子弹涂装
                 exclusive_plane = theme.get("exclusive_plane")
                 if exclusive_plane and exclusive_plane != customization_selected_plane:
                     continue
-                filtered_themes.append((tid, theme, True))  # True表示是子弹涂装
+                filtered_themes.append((tid, theme, True))
         else:
-            # 显示机体涂装
             for tid, theme in PAINT_THEMES.items():
-                # 过滤掉其他飞机的专属涂装
                 exclusive_plane = theme.get("exclusive_plane")
                 if exclusive_plane and exclusive_plane != customization_selected_plane:
                     continue
 
                 if customization_tab == 0:
-                    filtered_themes.append((tid, theme, False))  # False表示是机体涂装
+                    filtered_themes.append((tid, theme, False))
                 else:
                     target_cat = categories[customization_tab]
                     if theme.get("category") == target_cat:
                         filtered_themes.append((tid, theme, False))
         
-        theme_y_start = 180
+        theme_y_start = theme_list_area.y + 85
         
         # 列表裁剪区域
-        list_view_rect = pygame.Rect(theme_list_area.x, theme_y_start, theme_list_area.width, theme_list_area.height - (theme_y_start - theme_list_area.y))
+        list_view_rect = pygame.Rect(theme_list_area.x, theme_y_start, theme_list_area.width, theme_list_area.height - 85)
         screen.set_clip(list_view_rect)
         
         for i, (theme_id, theme, is_bullet) in enumerate(filtered_themes):
-            card_rect = pygame.Rect(350, theme_y_start + i * 100 - customization_scroll_y, 560, 90)
+            card_rect = pygame.Rect(theme_list_area.x + 10, theme_y_start + i * 95 - customization_scroll_y, theme_list_area.width - 20, 88)
             
             # 跳过不可见的卡片
             if card_rect.bottom < list_view_rect.top or card_rect.top > list_view_rect.bottom:
@@ -3802,25 +7349,9 @@ def draw_plane_customization_ui():
                 is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
             is_equipped = customization_manager.get_equipped_theme(customization_selected_plane, bullet=is_bullet) == theme_id
             
-            # 调试：每隔一段时间打印一次装备状态
-            if theme_id == "crystalfall_void":
-                current_equipped = customization_manager.get_equipped_theme(customization_selected_plane, bullet=is_bullet)
-                if pygame.time.get_ticks() % 3000 < 50:  # 每3秒打印一次
-                    print(f"[DEBUG-UI] crystalfall_void: current_equipped={current_equipped}, is_equipped={is_equipped}")
+            is_hover = card_rect.collidepoint(mx, my)
             
-            h = card_rect.collidepoint(mx, my)
-            
-            # 背景颜色
-            if is_equipped:
-                bg_color = (0, 100, 100)
-            elif is_unlocked:
-                bg_color = (40, 50, 40) if h else (30, 35, 30)
-            else:
-                bg_color = (50, 30, 30) if h else (30, 20, 20)
-            
-            draw_cyber_rect(screen, card_rect, bg_color, fill=True)
-            
-            # 品质颜色定义 (高对比度)
+            # 品质颜色定义
             cat = theme.get("category", "default")
             quality_colors = {
                 "default": (150, 150, 150),
@@ -3828,120 +7359,243 @@ def draw_plane_customization_ui():
                 "rare": (100, 150, 255),
                 "epic": (200, 100, 255),
                 "legendary": (255, 215, 0),
-                "exclusive": (255, 50, 150)
+                "exclusive": (255, 80, 150)
             }
             q_color = quality_colors.get(cat, GRAY)
             
+            # 卡片背景渐变
+            card_bg = pygame.Surface((card_rect.width, card_rect.height), pygame.SRCALPHA)
+            for cy in range(card_rect.height):
+                alpha = 180 - cy
+                if is_equipped:
+                    color = (0, q_color[1]//4, q_color[2]//4)
+                elif is_unlocked:
+                    color = (25, 40, 35) if is_hover else (20, 32, 28)
+                else:
+                    color = (45, 30, 35) if is_hover else (35, 25, 28)
+                pygame.draw.line(card_bg, (*color, alpha), (0, cy), (card_rect.width, cy))
+            screen.blit(card_bg, card_rect.topleft)
+            
             # 边框
             if is_equipped:
-                draw_cyber_rect(screen, card_rect, CYAN, border_width=3, fill=False)
-                # 装备状态下额外显示品质色内框
-                pygame.draw.rect(screen, q_color, card_rect.inflate(-8, -8), 1)
-            elif h:
-                draw_cyber_rect(screen, card_rect, WHITE, border_width=2, fill=False)
+                pygame.draw.rect(screen, CYAN, card_rect, 2, border_radius=10)
+                pygame.draw.rect(screen, q_color, card_rect.inflate(-6, -6), 1, border_radius=8)
+                # 装备标识发光
+                glow_alpha = int(80 + 40 * math.sin(t / 200))
+                glow_rect = card_rect.inflate(4, 4)
+                pygame.draw.rect(screen, (*CYAN[:3], glow_alpha), glow_rect, 2, border_radius=12)
+            elif is_hover:
+                pygame.draw.rect(screen, (100, 130, 170), card_rect, 2, border_radius=10)
             else:
-                draw_cyber_rect(screen, card_rect, q_color, border_width=1, fill=False)
+                pygame.draw.rect(screen, (q_color[0]//2, q_color[1]//2, q_color[2]//2), card_rect, 1, border_radius=10)
             
-            # 预览图（简化版本，不使用缓存）
+            # 预览图区域背景
+            preview_bg = pygame.Rect(card_rect.x + 8, card_rect.y + 10, 68, 68)
+            pygame.draw.rect(screen, (15, 20, 30), preview_bg, border_radius=6)
+            pygame.draw.rect(screen, (50, 60, 80), preview_bg, 1, border_radius=6)
+            
+            # 预览图
             if is_bullet:
-                # 子弹涂装预览
-                draw_bullet_preview(screen, theme, card_rect.x + 10, card_rect.y + 15, 60, plane_id=customization_selected_plane)
+                draw_bullet_preview(screen, theme, card_rect.x + 12, card_rect.y + 14, 60, plane_id=customization_selected_plane)
             else:
-                # 机体涂装预览
                 if theme_id == "default":
                     visual = plane_data.get('visual', None)
                 else:
                     visual = customization_manager.get_theme_visual(customization_selected_plane, plane_data.get('visual', None), preview_theme_id=theme_id)
-                
-                # 使用静态缓存模式
                 preview = get_plane_surf(customization_selected_plane, visual, static=True)
                 preview = pygame.transform.scale(preview, (60, 60))
-                safe_blit(screen, preview, (card_rect.x + 10, card_rect.y + 15))
+                safe_blit(screen, preview, (card_rect.x + 12, card_rect.y + 14))
             
-            # 信息文字 - 名称使用品质颜色
-            info_x = card_rect.x + 85
-            draw_text(screen, theme["name"], 18, info_x, card_rect.y + 10, q_color, align="left")
-            draw_text(screen, theme["desc"], 14, info_x, card_rect.y + 32, GRAY, align="left")
+            # 信息区域
+            info_x = card_rect.x + 88
             
-            # 显示专属信息或尾迹信息
+            # 涂装名称（带品质色）
+            name_surf = font_16.render(theme["name"], True, q_color)
+            screen.blit(name_surf, (info_x, card_rect.y + 10))
+            
+            # 品质标签
+            cat_names = {"default": "默认", "common": "普通", "rare": "稀有", "epic": "史诗", "legendary": "传说", "exclusive": "专属"}
+            cat_name = cat_names.get(cat, "未知")
+            cat_surf = font_11.render(f"[{cat_name}]", True, q_color)
+            screen.blit(cat_surf, (info_x + name_surf.get_width() + 8, card_rect.y + 13))
+            
+            # 描述
+            desc_surf = font_13.render(theme["desc"][:28] + ("..." if len(theme["desc"]) > 28 else ""), True, (150, 155, 170))
+            screen.blit(desc_surf, (info_x, card_rect.y + 32))
+            
+            # 专属/尾迹信息
             exclusive_plane = theme.get("exclusive_plane")
             if exclusive_plane:
                 p_name = PLANES.get(exclusive_plane, {}).get("name", exclusive_plane)
-                draw_text(screen, f"专属机体: {p_name}", 12, info_x, card_rect.y + 52, MAGENTA, align="left")
+                info_surf = font_11.render(f"◆ 专属: {p_name}", True, MAGENTA)
+                screen.blit(info_surf, (info_x, card_rect.y + 52))
             else:
                 trail_style = theme.get("trail_style", "normal")
-                draw_text(screen, f"尾迹: {trail_style}", 12, info_x, card_rect.y + 52, CYAN, align="left")
+                info_surf = font_11.render(f"◇ 尾迹: {trail_style}", True, CYAN)
+                screen.blit(info_surf, (info_x, card_rect.y + 52))
             
-            # 按钮
-            btn_x = card_rect.right - 120
-            btn_y = card_rect.y + 25
-            btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
+            # ====== 操作按钮（豪华版）======
+            btn_w = 95
+            btn_h = 36
+            btn_rect = pygame.Rect(card_rect.right - btn_w - 12, card_rect.y + 26, btn_w, btn_h)
             
             is_compatible = True
             if exclusive_plane and exclusive_plane != customization_selected_plane:
                 is_compatible = False
             
+            btn_hover = btn_rect.collidepoint(mx, my)
+            
             if not is_compatible:
-                draw_text(screen, "机型不符", 16, btn_rect.centerx, btn_rect.centery - 8, RED)
+                # 机型不符
+                pygame.draw.rect(screen, (50, 30, 30), btn_rect, border_radius=6)
+                pygame.draw.rect(screen, (100, 50, 50), btn_rect, 1, border_radius=6)
+                btn_text = font_13.render("机型不符", True, (150, 80, 80))
+                screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
             elif is_equipped:
-                draw_text(screen, "已装备", 16, btn_rect.centerx, btn_rect.centery - 8, GREEN)
+                # 已装备
+                equip_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+                for by in range(btn_h):
+                    alpha = 150 - by * 3
+                    pygame.draw.line(equip_bg, (0, 80, 60, alpha), (0, by), (btn_w, by))
+                screen.blit(equip_bg, btn_rect.topleft)
+                pygame.draw.rect(screen, LIME, btn_rect, 2, border_radius=6)
+                btn_text = font_14.render("✓ 已装备", True, LIME)
+                screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
             elif is_unlocked:
-                btn_h = btn_rect.collidepoint(mx, my)
-                draw_cyber_rect(screen, btn_rect, CYAN if btn_h else (0, 100, 100), fill=True)
-                draw_text(screen, "装备", 16, btn_rect.centerx, btn_rect.centery - 8, WHITE)
+                # 可装备
+                equip_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+                for by in range(btn_h):
+                    alpha = 180 - by * 3
+                    color = (0, 120, 140) if btn_hover else (0, 80, 100)
+                    pygame.draw.line(equip_bg, (*color, alpha), (0, by), (btn_w, by))
+                screen.blit(equip_bg, btn_rect.topleft)
+                pygame.draw.rect(screen, CYAN if btn_hover else (60, 140, 180), btn_rect, 2, border_radius=6)
+                if btn_hover:
+                    pygame.draw.rect(screen, (0, 200, 220, 50), btn_rect.inflate(4, 4), 2, border_radius=8)
+                btn_text = font_14.render("装备", True, WHITE)
+                screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
             else:
+                # 需解锁
                 cost = theme.get("cost", 0)
                 can_afford = arsenal_save_data['currencies']['cores'] >= cost
-                btn_h = btn_rect.collidepoint(mx, my) and can_afford
-                btn_color = GOLD if (btn_h and can_afford) else (GRAY if not can_afford else ORANGE)
-                draw_cyber_rect(screen, btn_rect, btn_color, fill=True)
-                draw_text(screen, f"解锁 {cost}", 14, btn_rect.centerx, btn_rect.centery - 8, WHITE if can_afford else GRAY)
                 
+                unlock_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+                for by in range(btn_h):
+                    alpha = 180 - by * 3
+                    if can_afford:
+                        color = (140, 100, 0) if btn_hover else (100, 70, 0)
+                    else:
+                        color = (60, 40, 40)
+                    pygame.draw.line(unlock_bg, (*color, alpha), (0, by), (btn_w, by))
+                screen.blit(unlock_bg, btn_rect.topleft)
+                
+                border_color = GOLD if (btn_hover and can_afford) else ((180, 140, 0) if can_afford else (80, 60, 60))
+                pygame.draw.rect(screen, border_color, btn_rect, 2, border_radius=6)
+                if btn_hover and can_afford:
+                    pygame.draw.rect(screen, (255, 215, 0, 50), btn_rect.inflate(4, 4), 2, border_radius=8)
+                
+                text_color = GOLD if can_afford else (120, 100, 100)
+                gem_surf = emoji_12.render("💎", True, text_color)
+                cost_surf = font_13.render(f" {cost}", True, text_color)
+                total_w = gem_surf.get_width() + cost_surf.get_width()
+                start_x = btn_rect.centerx - total_w//2
+                screen.blit(gem_surf, (start_x, btn_rect.centery - gem_surf.get_height()//2))
+                screen.blit(cost_surf, (start_x + gem_surf.get_width(), btn_rect.centery - cost_surf.get_height()//2))
+                
+                # 需求提示
                 if "requirement" in theme:
-                    req_text = theme["requirement"]
-                    draw_text(screen, req_text, 10, info_x, card_rect.y + 70, YELLOW, align="left")
+                    req_surf = font_10.render(theme["requirement"], True, YELLOW)
+                    screen.blit(req_surf, (info_x, card_rect.y + 68))
         
         screen.set_clip(None)
         
     else:
-        draw_text(screen, "← 请先选择一架飞机", 24, theme_list_area.centerx, theme_list_area.centery, GRAY)
-    # 消息提示
+        # 未选择机体提示
+        font_22 = get_cached_font("SimHei", 22)
+        hint_surf = font_22.render("← 请先选择一架机体", True, (100, 110, 130))
+        screen.blit(hint_surf, (theme_list_area.centerx - hint_surf.get_width()//2, theme_list_area.centery - 20))
+        
+    # ====== 消息提示（豪华版）======
     if customization_msg_timer > 0:
-        msg_y = HEIGHT - 150
-        msg_rect = pygame.Rect(WIDTH//2 - 200, msg_y, 400, 40)
-        draw_cyber_rect(screen, msg_rect, (50, 50, 50), alpha=200, fill=True)
-        draw_text(screen, customization_msg, 18, msg_rect.centerx, msg_rect.centery - 8, CYAN)
+        msg_y = HEIGHT - 140
+        msg_rect = pygame.Rect(WIDTH//2 - 220, msg_y, 440, 45)
+        
+        msg_bg = pygame.Surface((440, 45), pygame.SRCALPHA)
+        for my_offset in range(45):
+            alpha = 200 - my_offset * 2
+            pygame.draw.line(msg_bg, (20, 50, 70, alpha), (0, my_offset), (440, my_offset))
+        screen.blit(msg_bg, msg_rect.topleft)
+        pygame.draw.rect(screen, CYAN, msg_rect, 2, border_radius=8)
+        
+        msg_surf = font_17.render(customization_msg, True, WHITE)
+        screen.blit(msg_surf, (msg_rect.centerx - msg_surf.get_width()//2, msg_rect.centery - msg_surf.get_height()//2))
         customization_msg_timer -= 1
     
-    # 大预览区
+    # ====== 大预览区（豪华版）======
     if customization_selected_plane:
-        preview_area = pygame.Rect(WIDTH - 350, HEIGHT - 250, 320, 180)
-        draw_cyber_rect(screen, preview_area, (20, 20, 30), alpha=240, fill=True)
+        preview_area = pygame.Rect(WIDTH - 340, HEIGHT - 230, 310, 200)
+        
+        # 预览背景
+        preview_bg = pygame.Surface((preview_area.width, preview_area.height), pygame.SRCALPHA)
+        for py in range(preview_area.height):
+            alpha = int(220 - py * 0.5)
+            pygame.draw.line(preview_bg, (10, 15, 25, alpha), (0, py), (preview_area.width, py))
+        screen.blit(preview_bg, preview_area.topleft)
+        pygame.draw.rect(screen, (60, 90, 130), preview_area, 2, border_radius=12)
         
         if customization_tab == 6:  # 子弹标签
-            draw_text(screen, "子弹预览", 18, preview_area.centerx, preview_area.y + 10, MAGENTA)
+            # 子弹预览标题
+            preview_title = pygame.Rect(preview_area.x + 10, preview_area.y + 8, preview_area.width - 20, 28)
+            pygame.draw.rect(screen, (50, 30, 60, 180), preview_title, border_radius=6)
+            pygame.draw.rect(screen, MAGENTA, preview_title, 1, border_radius=6)
+            
+            title_icon = emoji_16.render("💫", True, MAGENTA)
+            title_text = font_15.render(" 子弹预览", True, MAGENTA)
+            screen.blit(title_icon, (preview_title.x + 10, preview_title.y + 4))
+            screen.blit(title_text, (preview_title.x + 32, preview_title.y + 5))
             
             # 获取当前装备的子弹涂装
             equipped_theme = customization_manager.get_equipped_theme(customization_selected_plane, bullet=True)
             theme = BULLET_THEMES.get(equipped_theme, BULLET_THEMES.get("default"))
             
             # 绘制大尺寸子弹预览
-            preview_size = 120
+            preview_size = 100
             preview_x = preview_area.centerx - preview_size // 2
             preview_y = preview_area.y + 50
             draw_bullet_preview(screen, theme, preview_x, preview_y, preview_size, plane_id=customization_selected_plane)
             
             # 显示涂装名称
-            draw_text(screen, theme.get("name", "标准子弹"), 16, preview_area.centerx, preview_area.bottom - 30, CYAN)
+            name_surf = font_15.render(theme.get("name", "标准子弹"), True, CYAN)
+            screen.blit(name_surf, (preview_area.centerx - name_surf.get_width()//2, preview_area.bottom - 35))
         else:
-            draw_text(screen, "涂装预览", 18, preview_area.centerx, preview_area.y + 10, MAGENTA)
+            # 机体预览标题
+            preview_title = pygame.Rect(preview_area.x + 10, preview_area.y + 8, preview_area.width - 20, 28)
+            pygame.draw.rect(screen, (30, 50, 70, 180), preview_title, border_radius=6)
+            pygame.draw.rect(screen, CYAN, preview_title, 1, border_radius=6)
+            
+            title_icon = emoji_16.render("✈", True, CYAN)
+            title_text = font_15.render(" 涂装预览", True, CYAN)
+            screen.blit(title_icon, (preview_title.x + 10, preview_title.y + 4))
+            screen.blit(title_text, (preview_title.x + 32, preview_title.y + 5))
             
             # 获取当前装备的机体涂装预览
             equipped_theme = customization_manager.get_equipped_theme(customization_selected_plane)
             visual = customization_manager.get_theme_visual(customization_selected_plane, PLANES[customization_selected_plane].get('visual', None))
             big_preview = get_plane_surf(customization_selected_plane, visual)
-            big_preview = pygame.transform.scale(big_preview, (120, 120))
-            safe_blit(screen, big_preview, (preview_area.centerx - 60, preview_area.y + 40))
+            big_preview = pygame.transform.scale(big_preview, (130, 130))
+            safe_blit(screen, big_preview, (preview_area.centerx - 65, preview_area.y + 45))
+            
+            # 显示涂装名称
+            if equipped_theme in PAINT_THEMES:
+                theme_data = PAINT_THEMES[equipped_theme]
+                cat = theme_data.get("category", "default")
+                quality_colors = {"default": (150, 150, 150), "common": (200, 200, 200), "rare": (100, 150, 255), "epic": (200, 100, 255), "legendary": (255, 215, 0), "exclusive": (255, 80, 150)}
+                q_color = quality_colors.get(cat, GRAY)
+                name_surf = font_14.render(theme_data["name"], True, q_color)
+                screen.blit(name_surf, (preview_area.centerx - name_surf.get_width()//2, preview_area.bottom - 20))
+            else:
+                name_surf = font_14.render("默认涂装", True, (120, 125, 140))
+                screen.blit(name_surf, (preview_area.centerx - name_surf.get_width()//2, preview_area.bottom - 20))
     
 
 def draw_wingman_customization_ui():
@@ -3950,143 +7604,258 @@ def draw_wingman_customization_ui():
     
     mx, my = pygame.mouse.get_pos()
     
-    # 右上角显示核心
-    currency_text = f"核心: {arsenal_save_data['currencies']['cores']}"
-    draw_text(screen, currency_text, 20, WIDTH - 200, 30, GOLD, align="left")
+    t = pygame.time.get_ticks()
     
-    # 左侧：僚机槽位列表（4个槽位）
-    wingman_list_area = pygame.Rect(30, 100, 280, HEIGHT - 180)
-    draw_cyber_rect(screen, wingman_list_area, (20, 20, 30), alpha=220, fill=True)
-    draw_text(screen, "选择僚机", 22, wingman_list_area.centerx, 110, CYAN)
+    # ====== 预加载所有字体（性能优化）======
+    font_18 = get_cached_font("SimHei", 18)
+    font_17 = get_cached_font("SimHei", 17)
+    font_16 = get_cached_font("SimHei", 16)
+    font_15 = get_cached_font("SimHei", 15)
+    font_14 = get_cached_font("SimHei", 14)
+    font_13 = get_cached_font("SimHei", 13)
+    font_12 = get_cached_font("SimHei", 12)
+    font_11 = get_cached_font("SimHei", 11)
+    font_10 = get_cached_font("SimHei", 10)
+    font_28 = get_cached_font("SimHei", 28)
+    emoji_16 = get_cached_font("Segoe UI Emoji", 16)
+    emoji_15 = get_cached_font("Segoe UI Emoji", 15)
+    emoji_12 = get_cached_font("Segoe UI Emoji", 12)
+    
+    # ====== 右上角资源显示（豪华版）======
+    res_panel = pygame.Rect(WIDTH - 230, 20, 200, 45)
+    res_bg = pygame.Surface((200, 45), pygame.SRCALPHA)
+    for ry in range(45):
+        alpha = int(160 - ry * 2)
+        pygame.draw.line(res_bg, (20, 35, 50, alpha), (0, ry), (200, ry))
+    screen.blit(res_bg, res_panel.topleft)
+    pygame.draw.rect(screen, (60, 100, 140), res_panel, 1, border_radius=8)
+    
+    core_icon = emoji_15.render("💎", True, GOLD)
+    core_text = font_17.render(f"核心: {arsenal_save_data['currencies']['cores']}", True, GOLD)
+    screen.blit(core_icon, (res_panel.x + 15, res_panel.y + 12))
+    screen.blit(core_text, (res_panel.x + 40, res_panel.y + 12))
+    
+    # ====== 左侧：僚机槽位列表（豪华版）======
+    wingman_list_area = pygame.Rect(25, 115, 290, HEIGHT - 195)
+    
+    # 面板背景渐变
+    wingman_bg = pygame.Surface((wingman_list_area.width, wingman_list_area.height), pygame.SRCALPHA)
+    for wy in range(wingman_list_area.height):
+        alpha = int(200 - wy * 0.1)
+        pygame.draw.line(wingman_bg, (12, 18, 30, alpha), (0, wy), (wingman_list_area.width, wy))
+    screen.blit(wingman_bg, wingman_list_area.topleft)
+    pygame.draw.rect(screen, (80, 60, 120), wingman_list_area, 2, border_radius=10)
+    
+    # 面板标题
+    title_rect = pygame.Rect(wingman_list_area.x + 10, wingman_list_area.y + 8, wingman_list_area.width - 20, 32)
+    pygame.draw.rect(screen, (40, 30, 60, 200), title_rect, border_radius=6)
+    pygame.draw.rect(screen, MAGENTA, title_rect, 1, border_radius=6)
+    
+    list_icon = emoji_15.render("👥", True, MAGENTA)
+    list_title = font_18.render(" 选择僚机", True, MAGENTA)
+    screen.blit(list_icon, (title_rect.x + 15, title_rect.y + 6))
+    screen.blit(list_title, (title_rect.x + 42, title_rect.y + 6))
     
     # 列表内容区域
-    list_content_rect = pygame.Rect(wingman_list_area.x, wingman_list_area.y + 40, wingman_list_area.width, wingman_list_area.height - 40)
+    list_content_rect = pygame.Rect(wingman_list_area.x, wingman_list_area.y + 48, wingman_list_area.width, wingman_list_area.height - 48)
     screen.set_clip(list_content_rect)
     
     wingman_start_y = list_content_rect.y + 5
     wingman_slots = [
-        {"id": 0, "name": "僚机 1"},
-        {"id": 1, "name": "僚机 2"},
-        {"id": 2, "name": "僚机 3"},
-        {"id": 3, "name": "僚机 4"}
+        {"id": 0, "name": "僚机槽位 1", "icon": "①"},
+        {"id": 1, "name": "僚机槽位 2", "icon": "②"},
+        {"id": 2, "name": "僚机槽位 3", "icon": "③"},
+        {"id": 3, "name": "僚机槽位 4", "icon": "④"}
     ]
     
     for i, slot in enumerate(wingman_slots):
-        rect = pygame.Rect(40, wingman_start_y + i * 60, 260, 55)
+        rect = pygame.Rect(wingman_list_area.x + 8, wingman_start_y + i * 70, wingman_list_area.width - 16, 65)
         
         equipped_theme = customization_manager.equipped_wingman_themes.get(f"slot_{slot['id']}", "default")
         is_selected = (customization_selected_wingman == slot['id'])
-        h = rect.collidepoint(mx, my) or is_selected
+        is_hover = rect.collidepoint(mx, my)
         
-        bg_color = (0, 80, 80) if is_selected else ((40, 50, 60) if h else (30, 30, 40))
-        draw_cyber_rect(screen, rect, bg_color, fill=True)
-        if is_selected: 
-            draw_cyber_rect(screen, rect, CYAN, border_width=2, fill=False)
+        # 卡片背景渐变
+        card_bg = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+        for cy in range(rect.height):
+            alpha = 180 - cy * 2
+            if is_selected:
+                color = (50, 40, 80)
+            elif is_hover:
+                color = (40, 50, 70)
+            else:
+                color = (25, 30, 45)
+            pygame.draw.line(card_bg, (*color, alpha), (0, cy), (rect.width, cy))
+        screen.blit(card_bg, rect.topleft)
         
-        # 左侧预览图（与机体涂装一样）
+        # 边框
+        if is_selected:
+            pygame.draw.rect(screen, MAGENTA, rect, 2, border_radius=8)
+            glow_alpha = int(60 + 30 * math.sin(t / 200))
+            pygame.draw.rect(screen, (*MAGENTA[:3], glow_alpha), rect.inflate(4, 4), 2, border_radius=10)
+        elif is_hover:
+            pygame.draw.rect(screen, (100, 80, 140), rect, 1, border_radius=8)
+        else:
+            pygame.draw.rect(screen, (60, 55, 80), rect, 1, border_radius=8)
+        
+        # 左侧预览图
         if equipped_theme != "default" and equipped_theme in PAINT_THEMES:
             theme = PAINT_THEMES[equipped_theme]
             exclusive_plane = theme.get("exclusive_plane")
             if exclusive_plane and exclusive_plane in PLANES:
                 visual = customization_manager.get_theme_visual(exclusive_plane, PLANES[exclusive_plane].get('visual', None), preview_theme_id=equipped_theme)
                 icon = get_plane_surf(exclusive_plane, visual, static=True)
-                icon = pygame.transform.scale(icon, (40, 40))
-                safe_blit(screen, icon, (rect.x + 5, rect.y + 7))
+                icon = pygame.transform.scale(icon, (50, 50))
+                safe_blit(screen, icon, (rect.x + 8, rect.y + 8))
+        else:
+            # 默认空槽位图标
+            slot_icon = font_28.render(slot["icon"], True, (80, 80, 100))
+            screen.blit(slot_icon, (rect.x + 20, rect.y + 18))
         
-        # 显示僚机编号（右移为预览图腾出空间）
-        draw_text(screen, slot['name'], 16, rect.x + 150, rect.y + 12, WHITE, align="center")
+        # 僚机编号
+        name_surf = font_15.render(slot['name'], True, WHITE if is_selected else (200, 200, 210))
+        screen.blit(name_surf, (rect.x + 68, rect.y + 12))
         
         # 显示当前装备的涂装
         if equipped_theme != "default" and equipped_theme in PAINT_THEMES:
             theme = PAINT_THEMES[equipped_theme]
             theme_name = theme["name"]
             cat = theme.get("category", "default")
-            quality_colors = {
-                "default": (150, 150, 150),
-                "common": (220, 220, 220),
-                "rare": (100, 150, 255),
-                "epic": (200, 100, 255),
-                "legendary": (255, 215, 0),
-                "exclusive": (255, 50, 150)
-            }
+            quality_colors = {"default": (150, 150, 150), "common": (200, 200, 200), "rare": (100, 150, 255), "epic": (200, 100, 255), "legendary": (255, 215, 0), "exclusive": (255, 80, 150)}
             q_color = quality_colors.get(cat, GRAY)
-            draw_text(screen, f"[{theme_name}]", 13, rect.x + 150, rect.y + 32, q_color, align="center")
+            theme_surf = font_12.render(f"[{theme_name}]", True, q_color)
+            screen.blit(theme_surf, (rect.x + 68, rect.y + 35))
         else:
-            draw_text(screen, "[默认涂装]", 13, rect.x + 150, rect.y + 32, GRAY, align="center")
+            theme_surf = font_12.render("[未装备涂装]", True, (100, 105, 115))
+            screen.blit(theme_surf, (rect.x + 68, rect.y + 35))
     
     screen.set_clip(None)
     
-    # 右侧：涂装列表（仅显示专属涂装）
-    theme_list_area = pygame.Rect(330, 100, 600, HEIGHT - 180)
-    draw_cyber_rect(screen, theme_list_area, (20, 20, 30), alpha=220, fill=True)
+    # ====== 右侧：涂装列表面板（豪华版）======
+    theme_list_area = pygame.Rect(330, 115, 620, HEIGHT - 195)
     
-    # 机体筛选标签
+    # 面板背景渐变
+    theme_bg = pygame.Surface((theme_list_area.width, theme_list_area.height), pygame.SRCALPHA)
+    for ty in range(theme_list_area.height):
+        alpha = int(200 - ty * 0.08)
+        pygame.draw.line(theme_bg, (12, 18, 30, alpha), (0, ty), (theme_list_area.width, ty))
+    screen.blit(theme_bg, theme_list_area.topleft)
+    pygame.draw.rect(screen, (60, 90, 130), theme_list_area, 2, border_radius=10)
+    
+    # 面板标题
+    panel_title_rect = pygame.Rect(theme_list_area.x + 10, theme_list_area.y + 8, theme_list_area.width - 20, 32)
+    pygame.draw.rect(screen, (25, 50, 75, 200), panel_title_rect, border_radius=6)
+    pygame.draw.rect(screen, CYAN, panel_title_rect, 1, border_radius=6)
+    
     filter_text = "全部机体" if wingman_theme_filter is None else PLANES[wingman_theme_filter]["name"]
-    draw_text(screen, f"筛选: {filter_text}", 22, theme_list_area.centerx, 110, CYAN)
+    panel_icon = emoji_15.render("🎨", True, CYAN)
+    panel_title = font_16.render(f" 筛选: {filter_text}", True, CYAN)
+    screen.blit(panel_icon, (panel_title_rect.x + 12, panel_title_rect.y + 6))
+    screen.blit(panel_title, (panel_title_rect.x + 35, panel_title_rect.y + 7))
     
-    # 机体筛选按钮行
-    filter_y = 140
-    filter_btn_w = 55
-    filter_btn_h = 25
-    filter_start_x = theme_list_area.x + 5
+    # ====== 机体筛选按钮行（豪华版）======
+    filter_y = theme_list_area.y + 48
+    filter_btn_w = 52
+    filter_btn_h = 24
+    filter_start_x = theme_list_area.x + 10
     
-    # "全部"按钮
+    # "全部"按钮（豪华版）
     all_btn = pygame.Rect(filter_start_x, filter_y, filter_btn_w, filter_btn_h)
     all_active = (wingman_theme_filter is None)
-    draw_cyber_rect(screen, all_btn, (0, 100, 100) if all_active else (40, 40, 50), fill=True)
-    if all_active:
-        draw_cyber_rect(screen, all_btn, CYAN, border_width=1, fill=False)
-    draw_text(screen, "全部", 12, all_btn.centerx, all_btn.centery - 6, CYAN if all_active else WHITE)
+    all_hover = all_btn.collidepoint(mx, my)
     
-    # 机体筛选按钮（显示前10个机体）
+    all_bg = pygame.Surface((filter_btn_w, filter_btn_h), pygame.SRCALPHA)
+    for by in range(filter_btn_h):
+        alpha = 150 - by * 4
+        if all_active:
+            color = (0, 80, 100)
+        elif all_hover:
+            color = (40, 55, 70)
+        else:
+            color = (30, 38, 50)
+        pygame.draw.line(all_bg, (*color, alpha), (0, by), (filter_btn_w, by))
+    screen.blit(all_bg, all_btn.topleft)
+    pygame.draw.rect(screen, CYAN if all_active else ((70, 100, 130) if all_hover else (50, 60, 75)), all_btn, 1, border_radius=5)
+    
+    all_text = font_11.render("全部", True, CYAN if all_active else WHITE)
+    screen.blit(all_text, (all_btn.centerx - all_text.get_width()//2, all_btn.centery - all_text.get_height()//2))
+    
+    # 机体筛选按钮（豪华版）
     plane_keys_list = list(PLANES.keys())
     for pi, plane_id in enumerate(plane_keys_list[:10]):
-        btn_x = filter_start_x + (pi + 1) * (filter_btn_w + 3)
-        if btn_x + filter_btn_w > theme_list_area.right - 5:
+        btn_x = filter_start_x + (pi + 1) * (filter_btn_w + 4)
+        if btn_x + filter_btn_w > theme_list_area.right - 10:
             break
         plane_btn = pygame.Rect(btn_x, filter_y, filter_btn_w, filter_btn_h)
         is_active = (wingman_theme_filter == plane_id)
-        draw_cyber_rect(screen, plane_btn, (0, 100, 100) if is_active else (40, 40, 50), fill=True)
-        if is_active:
-            draw_cyber_rect(screen, plane_btn, CYAN, border_width=1, fill=False)
-        # 显示机体简称（取前2个字）
+        is_hover = plane_btn.collidepoint(mx, my)
+        
+        btn_bg = pygame.Surface((filter_btn_w, filter_btn_h), pygame.SRCALPHA)
+        for by in range(filter_btn_h):
+            alpha = 150 - by * 4
+            if is_active:
+                color = (PLANES[plane_id]["color"][0]//4, PLANES[plane_id]["color"][1]//4, PLANES[plane_id]["color"][2]//4)
+            elif is_hover:
+                color = (40, 50, 65)
+            else:
+                color = (28, 35, 48)
+            pygame.draw.line(btn_bg, (*color, alpha), (0, by), (filter_btn_w, by))
+        screen.blit(btn_bg, plane_btn.topleft)
+        
+        border_color = PLANES[plane_id]["color"] if is_active else ((70, 90, 120) if is_hover else (45, 55, 70))
+        pygame.draw.rect(screen, border_color, plane_btn, 1, border_radius=5)
+        
         short_name = PLANES[plane_id]["name"][:2]
-        draw_text(screen, short_name, 11, plane_btn.centerx, plane_btn.centery - 6, CYAN if is_active else WHITE)
+        btn_text = font_10.render(short_name, True, PLANES[plane_id]["color"] if is_active else (WHITE if is_hover else (170, 175, 185)))
+        screen.blit(btn_text, (plane_btn.centerx - btn_text.get_width()//2, plane_btn.centery - btn_text.get_height()//2))
     
-    # 第二行筛选按钮（剩余机体）
-    filter_y2 = filter_y + filter_btn_h + 3
+    # 第二行筛选按钮（豪华版）
+    filter_y2 = filter_y + filter_btn_h + 4
     for pi, plane_id in enumerate(plane_keys_list[10:]):
-        btn_x = filter_start_x + pi * (filter_btn_w + 3)
-        if btn_x + filter_btn_w > theme_list_area.right - 5:
+        btn_x = filter_start_x + pi * (filter_btn_w + 4)
+        if btn_x + filter_btn_w > theme_list_area.right - 10:
             break
         plane_btn = pygame.Rect(btn_x, filter_y2, filter_btn_w, filter_btn_h)
         is_active = (wingman_theme_filter == plane_id)
-        draw_cyber_rect(screen, plane_btn, (0, 100, 100) if is_active else (40, 40, 50), fill=True)
-        if is_active:
-            draw_cyber_rect(screen, plane_btn, CYAN, border_width=1, fill=False)
+        is_hover = plane_btn.collidepoint(mx, my)
+        
+        btn_bg = pygame.Surface((filter_btn_w, filter_btn_h), pygame.SRCALPHA)
+        for by in range(filter_btn_h):
+            alpha = 150 - by * 4
+            if is_active:
+                color = (PLANES[plane_id]["color"][0]//4, PLANES[plane_id]["color"][1]//4, PLANES[plane_id]["color"][2]//4)
+            elif is_hover:
+                color = (40, 50, 65)
+            else:
+                color = (28, 35, 48)
+            pygame.draw.line(btn_bg, (*color, alpha), (0, by), (filter_btn_w, by))
+        screen.blit(btn_bg, plane_btn.topleft)
+        
+        border_color = PLANES[plane_id]["color"] if is_active else ((70, 90, 120) if is_hover else (45, 55, 70))
+        pygame.draw.rect(screen, border_color, plane_btn, 1, border_radius=5)
+        
         short_name = PLANES[plane_id]["name"][:2]
-        draw_text(screen, short_name, 11, plane_btn.centerx, plane_btn.centery - 6, CYAN if is_active else WHITE)
+        btn_text = font_10.render(short_name, True, PLANES[plane_id]["color"] if is_active else (WHITE if is_hover else (170, 175, 185)))
+        screen.blit(btn_text, (plane_btn.centerx - btn_text.get_width()//2, plane_btn.centery - btn_text.get_height()//2))
     
-    # --- 筛选涂装（按机体筛选）---
+    # ====== 筛选涂装 ======
     filtered_themes = []
     for tid, theme in PAINT_THEMES.items():
         exclusive_plane = theme.get("exclusive_plane")
         if not exclusive_plane:
             continue
-        # 如果设置了筛选器，只显示对应机体的涂装
         if wingman_theme_filter is not None and exclusive_plane != wingman_theme_filter:
             continue
         filtered_themes.append((tid, theme))
     
-    theme_y_start = 200
+    theme_y_start = theme_list_area.y + 105
     
     # 列表裁剪区域
-    list_view_rect = pygame.Rect(theme_list_area.x, theme_y_start, theme_list_area.width, theme_list_area.height - (theme_y_start - theme_list_area.y))
-    screen.set_clip(list_view_rect)
+    list_view_rect = pygame.Rect(theme_list_area.x, theme_y_start, theme_list_area.width, theme_list_area.height - 105)
     screen.set_clip(list_view_rect)
     
     for i, (theme_id, theme) in enumerate(filtered_themes):
-        card_rect = pygame.Rect(350, theme_y_start + i * 100 - customization_scroll_y, 560, 90)
+        card_rect = pygame.Rect(theme_list_area.x + 10, theme_y_start + i * 95 - customization_scroll_y, theme_list_area.width - 20, 88)
         
         # 跳过不可见的卡片
         if card_rect.bottom < list_view_rect.top or card_rect.top > list_view_rect.bottom:
@@ -4095,90 +7864,163 @@ def draw_wingman_customization_ui():
         is_unlocked = customization_manager.unlocked_themes.get(theme_id, False)
         current_equipped = customization_manager.equipped_wingman_themes.get(f"slot_{customization_selected_wingman}", "default")
         is_equipped = (current_equipped == theme_id)
-        h = card_rect.collidepoint(mx, my)
-        
-        # 背景颜色
-        if is_equipped:
-            bg_color = (0, 100, 100)
-        elif is_unlocked:
-            bg_color = (40, 50, 40) if h else (30, 35, 30)
-        else:
-            bg_color = (50, 30, 30) if h else (30, 20, 20)
-        
-        draw_cyber_rect(screen, card_rect, bg_color, fill=True)
+        is_hover = card_rect.collidepoint(mx, my)
         
         # 品质颜色定义
         cat = theme.get("category", "default")
-        quality_colors = {
-            "default": (150, 150, 150),
-            "common": (220, 220, 220),
-            "rare": (100, 150, 255),
-            "epic": (200, 100, 255),
-            "legendary": (255, 215, 0),
-            "exclusive": (255, 50, 150)
-        }
+        quality_colors = {"default": (150, 150, 150), "common": (220, 220, 220), "rare": (100, 150, 255), "epic": (200, 100, 255), "legendary": (255, 215, 0), "exclusive": (255, 80, 150)}
         q_color = quality_colors.get(cat, GRAY)
+        
+        # 卡片背景渐变
+        card_bg = pygame.Surface((card_rect.width, card_rect.height), pygame.SRCALPHA)
+        for cy in range(card_rect.height):
+            alpha = 180 - cy
+            if is_equipped:
+                color = (0, q_color[1]//4, q_color[2]//4)
+            elif is_unlocked:
+                color = (25, 40, 35) if is_hover else (20, 32, 28)
+            else:
+                color = (45, 30, 35) if is_hover else (35, 25, 28)
+            pygame.draw.line(card_bg, (*color, alpha), (0, cy), (card_rect.width, cy))
+        screen.blit(card_bg, card_rect.topleft)
         
         # 边框
         if is_equipped:
-            draw_cyber_rect(screen, card_rect, CYAN, border_width=3, fill=False)
-            pygame.draw.rect(screen, q_color, card_rect.inflate(-8, -8), 1)
-        elif h:
-            draw_cyber_rect(screen, card_rect, WHITE, border_width=2, fill=False)
+            pygame.draw.rect(screen, MAGENTA, card_rect, 2, border_radius=10)
+            pygame.draw.rect(screen, q_color, card_rect.inflate(-6, -6), 1, border_radius=8)
+            glow_alpha = int(80 + 40 * math.sin(t / 200))
+            pygame.draw.rect(screen, (*MAGENTA[:3], glow_alpha), card_rect.inflate(4, 4), 2, border_radius=12)
+        elif is_hover:
+            pygame.draw.rect(screen, (100, 130, 170), card_rect, 2, border_radius=10)
         else:
-            draw_cyber_rect(screen, card_rect, q_color, border_width=1, fill=False)
+            pygame.draw.rect(screen, (q_color[0]//2, q_color[1]//2, q_color[2]//2), card_rect, 1, border_radius=10)
         
-        # 预览图（使用专属机体的视觉效果）
+        # 预览图区域
+        preview_bg = pygame.Rect(card_rect.x + 8, card_rect.y + 10, 68, 68)
+        pygame.draw.rect(screen, (15, 20, 30), preview_bg, border_radius=6)
+        pygame.draw.rect(screen, (50, 60, 80), preview_bg, 1, border_radius=6)
+        
+        # 预览图
         exclusive_plane = theme.get("exclusive_plane")
         if exclusive_plane and exclusive_plane in PLANES:
             visual = customization_manager.get_theme_visual(exclusive_plane, PLANES[exclusive_plane].get('visual', None), preview_theme_id=theme_id)
             preview = get_plane_surf(exclusive_plane, visual, static=True)
             preview = pygame.transform.scale(preview, (60, 60))
-            safe_blit(screen, preview, (card_rect.x + 10, card_rect.y + 15))
+            safe_blit(screen, preview, (card_rect.x + 12, card_rect.y + 14))
         
-        # 信息文字
-        info_x = card_rect.x + 85
-        draw_text(screen, theme["name"], 18, info_x, card_rect.y + 10, q_color, align="left")
-        draw_text(screen, theme["desc"], 14, info_x, card_rect.y + 32, GRAY, align="left")
+        # 信息区域
+        info_x = card_rect.x + 88
         
-        # 显示专属机体信息
+        # 涂装名称
+        name_surf = font_16.render(theme["name"], True, q_color)
+        screen.blit(name_surf, (info_x, card_rect.y + 10))
+        
+        # 品质标签
+        cat_names = {"default": "默认", "common": "普通", "rare": "稀有", "epic": "史诗", "legendary": "传说", "exclusive": "专属"}
+        cat_name = cat_names.get(cat, "未知")
+        cat_surf = font_11.render(f"[{cat_name}]", True, q_color)
+        screen.blit(cat_surf, (info_x + name_surf.get_width() + 8, card_rect.y + 13))
+        
+        # 描述
+        desc_surf = font_13.render(theme["desc"][:28] + ("..." if len(theme["desc"]) > 28 else ""), True, (150, 155, 170))
+        screen.blit(desc_surf, (info_x, card_rect.y + 32))
+        
+        # 专属机体信息
         if exclusive_plane:
             p_name = PLANES.get(exclusive_plane, {}).get("name", exclusive_plane)
-            draw_text(screen, f"专属: {p_name}", 12, info_x, card_rect.y + 52, MAGENTA, align="left")
+            info_surf = font_11.render(f"◆ 专属: {p_name}", True, MAGENTA)
+            screen.blit(info_surf, (info_x, card_rect.y + 52))
         
-        # 按钮
-        btn_x = card_rect.right - 120
-        btn_y = card_rect.y + 25
-        btn_rect = pygame.Rect(btn_x, btn_y, 100, 40)
+        # ====== 操作按钮（豪华版）======
+        btn_w = 95
+        btn_h = 36
+        btn_rect = pygame.Rect(card_rect.right - btn_w - 12, card_rect.y + 26, btn_w, btn_h)
+        btn_hover = btn_rect.collidepoint(mx, my)
         
         if is_equipped:
-            draw_text(screen, "已装备", 16, btn_rect.centerx, btn_rect.centery - 8, GREEN)
+            equip_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+            for by in range(btn_h):
+                alpha = 150 - by * 3
+                pygame.draw.line(equip_bg, (60, 40, 80, alpha), (0, by), (btn_w, by))
+            screen.blit(equip_bg, btn_rect.topleft)
+            pygame.draw.rect(screen, LIME, btn_rect, 2, border_radius=6)
+            btn_text = font_14.render("✓ 已装备", True, LIME)
+            screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
         elif is_unlocked:
-            btn_h = btn_rect.collidepoint(mx, my)
-            draw_cyber_rect(screen, btn_rect, CYAN if btn_h else (0, 100, 100), fill=True)
-            draw_text(screen, "装备", 16, btn_rect.centerx, btn_rect.centery - 8, WHITE)
+            equip_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+            for by in range(btn_h):
+                alpha = 180 - by * 3
+                color = (80, 50, 100) if btn_hover else (50, 35, 70)
+                pygame.draw.line(equip_bg, (*color, alpha), (0, by), (btn_w, by))
+            screen.blit(equip_bg, btn_rect.topleft)
+            pygame.draw.rect(screen, MAGENTA if btn_hover else (120, 70, 140), btn_rect, 2, border_radius=6)
+            if btn_hover:
+                pygame.draw.rect(screen, (200, 100, 200, 50), btn_rect.inflate(4, 4), 2, border_radius=8)
+            btn_text = font_14.render("装备", True, WHITE)
+            screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
         else:
             cost = theme.get("cost", 0)
-            btn_h = btn_rect.collidepoint(mx, my)
             can_afford = arsenal_save_data["currencies"]["cores"] >= cost
-            btn_color = GOLD if (btn_h and can_afford) else ((80, 60, 0) if can_afford else (60, 30, 30))
-            draw_cyber_rect(screen, btn_rect, btn_color, fill=True)
-            draw_text(screen, f"{cost}", 14, btn_rect.centerx, btn_rect.centery - 8, WHITE if can_afford else RED)
+            
+            unlock_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+            for by in range(btn_h):
+                alpha = 180 - by * 3
+                if can_afford:
+                    color = (140, 100, 0) if btn_hover else (100, 70, 0)
+                else:
+                    color = (60, 40, 40)
+                pygame.draw.line(unlock_bg, (*color, alpha), (0, by), (btn_w, by))
+            screen.blit(unlock_bg, btn_rect.topleft)
+            
+            border_color = GOLD if (btn_hover and can_afford) else ((180, 140, 0) if can_afford else (80, 60, 60))
+            pygame.draw.rect(screen, border_color, btn_rect, 2, border_radius=6)
+            
+            text_color = GOLD if can_afford else (120, 100, 100)
+            gem_surf = emoji_12.render("💎", True, text_color)
+            cost_surf = font_13.render(f" {cost}", True, text_color)
+            total_w = gem_surf.get_width() + cost_surf.get_width()
+            start_x = btn_rect.centerx - total_w//2
+            screen.blit(gem_surf, (start_x, btn_rect.centery - gem_surf.get_height()//2))
+            screen.blit(cost_surf, (start_x + gem_surf.get_width(), btn_rect.centery - cost_surf.get_height()//2))
     
     screen.set_clip(None)
     
-    # 消息提示
+    # ====== 消息提示（豪华版）======
     if customization_msg_timer > 0:
-        msg_y = HEIGHT - 150
-        msg_rect = pygame.Rect(WIDTH//2 - 200, msg_y, 400, 40)
-        draw_cyber_rect(screen, msg_rect, (50, 50, 50), alpha=200, fill=True)
-        draw_text(screen, customization_msg, 18, msg_rect.centerx, msg_rect.centery - 8, CYAN)
+        msg_y = HEIGHT - 140
+        msg_rect = pygame.Rect(WIDTH//2 - 220, msg_y, 440, 45)
+        
+        msg_bg = pygame.Surface((440, 45), pygame.SRCALPHA)
+        for my_offset in range(45):
+            alpha = 200 - my_offset * 2
+            pygame.draw.line(msg_bg, (40, 30, 60, alpha), (0, my_offset), (440, my_offset))
+        screen.blit(msg_bg, msg_rect.topleft)
+        pygame.draw.rect(screen, MAGENTA, msg_rect, 2, border_radius=8)
+        
+        msg_surf = font_17.render(customization_msg, True, WHITE)
+        screen.blit(msg_surf, (msg_rect.centerx - msg_surf.get_width()//2, msg_rect.centery - msg_surf.get_height()//2))
         customization_msg_timer -= 1
     
-    # 大预览区（右下角）
-    preview_area = pygame.Rect(WIDTH - 350, HEIGHT - 280, 320, 250)
-    draw_cyber_rect(screen, preview_area, (20, 20, 30), alpha=240, fill=True)
-    draw_text(screen, "涂装预览", 20, preview_area.centerx, preview_area.y + 15, MAGENTA)
+    # ====== 大预览区（豪华版）======
+    preview_area = pygame.Rect(WIDTH - 340, HEIGHT - 260, 310, 230)
+    
+    # 预览背景
+    preview_bg = pygame.Surface((preview_area.width, preview_area.height), pygame.SRCALPHA)
+    for py in range(preview_area.height):
+        alpha = int(220 - py * 0.5)
+        pygame.draw.line(preview_bg, (15, 12, 25, alpha), (0, py), (preview_area.width, py))
+    screen.blit(preview_bg, preview_area.topleft)
+    pygame.draw.rect(screen, (100, 70, 130), preview_area, 2, border_radius=12)
+    
+    # 预览标题
+    preview_title = pygame.Rect(preview_area.x + 10, preview_area.y + 8, preview_area.width - 20, 28)
+    pygame.draw.rect(screen, (50, 35, 70, 180), preview_title, border_radius=6)
+    pygame.draw.rect(screen, MAGENTA, preview_title, 1, border_radius=6)
+    
+    title_icon = emoji_15.render("👥", True, MAGENTA)
+    title_text = font_15.render(" 涂装预览", True, MAGENTA)
+    screen.blit(title_icon, (preview_title.x + 10, preview_title.y + 4))
+    screen.blit(title_text, (preview_title.x + 35, preview_title.y + 5))
     
     # 获取当前装备的涂装预览
     equipped_theme = customization_manager.equipped_wingman_themes.get(f"slot_{customization_selected_wingman}", "default")
@@ -4188,16 +8030,25 @@ def draw_wingman_customization_ui():
         if exclusive_plane and exclusive_plane in PLANES:
             visual = customization_manager.get_theme_visual(exclusive_plane, PLANES[exclusive_plane].get('visual', None), preview_theme_id=equipped_theme)
             big_preview = get_plane_surf(exclusive_plane, visual)
-            big_preview = pygame.transform.scale(big_preview, (150, 150))
-            safe_blit(screen, big_preview, (preview_area.centerx - 75, preview_area.y + 50))
+            big_preview = pygame.transform.scale(big_preview, (140, 140))
+            safe_blit(screen, big_preview, (preview_area.centerx - 70, preview_area.y + 50))
             
-            # 显示涂装名称和专属机体
-            draw_text(screen, theme["name"], 18, preview_area.centerx, preview_area.bottom - 35, CYAN)
+            # 涂装名称（带品质色）
+            cat = theme.get("category", "default")
+            quality_colors = {"default": (150, 150, 150), "common": (200, 200, 200), "rare": (100, 150, 255), "epic": (200, 100, 255), "legendary": (255, 215, 0), "exclusive": (255, 80, 150)}
+            q_color = quality_colors.get(cat, GRAY)
+            
+            name_surf = font_15.render(theme["name"], True, q_color)
+            screen.blit(name_surf, (preview_area.centerx - name_surf.get_width()//2, preview_area.bottom - 45))
+            
+            # 专属机体
             p_name = PLANES.get(exclusive_plane, {}).get("name", exclusive_plane)
-            draw_text(screen, f"[{p_name}]", 14, preview_area.centerx, preview_area.bottom - 15, MAGENTA)
+            plane_surf = font_12.render(f"[{p_name}]", True, MAGENTA)
+            screen.blit(plane_surf, (preview_area.centerx - plane_surf.get_width()//2, preview_area.bottom - 22))
     else:
-        # 显示默认涂装提示
-        draw_text(screen, "未装备涂装", 16, preview_area.centerx, preview_area.centery, GRAY)
+        # 未装备涂装提示
+        hint_surf = font_16.render("未装备涂装", True, (100, 90, 120))
+        screen.blit(hint_surf, (preview_area.centerx - hint_surf.get_width()//2, preview_area.centery + 20))
 
 
 def draw_bar(x, y, w, h, current, max_val, color, bg_color=(30,30,40), border_color=None):
@@ -4743,8 +8594,27 @@ def draw_synergy_combo_hints():
         alpha = min(255, int(255 * (timer / 240.0)))
         y_pos = 250 + i * 40
         
-        # 背景框
-        text_surf = pygame.font.SysFont("SimHei", 16).render(text, True, color)
+        # 分离emoji和文字渲染
+        emoji_font = pygame.font.SysFont("Segoe UI Emoji", 16)
+        text_font = pygame.font.SysFont("SimHei", 16)
+        
+        # 检查是否以emoji开头
+        if text.startswith("💫"):
+            emoji_part = "💫"
+            text_part = text[1:]  # 去掉emoji
+            emoji_surf = emoji_font.render(emoji_part, True, color)
+            text_surf = text_font.render(text_part, True, color)
+            total_width = emoji_surf.get_width() + text_surf.get_width()
+            total_height = max(emoji_surf.get_height(), text_surf.get_height())
+            
+            # 组合surface
+            combined_surf = pygame.Surface((total_width, total_height), pygame.SRCALPHA)
+            combined_surf.blit(emoji_surf, (0, (total_height - emoji_surf.get_height()) // 2))
+            combined_surf.blit(text_surf, (emoji_surf.get_width(), (total_height - text_surf.get_height()) // 2))
+            text_surf = combined_surf
+        else:
+            text_surf = text_font.render(text, True, color)
+        
         text_rect = text_surf.get_rect(center=(WIDTH // 2, y_pos))
         
         bg_rect = text_rect.inflate(30, 20)
@@ -4778,7 +8648,7 @@ def draw_top_hud():
     # 进度条参数
     bar_x = panel_x + 32
     bar_y = panel_y + 12
-    bar_w = 240
+    bar_w = 180  # 缩短条宽度
     bar_h = 16
     bar_gap = 30
     
@@ -4821,8 +8691,8 @@ def draw_top_hud():
     # 绘制心形图标
     draw_status_icon(screen, panel_x + 8, bar_y2 - 2, 20, "heart", hp_color, anim_frame if hp_pulse else 0)
     
-    # 绘制血量条（更宽）
-    hp_bar_w = bar_w + 40
+    # 绘制血量条（稍宽）
+    hp_bar_w = bar_w + 20
     draw_premium_bar(screen, bar_x, bar_y2, hp_bar_w, int(bar_h * 1.3), hp_pct, hp_color,
                      bg_color=(40, 15, 15), glow=hp_pct < 50, animate_frame=anim_frame if hp_pulse else 0)
     
@@ -6019,100 +9889,406 @@ def draw_top_hud():
     
     # ===== 顶部中央：BOSS血条 (如果有BOSS) =====
     if boss:
-        boss_y = 130  # 顶部位置，避开玩家血条和属性图标
-        boss_bar_w = 600
-        boss_x = (WIDTH - boss_bar_w) // 2
-        boss_bar_h = 20  # 增加高度使其更明显
+        boss_y = 75  # 顶部居中位置，在FPS显示下方
+        boss_bar_w = 480
+        boss_x = (WIDTH - boss_bar_w) // 2  # 居中
+        boss_bar_h = 14  # 更细的血条
+        center_x = WIDTH // 2  # 中心点居中
         
-        # BOSS血条容器背景（半透明黑色）
+        # 获取Boss类型对应的血条风格
+        boss_type = getattr(boss, 'type', 'default')
+        boss_color = getattr(boss, 'data', {}).get('color', (255, 80, 80))
+        
+        # 10种独特的血条风格配置
+        BOSS_BAR_STYLES = {
+            # 菌生蟹皇 - 孢子/菌丝风格（青绿色+有机纹理）
+            'fungal_colossus': {
+                'primary': (60, 180, 200),
+                'secondary': (30, 80, 120),
+                'glow': (100, 220, 220),
+                'pattern': 'organic',  # 有机波纹
+                'border': (40, 150, 170),
+                'particles': True,
+            },
+            # 旱海狂鲨 - 沙漠风格（金黄色+沙尘效果）
+            'dune_reaper': {
+                'primary': (220, 180, 80),
+                'secondary': (140, 100, 40),
+                'glow': (255, 220, 120),
+                'pattern': 'sand',  # 沙粒纹理
+                'border': (200, 160, 60),
+                'particles': True,
+            },
+            # 歌莉娅女王 - 毒蜂风格（荧光绿+六边形）
+            'plague_empress': {
+                'primary': (57, 255, 20),
+                'secondary': (20, 120, 10),
+                'glow': (120, 255, 80),
+                'pattern': 'hex',  # 六边形蜂巢
+                'border': (80, 200, 40),
+                'particles': True,
+            },
+            # 毁灭魔像 - 血肉风格（深红色+血管纹理）
+            'flesh_totem': {
+                'primary': (180, 30, 30),
+                'secondary': (80, 10, 10),
+                'glow': (255, 60, 60),
+                'pattern': 'veins',  # 血管纹理
+                'border': (150, 20, 20),
+                'particles': True,
+            },
+            # 星神游龙 - 星空风格（紫色+星光闪烁）
+            'star_serpent': {
+                'primary': (200, 100, 255),
+                'secondary': (80, 40, 150),
+                'glow': (230, 150, 255),
+                'pattern': 'stars',  # 星光闪烁
+                'border': (180, 80, 220),
+                'particles': True,
+            },
+            # 终焉巨械·阿瑞斯 - 机械风格（RGB霓虹+电路板）
+            'exo_ares': {
+                'primary': (255, 100, 255),
+                'secondary': (100, 40, 100),
+                'glow': (255, 150, 255),
+                'pattern': 'circuit',  # 电路板纹理
+                'border': (220, 80, 220),
+                'particles': True,
+            },
+            # 亵渎天神 - 神圣风格（金色+光环）
+            'radiance_goddess': {
+                'primary': (255, 215, 0),
+                'secondary': (180, 140, 0),
+                'glow': (255, 240, 150),
+                'pattern': 'holy',  # 神圣光芒
+                'border': (255, 200, 50),
+                'particles': True,
+            },
+            # 维度之噬 - 虚空风格（深紫色+扭曲效果）
+            'dimension_devourer': {
+                'primary': (120, 0, 200),
+                'secondary': (40, 0, 80),
+                'glow': (180, 80, 255),
+                'pattern': 'void',  # 虚空扭曲
+                'border': (100, 0, 180),
+                'particles': True,
+            },
+            # 暴君犽戎 - 炎龙风格（火焰橙红+火焰纹理）
+            'infernal_dragon': {
+                'primary': (255, 100, 0),
+                'secondary': (180, 40, 0),
+                'glow': (255, 180, 50),
+                'pattern': 'flame',  # 火焰纹理
+                'border': (255, 120, 20),
+                'particles': True,
+            },
+            # 熵之化身 - 真理风格（纯白+黑暗交织）
+            'entropy_avatar': {
+                'primary': (255, 255, 255),
+                'secondary': (40, 40, 50),
+                'glow': (255, 255, 255),
+                'pattern': 'truth',  # 真理符文
+                'border': (200, 200, 220),
+                'particles': True,
+            },
+        }
+        
+        # 获取当前Boss的风格，如果没有则使用默认
+        style = BOSS_BAR_STYLES.get(boss_type, {
+            'primary': boss_color,
+            'secondary': (boss_color[0]//3, boss_color[1]//3, boss_color[2]//3),
+            'glow': (min(255, boss_color[0]+50), min(255, boss_color[1]+50), min(255, boss_color[2]+50)),
+            'pattern': 'default',
+            'border': boss_color,
+            'particles': False,
+        })
+        
+        t = pygame.time.get_ticks()
+        pulse = math.sin(t * 0.005) * 0.5 + 0.5
+        
+        # BOSS血条容器背景（半透明+动态边框）
         container_padding = 15
-        container_rect = pygame.Rect(boss_x - container_padding, boss_y - 35, 
-                                     boss_bar_w + container_padding * 2, 65)
-        draw_cyber_rect(screen, container_rect, (10, 10, 15), alpha=200, fill=True)
+        container_rect = pygame.Rect(boss_x - container_padding, boss_y - 28, 
+                                     boss_bar_w + container_padding * 2, 55)
         
-        # BOSS名称（居中，更大字体，多层阴影）
+        # 容器背景渐变
+        bg_surf = pygame.Surface((container_rect.width, container_rect.height), pygame.SRCALPHA)
+        for i in range(container_rect.height):
+            alpha = int(180 + 40 * (i / container_rect.height))
+            r = int(style['secondary'][0] * 0.3)
+            g = int(style['secondary'][1] * 0.3)
+            b = int(style['secondary'][2] * 0.3)
+            pygame.draw.line(bg_surf, (r, g, b, alpha), (0, i), (container_rect.width, i))
+        screen.blit(bg_surf, container_rect.topleft)
+        
+        # 动态边框
+        border_pulse = int(pulse * 30)
+        border_col = (min(255, style['border'][0] + border_pulse),
+                     min(255, style['border'][1] + border_pulse),
+                     min(255, style['border'][2] + border_pulse))
+        draw_cyber_rect(screen, container_rect, border_col, border_width=2, fill=False)
+        
+        # 角落装饰
+        corner = 12
+        for cx, cy, dx, dy in [(container_rect.left, container_rect.top, 1, 1),
+                               (container_rect.right, container_rect.top, -1, 1),
+                               (container_rect.left, container_rect.bottom, 1, -1),
+                               (container_rect.right, container_rect.bottom, -1, -1)]:
+            pygame.draw.line(screen, style['glow'], (cx, cy), (cx + dx*corner, cy), 2)
+            pygame.draw.line(screen, style['glow'], (cx, cy), (cx, cy + dy*corner), 2)
+        
+        # BOSS名称（居中，风格化）
         boss_name_text = boss.name.upper()
-        center_x = WIDTH // 2
-        name_y = boss_y - 18
-        # 外层红色光晕
-        for offset_x, offset_y in [(-2, -2), (2, -2), (-2, 2), (2, 2), (-3, 0), (3, 0), (0, -3), (0, 3)]:
-            draw_text(screen, boss_name_text, 16, center_x + offset_x, name_y + offset_y, (100, 0, 0))
-        # 内层明亮描边
-        for offset_x, offset_y in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
-            draw_text(screen, boss_name_text, 16, center_x + offset_x, name_y + offset_y, (255, 100, 100))
-        # 主文字
-        draw_text(screen, boss_name_text, 16, center_x, name_y, (255, 220, 220), glow=True)
+        name_y = boss_y - 22
         
-        # BOSS血条外框（增强边框效果）
-        border_rect = pygame.Rect(boss_x - 2, boss_y - 2, boss_bar_w + 4, boss_bar_h + 4)
-        draw_cyber_rect(screen, border_rect, CYBER_RED_ALERT, border_width=2, fill=False)
+        # 名称光晕
+        for offset in range(3, 0, -1):
+            glow_alpha = 100 - offset * 30
+            glow_col = (style['glow'][0], style['glow'][1], style['glow'][2])
+            for ox, oy in [(-offset, 0), (offset, 0), (0, -offset), (0, offset)]:
+                draw_text(screen, boss_name_text, 18, center_x + ox, name_y + oy, glow_col)
+        draw_text(screen, boss_name_text, 18, center_x, name_y, WHITE, glow=True)
         
-        # BOSS血条背景（深色）
-        pygame.draw.rect(screen, (30, 10, 10), (boss_x, boss_y, boss_bar_w, boss_bar_h))
+        # 血条外框装饰
+        bar_border = pygame.Rect(boss_x - 3, boss_y - 3, boss_bar_w + 6, boss_bar_h + 6)
         
-        # BOSS血条填充（渐变效果）
+        # 外层光晕
+        glow_surf = pygame.Surface((boss_bar_w + 20, boss_bar_h + 20), pygame.SRCALPHA)
+        for r in range(10, 0, -2):
+            alpha = int(30 * (1 - r/10))
+            pygame.draw.rect(glow_surf, (*style['glow'], alpha), 
+                           (10-r, 10-r, boss_bar_w + r*2, boss_bar_h + r*2), border_radius=4)
+        screen.blit(glow_surf, (boss_x - 10, boss_y - 10))
+        
+        # 血条边框
+        pygame.draw.rect(screen, style['border'], bar_border, 2, border_radius=4)
+        
+        # 血条背景
+        bg_rect = pygame.Rect(boss_x, boss_y, boss_bar_w, boss_bar_h)
+        pygame.draw.rect(screen, style['secondary'], bg_rect, border_radius=3)
+        
+        # BOSS血条填充
         boss_hp_pct = max(0, min(1, boss.hp / boss.max_hp))
         boss_fill = int(boss_hp_pct * boss_bar_w)
         
         if boss_fill > 0:
-            # 渐变色填充：从橙红到深红
-            for i in range(boss_fill):
-                ratio = i / boss_bar_w
-                r = int(255 - ratio * 50)
-                g = int(80 - ratio * 30)
-                b = int(80 - ratio * 30)
-                pygame.draw.line(screen, (r, g, b), 
-                               (boss_x + i, boss_y), 
-                               (boss_x + i, boss_y + boss_bar_h))
+            # 创建血条填充表面
+            fill_surf = pygame.Surface((boss_fill, boss_bar_h), pygame.SRCALPHA)
             
-            # 血条顶部高光
-            highlight_h = boss_bar_h // 3
-            highlight_surf = pygame.Surface((boss_fill, highlight_h), pygame.SRCALPHA)
-            highlight_surf.fill((255, 150, 150, 80))
-            screen.blit(highlight_surf, (boss_x, boss_y))
+            # 根据不同风格绘制纹理
+            pattern = style['pattern']
             
-            # 边缘发光线
+            if pattern == 'organic':
+                # 有机波纹纹理
+                for i in range(boss_fill):
+                    wave = math.sin(i * 0.1 + t * 0.003) * 0.3 + 0.7
+                    r = int(style['primary'][0] * wave)
+                    g = int(style['primary'][1] * wave)
+                    b = int(style['primary'][2] * wave)
+                    pygame.draw.line(fill_surf, (r, g, b), (i, 0), (i, boss_bar_h))
+                # 菌丝装饰
+                for i in range(0, boss_fill, 20):
+                    y_off = int(math.sin(i * 0.2 + t * 0.002) * 5)
+                    pygame.draw.circle(fill_surf, style['glow'], (i, boss_bar_h//2 + y_off), 3)
+                    
+            elif pattern == 'sand':
+                # 沙粒纹理
+                for i in range(boss_fill):
+                    noise = random.random() * 0.3 + 0.7 if (t // 100) % 5 == 0 else 0.85
+                    r = int(style['primary'][0] * noise)
+                    g = int(style['primary'][1] * noise)
+                    b = int(style['primary'][2] * noise)
+                    pygame.draw.line(fill_surf, (r, g, b), (i, 0), (i, boss_bar_h))
+                # 沙尘粒子
+                for _ in range(5):
+                    px = random.randint(0, boss_fill-1)
+                    py = random.randint(0, boss_bar_h-1)
+                    pygame.draw.circle(fill_surf, style['glow'], (px, py), 1)
+                    
+            elif pattern == 'hex':
+                # 六边形蜂巢纹理
+                fill_surf.fill(style['primary'])
+                hex_size = 12
+                for row in range(0, boss_bar_h + hex_size, hex_size):
+                    offset = (row // hex_size) % 2 * (hex_size // 2)
+                    for col in range(-hex_size, boss_fill + hex_size, hex_size):
+                        cx, cy = col + offset, row
+                        pygame.draw.polygon(fill_surf, style['secondary'], 
+                            [(cx + hex_size//2, cy), (cx + hex_size//4, cy + hex_size//2),
+                             (cx - hex_size//4, cy + hex_size//2), (cx - hex_size//2, cy),
+                             (cx - hex_size//4, cy - hex_size//2), (cx + hex_size//4, cy - hex_size//2)], 1)
+                             
+            elif pattern == 'veins':
+                # 血管纹理
+                fill_surf.fill(style['primary'])
+                for i in range(3):
+                    points = []
+                    y_base = boss_bar_h // 2 + (i - 1) * 6
+                    for x in range(0, boss_fill, 8):
+                        y = y_base + int(math.sin(x * 0.1 + t * 0.002 + i) * 4)
+                        points.append((x, y))
+                    if len(points) > 1:
+                        pygame.draw.lines(fill_surf, style['secondary'], False, points, 2)
+                        
+            elif pattern == 'stars':
+                # 星光闪烁
+                for i in range(boss_fill):
+                    brightness = 0.7 + math.sin(i * 0.05 + t * 0.004) * 0.3
+                    r = int(style['primary'][0] * brightness)
+                    g = int(style['primary'][1] * brightness)
+                    b = int(style['primary'][2] * brightness)
+                    pygame.draw.line(fill_surf, (r, g, b), (i, 0), (i, boss_bar_h))
+                # 闪烁星星
+                for i in range(8):
+                    sx = (t // 50 + i * 73) % boss_fill
+                    sy = (i * 3) % boss_bar_h
+                    star_pulse = math.sin(t * 0.01 + i) * 0.5 + 0.5
+                    if star_pulse > 0.7:
+                        pygame.draw.circle(fill_surf, WHITE, (sx, sy), 2)
+                        
+            elif pattern == 'circuit':
+                # 电路板纹理
+                fill_surf.fill(style['primary'])
+                # RGB流光
+                for i in range(boss_fill):
+                    rgb_phase = (i + t // 10) % 60
+                    if rgb_phase < 20:
+                        col = (255, 50, 50)
+                    elif rgb_phase < 40:
+                        col = (50, 255, 50)
+                    else:
+                        col = (50, 50, 255)
+                    pygame.draw.line(fill_surf, col, (i, 0), (i, 2))
+                    pygame.draw.line(fill_surf, col, (i, boss_bar_h-2), (i, boss_bar_h))
+                # 电路线
+                for i in range(0, boss_fill, 30):
+                    pygame.draw.line(fill_surf, style['glow'], (i, boss_bar_h//2 - 4), (i + 15, boss_bar_h//2 - 4), 1)
+                    pygame.draw.line(fill_surf, style['glow'], (i + 15, boss_bar_h//2 - 4), (i + 15, boss_bar_h//2 + 4), 1)
+                    
+            elif pattern == 'holy':
+                # 神圣光芒
+                for i in range(boss_fill):
+                    brightness = 0.8 + math.sin(i * 0.02 + t * 0.003) * 0.2
+                    r = int(style['primary'][0] * brightness)
+                    g = int(style['primary'][1] * brightness)
+                    b = int(style['primary'][2] * brightness)
+                    pygame.draw.line(fill_surf, (r, g, b), (i, 0), (i, boss_bar_h))
+                # 光柱
+                for i in range(0, boss_fill, 40):
+                    ray_x = (i + t // 20) % boss_fill
+                    pygame.draw.line(fill_surf, WHITE, (ray_x, 0), (ray_x, boss_bar_h), 2)
+                    
+            elif pattern == 'void':
+                # 虚空扭曲
+                for i in range(boss_fill):
+                    distort = math.sin(i * 0.15 + t * 0.005) * math.cos(i * 0.08 - t * 0.003)
+                    brightness = 0.6 + distort * 0.4
+                    r = int(style['primary'][0] * brightness)
+                    g = int(style['primary'][1] * brightness)
+                    b = int(style['primary'][2] * brightness)
+                    pygame.draw.line(fill_surf, (r, g, b), (i, 0), (i, boss_bar_h))
+                # 虚空裂缝
+                for i in range(3):
+                    crack_x = (t // 30 + i * 200) % boss_fill
+                    pygame.draw.line(fill_surf, (0, 0, 0), (crack_x, 0), (crack_x + 5, boss_bar_h), 2)
+                    
+            elif pattern == 'flame':
+                # 火焰纹理
+                for i in range(boss_fill):
+                    flame_y = int(math.sin(i * 0.2 + t * 0.01) * 3 + math.sin(i * 0.1 - t * 0.008) * 2)
+                    brightness = 0.8 + random.random() * 0.2
+                    r = int(min(255, style['primary'][0] * brightness))
+                    g = int(style['primary'][1] * brightness * 0.8)
+                    b = int(style['primary'][2] * brightness * 0.5)
+                    pygame.draw.line(fill_surf, (r, g, b), (i, max(0, flame_y)), (i, boss_bar_h))
+                # 火星
+                for _ in range(4):
+                    fx = random.randint(0, boss_fill - 1)
+                    fy = random.randint(0, 5)
+                    pygame.draw.circle(fill_surf, (255, 255, 100), (fx, fy), 2)
+                    
+            elif pattern == 'truth':
+                # 真理符文 - 黑白交织
+                for i in range(boss_fill):
+                    phase = math.sin(i * 0.05 + t * 0.002) * 0.5 + 0.5
+                    r = int(255 * phase + 40 * (1 - phase))
+                    g = int(255 * phase + 40 * (1 - phase))
+                    b = int(255 * phase + 50 * (1 - phase))
+                    pygame.draw.line(fill_surf, (r, g, b), (i, 0), (i, boss_bar_h))
+                # 眼睛符号
+                eye_x = boss_fill // 2
+                pygame.draw.ellipse(fill_surf, (0, 0, 0), (eye_x - 15, boss_bar_h//2 - 6, 30, 12), 2)
+                pygame.draw.circle(fill_surf, (0, 0, 0), (eye_x, boss_bar_h//2), 4)
+                    
+            else:
+                # 默认渐变
+                for i in range(boss_fill):
+                    ratio = i / boss_bar_w
+                    r = int(style['primary'][0] * (1 - ratio * 0.3))
+                    g = int(style['primary'][1] * (1 - ratio * 0.3))
+                    b = int(style['primary'][2] * (1 - ratio * 0.3))
+                    pygame.draw.line(fill_surf, (r, g, b), (i, 0), (i, boss_bar_h))
+            
+            # 顶部高光
+            highlight_surf = pygame.Surface((boss_fill, boss_bar_h // 3), pygame.SRCALPHA)
+            highlight_surf.fill((*style['glow'], 60))
+            fill_surf.blit(highlight_surf, (0, 0))
+            
+            # 边缘发光
             if boss_fill > 3:
-                for offset in range(2):
-                    pygame.draw.line(screen, (255, 200, 200, 150), 
-                                   (boss_x + boss_fill - 1 - offset, boss_y),
-                                   (boss_x + boss_fill - 1 - offset, boss_y + boss_bar_h))
+                edge_glow = pygame.Surface((6, boss_bar_h), pygame.SRCALPHA)
+                for i in range(6):
+                    alpha = int(150 * (1 - i / 6))
+                    pygame.draw.line(edge_glow, (*style['glow'], alpha), (i, 0), (i, boss_bar_h))
+                fill_surf.blit(edge_glow, (boss_fill - 6, 0))
+            
+            # 绘制填充
+            screen.blit(fill_surf, (boss_x, boss_y))
         
-        # BOSS血量数值（居中显示，使用百分比，增强质感）
+        # 粒子效果
+        if style['particles'] and boss_fill > 10:
+            for i in range(3):
+                px = boss_x + boss_fill - 5 + random.randint(-3, 3)
+                py = boss_y + random.randint(0, boss_bar_h)
+                particle_col = style['glow']
+                pygame.draw.circle(screen, particle_col, (px, py), random.randint(1, 2))
+        
+        # BOSS血量数值
         hp_text = f"{int(boss.hp):,} / {int(boss.max_hp):,}"
         hp_percent = f"({boss_hp_pct * 100:.1f}%)"
         hp_text_y = boss_y + boss_bar_h // 2 - 6
-        percent_y = boss_y + boss_bar_h + 8
+        percent_y = boss_y + boss_bar_h + 10
         
-        # 血量数值 - 黑色描边 + 白色主体
-        for offset_x, offset_y in [(-1, -1), (1, -1), (-1, 1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)]:
-            draw_text(screen, hp_text, 12, center_x + offset_x, hp_text_y + offset_y, (0, 0, 0))
-        draw_text(screen, hp_text, 12, center_x, hp_text_y, (255, 255, 255), glow=True)
+        # 血量数值 - 描边 + 主体
+        for ox, oy in [(-1, -1), (1, -1), (-1, 1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)]:
+            draw_text(screen, hp_text, 13, center_x + ox, hp_text_y + oy, (0, 0, 0))
+        draw_text(screen, hp_text, 13, center_x, hp_text_y, WHITE, glow=True)
         
-        # 百分比 - 黑色描边 + 琥珀色主体
-        for offset_x, offset_y in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
-            draw_text(screen, hp_percent, 10, center_x + offset_x, percent_y + offset_y, (20, 10, 0))
-        draw_text(screen, hp_percent, 10, center_x, percent_y, CYBER_AMBER, glow=True)
-        # Draw phase threshold markers
+        # 百分比
+        for ox, oy in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+            draw_text(screen, hp_percent, 11, center_x + ox, percent_y + oy, (0, 0, 0))
+        draw_text(screen, hp_percent, 11, center_x, percent_y, style['glow'], glow=True)
+        
+        # 阶段分隔线
         try:
             phases = getattr(boss, 'phase_configs', boss.data.get('phases', []))
             for pidx, p in enumerate(phases):
                 thresh = p.get('threshold', 0)
                 tx = boss_x + int(boss_bar_w * thresh)
-                pygame.draw.line(screen, (220, 220, 220), (tx, boss_y), (tx, boss_y + boss_bar_h), 2)
-                # highlight current phase
-                if pidx == boss.phase_index - 1:
-                    # draw a subtle overlay for the phase
-                    overlay_w = boss_bar_w - tx
-                    s = pygame.Surface((overlay_w, boss_bar_h), pygame.SRCALPHA)
-                    s.fill((*boss.visual.get('aura', (255,80,80)), 40) if boss.visual else (255,80,80,40))
-                    safe_blit(screen, s, (tx, boss_y))
+                # 分隔线
+                pygame.draw.line(screen, WHITE, (tx, boss_y - 2), (tx, boss_y + boss_bar_h + 2), 2)
+                # 阶段标记
+                phase_marker = ['I', 'II', 'III', 'IV'][min(pidx, 3)]
+                draw_text(screen, phase_marker, 9, tx, boss_y - 8, style['glow'])
         except Exception:
             pass
-        # Phase flash label
+        
+        # 阶段转换闪烁
         if getattr(boss, 'phase_change_timer', 0) > 0:
-            phase_label = f"PHASE {boss.phase_index}"
-            draw_text(screen, phase_label, 18, boss_x + boss_bar_w//2, boss_y - 20, CYBER_AMBER, glow=True)
+            phase_label = f"⚠ PHASE {boss.phase_index} ⚠"
+            flash = int((t // 100) % 2)
+            label_col = style['glow'] if flash else WHITE
+            draw_text(screen, phase_label, 20, center_x, boss_y - 55, label_col, glow=True)
 
 def draw_player_stats_panel():
     """绘制按 TAB 时显示的玩家属性面板（覆盖全屏，但保留背景冻结图像）。"""
@@ -7074,6 +11250,14 @@ while True:
                 if room_manager and show_full_map and game_state in ["game", "boss_challenge_play"]:
                     room_manager.adjust_map_zoom(event.y * 0.08)
                     continue
+                # Boss挑战模式：滚轮滚动列表
+                if game_state == "boss_challenge":
+                    if event.y > 0:  # 向上滚动
+                        boss_challenge_selected = max(0, boss_challenge_selected - 1)
+                    elif event.y < 0:  # 向下滚动
+                        boss_challenge_selected = min(len(boss_challenge_order) - 1, boss_challenge_selected + 1)
+                    sound_mgr.play("select")
+                    continue
                 # 属性面板滚动（TAB暂停时）
                 if tab_paused and game_state in ["game", "boss_challenge_play"]:
                     if hasattr(player, 'upgrade_manager') and player.upgrade_manager:
@@ -7121,6 +11305,46 @@ while True:
                         background_settings_page = min(background_settings_page + 1, total_pages - 1)
                     else:  # 向下滚动 - 上一页
                         background_settings_page = max(background_settings_page - 1, 0)
+                
+                elif game_state in ["select_plane", "boss_challenge_select_plane"]:
+                    # 飞机选择界面滚动
+                    card_h = 50
+                    card_gap = 6
+                    content_y = 90
+                    content_h_val = HEIGHT - 170
+                    list_inner_h = content_h_val - 48
+                    max_visible = list_inner_h // (card_h + card_gap)
+                    total_planes = len(plane_keys)
+                    
+                    if event.y > 0:  # 向上滚动
+                        current_plane_idx = max(0, current_plane_idx - 1)
+                    elif event.y < 0:  # 向下滚动
+                        current_plane_idx = min(total_planes - 1, current_plane_idx + 1)
+                    sound_mgr.play("select")
+                    
+                elif game_state == "achievements":
+                    # 成就墙滚动（参数与绘制一致）
+                    achievement_mgr = get_cached_achievement_mgr()
+                    if achievement_mgr:
+                        if achievement_category == "all":
+                            filtered = list(achievement_mgr.achievements.values())
+                        else:
+                            filtered = achievement_mgr.get_achievements_by_category(achievement_category)
+                        # 计算grid参数（与绘制一致）
+                        grid_cell = 95
+                        grid_gap = 12
+                        MARGIN = 30
+                        wall_w = int((WIDTH - MARGIN * 3) * 0.58)
+                        grid_cols = max(1, int((wall_w - 40) // (grid_cell + grid_gap)))
+                        rows = (len(filtered) + grid_cols - 1) // grid_cols
+                        # 计算内容和可见高度（与绘制一致）
+                        HEADER_H, STATS_H, TAB_H, FOOTER_H, CONTENT_GAP = 70, 45, 45, 70, 8
+                        content_top = MARGIN + HEADER_H + STATS_H + TAB_H + CONTENT_GAP
+                        wall_h = HEIGHT - MARGIN - content_top - FOOTER_H
+                        view_h = wall_h - TAB_H - 60
+                        content_h = rows * (grid_cell + grid_gap)
+                        max_scroll = max(0, content_h - view_h)
+                        achievement_scroll_y = max(0, min(achievement_scroll_y - event.y * 40, max_scroll))
 
             # --- 键盘事件 ---
             if event.type == pygame.KEYDOWN:
@@ -7179,10 +11403,10 @@ while True:
                 
                 # 飞机选择界面 键盘控制
                 if game_state == "select_plane":
-                    if event.key == pygame.K_LEFT:
+                    if event.key in (pygame.K_LEFT, pygame.K_a, pygame.K_UP, pygame.K_w):
                         current_plane_idx = (current_plane_idx - 1) % len(plane_keys)
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_RIGHT:
+                    elif event.key in (pygame.K_RIGHT, pygame.K_d, pygame.K_DOWN, pygame.K_s):
                         current_plane_idx = (current_plane_idx + 1) % len(plane_keys)
                         sound_mgr.play("select")
                     elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
@@ -7239,8 +11463,36 @@ while True:
                         elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                             # Save to leaderboard and go back to menu
                             name = player_name.strip() or "匿名"
-                            leaderboard_data.append({"name": name, "score": final_score})
+                            
+                            # 计算存活时间
+                            survival_time = (pygame.time.get_ticks() - game_stats.get("start_time", 0)) // 1000
+                            
+                            # 确定游戏模式
+                            if boss_challenge_active or (hasattr(boss_manager, 'boss_challenge_queue') and boss_manager.boss_challenge_queue):
+                                current_mode = "boss_challenge"
+                            elif room_manager is not None:
+                                current_mode = "roguelike"
+                            else:
+                                current_mode = "normal"
+                            
+                            # 构建完整记录
+                            import datetime
+                            entry = {
+                                "name": name,
+                                "score": final_score,
+                                "plane": selected_plane,
+                                "kills": game_stats.get("kills", 0),
+                                "boss_kills": game_stats.get("boss_kills", 0),
+                                "survival_time": survival_time,
+                                "wave": wave,
+                                "rooms": room_manager.total_rooms_cleared if room_manager else 0,
+                                "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                            }
+                            
+                            # 使用新的添加函数
+                            add_leaderboard_entry(leaderboard_data, current_mode, entry)
                             save_leaderboard(leaderboard_data)
+                            
                             # 保存成就
                             if player and hasattr(player, 'achievement_manager'):
                                 player.achievement_manager.save_to_file()
@@ -7577,12 +11829,50 @@ while True:
                 # Boss挑战模式导航（仅处理Enter和Esc，上下左右由持续按键处理）
                 elif game_state == "boss_challenge":
                     if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
-                        # 先选飞机，再开始挑战
-                        game_state = "boss_challenge_select_plane"
-                        boss_challenge_plane_selected = 0
-                        sound_mgr.play("select")
+                        # 先选飞机，再开始挑战 (需要至少选择1个Boss)
+                        enabled_bosses = [k for k in boss_challenge_order if boss_challenge_enabled.get(k, True)]
+                        if len(enabled_bosses) > 0:
+                            game_state = "boss_challenge_select_plane"
+                            boss_challenge_plane_selected = 0
+                            sound_mgr.play("select")
                     elif event.key == pygame.K_ESCAPE or event.key == pygame.K_BACKSPACE:
                         game_state = "menu"; main_menu_selected = 0; sound_mgr.play("select")
+                    elif event.key == pygame.K_SPACE:
+                        # 空格键切换当前选中Boss的启用状态
+                        if boss_challenge_selected < len(boss_challenge_order):
+                            bkey = boss_challenge_order[boss_challenge_selected]
+                            boss_challenge_enabled[bkey] = not boss_challenge_enabled.get(bkey, True)
+                            boss_challenge_preset = 0  # 切换到自定义模式
+                            sound_mgr.play("select")
+                    elif event.key in (pygame.K_1, pygame.K_KP1):
+                        boss_challenge_preset = 0; sound_mgr.play("select")  # 自定义
+                    elif event.key in (pygame.K_2, pygame.K_KP2):
+                        # 快速战 - 随机3个
+                        boss_challenge_preset = 1
+                        boss_keys = list(BOSS_DB.keys())
+                        selected = random.sample(boss_keys, min(3, len(boss_keys)))
+                        boss_challenge_enabled = {k: (k in selected) for k in boss_keys}
+                        sound_mgr.play("select")
+                    elif event.key in (pygame.K_3, pygame.K_KP3):
+                        # 标准战 - 随机5个
+                        boss_challenge_preset = 2
+                        boss_keys = list(BOSS_DB.keys())
+                        selected = random.sample(boss_keys, min(5, len(boss_keys)))
+                        boss_challenge_enabled = {k: (k in selected) for k in boss_keys}
+                        sound_mgr.play("select")
+                    elif event.key in (pygame.K_4, pygame.K_KP4):
+                        # 持久战 - 随机10个
+                        boss_challenge_preset = 3
+                        boss_keys = list(BOSS_DB.keys())
+                        selected = random.sample(boss_keys, min(10, len(boss_keys)))
+                        boss_challenge_enabled = {k: (k in selected) for k in boss_keys}
+                        sound_mgr.play("select")
+                    elif event.key in (pygame.K_5, pygame.K_KP5):
+                        # 全Boss战
+                        boss_challenge_preset = 4
+                        boss_keys = list(BOSS_DB.keys())
+                        boss_challenge_enabled = {k: True for k in boss_keys}
+                        sound_mgr.play("select")
                 
                 # Boss挑战模式飞机选择
                 elif game_state == "boss_challenge_select_plane":
@@ -7592,6 +11882,9 @@ while True:
                         game_state = "boss_challenge_play"
                         boss_challenge_current = 0
                         boss_challenge_active = True
+                        # 生成已启用Boss的挑战顺序
+                        enabled_bosses = [k for k in boss_challenge_order if boss_challenge_enabled.get(k, True)]
+                        boss_challenge_order[:] = enabled_bosses  # 更新为只包含启用的Boss
                         try:
                             reset_game()
                             if not boss_challenge_music_active:
@@ -7608,6 +11901,8 @@ while True:
                         except Exception as e:
                             log_error(f"Failed to start boss challenge: {e}")
                     elif event.key == pygame.K_ESCAPE or event.key == pygame.K_BACKSPACE:
+                        # 返回Boss选择时重置order为全部Boss
+                        boss_challenge_order[:] = list(BOSS_DB.keys())
                         game_state = "boss_challenge"; sound_mgr.play("select")
                 
                 # 成就菜单导航
@@ -7666,6 +11961,94 @@ while True:
                         game_state = "menu"
                         sound_mgr.play("select")
                 
+                # Boss挑战模式：鼠标操作
+                elif game_state == "boss_challenge":
+                    # 布局参数（与绘制函数一致）
+                    content_y = 118
+                    left_x = 28
+                    left_width = 268
+                    card_height = 46
+                    gap = 4
+                    max_visible = int((HEIGHT - 195 - 38) / (card_height + gap))
+                    card_start_y = content_y + 38
+                    
+                    # 检测预设按钮点击
+                    preset_btn_w = 95
+                    preset_btn_h = 32
+                    preset_start_x = WIDTH//2 - (5 * preset_btn_w + 4 * 8) // 2
+                    preset_y = 72
+                    preset_counts = [0, 3, 5, 10, len(BOSS_DB)]
+                    
+                    preset_clicked = False
+                    if event.button == 1:
+                        for pi in range(5):
+                            btn_x = preset_start_x + pi * (preset_btn_w + 8)
+                            btn_rect = pygame.Rect(btn_x, preset_y, preset_btn_w, preset_btn_h)
+                            if btn_rect.collidepoint(mx, my):
+                                preset_clicked = True
+                                boss_challenge_preset = pi
+                                boss_keys = list(BOSS_DB.keys())
+                                if pi == 0:  # 自定义 - 不改变
+                                    pass
+                                elif pi == 4:  # 全Boss
+                                    boss_challenge_enabled = {k: True for k in boss_keys}
+                                else:  # 随机选择指定数量
+                                    count = preset_counts[pi]
+                                    selected = random.sample(boss_keys, min(count, len(boss_keys)))
+                                    boss_challenge_enabled = {k: (k in selected) for k in boss_keys}
+                                sound_mgr.play("select")
+                                break
+                    
+                    # 检测Boss列表点击
+                    clicked_card = False
+                    if not preset_clicked:
+                        for display_idx in range(min(max_visible, len(boss_challenge_order) - boss_challenge_scroll_offset)):
+                            i = boss_challenge_scroll_offset + display_idx
+                            card_y = card_start_y + display_idx * (card_height + gap)
+                            card_rect = pygame.Rect(left_x + 8, card_y, left_width - 20, card_height)
+                            
+                            # 勾选框区域
+                            checkbox_rect = pygame.Rect(left_x + 8 + 12, card_y + card_height // 2 - 8, 16, 16)
+                            
+                            if card_rect.collidepoint(mx, my):
+                                clicked_card = True
+                                bkey = boss_challenge_order[i]
+                                
+                                if checkbox_rect.collidepoint(mx, my) and event.button == 1:
+                                    # 点击勾选框 - 切换启用状态
+                                    boss_challenge_enabled[bkey] = not boss_challenge_enabled.get(bkey, True)
+                                    boss_challenge_preset = 0  # 切换到自定义模式
+                                    sound_mgr.play("select")
+                                elif event.button == 1:  # 左键选择
+                                    if boss_challenge_selected == i:
+                                        # 双击同一项：开始挑战
+                                        enabled_bosses = [k for k in boss_challenge_order if boss_challenge_enabled.get(k, True)]
+                                        if len(enabled_bosses) > 0:
+                                            game_state = "boss_challenge_select_plane"
+                                            boss_challenge_plane_selected = 0
+                                    else:
+                                        boss_challenge_selected = i
+                                    sound_mgr.play("select")
+                                elif event.button == 3:  # 右键切换启用
+                                    boss_challenge_enabled[bkey] = not boss_challenge_enabled.get(bkey, True)
+                                    boss_challenge_preset = 0
+                                    sound_mgr.play("select")
+                                break
+                    
+                    # 检测开始挑战按钮
+                    if not clicked_card and not preset_clicked and event.button == 1:
+                        btn_width = 240
+                        btn_height = 50
+                        btn_x = WIDTH // 2 - btn_width // 2
+                        btn_y = HEIGHT - 60
+                        start_btn_rect = pygame.Rect(btn_x, btn_y, btn_width, btn_height)
+                        if start_btn_rect.collidepoint(mx, my):
+                            enabled_bosses = [k for k in boss_challenge_order if boss_challenge_enabled.get(k, True)]
+                            if len(enabled_bosses) > 0:
+                                game_state = "boss_challenge_select_plane"
+                                boss_challenge_plane_selected = 0
+                                sound_mgr.play("select")
+                
                 elif game_state == "menu":
                     buttons = get_menu_buttons()
                     for idx, (r, txt, col, act) in enumerate(buttons):
@@ -7692,6 +12075,8 @@ while True:
                                 if act == "customization": customization_scroll_y = 0; customization_plane_scroll_y = 0; customization_selected_plane = None; customization_tab = 0
                                 if act == "background_settings": background_settings_selected = 0
                                 if act == "settings": settings_dragging = None; settings_saved_timer = 0
+                                if act == "leaderboard":
+                                    _reload_leaderboard_data()
                                 log_info(f"Game state changed to: {game_state}")
                             break
 
@@ -7744,6 +12129,34 @@ while True:
                                 break
                         if chip_clicked:
                             continue
+                        
+                        # === 滚动条点击检测 ===
+                        visible_rows = _music_library_visible_rows()
+                        if len(music_library_tracks) > visible_rows:
+                            padding = 10
+                            base_y = content_top
+                            scroll_track_h = list_rect.bottom - padding - base_y
+                            if scroll_track_h > 0:
+                                indicator_h = max(30, int(scroll_track_h * (visible_rows / len(music_library_tracks))))
+                                max_scroll = max(1, len(music_library_tracks) - visible_rows)
+                                indicator_y = base_y + int((scroll_track_h - indicator_h) * (music_library_scroll_index / max_scroll))
+                                scroll_bar_x = list_rect.right - 10
+                                
+                                thumb_rect = pygame.Rect(scroll_bar_x - 4, indicator_y, 16, indicator_h)
+                                track_rect = pygame.Rect(scroll_bar_x - 4, base_y, 16, scroll_track_h)
+                                
+                                if thumb_rect.collidepoint(mx, my):
+                                    music_library_dragging_scrollbar = True
+                                    music_library_drag_start_y = my
+                                    music_library_drag_start_scroll = music_library_scroll_index
+                                    continue
+                                elif track_rect.collidepoint(mx, my):
+                                    # 点击轨道跳转
+                                    click_ratio = (my - base_y) / scroll_track_h
+                                    music_library_scroll_index = int(click_ratio * max_scroll)
+                                    music_library_scroll_index = max(0, min(max_scroll, music_library_scroll_index))
+                                    continue
+                        
                         if list_rect.collidepoint(mx, my) and music_library_tracks and my >= content_top:
                             rel_y = my - content_top
                             if rel_y >= 0:
@@ -7768,6 +12181,33 @@ while True:
                     if event.button == 1:
                         chips, filter_band_height = get_sound_lab_filter_layout(list_rect)
                         content_top = list_rect.y + 12 + filter_band_height
+                        
+                        # === 滚动条点击检测 ===
+                        visible_rows = _sound_lab_visible_rows()
+                        if len(sound_lab_tracks) > visible_rows:
+                            padding = 10
+                            scroll_track_h = list_rect.height - padding * 2 - filter_band_height
+                            if scroll_track_h > 0:
+                                indicator_h = max(30, int(scroll_track_h * (visible_rows / len(sound_lab_tracks))))
+                                max_scroll = max(1, len(sound_lab_tracks) - visible_rows)
+                                indicator_y = content_top + int((scroll_track_h - indicator_h) * (sound_lab_scroll_index / max_scroll))
+                                scroll_bar_x = list_rect.right - 10
+                                
+                                thumb_rect = pygame.Rect(scroll_bar_x - 4, indicator_y, 16, indicator_h)
+                                track_rect = pygame.Rect(scroll_bar_x - 4, content_top, 16, scroll_track_h)
+                                
+                                if thumb_rect.collidepoint(mx, my):
+                                    sound_lab_dragging_scrollbar = True
+                                    sound_lab_drag_start_y = my
+                                    sound_lab_drag_start_scroll = sound_lab_scroll_index
+                                    continue
+                                elif track_rect.collidepoint(mx, my):
+                                    # 点击轨道跳转
+                                    click_ratio = (my - content_top) / scroll_track_h
+                                    sound_lab_scroll_index = int(click_ratio * max_scroll)
+                                    sound_lab_scroll_index = max(0, min(max_scroll, sound_lab_scroll_index))
+                                    continue
+                        
                         if list_rect.collidepoint(mx, my):
                             if my < content_top:
                                 for key, _, rect in chips:
@@ -7794,28 +12234,135 @@ while True:
                             sound_mgr.play("select")
                             return_to_audio_hub_from_sound_lab()
                 
-                # 成就菜单点击
+                # 成就菜单点击 - 豪华版
                 elif game_state == "achievements":
-                    if player and hasattr(player, 'achievement_manager'):
-                        ach_list = list(player.achievement_manager.achievements.values())
-                        page_size = 6
-                        max_page = (len(ach_list) + page_size - 1) // page_size
-                        
-                        if achievement_page > 0:
-                            prev_btn = pygame.Rect(WIDTH//2 - 200, HEIGHT - 100, 80, 40)
-                            if prev_btn.collidepoint(mx, my):
-                                achievement_page = max(0, achievement_page - 1)
-                        
-                        if achievement_page < max_page - 1:
-                            next_btn = pygame.Rect(WIDTH//2 + 120, HEIGHT - 100, 80, 40)
-                            if next_btn.collidepoint(mx, my):
-                                achievement_page += 1
+                    MARGIN = 30  # 定义在外部以便返回按钮使用
+                    achievement_mgr = get_cached_achievement_mgr()
                     
-                    # 返回按钮
-                    back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 50, 120, 40)
+                    if not achievement_mgr:
+                        # 未加载状态 - 中央返回按钮
+                        back_btn_empty = pygame.Rect(WIDTH//2 - 70, HEIGHT//2 + 75, 140, 42)
+                        if back_btn_empty.collidepoint(mx, my):
+                            game_state = "menu"; main_menu_selected = 0; sound_mgr.play("select")
+                    
+                    if achievement_mgr:
+                        # 与绘制函数完全一致的布局常量
+                        MARGIN = 30
+                        HEADER_H = 70
+                        STATS_H = 45
+                        TAB_H = 45
+                        FOOTER_H = 70
+                        CONTENT_GAP = 8
+                        
+                        # 分类标签位置（在content_top之上）
+                        tab_y = MARGIN + HEADER_H + STATS_H + 5
+                        tab_h = 38
+                        
+                        # 分类标签点击
+                        categories = [
+                            ("all", "📚", "全部"),
+                            ("combat", "⚔️", "战斗"),
+                            ("boss", "👹", "Boss"),
+                            ("survival", "🛡️", "生存"),
+                            ("plane", "✈️", "机体"),
+                            ("roguelike", "🚪", "肉鸽"),
+                            ("milestone", "🏅", "里程碑"),
+                            ("secret", "🌙", "隐藏"),
+                        ]
+                        tab_emoji_font = get_ach_font("Segoe UI Emoji", 16)
+                        tab_font = get_ach_font("SimHei", 15)
+                        
+                        # 计算标签位置（居中）
+                        total_tabs_w = 0
+                        for cat_id, cat_emoji, cat_name in categories:
+                            es = tab_emoji_font.render(cat_emoji, True, WHITE)
+                            ts = tab_font.render(cat_name, True, WHITE)
+                            total_tabs_w += es.get_width() + ts.get_width() + 26 + 6
+                        total_tabs_w -= 6
+                        tab_start_x = (WIDTH - total_tabs_w) // 2
+                        
+                        current_x = tab_start_x
+                        for cat_id, cat_emoji, cat_name in categories:
+                            es = tab_emoji_font.render(cat_emoji, True, WHITE)
+                            ts = tab_font.render(cat_name, True, WHITE)
+                            tab_w = es.get_width() + ts.get_width() + 26
+                            tab_rect = pygame.Rect(current_x, tab_y, tab_w, tab_h)
+                            if tab_rect.collidepoint(mx, my):
+                                achievement_category = cat_id
+                                achievement_selected = None
+                                achievement_scroll_y = 0
+                                sound_mgr.play("select")
+                                break
+                            current_x += tab_w + 6
+                        
+                        # 内容区布局
+                        content_top = MARGIN + HEADER_H + STATS_H + TAB_H + CONTENT_GAP
+                        content_h = HEIGHT - MARGIN - content_top - FOOTER_H
+                        wall_w = int((WIDTH - MARGIN * 3) * 0.58)
+                        wall_rect = pygame.Rect(MARGIN, content_top, wall_w, content_h)
+                        
+                        # 成就徽章网格点击（参数与绘制一致）
+                        grid_cell = 95
+                        grid_gap = 12
+                        grid_cols = max(1, int((wall_w - 40) // (grid_cell + grid_gap)))  # 至少1列，防止除零
+                        grid_start_x = wall_rect.x + (wall_w - grid_cols * (grid_cell + grid_gap) + grid_gap) // 2
+                        grid_start_y = wall_rect.y + 18
+                        
+                        # 获取当前分类的成就（提前获取，供徽章点击和滚动条使用）
+                        if achievement_category == "all":
+                            filtered_achievements = list(achievement_mgr.achievements.values())
+                        else:
+                            filtered_achievements = achievement_mgr.get_achievements_by_category(achievement_category)
+                        
+                        # 徽章区域 (裁剪区域内)
+                        badge_area = pygame.Rect(wall_rect.x, wall_rect.y, wall_rect.width, wall_rect.height - 30)
+                        
+                        if badge_area.collidepoint(mx, my):
+                            for i, ach in enumerate(filtered_achievements):
+                                col = i % grid_cols
+                                row = i // grid_cols
+                                
+                                bx = grid_start_x + col * (grid_cell + grid_gap)
+                                by = grid_start_y + row * (grid_cell + grid_gap) - achievement_scroll_y
+                                
+                                badge_rect = pygame.Rect(bx, by, grid_cell, grid_cell)
+                                if badge_rect.collidepoint(mx, my) and badge_area.collidepoint(mx, my):
+                                    achievement_selected = ach.id
+                                    sound_mgr.play("select")
+                                    break
+                        
+                        # 滚动条拖动开始检测
+                        rows = (len(filtered_achievements) + grid_cols - 1) // grid_cols
+                        total_content_h = rows * (grid_cell + grid_gap)
+                        view_h = wall_rect.height - TAB_H - 60
+                        if total_content_h > view_h:
+                            scroll_bar_x = wall_rect.right - 14
+                            scroll_bar_y = grid_start_y
+                            scroll_bar_h = view_h
+                            max_scroll = total_content_h - view_h
+                            thumb_h = max(35, int(scroll_bar_h * view_h / total_content_h))
+                            thumb_y = scroll_bar_y + int((scroll_bar_h - thumb_h) * achievement_scroll_y / max_scroll) if max_scroll > 0 else scroll_bar_y
+                            
+                            # 检测是否点击在滚动条滑块上
+                            scrollbar_rect = pygame.Rect(scroll_bar_x - 4, thumb_y, 16, thumb_h)
+                            if scrollbar_rect.collidepoint(mx, my):
+                                achievement_dragging_scrollbar = True
+                                achievement_drag_start_y = my
+                                achievement_drag_start_scroll = achievement_scroll_y
+                            # 点击滚动条轨道则跳转
+                            elif pygame.Rect(scroll_bar_x - 4, scroll_bar_y, 16, scroll_bar_h).collidepoint(mx, my):
+                                # 计算点击位置对应的滚动值
+                                click_ratio = (my - scroll_bar_y) / scroll_bar_h
+                                achievement_scroll_y = int(click_ratio * max_scroll)
+                                achievement_scroll_y = max(0, min(achievement_scroll_y, max_scroll))
+                    
+                    # 返回按钮 - 右下角，与绘制代码一致
+                    FOOTER_H = 70
+                    footer_y = HEIGHT - FOOTER_H
+                    back_btn = pygame.Rect(WIDTH - MARGIN - 130, footer_y + 12, 110, 40)
                     if back_btn.collidepoint(mx, my):
-                        if player and hasattr(player, 'achievement_manager'):
-                            player.achievement_manager.save_to_file()
+                        if achievement_mgr:
+                            achievement_mgr.save_to_file()
                         game_state = "menu"; main_menu_selected = 0; sound_mgr.play("select")
                 
                 # 背景设置界面点击
@@ -7824,14 +12371,15 @@ while True:
                     bg_styles = BackgroundManager.BG_STYLES
                     bg_list = list(bg_styles.items())
                     
-                    # 分页配置
-                    card_w = 280
-                    card_h = 200
+                    # 分页配置 - 必须与绘制代码一致！
+                    card_w = 270
+                    card_h = 195
                     cards_per_row = 4
-                    cards_per_page = 8
-                    gap = 30
+                    rows_per_page = 2
+                    cards_per_page = cards_per_row * rows_per_page
+                    gap = 25
                     start_x = (WIDTH - (cards_per_row * card_w + (cards_per_row - 1) * gap)) // 2
-                    start_y = 130
+                    start_y = 110
                     
                     # 获取当前页的背景
                     page_start = background_settings_page * cards_per_page
@@ -7858,15 +12406,14 @@ while True:
                             log_info(f"背景已切换为: {style_key}")
                             break
                     
-                    # 上一页/下一页按钮（卡片下方那一行的左右两侧）
-                    rows_per_page = 2
-                    button_y = start_y + rows_per_page * (card_h + gap) + 30
-                    button_w = 100
-                    button_h = 50
+                    # 翻页按钮 - 必须与绘制代码一致！
+                    button_y = start_y + rows_per_page * (card_h + gap) + 20
+                    button_w = 120
+                    button_h = 45
                     total_pages = (len(bg_list) + cards_per_page - 1) // cards_per_page
                     
-                    prev_btn = pygame.Rect(80, button_y, button_w, button_h)
-                    next_btn = pygame.Rect(WIDTH - 180, button_y, button_w, button_h)
+                    prev_btn = pygame.Rect(60, button_y, button_w, button_h)
+                    next_btn = pygame.Rect(WIDTH - 60 - button_w, button_y, button_w, button_h)
                     
                     if prev_btn.collidepoint(mx, my) and background_settings_page > 0:
                         background_settings_page -= 1
@@ -7875,23 +12422,80 @@ while True:
                         background_settings_page += 1
                         sound_mgr.play("select")
                     
-                    # 返回按钮
-                    back_btn = pygame.Rect(WIDTH//2 - 60, HEIGHT - 80, 120, 50)
+                    # 返回按钮 - 必须与绘制代码一致！
+                    back_btn = pygame.Rect(WIDTH//2 - 70, HEIGHT - 70, 140, 45)
                     if back_btn.collidepoint(mx, my):
                         game_state = "menu"
                         main_menu_selected = 0
                         sound_mgr.play("select")
 
                 elif game_state == "select_plane":
-                    left_rect = pygame.Rect(100, HEIGHT//2-40, 60, 80)
-                    right_rect = pygame.Rect(WIDTH-160, HEIGHT//2-40, 60, 80)
-                    start_btn = pygame.Rect(WIDTH//2-100, HEIGHT-120, 200, 60)
-                    back_btn = pygame.Rect(50, HEIGHT-80, 100, 40)
+                    # 新UI布局参数 - 必须与绘制代码一致！
+                    content_y = 90
+                    content_h = HEIGHT - 170
+                    margin = 20
+                    gap = 12
+                    list_width = 280
+                    list_x = margin
+                    detail_width = WIDTH - margin * 2 - list_width - gap
+                    detail_x = list_x + list_width + gap
+                    btn_y = HEIGHT - 65
+                    nav_btn_w = 70
+                    nav_btn_h = 45
                     
-                    if left_rect.collidepoint(mx, my):
+                    # 左侧导航箭头
+                    left_btn = pygame.Rect(list_x, btn_y, nav_btn_w, nav_btn_h)
+                    # 右侧导航箭头
+                    right_btn = pygame.Rect(list_x + list_width - nav_btn_w, btn_y, nav_btn_w, nav_btn_h)
+                    # 确认出击按钮
+                    start_btn = pygame.Rect(detail_x + detail_width // 2 - 110, btn_y - 2, 220, 50)
+                    # 返回按钮
+                    back_btn = pygame.Rect(detail_x + detail_width - 90, btn_y, 85, nav_btn_h)
+                    
+                    # 滚动条参数计算
+                    card_h = 50
+                    card_gap = 6
+                    list_inner_y = content_y + 42
+                    list_inner_h = content_h - 48
+                    max_visible = list_inner_h // (card_h + card_gap)
+                    total_planes = len(plane_keys)
+                    scroll_offset = max(0, min(current_plane_idx - max_visible // 2, total_planes - max_visible))
+                    
+                    # 滚动条点击/拖动检测
+                    if total_planes > max_visible:
+                        track_h = list_inner_h - 10
+                        thumb_h = max(30, int(track_h * max_visible / total_planes))
+                        thumb_y = list_inner_y + 5 + int((track_h - thumb_h) * scroll_offset / max(1, total_planes - max_visible))
+                        scrollbar_rect = pygame.Rect(list_x + list_width - 12, thumb_y, 8, thumb_h)
+                        track_rect = pygame.Rect(list_x + list_width - 12, list_inner_y + 5, 8, track_h)
+                        
+                        if scrollbar_rect.collidepoint(mx, my):
+                            # 点击滑块开始拖动
+                            plane_select_dragging_scrollbar = True
+                            plane_select_drag_start_y = my
+                            plane_select_drag_start_scroll = current_plane_idx
+                        elif track_rect.collidepoint(mx, my):
+                            # 点击轨道跳转
+                            click_ratio = (my - (list_inner_y + 5)) / track_h
+                            current_plane_idx = int(click_ratio * total_planes)
+                            current_plane_idx = max(0, min(current_plane_idx, total_planes - 1))
+                            sound_mgr.play("select")
+                    
+                    # 机体列表点击检测
+                    list_rect = pygame.Rect(list_x, content_y, list_width - 15, content_h)  # 留出滚动条空间
+                    if list_rect.collidepoint(mx, my):
+                        for i in range(scroll_offset, min(scroll_offset + max_visible, total_planes)):
+                            idx = i - scroll_offset
+                            cy = list_inner_y + idx * (card_h + card_gap)
+                            card = pygame.Rect(list_x + 8, cy, list_width - 26, card_h)
+                            if card.collidepoint(mx, my):
+                                current_plane_idx = i
+                                sound_mgr.play("select")
+                                break
+                    elif left_btn.collidepoint(mx, my):
                         current_plane_idx = (current_plane_idx-1)%len(plane_keys)
                         sound_mgr.play("select")
-                    elif right_rect.collidepoint(mx, my):
+                    elif right_btn.collidepoint(mx, my):
                         current_plane_idx = (current_plane_idx+1)%len(plane_keys)
                         sound_mgr.play("select")
                     elif start_btn.collidepoint(mx, my):
@@ -7906,12 +12510,134 @@ while True:
                     elif back_btn.collidepoint(mx, my):
                         sound_mgr.play("select")
                         game_state = "mode_select"
+                
+                elif game_state == "boss_challenge_select_plane":
+                    # 新UI布局参数 - 必须与绘制代码一致！
+                    content_y = 90
+                    content_h = HEIGHT - 170
+                    margin = 20
+                    gap = 12
+                    list_width = 280
+                    list_x = margin
+                    detail_width = WIDTH - margin * 2 - list_width - gap
+                    detail_x = list_x + list_width + gap
+                    btn_y = HEIGHT - 65
+                    nav_btn_w = 70
+                    nav_btn_h = 45
+                    
+                    # 左侧导航箭头
+                    left_btn = pygame.Rect(list_x, btn_y, nav_btn_w, nav_btn_h)
+                    # 右侧导航箭头
+                    right_btn = pygame.Rect(list_x + list_width - nav_btn_w, btn_y, nav_btn_w, nav_btn_h)
+                    # 确认出击按钮
+                    start_btn = pygame.Rect(detail_x + detail_width // 2 - 110, btn_y - 2, 220, 50)
+                    # 返回按钮
+                    back_btn = pygame.Rect(detail_x + detail_width - 90, btn_y, 85, nav_btn_h)
+                    
+                    # 滚动条参数计算
+                    card_h = 50
+                    card_gap = 6
+                    list_inner_y = content_y + 42
+                    list_inner_h = content_h - 48
+                    max_visible = list_inner_h // (card_h + card_gap)
+                    total_planes = len(plane_keys)
+                    scroll_offset = max(0, min(current_plane_idx - max_visible // 2, total_planes - max_visible))
+                    
+                    # 滚动条点击/拖动检测
+                    if total_planes > max_visible:
+                        track_h = list_inner_h - 10
+                        thumb_h = max(30, int(track_h * max_visible / total_planes))
+                        thumb_y = list_inner_y + 5 + int((track_h - thumb_h) * scroll_offset / max(1, total_planes - max_visible))
+                        scrollbar_rect = pygame.Rect(list_x + list_width - 12, thumb_y, 8, thumb_h)
+                        track_rect = pygame.Rect(list_x + list_width - 12, list_inner_y + 5, 8, track_h)
+                        
+                        if scrollbar_rect.collidepoint(mx, my):
+                            # 点击滑块开始拖动
+                            plane_select_dragging_scrollbar = True
+                            plane_select_drag_start_y = my
+                            plane_select_drag_start_scroll = current_plane_idx
+                        elif track_rect.collidepoint(mx, my):
+                            # 点击轨道跳转
+                            click_ratio = (my - (list_inner_y + 5)) / track_h
+                            current_plane_idx = int(click_ratio * total_planes)
+                            current_plane_idx = max(0, min(current_plane_idx, total_planes - 1))
+                            sound_mgr.play("select")
+                    
+                    # 机体列表点击检测
+                    list_rect = pygame.Rect(list_x, content_y, list_width - 15, content_h)  # 留出滚动条空间
+                    if list_rect.collidepoint(mx, my):
+                        for i in range(scroll_offset, min(scroll_offset + max_visible, total_planes)):
+                            idx = i - scroll_offset
+                            cy = list_inner_y + idx * (card_h + card_gap)
+                            card = pygame.Rect(list_x + 8, cy, list_width - 26, card_h)
+                            if card.collidepoint(mx, my):
+                                current_plane_idx = i
+                                sound_mgr.play("select")
+                                break
+                    elif left_btn.collidepoint(mx, my):
+                        current_plane_idx = (current_plane_idx-1)%len(plane_keys)
+                        sound_mgr.play("select")
+                    elif right_btn.collidepoint(mx, my):
+                        current_plane_idx = (current_plane_idx+1)%len(plane_keys)
+                        sound_mgr.play("select")
+                    elif start_btn.collidepoint(mx, my):
+                        # 确认选择，开始Boss挑战
+                        selected_plane = plane_keys[current_plane_idx]
+                        game_state = "boss_challenge_play"
+                        boss_challenge_current = 0
+                        boss_challenge_active = True
+                        enabled_bosses = [k for k in boss_challenge_order if boss_challenge_enabled.get(k, True)]
+                        boss_challenge_order[:] = enabled_bosses
+                        sound_mgr.play("select")
+                        try:
+                            reset_game()
+                            if not boss_challenge_music_active:
+                                music_director.push_state("boss_challenge", intensity=0.85, immediate=True)
+                                boss_challenge_music_active = True
+                            if boss_challenge_active and boss_challenge_current < len(boss_challenge_order):
+                                boss_type = boss_challenge_order[boss_challenge_current]
+                                candidate = boss_manager.spawn_boss(player.level, boss_type=boss_type)
+                                boss_challenge_current += 1
+                                if candidate:
+                                    boss = candidate
+                                    all_sprites.add(boss)
+                        except Exception as e:
+                            log_error(f"Failed to start boss challenge: {e}")
+                    elif back_btn.collidepoint(mx, my):
+                        # 返回Boss选择时重置order为全部Boss
+                        boss_challenge_order[:] = list(BOSS_DB.keys())
+                        game_state = "boss_challenge"
+                        sound_mgr.play("select")
                     
                 elif game_state == "arsenal":
                     sound_mgr.play("select")
                     r = ARSENAL_UI
+                    weapons = arsenal_save_data["weapons"]
+                    item_height = 60
+                    total_h = len(weapons) * item_height
+                    view_h = r['list_area'].height
+                    max_scroll = max(0, total_h - view_h)
+                    
+                    # 滚动条拖动检测
+                    if total_h > view_h:
+                        bar_h = max(20, (view_h / total_h) * view_h)
+                        bar_y = r['list_area'].y + (arsenal_scroll_y / total_h) * view_h if total_h > 0 else r['list_area'].y
+                        scrollbar_rect = pygame.Rect(r['list_area'].right - 8, bar_y, 8, bar_h)
+                        track_rect = pygame.Rect(r['list_area'].right - 8, r['list_area'].y, 8, view_h)
+                        
+                        if scrollbar_rect.collidepoint(mx, my):
+                            # 点击滑块开始拖动
+                            arsenal_dragging_scrollbar = True
+                            arsenal_drag_start_y = my
+                            arsenal_drag_start_scroll = arsenal_scroll_y
+                        elif track_rect.collidepoint(mx, my):
+                            # 点击轨道跳转
+                            click_ratio = (my - r['list_area'].y) / view_h
+                            arsenal_scroll_y = int(click_ratio * max_scroll)
+                            arsenal_scroll_y = max(0, min(arsenal_scroll_y, max_scroll))
+                    
                     # 列表点击 (修正为支持滚动)
-                    if r['list_area'].collidepoint(mx, my):
+                    if r['list_area'].collidepoint(mx, my) and mx < r['list_area'].right - 10:
                         # 计算相对于列表内容顶部的坐标
                         click_offset = my - (r['list_area'].y + 10) + arsenal_scroll_y
                         idx = click_offset // 60
@@ -8036,9 +12762,9 @@ while True:
                                 break
                     
                     # 翻页按钮
-                    if pygame.Rect(20, HEIGHT//2 - 25, 50, 50).collidepoint(mx, my) and gallery_page > 0: 
+                    if pygame.Rect(8, HEIGHT//2 - 30, 50, 60).collidepoint(mx, my) and gallery_page > 0: 
                         gallery_page -= 1
-                    if pygame.Rect(WIDTH-70, HEIGHT//2 - 25, 50, 50).collidepoint(mx, my): 
+                    if pygame.Rect(WIDTH-58, HEIGHT//2 - 30, 50, 60).collidepoint(mx, my): 
                         gallery_page += 1
                     
                     # 返回按钮
@@ -8053,16 +12779,41 @@ while True:
                     if r['tab_plane'].collidepoint(mx, my): codex_tab=0; codex_idx=0; codex_scroll_y=0
                     if r['tab_boss'].collidepoint(mx, my): codex_tab=1; codex_idx=0; codex_scroll_y=0
                     if r.get('tab_enemy') and r['tab_enemy'].collidepoint(mx, my): codex_tab=2; codex_idx=0; codex_scroll_y=0
-                    if r['list_view'].collidepoint(mx, my):
+                    
+                    # 计算滚动相关参数
+                    if codex_tab == 0:
+                        keys = plane_keys
+                    elif codex_tab == 1:
+                        keys = list(BOSS_DB.keys())
+                    else:
+                        from enemy_manager import enemy_type_manager
+                        keys = [e["id"] for e in enemy_type_manager.get_regular_types()]
+                    
+                    item_h = 45
+                    list_rect = r['list_view']
+                    content_height = len(keys) * item_h
+                    scroll_height = list_rect.height - 10
+                    max_scroll = max(0, content_height - list_rect.height)
+                    
+                    # 滚动条拖动检测
+                    if content_height > list_rect.height:
+                        thumb_height = max(30, int(scroll_height * list_rect.height / content_height))
+                        thumb_y = list_rect.y + 5 + int((scroll_height - thumb_height) * codex_scroll_y / max_scroll) if max_scroll > 0 else list_rect.y + 5
+                        scrollbar_rect = pygame.Rect(list_rect.right - 10, thumb_y, 8, thumb_height)
+                        track_rect = pygame.Rect(list_rect.right - 10, list_rect.y + 5, 8, scroll_height)
+                        
+                        if scrollbar_rect.collidepoint(mx, my):
+                            codex_dragging_scrollbar = True
+                            codex_drag_start_y = my
+                            codex_drag_start_scroll = codex_scroll_y
+                        elif track_rect.collidepoint(mx, my):
+                            click_ratio = (my - list_rect.y - 5) / scroll_height
+                            codex_scroll_y = int(click_ratio * max_scroll)
+                            codex_scroll_y = max(0, min(codex_scroll_y, max_scroll))
+                    
+                    if r['list_view'].collidepoint(mx, my) and mx < list_rect.right - 12:
                         offset_y = my - r['list_view'].y + codex_scroll_y
                         clicked_idx = int(offset_y // 45)
-                        if codex_tab == 0:
-                            keys = plane_keys
-                        elif codex_tab == 1:
-                            keys = list(BOSS_DB.keys())
-                        else:  # codex_tab == 2
-                            from enemy_manager import enemy_type_manager
-                            keys = [e["id"] for e in enemy_type_manager.get_regular_types()]
                         if 0 <= clicked_idx < len(keys): codex_idx = clicked_idx
                     if r['btn_back'].collidepoint(mx, my):
                         if player and hasattr(player, 'achievement_manager'):
@@ -8071,7 +12822,63 @@ while True:
 
                 elif game_state == "leaderboard":
                     sound_mgr.play("select")
-                    if pygame.Rect(WIDTH//2-60, HEIGHT-100, 120, 50).collidepoint(mx, my):
+                    
+                    # 主标签栏（排行榜 / 个人统计）- 更新位置匹配UI
+                    main_tab_y = 82
+                    main_tab_width = 160
+                    main_tab_start = WIDTH//2 - (main_tab_width * 2 + 30) // 2
+                    for i in range(2):
+                        tab_rect = pygame.Rect(main_tab_start + i * (main_tab_width + 30), main_tab_y, main_tab_width, 40)
+                        if tab_rect.collidepoint(mx, my):
+                            leaderboard_stats_tab = i
+                            leaderboard_scroll_y = 0  # 切换标签时重置滚动
+                    
+                    # 仅在排行榜标签下处理模式和排序
+                    if leaderboard_stats_tab == 0:
+                        # 滚动条拖动检测
+                        scrollbar_info = _leaderboard_cache.get("scrollbar_info")
+                        if scrollbar_info:
+                            thumb_rect = scrollbar_info["thumb_rect"]
+                            track_rect = scrollbar_info["track_rect"]
+                            max_scroll = scrollbar_info["max_scroll"]
+                            
+                            if thumb_rect.collidepoint(mx, my):
+                                # 开始拖动滑块
+                                leaderboard_dragging_scrollbar = True
+                                leaderboard_drag_start_y = my
+                                leaderboard_drag_start_scroll = leaderboard_scroll_y
+                            elif track_rect.collidepoint(mx, my):
+                                # 点击轨道跳转
+                                track_height = track_rect.height - thumb_rect.height
+                                if track_height > 0:
+                                    click_ratio = (my - track_rect.y - thumb_rect.height / 2) / track_height
+                                    click_ratio = max(0, min(1, click_ratio))
+                                    leaderboard_scroll_y = int(click_ratio * max_scroll)
+                        
+                        # 模式切换标签
+                        mode_y = 135
+                        modes = ["normal", "roguelike", "boss_challenge"]
+                        mode_tab_width = 140
+                        mode_start = WIDTH//2 - (mode_tab_width * 3 + 40) // 2
+                        for i, mode_id in enumerate(modes):
+                            tab_rect = pygame.Rect(mode_start + i * (mode_tab_width + 20), mode_y, mode_tab_width, 35)
+                            if tab_rect.collidepoint(mx, my):
+                                leaderboard_mode = mode_id
+                                leaderboard_scroll_y = 0  # 切换模式时重置滚动
+                        
+                        # 排序选项
+                        sort_y = 182
+                        sort_options = ["score", "kills", "time", "wave"]
+                        sort_btn_w = 90
+                        sort_start = WIDTH//2 - (sort_btn_w * 4 + 45) // 2
+                        for i, sort_id in enumerate(sort_options):
+                            btn_rect = pygame.Rect(sort_start + i * (sort_btn_w + 15), sort_y, sort_btn_w, 30)
+                            if btn_rect.collidepoint(mx, my):
+                                leaderboard_sort_by = sort_id
+                    
+                    # 返回按钮
+                    back_btn = pygame.Rect(WIDTH//2 - 80, HEIGHT - 75, 160, 50)
+                    if back_btn.collidepoint(mx, my):
                         if player and hasattr(player, 'achievement_manager'):
                             player.achievement_manager.save_to_file()
                         game_state = "menu"
@@ -8289,12 +13096,40 @@ while True:
             if event.type == pygame.MOUSEBUTTONUP:
                 if game_state == "settings" and settings_dragging:
                     settings_dragging = None
+                # 成就滚动条拖动结束
+                if game_state == "achievements":
+                    achievement_dragging_scrollbar = False
+                # 武器库滚动条拖动结束
+                if game_state == "arsenal":
+                    arsenal_dragging_scrollbar = False
+                # 图鉴滚动条拖动结束
+                if game_state == "codex":
+                    codex_dragging_scrollbar = False
+                # 音乐馆滚动条拖动结束
+                if game_state == "music_library":
+                    music_library_dragging_scrollbar = False
+                # 音效实验室滚动条拖动结束
+                if game_state == "sound_lab":
+                    sound_lab_dragging_scrollbar = False
+                # 排行榜滚动条拖动结束
+                if game_state == "leaderboard":
+                    leaderboard_dragging_scrollbar = False
+                # 飞机选择界面滚动条拖动结束
+                if game_state in ["select_plane", "boss_challenge_select_plane"]:
+                    plane_select_dragging_scrollbar = False
 
             if event.type == pygame.MOUSEWHEEL:
                 if game_state == "music_library":
                     scroll_music_library(-event.y)
                 elif game_state == "sound_lab":
                     scroll_sound_lab(-event.y)
+                elif game_state == "leaderboard" and leaderboard_stats_tab == 0:
+                    # 排行榜滚轮滚动
+                    scroll_amount = -event.y * 40
+                    scrollbar_info = _leaderboard_cache.get("scrollbar_info")
+                    if scrollbar_info:
+                        max_scroll = scrollbar_info["max_scroll"]
+                        leaderboard_scroll_y = max(0, min(leaderboard_scroll_y + scroll_amount, max_scroll))
         
         # 鼠标拖动更新 (在事件循环外持续检测)
         if game_state == "settings" and settings_dragging:
@@ -8322,6 +13157,190 @@ while True:
                     sound_mgr.set_sfx_volume(new_value)
             else:
                 settings_dragging = None
+        
+        # 成就滚动条拖动更新 (在事件循环外持续检测)
+        if game_state == "achievements" and achievement_dragging_scrollbar:
+            mouse_buttons = pygame.mouse.get_pressed()
+            if mouse_buttons[0]:  # 左键按下
+                mx, my = pygame.mouse.get_pos()
+                achievement_mgr = get_cached_achievement_mgr()
+                if achievement_mgr:
+                    # 计算布局参数（与绘制一致）
+                    MARGIN = 30
+                    HEADER_H, STATS_H, TAB_H, FOOTER_H, CONTENT_GAP = 70, 45, 45, 70, 8
+                    grid_cell, grid_gap = 95, 12
+                    wall_w = int((WIDTH - MARGIN * 3) * 0.58)
+                    grid_cols = max(1, int((wall_w - 40) // (grid_cell + grid_gap)))
+                    content_top = MARGIN + HEADER_H + STATS_H + TAB_H + CONTENT_GAP
+                    wall_h = HEIGHT - MARGIN - content_top - FOOTER_H
+                    grid_start_y = content_top + 18
+                    view_h = wall_h - TAB_H - 60
+                    
+                    # 获取成就数量
+                    if achievement_category == "all":
+                        filtered = list(achievement_mgr.achievements.values())
+                    else:
+                        filtered = achievement_mgr.get_achievements_by_category(achievement_category)
+                    rows = (len(filtered) + grid_cols - 1) // grid_cols
+                    total_content_h = rows * (grid_cell + grid_gap)
+                    max_scroll = max(0, total_content_h - view_h)
+                    
+                    if max_scroll > 0:
+                        scroll_bar_h = view_h
+                        thumb_h = max(35, int(scroll_bar_h * view_h / total_content_h))
+                        
+                        # 计算拖动偏移
+                        delta_y = my - achievement_drag_start_y
+                        scroll_ratio = delta_y / (scroll_bar_h - thumb_h) if (scroll_bar_h - thumb_h) > 0 else 0
+                        new_scroll = achievement_drag_start_scroll + scroll_ratio * max_scroll
+                        achievement_scroll_y = max(0, min(int(new_scroll), max_scroll))
+            else:
+                achievement_dragging_scrollbar = False
+
+        # 飞机选择界面滚动条拖动更新
+        if game_state in ["select_plane", "boss_challenge_select_plane"] and plane_select_dragging_scrollbar:
+            mouse_buttons = pygame.mouse.get_pressed()
+            if mouse_buttons[0]:
+                mx, my = pygame.mouse.get_pos()
+                # 布局参数
+                content_y = 90
+                content_h = HEIGHT - 170
+                list_inner_y = content_y + 42
+                list_inner_h = content_h - 48
+                card_h = 50
+                card_gap = 6
+                max_visible = list_inner_h // (card_h + card_gap)
+                total_planes = len(plane_keys)
+                
+                if total_planes > max_visible:
+                    track_h = list_inner_h - 10
+                    thumb_h = max(30, int(track_h * max_visible / total_planes))
+                    
+                    # 计算拖动偏移
+                    delta_y = my - plane_select_drag_start_y
+                    scroll_ratio = delta_y / (track_h - thumb_h) if (track_h - thumb_h) > 0 else 0
+                    new_idx = plane_select_drag_start_scroll + int(scroll_ratio * total_planes)
+                    current_plane_idx = max(0, min(new_idx, total_planes - 1))
+            else:
+                plane_select_dragging_scrollbar = False
+
+        # 武器库滚动条拖动更新
+        if game_state == "arsenal" and arsenal_dragging_scrollbar:
+            mouse_buttons = pygame.mouse.get_pressed()
+            if mouse_buttons[0]:
+                mx, my = pygame.mouse.get_pos()
+                r = ARSENAL_UI
+                weapons = arsenal_save_data["weapons"]
+                item_height = 60
+                total_h = len(weapons) * item_height
+                view_h = r['list_area'].height
+                max_scroll = max(0, total_h - view_h)
+                
+                if max_scroll > 0:
+                    bar_h = max(20, (view_h / total_h) * view_h)
+                    delta_y = my - arsenal_drag_start_y
+                    scroll_ratio = delta_y / (view_h - bar_h) if (view_h - bar_h) > 0 else 0
+                    new_scroll = arsenal_drag_start_scroll + scroll_ratio * max_scroll
+                    arsenal_scroll_y = max(0, min(int(new_scroll), max_scroll))
+            else:
+                arsenal_dragging_scrollbar = False
+
+        # 图鉴滚动条拖动更新
+        if game_state == "codex" and codex_dragging_scrollbar:
+            mouse_buttons = pygame.mouse.get_pressed()
+            if mouse_buttons[0]:
+                mx, my = pygame.mouse.get_pos()
+                r = CODEX_UI
+                list_rect = r['list_view']
+                
+                if codex_tab == 0:
+                    keys = plane_keys
+                elif codex_tab == 1:
+                    keys = list(BOSS_DB.keys())
+                else:
+                    from enemy_manager import enemy_type_manager
+                    keys = [e["id"] for e in enemy_type_manager.get_regular_types()]
+                
+                item_h = 45
+                content_height = len(keys) * item_h
+                scroll_height = list_rect.height - 10
+                max_scroll = max(0, content_height - list_rect.height)
+                
+                if max_scroll > 0:
+                    thumb_height = max(30, int(scroll_height * list_rect.height / content_height))
+                    delta_y = my - codex_drag_start_y
+                    scroll_ratio = delta_y / (scroll_height - thumb_height) if (scroll_height - thumb_height) > 0 else 0
+                    new_scroll = codex_drag_start_scroll + scroll_ratio * max_scroll
+                    codex_scroll_y = max(0, min(int(new_scroll), max_scroll))
+            else:
+                codex_dragging_scrollbar = False
+
+        # 音乐馆滚动条拖动更新
+        if game_state == "music_library" and music_library_dragging_scrollbar:
+            mouse_buttons = pygame.mouse.get_pressed()
+            if mouse_buttons[0]:
+                mx, my = pygame.mouse.get_pos()
+                list_rect, _, _ = get_music_library_layout()
+                layout = build_music_library_controls(list_rect)
+                content_top = layout["content_top"]
+                padding = 10
+                base_y = content_top
+                
+                visible_rows = _music_library_visible_rows()
+                scroll_track_h = list_rect.bottom - padding - base_y
+                max_scroll = max(1, len(music_library_tracks) - visible_rows)
+                
+                if scroll_track_h > 0 and max_scroll > 0:
+                    indicator_h = max(30, int(scroll_track_h * (visible_rows / len(music_library_tracks))))
+                    delta_y = my - music_library_drag_start_y
+                    scroll_ratio = delta_y / (scroll_track_h - indicator_h) if (scroll_track_h - indicator_h) > 0 else 0
+                    new_scroll = music_library_drag_start_scroll + scroll_ratio * max_scroll
+                    music_library_scroll_index = max(0, min(int(new_scroll), max_scroll))
+            else:
+                music_library_dragging_scrollbar = False
+
+        # 音效实验室滚动条拖动更新
+        if game_state == "sound_lab" and sound_lab_dragging_scrollbar:
+            mouse_buttons = pygame.mouse.get_pressed()
+            if mouse_buttons[0]:
+                mx, my = pygame.mouse.get_pos()
+                list_rect, _, _ = get_sound_lab_layout()
+                _, filter_band_height = get_sound_lab_filter_layout(list_rect)
+                content_top = list_rect.y + 12 + filter_band_height
+                padding = 10
+                
+                visible_rows = _sound_lab_visible_rows()
+                scroll_track_h = list_rect.height - padding * 2 - filter_band_height
+                max_scroll = max(1, len(sound_lab_tracks) - visible_rows)
+                
+                if scroll_track_h > 0 and max_scroll > 0:
+                    indicator_h = max(30, int(scroll_track_h * (visible_rows / len(sound_lab_tracks))))
+                    delta_y = my - sound_lab_drag_start_y
+                    scroll_ratio = delta_y / (scroll_track_h - indicator_h) if (scroll_track_h - indicator_h) > 0 else 0
+                    new_scroll = sound_lab_drag_start_scroll + scroll_ratio * max_scroll
+                    sound_lab_scroll_index = max(0, min(int(new_scroll), max_scroll))
+            else:
+                sound_lab_dragging_scrollbar = False
+
+        # 排行榜滚动条拖动更新
+        if game_state == "leaderboard" and leaderboard_dragging_scrollbar:
+            mouse_buttons = pygame.mouse.get_pressed()
+            if mouse_buttons[0]:
+                mx, my = pygame.mouse.get_pos()
+                scrollbar_info = _leaderboard_cache.get("scrollbar_info")
+                if scrollbar_info:
+                    track_rect = scrollbar_info["track_rect"]
+                    thumb_rect = scrollbar_info["thumb_rect"]
+                    max_scroll = scrollbar_info["max_scroll"]
+                    
+                    if max_scroll > 0:
+                        track_height = track_rect.height - thumb_rect.height
+                        delta_y = my - leaderboard_drag_start_y
+                        scroll_ratio = delta_y / track_height if track_height > 0 else 0
+                        new_scroll = leaderboard_drag_start_scroll + scroll_ratio * max_scroll
+                        leaderboard_scroll_y = max(0, min(int(new_scroll), max_scroll))
+            else:
+                leaderboard_dragging_scrollbar = False
 
         if game_state == "menu": 
             draw_menu_ui()
@@ -9098,6 +14117,9 @@ while True:
                                 # 加分
                                 score += 100 if m.is_elite else 20
                                 
+                                # 游戏统计 - 击杀数
+                                game_stats["kills"] = game_stats.get("kills", 0) + 1
+                                
                                 # 重置击杀计时
                                 last_kill_timer = 0
                                 
@@ -9301,6 +14323,7 @@ while True:
                                     if enemy.hp <= 0 and not getattr(enemy, '_death_rewarded', False):
                                         enemy._death_rewarded = True
                                         score += 100 if enemy.is_elite else 20
+                                        game_stats["kills"] = game_stats.get("kills", 0) + 1
                                         create_explosion(enemy.rect.center, (0, 255, 100), 5)
                                         sound_mgr.play("explosion")
                                         # 随机掉落物品
@@ -9478,9 +14501,9 @@ while True:
                                     return random.choices(["T1", "T2", "T3", "T4"], weights=[15, 30, 30, 25], k=1)[0]
                             
                             # ================================================================
-                            # 轨道1：波次事件系统
+                            # 轨道1：波次事件系统（Boss Rush模式禁用）
                             # ================================================================
-                            if not boss and not wave_event_active:
+                            if not boss_challenge_active and not boss and not wave_event_active:
                                 wave_event_timer += 1
                                 wave_cooldown = int(1800 * difficulty_mult)  # 约30秒，低血量时延长
                                 
@@ -9496,8 +14519,8 @@ while True:
                                         FloatingText(WIDTH // 2, HEIGHT // 4, chosen_wave["warning"], (255, 200, 0))
                                         sound_mgr.play("warning") if hasattr(sound_mgr, 'play') else None
                             
-                            # 波次预警倒计时
-                            if wave_event_active and wave_warning_timer > 0:
+                            # 波次预警倒计时（Boss Rush模式跳过）
+                            if not boss_challenge_active and wave_event_active and wave_warning_timer > 0:
                                 wave_warning_timer -= 1
                                 # 屏幕边缘闪烁效果
                                 if wave_warning_timer % 20 < 10:
@@ -9524,7 +14547,10 @@ while True:
                             # ================================================================
                             # 轨道2：持续刷新层
                             # ================================================================
-                            if not wave_event_active or wave_warning_timer <= 0:
+                            # Boss挑战模式禁止生成非Boss敌人
+                            if boss_challenge_active:
+                                pass  # Boss Rush模式只打Boss，不刷小怪
+                            elif not wave_event_active or wave_warning_timer <= 0:
                                 normal_spawn_timer += 1
                                 
                                 # 动态刷新间隔
@@ -9981,6 +15007,7 @@ while True:
                             if m.hp <= 0 and not getattr(m, '_death_rewarded', False):
                                 m._death_rewarded = True  # 标记已处理，防止重复奖励
                                 score += 100 if m.is_elite else 20
+                                game_stats["kills"] = game_stats.get("kills", 0) + 1
                                 # 【统计】记录击杀和更新连击
                                 player.stats['kills'] += 1
                                 player.stats['current_combo'] += 1
@@ -10545,6 +15572,116 @@ while True:
                             boss.hp -= damage
                             boss._hit_flash_timer = 10  # 设置闪白效果
                             
+                            # 【新增】打Boss也充能大招
+                            ult_charge_rate = getattr(player, 'ult_charge_rate', 1.0)
+                            ult_charge_gain = (damage / 8) * ult_charge_rate  # Boss充能略多一点
+                            player.ult_charge = min(player.max_ult_charge, player.ult_charge + ult_charge_gain)
+                            player.ult2_charge = min(player.max_ult2_charge, player.ult2_charge + ult_charge_gain * 0.8)
+                            player.ult3_charge = min(player.max_ult3_charge, player.ult3_charge + ult_charge_gain * 0.6)
+                            if hasattr(player, 'plane_id') and player.plane_id in ("scarlet", "zenith", "viscerator", "sdmg"):
+                                player.ult4_charge = min(player.max_ult4_charge, player.ult4_charge + ult_charge_gain * 0.4)
+                            
+                            # 【新增】机体特效触发（对Boss生效）
+                            # 【霓虹突击者】过载充能
+                            if hasattr(player, 'plane_id') and player.plane_id == "striker":
+                                if hasattr(player, 'gain_striker_charge'):
+                                    player.gain_striker_charge(3)
+                            
+                            # 【雷霆战鹰】雷暴充能
+                            if hasattr(player, 'plane_id') and player.plane_id == "thunderbird":
+                                if hasattr(player, 'gain_thunder_charge'):
+                                    player.gain_thunder_charge(5)
+                            
+                            # 【剧毒蝰蛇】毒素叠加
+                            if hasattr(player, 'plane_id') and player.plane_id == "viper":
+                                if hasattr(player, 'apply_viper_poison'):
+                                    player.apply_viper_poison(boss, damage)
+                            
+                            # 【幽灵收割者】死神印记（对Boss也生效）
+                            if hasattr(player, 'plane_id') and player.plane_id == "specter":
+                                if hasattr(player, 'update_specter_focus'):
+                                    player.update_specter_focus(boss)
+                            
+                            # 【极光女神】极光共鸣
+                            if hasattr(player, 'plane_id') and player.plane_id == "aurora":
+                                if hasattr(player, 'spawn_aurora_orb'):
+                                    player.spawn_aurora_orb(b.rect.center)
+                            
+                            # 【绯红恶魔】鲜血层数累积
+                            if hasattr(player, 'plane_id') and player.plane_id == "scarlet":
+                                if hasattr(player, 'gain_blood_stack'):
+                                    player.gain_blood_stack(1)
+                            
+                            # 【吸血效果】打Boss也能吸血
+                            lifesteal = getattr(player, 'lifesteal', 0)
+                            if lifesteal > 0:
+                                heal_amount = damage * lifesteal
+                                player.hp = min(player.max_hp, player.hp + heal_amount)
+                                if heal_amount > 1 and random.random() < 0.3:
+                                    FloatingText(player.rect.centerx, player.rect.top - 20, f"+{int(heal_amount)}", LIME)
+                            
+                            # 【统计更新】记录命中
+                            player.stats['hits'] += 1
+                            player.stats['damage_dealt'] += damage
+                            
+                            # 【连锁闪电】打Boss也能触发连锁到附近小怪
+                            has_chain = (hasattr(player, 'has_chain_lightning') and player.has_chain_lightning) or \
+                                       (hasattr(player, 'plane_id') and player.plane_id == "thunderbird")
+                            if has_chain and len(mobs) > 0:
+                                base_chain = 3 if (hasattr(player, 'plane_id') and player.plane_id == "thunderbird") else 0
+                                chain_count = base_chain + getattr(player, 'chain_count', 0)
+                                chain_damage_mult = getattr(player, 'chain_damage', 0.7)
+                                chain_range = 300  # Boss连锁范围更大
+                                lightning_color = (120, 200, 255) if getattr(player, 'plane_id', None) == "thunderbird" else YELLOW
+                                
+                                current_pos = boss.rect.center
+                                chain_damage = damage * chain_damage_mult
+                                chained_enemies = set()
+                                
+                                for jump in range(int(chain_count)):
+                                    nearest_enemy = None
+                                    min_dist = chain_range
+                                    for enemy in mobs:
+                                        if enemy not in chained_enemies and enemy.hp > 0:
+                                            dist = math.hypot(enemy.rect.centerx - current_pos[0], enemy.rect.centery - current_pos[1])
+                                            if dist < min_dist:
+                                                min_dist = dist
+                                                nearest_enemy = enemy
+                                    if nearest_enemy:
+                                        pygame.draw.line(screen, lightning_color, current_pos, nearest_enemy.rect.center, 2)
+                                        nearest_enemy.hp -= chain_damage
+                                        FloatingText(nearest_enemy.rect.centerx, nearest_enemy.rect.top - 10, f"-{int(chain_damage)}", lightning_color)
+                                        if random.random() < 0.5:
+                                            Particle(nearest_enemy.rect.center, lightning_color)
+                                        chained_enemies.add(nearest_enemy)
+                                        current_pos = nearest_enemy.rect.center
+                                        chain_damage *= chain_damage_mult
+                                    else:
+                                        break
+                            
+                            # 【爆炸伤害】打Boss也能触发范围爆炸伤害周围小怪
+                            if hasattr(player, 'has_area_dmg') and player.has_area_dmg and len(mobs) > 0:
+                                explosion_radius = getattr(player, 'explosion_radius', 80)
+                                explosion_mult = getattr(player, 'explosion_mult', 0.5)
+                                explosion_damage = damage * explosion_mult
+                                
+                                pygame.draw.circle(screen, (255, 200, 0), b.rect.center, int(explosion_radius), 2)
+                                for _ in range(3):
+                                    angle = random.uniform(0, math.pi * 2)
+                                    dist = random.uniform(0, explosion_radius * 0.5)
+                                    px = b.rect.centerx + math.cos(angle) * dist
+                                    py = b.rect.centery + math.sin(angle) * dist
+                                    Particle((int(px), int(py)), (255, 150, 0))
+                                
+                                for enemy in mobs:
+                                    dist = math.hypot(enemy.rect.centerx - b.rect.centerx, enemy.rect.centery - b.rect.centery)
+                                    if dist <= explosion_radius:
+                                        enemy.hp -= explosion_damage
+                                        FloatingText(enemy.rect.centerx, enemy.rect.top - 15, f"-{int(explosion_damage)}", (255, 150, 0))
+                            
+                            # 【伤害数字显示】
+                            DamageNumber(boss.rect.centerx, boss.rect.top, damage, False)
+                            
                             # ===== 增强Boss打击感（优化版） =====
                             # 屏幕轻微震动 - 减弱
                             screen_shake_offset = apply_screen_shake(2)
@@ -10561,21 +15698,28 @@ while True:
                             
                             if b.piercing <= 0: b.kill()
                             if boss.hp <= 0:
-                                boss.kill(); boss = None; score += 10000
+                                # 先保存Boss位置，再kill
+                                boss_death_x = boss.rect.centerx
+                                boss_death_y = boss.rect.centery
+                                boss_death_top = boss.rect.top
+                                boss_death_center = boss.rect.center
+                                boss.kill()
+                                boss = None
+                                score += 10000
                                 
                                 # ===== Boss击杀特效（大幅简化） =====
                                 # 屏幕震动 - 减弱
                                 screen_shake_offset = apply_screen_shake(4)
                                 
                                 # 单次爆炸
-                                create_explosion(boss.rect.center, (255, 120, 0), 10)
+                                create_explosion(boss_death_center, (255, 120, 0), 10)
                                 
                                 # 少量粒子
                                 if random.random() < 0.8:
                                     for _ in range(4):
                                         angle = random.uniform(0, math.pi * 2)
                                         speed = random.uniform(4, 7)
-                                        Particle(boss.rect.center, GOLD)
+                                        Particle(boss_death_center, GOLD)
                                 
                                 # 音效
                                 sound_mgr.play("nuke")
@@ -10588,15 +15732,15 @@ while True:
                                 
                                 # ========== Boss击杀奖励：物品掉落 ==========
                                 if item_manager:
-                                    item_manager.spawn_boss_drops(boss.rect.centerx, boss.rect.centery)
+                                    item_manager.spawn_boss_drops(boss_death_x, boss_death_y)
                                 
                                 # ========== Boss击杀奖励：大量经验 ==========
                                 boss_xp_reward = 200 + player.level * 50  # 基础200 + 等级*50
                                 for i in range(8):  # 掉落8个大经验球
                                     offset_x = random.randint(-80, 80)
                                     offset_y = random.randint(-60, 60)
-                                    ExperienceOrb(boss.rect.centerx + offset_x, boss.rect.centery + offset_y, boss_xp_reward // 8)
-                                FloatingText(boss.rect.centerx, boss.rect.top - 50, f"经验+{boss_xp_reward}", GOLD)
+                                    ExperienceOrb(boss_death_x + offset_x, boss_death_y + offset_y, boss_xp_reward // 8)
+                                FloatingText(boss_death_x, boss_death_top - 50, f"经验+{boss_xp_reward}", GOLD)
                                 
                                 # ========== Boss击杀奖励：触发卡牌选择 ==========
                                 if player.upgrade_manager:
@@ -10624,6 +15768,10 @@ while True:
                                             player.achievement_manager.save_to_file()
                                         except Exception:
                                             log_error("保存成就时发生错误")
+                                
+                                # ========== 排行榜统计：Boss击杀 ==========
+                                game_stats["boss_kills"] += 1
+                                
                                 # Boss挑战模式逻辑：检查是否所有Boss都通关
                                 if boss_challenge_active:
                                     if boss_challenge_current >= len(boss_challenge_order):
@@ -10720,6 +15868,43 @@ while True:
                 if boss:
                     game_tick = pygame.time.get_ticks()
                     boss_hp_ratio = boss.hp / boss.max_hp
+                    
+                    # ========== 全局Boss威压效果 ==========
+                    # 1. 暗角压迫效果 - 屏幕边缘变暗
+                    vignette_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                    vignette_intensity = int(60 + 40 * (1 - boss_hp_ratio))  # 血越少越暗
+                    for edge in range(60):
+                        edge_alpha = int(vignette_intensity * (1 - edge / 60))
+                        pygame.draw.rect(vignette_surf, (0, 0, 0, edge_alpha), (edge, edge, WIDTH - edge * 2, HEIGHT - edge * 2), 1)
+                    screen.blit(vignette_surf, (0, 0))
+                    
+                    # 2. Boss威压光环 - 巨大脉冲光圈
+                    boss_color = boss.data.get('color', (255, 100, 100))
+                    aura_pulse = int(30 * math.sin(game_tick / 200))
+                    aura_base_r = 180 + aura_pulse
+                    # 外层模糊光晕
+                    for glow_layer in range(5):
+                        glow_r = aura_base_r + glow_layer * 15
+                        glow_alpha = int(40 - glow_layer * 7)
+                        glow_surf = pygame.Surface((glow_r * 2 + 20, glow_r * 2 + 20), pygame.SRCALPHA)
+                        pygame.draw.circle(glow_surf, (*boss_color[:3], glow_alpha), (glow_r + 10, glow_r + 10), glow_r)
+                        screen.blit(glow_surf, (boss.rect.centerx - glow_r - 10, boss.rect.centery - glow_r - 10))
+                    
+                    # 3. 威压涟漪 - 从Boss向外扩散的冲击波
+                    ripple_cycle = (game_tick % 2000) / 2000  # 2秒一个周期
+                    ripple_r = int(50 + ripple_cycle * 250)
+                    ripple_alpha = int(120 * (1 - ripple_cycle))
+                    if ripple_alpha > 10:
+                        pygame.draw.circle(screen, (*boss_color[:3], ripple_alpha), boss.rect.center, ripple_r, 3)
+                    
+                    # 4. 空间扭曲线条 - 放射状能量线
+                    for ray in range(12):
+                        ray_angle = math.radians(ray * 30 + game_tick / 50)
+                        ray_length = 200 + int(50 * math.sin(game_tick / 100 + ray))
+                        ray_end_x = int(boss.rect.centerx + ray_length * math.cos(ray_angle))
+                        ray_end_y = int(boss.rect.centery + ray_length * math.sin(ray_angle))
+                        ray_alpha = int(60 + 40 * math.sin(game_tick / 80 + ray))
+                        pygame.draw.line(screen, (*boss_color[:3],), boss.rect.center, (ray_end_x, ray_end_y), 1)
                     
                     # ===== 虚空母舰 =====
                     if boss.type == "carrier":
@@ -10931,6 +16116,173 @@ while True:
                         # 中央王冠
                         crown_size = 40 + int(15 * math.sin(game_tick / 80))
                         pygame.draw.circle(screen, (255, 200, 255), boss.rect.center, crown_size)
+                    
+                    # ===== 绝音夜煞 =====
+                    elif boss.type == "sonic_banshee":
+                        # 音波同心圆冲击 - 快速扩散
+                        for wave_num in range(4):
+                            wave_offset = (game_tick / 20 + wave_num * 80) % 300
+                            wave_r = int(30 + wave_offset)
+                            wave_alpha = int(200 * (1 - wave_offset / 300))
+                            if wave_alpha > 10:
+                                pygame.draw.circle(screen, (150, 50, 200), boss.rect.center, wave_r, 4)
+                        # 扭曲的声波线条
+                        for line in range(16):
+                            angle = math.radians(line * 22.5 + game_tick / 30)
+                            distort = int(20 * math.sin(game_tick / 40 + line))
+                            end_x = int(boss.rect.centerx + (150 + distort) * math.cos(angle))
+                            end_y = int(boss.rect.centery + (150 + distort) * math.sin(angle))
+                            pygame.draw.line(screen, (180, 80, 220), boss.rect.center, (end_x, end_y), 2)
+                        # 黑暗吞噬效果 - 中心变暗
+                        dark_surf = pygame.Surface((160, 160), pygame.SRCALPHA)
+                        for dark_r in range(80, 0, -5):
+                            dark_alpha = int(100 * (1 - dark_r / 80))
+                            pygame.draw.circle(dark_surf, (10, 5, 15, dark_alpha), (80, 80), dark_r)
+                        screen.blit(dark_surf, (boss.rect.centerx - 80, boss.rect.centery - 80))
+                    
+                    # ===== 棱镜核心 =====
+                    elif boss.type == "prism_overlord":
+                        # 幻彩光环 - 彩虹色旋转
+                        for prism_ring in range(6):
+                            ring_angle = math.radians(game_tick / 60 + prism_ring * 60)
+                            ring_r = 100 + prism_ring * 25
+                            hue = (prism_ring * 60 + int(game_tick / 10)) % 360
+                            ring_color = pygame.Color(0)
+                            ring_color.hsva = (hue, 100, 100, 100)
+                            pygame.draw.circle(screen, ring_color, boss.rect.center, ring_r, 2)
+                        # 折射光束 - 从中心射出的彩色光线
+                        for beam in range(12):
+                            beam_angle = math.radians(beam * 30 + game_tick / 25)
+                            beam_hue = (beam * 30 + int(game_tick / 8)) % 360
+                            beam_color = pygame.Color(0)
+                            beam_color.hsva = (beam_hue, 80, 100, 100)
+                            beam_end_x = int(boss.rect.centerx + 200 * math.cos(beam_angle))
+                            beam_end_y = int(boss.rect.centery + 200 * math.sin(beam_angle))
+                            pygame.draw.line(screen, beam_color, boss.rect.center, (beam_end_x, beam_end_y), 3)
+                        # 中心白色闪光
+                        flash_size = 25 + int(15 * math.sin(game_tick / 50))
+                        pygame.draw.circle(screen, (255, 255, 255), boss.rect.center, flash_size)
+                    
+                    # ===== 腐朽剑圣 =====
+                    elif boss.type == "rotting_kensei":
+                        # 剑气斩痕 - 随机闪现的斜线
+                        slash_phase = (game_tick // 300) % 3
+                        slash_progress = (game_tick % 300) / 300
+                        if slash_progress < 0.3:
+                            slash_alpha = int(255 * slash_progress / 0.3)
+                            slash_length = int(300 * slash_progress / 0.3)
+                            slash_angle = math.radians(-45 + slash_phase * 30)
+                            sx = boss.rect.centerx + int(slash_length * math.cos(slash_angle) / 2)
+                            sy = boss.rect.centery + int(slash_length * math.sin(slash_angle) / 2)
+                            ex = boss.rect.centerx - int(slash_length * math.cos(slash_angle) / 2)
+                            ey = boss.rect.centery - int(slash_length * math.sin(slash_angle) / 2)
+                            pygame.draw.line(screen, (255, 100, 100), (sx, sy), (ex, ey), 5)
+                            pygame.draw.line(screen, (255, 200, 200), (sx, sy), (ex, ey), 2)
+                        # 腐败气息 - 红色毒雾
+                        for fog in range(8):
+                            fog_angle = math.radians(fog * 45 + game_tick / 100)
+                            fog_dist = 80 + int(40 * math.sin(game_tick / 80 + fog))
+                            fog_x = int(boss.rect.centerx + fog_dist * math.cos(fog_angle))
+                            fog_y = int(boss.rect.centery + fog_dist * math.sin(fog_angle))
+                            fog_r = 15 + int(10 * math.sin(game_tick / 60 + fog))
+                            fog_surf = pygame.Surface((fog_r * 2, fog_r * 2), pygame.SRCALPHA)
+                            pygame.draw.circle(fog_surf, (150, 30, 30, 80), (fog_r, fog_r), fog_r)
+                            screen.blit(fog_surf, (fog_x - fog_r, fog_y - fog_r))
+                        # 寄生触手蠕动
+                        for tentacle in range(5):
+                            t_angle = math.radians(tentacle * 72 + game_tick / 120)
+                            t_base_x = boss.rect.centerx + int(60 * math.cos(t_angle))
+                            t_base_y = boss.rect.centery + int(60 * math.sin(t_angle))
+                            t_points = [(t_base_x, t_base_y)]
+                            for seg in range(4):
+                                seg_x = t_base_x + int((30 + seg * 20) * math.cos(t_angle + math.sin(game_tick / 50 + seg) * 0.5))
+                                seg_y = t_base_y + int((30 + seg * 20) * math.sin(t_angle + math.sin(game_tick / 50 + seg) * 0.5))
+                                t_points.append((seg_x, seg_y))
+                            pygame.draw.lines(screen, (200, 50, 50), False, t_points, 4)
+                    
+                    # ===== 悖论时钟 =====
+                    elif boss.type == "paradox_clockwork":
+                        # 巨大时钟表盘
+                        dial_r = 150
+                        pygame.draw.circle(screen, (205, 165, 95), boss.rect.center, dial_r, 3)
+                        pygame.draw.circle(screen, (185, 145, 75), boss.rect.center, dial_r - 10, 2)
+                        # 刻度
+                        for hour in range(12):
+                            h_angle = math.radians(hour * 30 - 90)
+                            h_inner = dial_r - 20
+                            h_outer = dial_r - 5
+                            hx1 = int(boss.rect.centerx + h_inner * math.cos(h_angle))
+                            hy1 = int(boss.rect.centery + h_inner * math.sin(h_angle))
+                            hx2 = int(boss.rect.centerx + h_outer * math.cos(h_angle))
+                            hy2 = int(boss.rect.centery + h_outer * math.sin(h_angle))
+                            pygame.draw.line(screen, (220, 180, 100), (hx1, hy1), (hx2, hy2), 3)
+                        # 疯狂旋转的指针
+                        hour_angle = math.radians(game_tick / 50 - 90)
+                        minute_angle = math.radians(game_tick / 15 - 90)
+                        second_angle = math.radians(game_tick / 3 - 90)
+                        pygame.draw.line(screen, (80, 50, 30), boss.rect.center, 
+                                       (boss.rect.centerx + int(60 * math.cos(hour_angle)),
+                                        boss.rect.centery + int(60 * math.sin(hour_angle))), 5)
+                        pygame.draw.line(screen, (100, 70, 40), boss.rect.center,
+                                       (boss.rect.centerx + int(100 * math.cos(minute_angle)),
+                                        boss.rect.centery + int(100 * math.sin(minute_angle))), 3)
+                        pygame.draw.line(screen, (180, 50, 50), boss.rect.center,
+                                       (boss.rect.centerx + int(130 * math.cos(second_angle)),
+                                        boss.rect.centery + int(130 * math.sin(second_angle))), 2)
+                        # 齿轮旋转光环
+                        for gear_ring in range(3):
+                            gear_r = 170 + gear_ring * 30
+                            gear_rot = game_tick / (60 + gear_ring * 20) * (1 if gear_ring % 2 == 0 else -1)
+                            for tooth in range(20):
+                                tooth_angle = math.radians(tooth * 18 + gear_rot * 50)
+                                tx = int(boss.rect.centerx + gear_r * math.cos(tooth_angle))
+                                ty = int(boss.rect.centery + gear_r * math.sin(tooth_angle))
+                                pygame.draw.circle(screen, (185, 145, 75), (tx, ty), 4)
+                        # 时间裂痕
+                        for crack in range(6):
+                            crack_angle = math.radians(crack * 60 + 15)
+                            for seg in range(5):
+                                seg_start = 30 + seg * 25
+                                seg_end = 50 + seg * 25
+                                cx1 = int(boss.rect.centerx + seg_start * math.cos(crack_angle + math.sin(seg) * 0.2))
+                                cy1 = int(boss.rect.centery + seg_start * math.sin(crack_angle + math.sin(seg) * 0.2))
+                                cx2 = int(boss.rect.centerx + seg_end * math.cos(crack_angle + math.sin(seg + 1) * 0.2))
+                                cy2 = int(boss.rect.centery + seg_end * math.sin(crack_angle + math.sin(seg + 1) * 0.2))
+                                pygame.draw.line(screen, (255, 220, 150), (cx1, cy1), (cx2, cy2), 1)
+                    
+                    # ===== 熔核巨兽 =====
+                    elif boss.type == "molten_behemoth":
+                        # 熔岩光环 - 橙红色脉动
+                        for lava_ring in range(4):
+                            lava_r = 120 + lava_ring * 35 + int(15 * math.sin(game_tick / 60 + lava_ring))
+                            lava_alpha = int(150 - lava_ring * 30)
+                            pygame.draw.circle(screen, (255, 100 + lava_ring * 20, 30), boss.rect.center, lava_r, 4)
+                        # 岩浆喷发粒子
+                        for eruption in range(12):
+                            e_angle = math.radians(eruption * 30 + game_tick / 40)
+                            e_dist = 80 + int(60 * abs(math.sin(game_tick / 100 + eruption)))
+                            e_x = int(boss.rect.centerx + e_dist * math.cos(e_angle))
+                            e_y = int(boss.rect.centery + e_dist * math.sin(e_angle))
+                            e_size = 8 + int(6 * math.sin(game_tick / 50 + eruption))
+                            pygame.draw.circle(screen, (255, 150, 50), (e_x, e_y), e_size)
+                            pygame.draw.circle(screen, (255, 220, 100), (e_x, e_y), e_size - 3)
+                        # 热浪扭曲 - 上升的热气
+                        for heat in range(8):
+                            heat_x = boss.rect.centerx - 80 + heat * 23
+                            heat_y_base = boss.rect.centery - 100
+                            heat_offset = int(15 * math.sin(game_tick / 30 + heat))
+                            for wave_seg in range(5):
+                                wy = heat_y_base - wave_seg * 25
+                                wx = heat_x + int(10 * math.sin(game_tick / 40 + wave_seg + heat))
+                                wave_alpha = int(80 * (1 - wave_seg / 5))
+                                wave_surf = pygame.Surface((20, 20), pygame.SRCALPHA)
+                                pygame.draw.ellipse(wave_surf, (255, 200, 100, wave_alpha), (0, 5, 20, 10))
+                                screen.blit(wave_surf, (wx - 10, wy - 10))
+                        # 中心熔岩核
+                        core_pulse = int(20 * math.sin(game_tick / 40))
+                        pygame.draw.circle(screen, (255, 80, 20), boss.rect.center, 50 + core_pulse)
+                        pygame.draw.circle(screen, (255, 180, 80), boss.rect.center, 35 + core_pulse)
+                        pygame.draw.circle(screen, (255, 255, 200), boss.rect.center, 20 + core_pulse)
                     
                     # 通用效果：enraged闪烁和被击中闪白
                     if boss.enraged:

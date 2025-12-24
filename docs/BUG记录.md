@@ -719,3 +719,276 @@ def update(self) -> None:
 
 ### 修复日期
 2025年12月22日
+---
+
+## Bug #010: 字体渲染异常导致变量未定义错误
+
+### 问题描述
+成就界面点击某个成就查看详情时，控制台报错 `NameError: name 'quote_right' is not defined`，但代码中 `quote_right` 明明在使用前一行就定义了。
+
+### 游戏表现
+- 用户进入成就界面，点击左侧的某个成就徽章
+- **界面卡死**，无法操作，无法返回主菜单
+- 成就详情面板没有显示任何内容
+- 必须强制关闭游戏才能退出
+
+### 具体表现
+- 用户进入成就界面，点击某个成就徽章
+- 控制台报错：
+  ```
+  NameError: name 'quote_right' is not defined
+  Traceback (most recent call last):
+    File "main.py", line 4906, in _draw_achievements_ui_inner
+      screen.blit(quote_right, (px + 25 + desc_surf.get_width(), py - 8))
+  ```
+- 但查看代码，`quote_right` 在第4905行定义，第4906行使用，逻辑上不应该未定义
+
+### 根本原因
+**字体渲染异常导致赋值语句未完成**
+
+问题代码：
+```python
+quote_right = quote_font.render(""", True, quote_color)  # 第4905行
+screen.blit(quote_right, ...)  # 第4906行 - 报 NameError
+```
+
+真正的问题在第4905行：`quote_font.render(""", ...)` 渲染中文右引号 `"` 时抛出了异常。
+
+由于异常发生在赋值表达式的**右侧**（`render()` 调用），赋值操作没有完成，`quote_right` 变量从未被创建。当执行到第4906行时，Python 报告 `NameError`。
+
+这是一个**误导性错误**：
+- Python 报告的错误位置是第4906行（使用变量的地方）
+- 但实际出错的是第4905行（`render()` 调用失败）
+
+可能的渲染失败原因：
+1. SimHei 字体可能无法正确渲染特殊的中文引号字符 `"`
+2. 字体对象在某些情况下状态异常
+
+### 解决方案
+移除引号装饰代码，简化描述区域渲染：
+
+```python
+# 修复前（问题代码）
+quote_font = get_ach_font("SimHei", 28)
+quote_color = (80, 85, 100)
+quote_left = quote_font.render(""", True, quote_color)
+screen.blit(quote_left, (px - 5, py - 8))
+desc_surf = desc_font.render(desc_text, True, (190, 195, 210))
+screen.blit(desc_surf, (px + 20, py + 5))
+quote_right = quote_font.render(""", True, quote_color)  # ← 这里失败
+screen.blit(quote_right, (px + 25 + desc_surf.get_width(), py - 8))
+
+# 修复后（简化版）
+desc_surf = desc_font.render(desc_text, True, (190, 195, 210))
+screen.blit(desc_surf, (px + 5, py + 5))
+```
+
+### 预防措施
+1. **避免使用特殊Unicode字符进行渲染**：中文引号 `"` `"` 等特殊字符可能在某些字体中不支持
+2. **字体渲染应使用 try-except 包裹**：
+   ```python
+   try:
+       surf = font.render(text, True, color)
+   except Exception:
+       surf = fallback_font.render("?", True, color)  # 降级处理
+   ```
+3. **注意"误导性错误"**：当看到 `NameError: name 'xxx' is not defined`，但 `xxx` 明明在上一行定义时，检查上一行的表达式是否可能抛出异常
+4. **赋值语句右侧的函数调用失败会导致变量未创建**：
+   ```python
+   x = some_function()  # 如果 some_function() 抛异常，x 不会被创建
+   print(x)  # NameError: name 'x' is not defined
+   ```
+
+### 相关文件
+- `main.py` - `_draw_achievements_ui_inner()` 函数，成就详情描述区域渲染
+
+### 修复日期
+2025年12月23日
+
+---
+
+## Bug #011: 排行榜缓存渐变函数索引越界导致界面卡死
+
+### 问题描述
+点击排行榜界面后，游戏立即卡死无响应。
+
+### 具体表现
+- 用户从主菜单点击"排行榜"按钮
+- 游戏窗口立即卡死，无法操作
+- 需要强制关闭程序
+
+### 根本原因
+**渐变缓存函数参数处理错误**：`_get_lb_gradient()` 函数假设 `colors` 参数始终有两个颜色，但实际调用时只传入了单个颜色。
+
+```python
+# 问题代码
+def _get_lb_gradient(key, width, height, colors, alpha_range=(255, 0)):
+    # ...
+    r = int(colors[0][0] * (1 - ratio) + colors[1][0] * ratio)  # colors[1] 越界！
+    g = int(colors[0][1] * (1 - ratio) + colors[1][1] * ratio)
+    b = int(colors[0][2] * (1 - ratio) + colors[1][2] * ratio)
+```
+
+调用处传入单色：
+```python
+# 只传了一个颜色
+panel_bg = _get_lb_gradient("panel_bg", width, height, [(15, 18, 28)], (220, 100))
+```
+
+当 `colors = [(15, 18, 28)]` 时，访问 `colors[1]` 会抛出 `IndexError`，但由于异常未被捕获，导致整个渲染循环阻塞。
+
+### 修复方案
+添加对单色情况的兼容处理：
+
+```python
+# 修复后
+def _get_lb_gradient(key, width, height, colors, alpha_range=(255, 0)):
+    cache_key = (key, width, height)
+    if cache_key not in _leaderboard_cache["gradient_surfaces"]:
+        surf = pygame.Surface((width, height), pygame.SRCALPHA)
+        # 处理单色或双色情况
+        color1 = colors[0]
+        color2 = colors[1] if len(colors) > 1 else colors[0]  # 兼容单色
+        for y in range(height):
+            ratio = y / height if height > 0 else 0
+            r = int(color1[0] * (1 - ratio) + color2[0] * ratio)
+            g = int(color1[1] * (1 - ratio) + color2[1] * ratio)
+            b = int(color1[2] * (1 - ratio) + color2[2] * ratio)
+            alpha = int(alpha_range[0] * (1 - ratio) + alpha_range[1] * ratio)
+            pygame.draw.line(surf, (r, g, b, alpha), (0, y), (width, y))
+        _leaderboard_cache["gradient_surfaces"][cache_key] = surf
+    return _leaderboard_cache["gradient_surfaces"][cache_key]
+```
+
+### 预防措施
+1. **函数参数应有默认值或边界检查**：当参数是列表时，访问索引前应检查长度
+2. **缓存函数的首次调用尤其危险**：因为缓存未命中时才会执行可能出错的代码
+3. **性能优化时要充分测试**：缓存系统引入后，原本正常的代码路径可能因参数传递问题出错
+4. **使用防御性编程**：
+   ```python
+   # 好的做法
+   color2 = colors[1] if len(colors) > 1 else colors[0]
+   # 或者
+   color2 = colors[-1]  # 取最后一个元素
+   ```
+
+### 相关文件
+- `main.py` - `_get_lb_gradient()` 函数，排行榜渐变缓存
+- `main.py` - `draw_leaderboard_ui()` 函数，调用渐变缓存
+
+### 修复日期
+2025年12月23日
+
+---
+
+## Bug #012: 涂装界面性能优化导致函数命名冲突
+
+### 问题描述
+为涂装界面添加字体缓存优化后，游戏启动后直接黑屏，无法显示任何内容。
+
+### 具体表现
+- 游戏窗口打开后完全黑屏
+- 没有报错信息
+- 无法进入主菜单
+
+### 根本原因
+**函数命名冲突**：在 `main.py` 中创建了一个新的字体缓存函数 `get_font(name, size)`，但这个名称与 `utils/ui.py` 中已导入的 `get_font(size, bold=False)` 函数冲突。
+
+`utils/ui.py` 中的原始函数：
+```python
+def get_font(size, bold=False):
+    font_names = ["roboto", "noto sans", "microsoftyahei", "simhei", "arial"]
+    return pygame.font.SysFont(font_names, int(size), bold=bold)
+```
+
+新添加的缓存函数覆盖了导入的函数：
+```python
+def get_font(name, size):  # 错误：与导入的函数同名
+    key = (name, size)
+    if key not in _font_cache:
+        _font_cache[key] = pygame.font.SysFont(name, size)
+    return _font_cache[key]
+```
+
+在主菜单 `draw_menu_ui()` 中调用：
+```python
+title_font = get_font(int(60 * scale), bold=True)
+```
+
+由于函数签名不匹配：
+- 原函数期望 `(size, bold=False)`
+- 新函数期望 `(name, size)`
+- 结果：`name` 参数接收到数字 `60`，导致字体创建失败
+
+### 解决方案
+将新的缓存函数改名为 `get_cached_font()`，避免与原有函数冲突：
+```python
+def get_cached_font(name, size):
+    """获取缓存的字体对象（全局通用）"""
+    key = (name, size)
+    if key not in _font_cache:
+        _font_cache[key] = pygame.font.SysFont(name, size)
+    return _font_cache[key]
+```
+
+同时更新所有调用处使用新名称。
+
+### 预防措施
+1. **创建新函数前检查命名冲突**：搜索代码库确认函数名未被使用
+2. **注意导入的函数**：模块级别定义的函数会覆盖 `from xxx import *` 导入的同名函数
+3. **使用更具体的函数名**：如 `get_cached_font` 比 `get_font` 更不容易冲突
+4. **测试性能优化代码**：即使语法正确，运行时也可能因函数覆盖产生意外行为
+
+### 相关文件
+- `main.py` - `get_cached_font()` 函数定义（第238行）
+- `utils/ui.py` - 原始 `get_font()` 函数（第12行）
+- `main.py` - `draw_menu_ui()` 中的调用（第1420行）
+
+### 修复日期
+2025年12月23日
+
+---
+
+## Bug #013: 涂装界面Emoji显示错误
+
+### 问题描述
+涂装界面解锁按钮中的💎（钻石）emoji 显示为方块或乱码。
+
+### 具体表现
+- 解锁按钮显示 "□ 100" 而不是 "💎 100"
+- 战机涂装和僚机涂装界面都有此问题
+
+### 根本原因
+使用 `SimHei` 字体渲染包含 emoji 的文本，但 `SimHei` 字体不支持 emoji 字符。
+
+问题代码：
+```python
+btn_font = pygame.font.SysFont("SimHei", 13)
+btn_text = btn_font.render(f"💎 {cost}", True, GOLD)  # SimHei 无法渲染 💎
+```
+
+### 解决方案
+将 emoji 和文本分开渲染，emoji 使用 `Segoe UI Emoji` 字体：
+```python
+emoji_f = get_cached_font("Segoe UI Emoji", 12)
+text_color = GOLD if can_afford else (120, 100, 100)
+gem_surf = emoji_f.render("💎", True, text_color)
+cost_surf = font_13.render(f" {cost}", True, text_color)
+# 计算总宽度后居中显示
+total_w = gem_surf.get_width() + cost_surf.get_width()
+start_x = btn_rect.centerx - total_w//2
+screen.blit(gem_surf, (start_x, btn_rect.centery - gem_surf.get_height()//2))
+screen.blit(cost_surf, (start_x + gem_surf.get_width(), btn_rect.centery - cost_surf.get_height()//2))
+```
+
+### 预防措施
+1. **Emoji 必须使用专用字体**：Windows 上使用 `Segoe UI Emoji`
+2. **混合内容分开渲染**：emoji 用 emoji 字体，文本用中文字体
+3. **创建 UI 时考虑字体兼容性**：设计阶段就规划好哪些地方需要 emoji
+
+### 相关文件
+- `main.py` - `draw_plane_customization_ui()` 函数（第6780行附近）
+- `main.py` - `draw_wingman_customization_ui()` 函数（第7260行附近）
+
+### 修复日期
+2025年12月23日

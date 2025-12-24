@@ -1,8 +1,8 @@
 {
-  "background_style": "volcano",
+  "background_style": "firefly_forest",
   "master_volume": 0.65,
   "music_volume": 0.75,
-  "sfx_volume": 0.8,
+  "sfx_volume": 0.7375,
   "show_fps": true,
   "screen_shake": true,
   "particle_quality": "high",

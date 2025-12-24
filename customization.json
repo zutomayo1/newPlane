@@ -653,7 +653,7 @@
   },
   "equipped_themes": {
     "arbiter": "arbiter_judge",
-    "phantom": "phantom_ex5",
+    "phantom": "common_red",
     "crimson": "crimson_ex5",
     "titan": "titan_ex5",
     "striker": "striker_ex4",
@@ -674,7 +674,7 @@
     "gambit": "gambit_pachinko",
     "puppeteer": "puppeteer_porcelain",
     "pandemic": "pandemic_zombie",
-    "genesis": "genesis_phoenix",
+    "genesis": "genesis_crystal",
     "omega": "common_red",
     "truth": "truth_judgment",
     "asura": "asura_divine",
@@ -707,7 +707,7 @@
     "sepulcher": "sepulcher_witch",
     "galaxia": "galaxia_nebula",
     "magnus": "magnus_holy",
-    "heavymetal": "heavymetal_toxic",
+    "heavymetal": "heavymetal_default",
     "scarlet": "scarlet_gothic",
     "zenith": "zenith_default",
     "viscerator": "viscerator_default",
@@ -1144,10 +1144,10 @@
     "weaver": "weaver_quantum_bullet",
     "solar": "solar_photon_bullet",
     "arbiter": "arbiter_collapse_star",
-    "eclipse": "eclipse_black_sun",
+    "eclipse": "eclipse_shadow_eclipse",
     "prism": "prism_aurora_split",
-    "necro": "necro_blood_curse",
-    "wormhole": "default",
+    "necro": "necro_bullet",
+    "wormhole": "wormhole_lantern_bullet",
     "chronos": "chronos_rewind_bullet",
     "mirage": "mirage_holographic_bullet",
     "gambit": "gambit_joker_bullet",
@@ -1183,9 +1183,9 @@
     "providence": "providence_abyss_shard"
   },
   "equipped_wingman_themes": {
-    "slot_0": "gambit_blackjack",
+    "slot_0": "gambit_joker",
     "slot_1": "viper_serpent_god",
-    "slot_2": "aurora_rainbow",
-    "slot_3": "chronos_meteorological"
+    "slot_2": "mirage_butterfly",
+    "slot_3": "wormhole_supercell"
   }
 }

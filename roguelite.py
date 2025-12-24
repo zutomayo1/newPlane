@@ -514,168 +514,492 @@ class ItemManager:
 #   成就系统（Achievement）
 # ==============================================================================
 class Achievement:
-    """成就类"""
-    def __init__(self, achievement_id, name, description, icon_char="★", reward=100):
+    """成就类 - 豪华版"""
+    # 稀有度颜色映射
+    RARITY_COLORS = {
+        "common": (180, 180, 180),      # 普通 - 银灰
+        "rare": (100, 220, 100),         # 稀有 - 绿色
+        "epic": (180, 100, 220),         # 史诗 - 紫色
+        "legendary": (255, 215, 0),      # 传说 - 金色
+    }
+    
+    # 分类图标映射
+    CATEGORY_ICONS = {
+        "combat": "⚔",
+        "boss": "👹",
+        "survival": "🛡",
+        "plane": "✈",
+        "roguelike": "🚪",
+        "efficiency": "⚡",
+        "milestone": "🎖",
+        "secret": "🌙",
+    }
+    
+    def __init__(self, achievement_id, name, description, icon_char="★", reward=100, category="combat", hidden=False, target=0):
         self.id = achievement_id
         self.name = name
         self.description = description
         self.icon_char = icon_char
-        self.reward = reward  # 完成成就获得的分数
+        self.reward = reward
+        self.category = category      # 分类
+        self.hidden = hidden          # 是否隐藏成就
+        self.target = target          # 目标值（用于进度显示）
         self.unlocked = False
         self.unlock_time = None
+        self.unlock_date = None       # 解锁日期字符串
+    
+    @property
+    def rarity(self):
+        """根据奖励计算稀有度"""
+        if self.reward >= 1000:
+            return "legendary"
+        elif self.reward >= 600:
+            return "epic"
+        elif self.reward >= 300:
+            return "rare"
+        return "common"
+    
+    @property
+    def rarity_name(self):
+        """稀有度中文名"""
+        names = {"common": "普通", "rare": "稀有", "epic": "史诗", "legendary": "传说"}
+        return names.get(self.rarity, "普通")
+    
+    @property
+    def rarity_color(self):
+        """获取稀有度对应颜色"""
+        return self.RARITY_COLORS.get(self.rarity, (180, 180, 180))
     
     def unlock(self):
         """解锁成就"""
         if not self.unlocked:
             self.unlocked = True
             self.unlock_time = pygame.time.get_ticks()
+            # 记录解锁日期
+            import datetime
+            self.unlock_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
             sound_mgr.play("achievement")
             return True
         return False
+    
+    def get_progress(self, current_value):
+        """获取进度百分比"""
+        if self.target <= 0:
+            return 100 if self.unlocked else 0
+        return min(100, int(current_value / self.target * 100))
 
 
 class AchievementManager:
-    """管理成就系统"""
+    """管理成就系统 - 豪华版"""
     def __init__(self):
         self.achievements = self._init_achievements()
         self.stats = {
+            # === 基础统计 ===
             "total_kills": 0,           # 总击杀数
-            "total_damage": 0,          # 总伤害
+            "total_damage": 0,          # 最大单次伤害
             "runs_completed": 0,        # 完成的游戏数
             "bosses_killed": 0,         # 击杀的BOSS数
             "max_wave": 0,              # 最高波数
             "max_combo": 0,             # 最高连击
             "upgrades_collected": 0,    # 收集的升级数
             "perfect_runs": 0,          # 完美通关（无伤）
+            # === 新增统计 ===
+            "total_score": 0,           # 累计总分
+            "total_playtime": 0,        # 累计游戏时间（秒）
+            "planes_used": [],          # 使用过的机体ID列表
+            "skins_used": [],           # 使用过的涂装ID列表
+            "rooms_cleared": 0,         # 清理的房间数
+            "elite_kills": 0,           # 击杀精英数
+            "items_collected": 0,       # 收集道具数
+            "bullets_fired": 0,         # 发射子弹数
+            "crits_dealt": 0,           # 单局暴击次数
+            "max_crits": 0,             # 最高单局暴击
+            "dodges": 0,                # 闪避次数
+            "max_multi_kill": 0,        # 最大同时击杀数
+            "unique_bosses": [],        # 击杀过的Boss类型
+            "cards_collected": [],      # 收集过的卡牌类型
+            "login_days": [],           # 登录日期列表
+            "night_plays": 0,           # 深夜游玩次数
+            "max_wingmen": 0,           # 最多同时僚机数
+            "plane_runs": {},           # 每个机体完成的局数
+            "session_kills": 0,         # 当前会话击杀（用于闪电战神）
+            "session_time": 0,          # 当前会话时间
+            "lowest_hp_boss_kill": 100, # 击杀Boss时最低血量百分比
+            "boss_kill_time": 999,      # 最快击杀Boss时间（秒）
         }
+        # 临时状态标记
+        self.temp_perfect_run = True
+        self.temp_no_heal = True
+        self.temp_survivor = False
     
     def _init_achievements(self):
-        """初始化成就列表"""
+        """初始化成就列表 - 65个成就"""
         return {
-            # 基础成就
-            "first_blood": Achievement("first_blood", "初次杀戮", "击杀第一个敌人", "◆", 50),
-            "killer_100": Achievement("killer_100", "百杀者", "累计击杀100个敌人", "◇", 200),
-            "killer_500": Achievement("killer_500", "千杀者", "累计击杀500个敌人", "◇", 500),
-            "killer_1000": Achievement("killer_1000", "屠杀者", "累计击杀1000个敌人", "◇", 1000),
+            # =============== 战斗成就 (combat) - 16个 ===============
+            "first_blood": Achievement("first_blood", "初次杀戮", "击杀第一个敌人", "🗡", 50, "combat", target=1),
+            "killer_100": Achievement("killer_100", "百杀者", "累计击杀100个敌人", "⚔", 200, "combat", target=100),
+            "killer_500": Achievement("killer_500", "千杀者", "累计击杀500个敌人", "⚔", 400, "combat", target=500),
+            "killer_1000": Achievement("killer_1000", "屠杀者", "累计击杀1000个敌人", "⚔", 800, "combat", target=1000),
+            "killer_10000": Achievement("killer_10000", "万人斩", "累计击杀10000个敌人", "💀", 1500, "combat", target=10000),
+            "killer_100000": Achievement("killer_100000", "十万屠夫", "累计击杀100000个敌人", "☠", 3000, "combat", target=100000),
             
-            # Boss相关
-            "boss_slayer": Achievement("boss_slayer", "Boss猎人", "击杀任意Boss", "⬟", 300),
-            "boss_master": Achievement("boss_master", "噩梦终结者", "击杀5个Boss", "⬟", 800),
-            "boss_challenger": Achievement("boss_challenger", "挑战大师", "完成Boss挑战模式", "👑", 1500),
-            "boss_all_clear": Achievement("boss_all_clear", "终极猎人", "击杀所有类型的Boss", "🏆", 2000),
+            "combo_50": Achievement("combo_50", "连击大师", "达成50连击", "⚡", 200, "combat", target=50),
+            "combo_100": Achievement("combo_100", "连击王者", "达成100连击", "⚡", 500, "combat", target=100),
+            "combo_200": Achievement("combo_200", "连击之神", "达成200连击", "⚡", 1000, "combat", target=200),
             
-            # 波数相关
-            "wave_10": Achievement("wave_10", "十波生存", "存活至第10波", "⬢", 250),
-            "wave_20": Achievement("wave_20", "二十波生存", "存活至第20波", "⬢", 500),
-            "wave_30": Achievement("wave_30", "无穷斗士", "存活至第30波", "⬢", 1200),
+            "damage_1000": Achievement("damage_1000", "破坏者", "单次伤害超过1000", "💥", 200, "combat", target=1000),
+            "damage_5000": Achievement("damage_5000", "毁灭者", "单次伤害超过5000", "💥", 600, "combat", target=5000),
+            "damage_10000": Achievement("damage_10000", "灾厄降临", "单次伤害超过10000", "💥", 1200, "combat", target=10000),
             
-            # 连击相关
-            "combo_50": Achievement("combo_50", "连击大师", "达成50连击", "⚡", 200),
-            "combo_100": Achievement("combo_100", "连击王者", "达成100连击", "⚡", 500),
+            "crit_master": Achievement("crit_master", "暴击狂人", "单局暴击100次", "🎯", 400, "combat", target=100),
+            "bullet_storm": Achievement("bullet_storm", "弹幕大师", "单局发射10000发子弹", "🔫", 350, "combat", target=10000),
+            "multi_kill_10": Achievement("multi_kill_10", "群体毁灭", "同时消灭10个敌人", "💣", 300, "combat", target=10),
+            "multi_kill_30": Achievement("multi_kill_30", "以多打少", "同时消灭30个敌人", "💣", 700, "combat", target=30),
             
-            # 伤害相关
-            "damage_1000": Achievement("damage_1000", "破坏者", "单次伤害超过1000", "💥", 200),
-            "damage_5000": Achievement("damage_5000", "毁灭者", "单次伤害超过5000", "💥", 600),
+            # =============== Boss成就 (boss) - 9个 ===============
+            "first_boss": Achievement("first_boss", "首领战胜者", "完成第一次Boss战", "👑", 250, "boss", target=1),
+            "boss_slayer": Achievement("boss_slayer", "Boss猎人", "击杀任意Boss", "👹", 300, "boss", target=1),
+            "boss_5": Achievement("boss_5", "噩梦终结者", "累计击杀5个Boss", "👹", 600, "boss", target=5),
+            "boss_20": Achievement("boss_20", "Boss杀手", "累计击杀20个Boss", "👹", 1000, "boss", target=20),
+            "boss_50": Achievement("boss_50", "Boss专家", "累计击杀50个Boss", "👹", 2000, "boss", target=50),
+            "boss_challenger": Achievement("boss_challenger", "挑战大师", "完成Boss挑战模式", "🏆", 1500, "boss"),
+            "boss_all_clear": Achievement("boss_all_clear", "终极猎人", "击杀所有类型的Boss", "🏆", 2500, "boss"),
+            "boss_speedkill": Achievement("boss_speedkill", "秒杀专家", "5秒内击杀Boss", "⚡", 800, "boss", target=5),
+            "boss_clutch": Achievement("boss_clutch", "临危不惧", "血量低于10%时击杀Boss", "💪", 1200, "boss"),
             
-            # 完美游戏
-            "perfect_run": Achievement("perfect_run", "完美者", "无伤完成一局游戏", "✓", 1000),
-            "no_heal": Achievement("no_heal", "坚定的战士", "全程不使用医疗包完成一局", "❤", 700),
+            # =============== 生存成就 (survival) - 10个 ===============
+            "survivor": Achievement("survivor", "幸存者", "完成任何一局游戏", "🛡", 100, "survival"),
+            "wave_10": Achievement("wave_10", "十波生存", "存活至第10波", "🌊", 250, "survival", target=10),
+            "wave_20": Achievement("wave_20", "二十波生存", "存活至第20波", "🌊", 500, "survival", target=20),
+            "wave_30": Achievement("wave_30", "无穷斗士", "存活至第30波", "🌊", 1000, "survival", target=30),
+            "wave_50": Achievement("wave_50", "永恒战士", "存活至第50波", "🌊", 2000, "survival", target=50),
+            "perfect_run": Achievement("perfect_run", "完美者", "无伤完成一局游戏", "✨", 1500, "survival"),
+            "no_heal": Achievement("no_heal", "坚定的战士", "全程不使用医疗包完成一局", "❤", 700, "survival"),
+            "clutch_1hp": Achievement("clutch_1hp", "压线生存", "以1点HP完成一局", "💔", 1200, "survival"),
+            "dodge_master": Achievement("dodge_master", "闪避专家", "单局闪避50次敌方攻击", "🌀", 400, "survival", target=50),
+            "phoenix": Achievement("phoenix", "不死鸟", "使用复活3次后仍然通关", "🔥", 800, "survival"),
             
-            # 收集相关
-            "collector": Achievement("collector", "收藏家", "集齐所有升级卡牌类型", "📚", 800),
-            "rich": Achievement("rich", "暴富者", "游戏中获得100000分", "💰", 600),
+            # =============== 机体成就 (plane) - 8个 ===============
+            "plane_variety": Achievement("plane_variety", "百变战士", "使用10种不同机体完成游戏", "✈", 600, "plane", target=10),
+            "plane_master": Achievement("plane_master", "机体大师", "使用20种不同机体完成游戏", "✈", 1500, "plane", target=20),
+            "plane_loyal": Achievement("plane_loyal", "专一飞行员", "用同一机体完成10局游戏", "💕", 400, "plane", target=10),
+            "skin_collector": Achievement("skin_collector", "涂装达人", "使用10种不同涂装", "🎨", 350, "plane", target=10),
+            "skin_fashionista": Achievement("skin_fashionista", "时尚先锋", "使用5种不同涂装完成游戏", "👗", 250, "plane", target=5),
+            "drone_squad": Achievement("drone_squad", "天空统治者", "同时拥有3个僚机存活", "🤖", 400, "plane", target=3),
+            "drone_master": Achievement("drone_master", "编队指挥官", "拥有4个僚机并完成一局", "🤖", 600, "plane", target=4),
+            "drone_army": Achievement("drone_army", "机械军团", "同时拥有6个僚机", "🤖", 1000, "plane", target=6),
             
-            # 速度相关
-            "speedrun": Achievement("speedrun", "闪电战士", "3分钟内获得50000分", "⚡", 400),
-            "fast_clear": Achievement("fast_clear", "急速前进", "2分钟内到达第10波", "🔥", 350),
+            # =============== Roguelike成就 (roguelike) - 9个 ===============
+            "room_10": Achievement("room_10", "探索者", "完成10个房间", "🚪", 200, "roguelike", target=10),
+            "room_30": Achievement("room_30", "迷宫行者", "完成30个房间", "🚪", 450, "roguelike", target=30),
+            "room_100": Achievement("room_100", "迷宫大师", "完成100个房间", "🚪", 1000, "roguelike", target=100),
+            "elite_hunter": Achievement("elite_hunter", "精英猎手", "击败10个精英敌人", "⭐", 300, "roguelike", target=10),
+            "elite_slayer": Achievement("elite_slayer", "精英杀手", "击败50个精英敌人", "⭐", 700, "roguelike", target=50),
+            "item_hoarder": Achievement("item_hoarder", "宝藏猎人", "收集50个道具", "📦", 350, "roguelike", target=50),
+            "card_collector": Achievement("card_collector", "卡牌收藏家", "收集所有类型的升级卡牌", "🃏", 800, "roguelike"),
+            "fully_loaded": Achievement("fully_loaded", "满配战神", "同时拥有10个升级增益", "💎", 700, "roguelike", target=10),
+            "collector": Achievement("collector", "收藏家", "集齐所有升级卡牌类型", "📚", 900, "roguelike"),
             
-            # 编队相关
-            "drone_master": Achievement("drone_master", "编队指挥官", "拥有4个僚机并完成一局", "🎯", 500),
-            "drone_squad": Achievement("drone_squad", "天空统治者", "同时拥有3个僚机存活", "🎯", 400),
+            # =============== 效率成就 (efficiency) - 6个 ===============
+            "rich": Achievement("rich", "暴富者", "单局获得100000分", "💰", 600, "efficiency", target=100000),
+            "millionaire": Achievement("millionaire", "百万富翁", "累计获得1000000分", "💎", 1500, "efficiency", target=1000000),
+            "speedrun": Achievement("speedrun", "闪电战士", "3分钟内获得50000分", "⚡", 450, "efficiency"),
+            "fast_clear": Achievement("fast_clear", "急速前进", "2分钟内到达第10波", "🔥", 350, "efficiency"),
+            "blitz_100": Achievement("blitz_100", "闪电战神", "1分钟内击杀100敌人", "⚡", 500, "efficiency", target=100),
+            "marathon": Achievement("marathon", "马拉松", "单局游戏超过30分钟", "🏃", 500, "efficiency", target=1800),
             
-            # 特殊成就
-            "first_boss": Achievement("first_boss", "首领战胜者", "完成第一次Boss战", "👑", 250),
-            "survivor": Achievement("survivor", "幸存者", "完成任何一局游戏", "🛡", 100),
+            # =============== 里程碑成就 (milestone) - 7个 ===============
+            "runs_10": Achievement("runs_10", "老兵", "累计游戏10局", "🎖", 200, "milestone", target=10),
+            "runs_50": Achievement("runs_50", "资深飞行员", "累计游戏50局", "🎖", 500, "milestone", target=50),
+            "runs_100": Achievement("runs_100", "百战老兵", "累计游戏100局", "🎖", 1000, "milestone", target=100),
+            "playtime_1h": Achievement("playtime_1h", "入门玩家", "累计游戏时长1小时", "⏰", 150, "milestone", target=3600),
+            "playtime_10h": Achievement("playtime_10h", "持久战", "累计游戏时长10小时", "⏰", 600, "milestone", target=36000),
+            "playtime_100h": Achievement("playtime_100h", "时间领主", "累计游戏时长100小时", "⏰", 2000, "milestone", target=360000),
+            "all_clear": Achievement("all_clear", "传奇飞行员", "解锁全部成就", "👑", 5000, "milestone"),
+            
+            # =============== 隐藏成就 (secret) - 6个 ===============
+            "night_owl": Achievement("night_owl", "夜猫子", "在凌晨3点游玩", "🌙", 100, "secret", hidden=True),
+            "pacifist": Achievement("pacifist", "和平主义者", "只使用僚机击杀完成一波", "☮", 400, "secret", hidden=True),
+            "music_lover": Achievement("music_lover", "音乐鉴赏家", "听完所有BGM", "🎵", 200, "secret", hidden=True),
+            "easter_egg": Achievement("easter_egg", "彩蛋猎人", "发现隐藏彩蛋", "🥚", 300, "secret", hidden=True),
+            "lucky_7": Achievement("lucky_7", "幸运七", "分数正好是77777", "🍀", 777, "secret", hidden=True),
+            "dedication": Achievement("dedication", "坚持不懈", "连续7天登录游戏", "📅", 600, "secret", hidden=True),
         }
     
     def check_achievements(self, player):
-        """检查是否解锁成就"""
+        """检查是否解锁成就 - 完整版"""
         unlocked = []
         
-        # 击杀数检查
-        if self.stats["total_kills"] >= 1:
-            if self.achievements["first_blood"].unlock():
-                unlocked.append("first_blood")
-        if self.stats["total_kills"] >= 100:
-            if self.achievements["killer_100"].unlock():
-                unlocked.append("killer_100")
-        if self.stats["total_kills"] >= 500:
-            if self.achievements["killer_500"].unlock():
-                unlocked.append("killer_500")
-        if self.stats["total_kills"] >= 1000:
-            if self.achievements["killer_1000"].unlock():
-                unlocked.append("killer_1000")
+        # ===== 战斗成就 =====
+        kills = self.stats["total_kills"]
+        if kills >= 1 and self.achievements["first_blood"].unlock():
+            unlocked.append("first_blood")
+        if kills >= 100 and self.achievements["killer_100"].unlock():
+            unlocked.append("killer_100")
+        if kills >= 500 and self.achievements["killer_500"].unlock():
+            unlocked.append("killer_500")
+        if kills >= 1000 and self.achievements["killer_1000"].unlock():
+            unlocked.append("killer_1000")
+        if kills >= 10000 and self.achievements["killer_10000"].unlock():
+            unlocked.append("killer_10000")
+        if kills >= 100000 and self.achievements["killer_100000"].unlock():
+            unlocked.append("killer_100000")
         
-        # Boss击杀检查
-        if self.stats["bosses_killed"] >= 1:
+        # 连击检查
+        combo = self.stats["max_combo"]
+        if combo >= 50 and self.achievements["combo_50"].unlock():
+            unlocked.append("combo_50")
+        if combo >= 100 and self.achievements["combo_100"].unlock():
+            unlocked.append("combo_100")
+        if combo >= 200 and self.achievements["combo_200"].unlock():
+            unlocked.append("combo_200")
+        
+        # 伤害检查
+        dmg = self.stats["total_damage"]
+        if dmg >= 1000 and self.achievements["damage_1000"].unlock():
+            unlocked.append("damage_1000")
+        if dmg >= 5000 and self.achievements["damage_5000"].unlock():
+            unlocked.append("damage_5000")
+        if dmg >= 10000 and self.achievements["damage_10000"].unlock():
+            unlocked.append("damage_10000")
+        
+        # 暴击检查
+        if self.stats["max_crits"] >= 100 and self.achievements["crit_master"].unlock():
+            unlocked.append("crit_master")
+        
+        # 多杀检查
+        multi = self.stats["max_multi_kill"]
+        if multi >= 10 and self.achievements["multi_kill_10"].unlock():
+            unlocked.append("multi_kill_10")
+        if multi >= 30 and self.achievements["multi_kill_30"].unlock():
+            unlocked.append("multi_kill_30")
+        
+        # ===== Boss成就 =====
+        bosses = self.stats["bosses_killed"]
+        if bosses >= 1:
             if self.achievements["boss_slayer"].unlock():
                 unlocked.append("boss_slayer")
             if self.achievements["first_boss"].unlock():
                 unlocked.append("first_boss")
-        if self.stats["bosses_killed"] >= 5:
-            if self.achievements["boss_master"].unlock():
-                unlocked.append("boss_master")
+        if bosses >= 5 and self.achievements["boss_5"].unlock():
+            unlocked.append("boss_5")
+        if bosses >= 20 and self.achievements["boss_20"].unlock():
+            unlocked.append("boss_20")
+        if bosses >= 50 and self.achievements["boss_50"].unlock():
+            unlocked.append("boss_50")
         
-        # 波数检查
-        if self.stats["max_wave"] >= 10:
-            if self.achievements["wave_10"].unlock():
-                unlocked.append("wave_10")
-        if self.stats["max_wave"] >= 20:
-            if self.achievements["wave_20"].unlock():
-                unlocked.append("wave_20")
-        if self.stats["max_wave"] >= 30:
-            if self.achievements["wave_30"].unlock():
-                unlocked.append("wave_30")
+        # 秒杀Boss
+        if self.stats["boss_kill_time"] <= 5 and self.achievements["boss_speedkill"].unlock():
+            unlocked.append("boss_speedkill")
         
-        # 连击检查
-        if self.stats["max_combo"] >= 50:
-            if self.achievements["combo_50"].unlock():
-                unlocked.append("combo_50")
-        if self.stats["max_combo"] >= 100:
-            if self.achievements["combo_100"].unlock():
-                unlocked.append("combo_100")
+        # 临危不惧
+        if self.stats["lowest_hp_boss_kill"] <= 10 and self.achievements["boss_clutch"].unlock():
+            unlocked.append("boss_clutch")
         
-        # 伤害检查
-        if self.stats["total_damage"] >= 1000:
-            if self.achievements["damage_1000"].unlock():
-                unlocked.append("damage_1000")
-        if self.stats["total_damage"] >= 5000:
-            if self.achievements["damage_5000"].unlock():
-                unlocked.append("damage_5000")
+        # ===== 生存成就 =====
+        wave = self.stats["max_wave"]
+        if wave >= 10 and self.achievements["wave_10"].unlock():
+            unlocked.append("wave_10")
+        if wave >= 20 and self.achievements["wave_20"].unlock():
+            unlocked.append("wave_20")
+        if wave >= 30 and self.achievements["wave_30"].unlock():
+            unlocked.append("wave_30")
+        if wave >= 50 and self.achievements["wave_50"].unlock():
+            unlocked.append("wave_50")
         
         # 僚机检查
+        wingmen = self.stats.get("max_wingmen", 0)
         if hasattr(player, 'wingman_squadron') and player.wingman_squadron:
-            if len(player.wingman_squadron.wingmen) >= 4:
-                if self.achievements["drone_master"].unlock():
-                    unlocked.append("drone_master")
-            if len(player.wingman_squadron.wingmen) >= 3:
-                if self.achievements["drone_squad"].unlock():
-                    unlocked.append("drone_squad")
+            wingmen = max(wingmen, len(player.wingman_squadron.wingmen))
+            self.stats["max_wingmen"] = wingmen
+        if wingmen >= 3 and self.achievements["drone_squad"].unlock():
+            unlocked.append("drone_squad")
+        if wingmen >= 4 and self.achievements["drone_master"].unlock():
+            unlocked.append("drone_master")
+        if wingmen >= 6 and self.achievements["drone_army"].unlock():
+            unlocked.append("drone_army")
         
-        # 特殊成就标记（需要在游戏结束时检查）
-        if hasattr(self, 'temp_perfect_run') and self.temp_perfect_run:
+        # ===== 机体成就 =====
+        planes_used = len(self.stats.get("planes_used", []))
+        if planes_used >= 10 and self.achievements["plane_variety"].unlock():
+            unlocked.append("plane_variety")
+        if planes_used >= 20 and self.achievements["plane_master"].unlock():
+            unlocked.append("plane_master")
+        
+        # 专一飞行员
+        plane_runs = self.stats.get("plane_runs", {})
+        if any(runs >= 10 for runs in plane_runs.values()):
+            if self.achievements["plane_loyal"].unlock():
+                unlocked.append("plane_loyal")
+        
+        # 涂装
+        skins_used = len(self.stats.get("skins_used", []))
+        if skins_used >= 10 and self.achievements["skin_collector"].unlock():
+            unlocked.append("skin_collector")
+        if skins_used >= 5 and self.achievements["skin_fashionista"].unlock():
+            unlocked.append("skin_fashionista")
+        
+        # ===== Roguelike成就 =====
+        rooms = self.stats.get("rooms_cleared", 0)
+        if rooms >= 10 and self.achievements["room_10"].unlock():
+            unlocked.append("room_10")
+        if rooms >= 30 and self.achievements["room_30"].unlock():
+            unlocked.append("room_30")
+        if rooms >= 100 and self.achievements["room_100"].unlock():
+            unlocked.append("room_100")
+        
+        elites = self.stats.get("elite_kills", 0)
+        if elites >= 10 and self.achievements["elite_hunter"].unlock():
+            unlocked.append("elite_hunter")
+        if elites >= 50 and self.achievements["elite_slayer"].unlock():
+            unlocked.append("elite_slayer")
+        
+        items = self.stats.get("items_collected", 0)
+        if items >= 50 and self.achievements["item_hoarder"].unlock():
+            unlocked.append("item_hoarder")
+        
+        # ===== 效率成就 =====
+        total_score = self.stats.get("total_score", 0)
+        if total_score >= 1000000 and self.achievements["millionaire"].unlock():
+            unlocked.append("millionaire")
+        
+        # ===== 里程碑成就 =====
+        runs = self.stats.get("runs_completed", 0)
+        if runs >= 10 and self.achievements["runs_10"].unlock():
+            unlocked.append("runs_10")
+        if runs >= 50 and self.achievements["runs_50"].unlock():
+            unlocked.append("runs_50")
+        if runs >= 100 and self.achievements["runs_100"].unlock():
+            unlocked.append("runs_100")
+        
+        playtime = self.stats.get("total_playtime", 0)
+        if playtime >= 3600 and self.achievements["playtime_1h"].unlock():
+            unlocked.append("playtime_1h")
+        if playtime >= 36000 and self.achievements["playtime_10h"].unlock():
+            unlocked.append("playtime_10h")
+        if playtime >= 360000 and self.achievements["playtime_100h"].unlock():
+            unlocked.append("playtime_100h")
+        
+        # ===== 隐藏成就 =====
+        # 夜猫子检查
+        import datetime
+        now = datetime.datetime.now()
+        if now.hour == 3 and self.achievements["night_owl"].unlock():
+            unlocked.append("night_owl")
+        
+        # 连续登录检查
+        login_days = self.stats.get("login_days", [])
+        if len(login_days) >= 7:
+            # 检查是否连续7天
+            try:
+                dates = sorted([datetime.datetime.strptime(d, "%Y-%m-%d") for d in login_days[-7:]])
+                consecutive = all((dates[i+1] - dates[i]).days == 1 for i in range(6))
+                if consecutive and self.achievements["dedication"].unlock():
+                    unlocked.append("dedication")
+            except:
+                pass
+        
+        # ===== 游戏结束时的特殊成就 =====
+        if self.temp_perfect_run and self.temp_survivor:
             if self.achievements["perfect_run"].unlock():
                 unlocked.append("perfect_run")
         
-        if hasattr(self, 'temp_no_heal') and self.temp_no_heal:
+        if self.temp_no_heal and self.temp_survivor:
             if self.achievements["no_heal"].unlock():
                 unlocked.append("no_heal")
         
-        if hasattr(self, 'temp_survivor') and self.temp_survivor:
+        if self.temp_survivor:
             if self.achievements["survivor"].unlock():
                 unlocked.append("survivor")
         
+        # ===== 全成就检查 =====
+        total_ach = len(self.achievements) - 1  # 排除all_clear自身
+        unlocked_count = sum(1 for a in self.achievements.values() if a.unlocked and a.id != "all_clear")
+        if unlocked_count >= total_ach and self.achievements["all_clear"].unlock():
+            unlocked.append("all_clear")
+        
         return unlocked
+    
+    def get_progress(self, achievement_id):
+        """获取成就进度"""
+        if achievement_id not in self.achievements:
+            return 0, 0
+        
+        ach = self.achievements[achievement_id]
+        target = ach.target
+        
+        # 根据成就类型获取当前值
+        progress_map = {
+            "first_blood": self.stats["total_kills"],
+            "killer_100": self.stats["total_kills"],
+            "killer_500": self.stats["total_kills"],
+            "killer_1000": self.stats["total_kills"],
+            "killer_10000": self.stats["total_kills"],
+            "killer_100000": self.stats["total_kills"],
+            "combo_50": self.stats["max_combo"],
+            "combo_100": self.stats["max_combo"],
+            "combo_200": self.stats["max_combo"],
+            "damage_1000": self.stats["total_damage"],
+            "damage_5000": self.stats["total_damage"],
+            "damage_10000": self.stats["total_damage"],
+            "crit_master": self.stats.get("max_crits", 0),
+            "multi_kill_10": self.stats.get("max_multi_kill", 0),
+            "multi_kill_30": self.stats.get("max_multi_kill", 0),
+            "first_boss": self.stats["bosses_killed"],
+            "boss_slayer": self.stats["bosses_killed"],
+            "boss_5": self.stats["bosses_killed"],
+            "boss_20": self.stats["bosses_killed"],
+            "boss_50": self.stats["bosses_killed"],
+            "wave_10": self.stats["max_wave"],
+            "wave_20": self.stats["max_wave"],
+            "wave_30": self.stats["max_wave"],
+            "wave_50": self.stats["max_wave"],
+            "drone_squad": self.stats.get("max_wingmen", 0),
+            "drone_master": self.stats.get("max_wingmen", 0),
+            "drone_army": self.stats.get("max_wingmen", 0),
+            "plane_variety": len(self.stats.get("planes_used", [])),
+            "plane_master": len(self.stats.get("planes_used", [])),
+            "skin_collector": len(self.stats.get("skins_used", [])),
+            "room_10": self.stats.get("rooms_cleared", 0),
+            "room_30": self.stats.get("rooms_cleared", 0),
+            "room_100": self.stats.get("rooms_cleared", 0),
+            "elite_hunter": self.stats.get("elite_kills", 0),
+            "elite_slayer": self.stats.get("elite_kills", 0),
+            "item_hoarder": self.stats.get("items_collected", 0),
+            "millionaire": self.stats.get("total_score", 0),
+            "runs_10": self.stats.get("runs_completed", 0),
+            "runs_50": self.stats.get("runs_completed", 0),
+            "runs_100": self.stats.get("runs_completed", 0),
+            "playtime_1h": self.stats.get("total_playtime", 0),
+            "playtime_10h": self.stats.get("total_playtime", 0),
+            "playtime_100h": self.stats.get("total_playtime", 0),
+        }
+        
+        current = progress_map.get(achievement_id, 0)
+        return min(current, target) if target > 0 else (target if ach.unlocked else 0), target
+    
+    def get_achievements_by_category(self, category=None):
+        """按分类获取成就列表"""
+        if category is None:
+            return list(self.achievements.values())
+        return [a for a in self.achievements.values() if a.category == category]
+    
+    def get_top_achievements(self, count=5):
+        """获取已解锁的最高奖励成就"""
+        unlocked = [a for a in self.achievements.values() if a.unlocked]
+        return sorted(unlocked, key=lambda x: x.reward, reverse=True)[:count]
+    
+    def get_category_stats(self):
+        """获取各分类的解锁统计"""
+        categories = {}
+        for ach in self.achievements.values():
+            cat = ach.category
+            if cat not in categories:
+                categories[cat] = {"total": 0, "unlocked": 0}
+            categories[cat]["total"] += 1
+            if ach.unlocked:
+                categories[cat]["unlocked"] += 1
+        return categories
     
     def unlock_achievement(self, achievement_id):
         """手动解锁成就"""
@@ -724,10 +1048,26 @@ class AchievementManager:
         import json
         import os
         
-        # 准备要保存的数据
+        # 准备要保存的数据（包含解锁日期）
+        unlocked_data = {}
+        for ach_id, ach in self.achievements.items():
+            if ach.unlocked:
+                unlocked_data[ach_id] = {
+                    "unlock_date": ach.unlock_date or "未知"
+                }
+        
+        # 确保列表类型的stats可以序列化
+        stats_copy = {}
+        for key, value in self.stats.items():
+            if isinstance(value, (list, dict)):
+                stats_copy[key] = value
+            else:
+                stats_copy[key] = value
+        
         data = {
-            "stats": self.stats,
-            "unlocked": [ach_id for ach_id, ach in self.achievements.items() if ach.unlocked]
+            "stats": stats_copy,
+            "unlocked": unlocked_data,
+            "version": 2  # 新版本标记
         }
         
         try:
@@ -759,19 +1099,92 @@ class AchievementManager:
             
             # 恢复统计数据
             if "stats" in data:
-                self.stats.update(data["stats"])
+                for key, value in data["stats"].items():
+                    if key in self.stats:
+                        self.stats[key] = value
+                    else:
+                        self.stats[key] = value  # 添加新的统计项
             
-            # 恢复已解锁成就
+            # 恢复已解锁成就（兼容新旧格式）
             if "unlocked" in data:
-                for ach_id in data["unlocked"]:
-                    if ach_id in self.achievements:
-                        self.achievements[ach_id].unlocked = True
+                unlocked = data["unlocked"]
+                if isinstance(unlocked, list):
+                    # 旧格式：列表
+                    for ach_id in unlocked:
+                        if ach_id in self.achievements:
+                            self.achievements[ach_id].unlocked = True
+                elif isinstance(unlocked, dict):
+                    # 新格式：字典带解锁日期
+                    for ach_id, info in unlocked.items():
+                        if ach_id in self.achievements:
+                            self.achievements[ach_id].unlocked = True
+                            if isinstance(info, dict):
+                                self.achievements[ach_id].unlock_date = info.get("unlock_date")
             
             log_info(f"成就数据已从 {filename} 加载")
             return True
         except Exception as e:
             log_error(f"加载成就数据失败: {e}")
             return False
+    
+    def record_login(self):
+        """记录今日登录"""
+        import datetime
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        if today not in self.stats.get("login_days", []):
+            if "login_days" not in self.stats:
+                self.stats["login_days"] = []
+            self.stats["login_days"].append(today)
+            # 只保留最近30天
+            self.stats["login_days"] = self.stats["login_days"][-30:]
+    
+    def record_plane_usage(self, plane_id):
+        """记录机体使用"""
+        if plane_id not in self.stats.get("planes_used", []):
+            if "planes_used" not in self.stats:
+                self.stats["planes_used"] = []
+            self.stats["planes_used"].append(plane_id)
+        
+        # 记录该机体完成的局数
+        if "plane_runs" not in self.stats:
+            self.stats["plane_runs"] = {}
+        self.stats["plane_runs"][plane_id] = self.stats["plane_runs"].get(plane_id, 0) + 1
+    
+    def record_skin_usage(self, skin_id):
+        """记录涂装使用"""
+        if skin_id and skin_id not in self.stats.get("skins_used", []):
+            if "skins_used" not in self.stats:
+                self.stats["skins_used"] = []
+            self.stats["skins_used"].append(skin_id)
+    
+    def record_boss_kill(self, boss_type, hp_percent, kill_time):
+        """记录Boss击杀详情"""
+        self.stats["bosses_killed"] += 1
+        
+        # 记录Boss类型
+        if boss_type not in self.stats.get("unique_bosses", []):
+            if "unique_bosses" not in self.stats:
+                self.stats["unique_bosses"] = []
+            self.stats["unique_bosses"].append(boss_type)
+        
+        # 记录最低血量击杀
+        self.stats["lowest_hp_boss_kill"] = min(self.stats.get("lowest_hp_boss_kill", 100), hp_percent)
+        
+        # 记录最快击杀
+        self.stats["boss_kill_time"] = min(self.stats.get("boss_kill_time", 999), kill_time)
+    
+    def add_score(self, score):
+        """累加分数"""
+        self.stats["total_score"] = self.stats.get("total_score", 0) + score
+    
+    def add_playtime(self, seconds):
+        """累加游戏时间"""
+        self.stats["total_playtime"] = self.stats.get("total_playtime", 0) + seconds
+    
+    def complete_run(self):
+        """完成一局游戏"""
+        self.stats["runs_completed"] = self.stats.get("runs_completed", 0) + 1
+        self.temp_survivor = True
 
 # ==============================================================================
 #   僚机创建函数（供增益卡牌调用）
