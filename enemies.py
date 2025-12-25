@@ -4081,6 +4081,10 @@ def _load_enemy_data() -> Dict[str, Dict[str, Any]]:
     return _ENEMY_DATA_CACHE
 
 
+# 预览图缓存 - 避免每帧重新创建Enemy对象
+_PREVIEW_SURFACE_CACHE: Dict[Tuple[str, int, Optional[Tuple[int, int, int]]], pygame.Surface] = {}
+
+
 def build_enemy_preview_surface(
     enemy_id: str,
     t: float = 0.0,
@@ -4088,7 +4092,12 @@ def build_enemy_preview_surface(
     color_override: Optional[Tuple[int, int, int]] = None,
     supersample: float = 2.0,
 ) -> pygame.Surface:
-    """Render a high-fidelity enemy preview using real visuals/dynamics."""
+    """Render a high-fidelity enemy preview using real visuals/dynamics (with caching)."""
+    # 使用缓存键（不包含t，因为静态预览足够）
+    cache_key = (enemy_id, box, color_override)
+    if cache_key in _PREVIEW_SURFACE_CACHE:
+        return _PREVIEW_SURFACE_CACHE[cache_key]
+    
     data = _load_enemy_data()
     config = data.get(enemy_id) or BUILTIN_ENEMIES.get(enemy_id)
     if not config:
@@ -4115,6 +4124,9 @@ def build_enemy_preview_surface(
     surf = pygame.Surface((box, box), pygame.SRCALPHA)
     rect = src.get_rect(center=(box // 2, box // 2))
     surf.blit(src, rect)
+    
+    # 缓存结果
+    _PREVIEW_SURFACE_CACHE[cache_key] = surf
     return surf
 
 

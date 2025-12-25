@@ -13,6 +13,17 @@
     },
     {
       "name": "匿名",
+      "score": 100,
+      "plane": "striker",
+      "kills": 5,
+      "boss_kills": 0,
+      "survival_time": 35,
+      "wave": 0,
+      "rooms": 0,
+      "date": "2025-12-24 20:42"
+    },
+    {
+      "name": "匿名",
       "score": 80,
       "plane": "sdmg",
       "kills": 4,
@@ -79,6 +90,17 @@
     },
     {
       "name": "匿名",
+      "score": 20,
+      "plane": "striker",
+      "kills": 1,
+      "boss_kills": 0,
+      "survival_time": 9,
+      "wave": 0,
+      "rooms": 0,
+      "date": "2025-12-24 20:45"
+    },
+    {
+      "name": "匿名",
       "score": 0,
       "plane": "sdmg",
       "kills": 0,
@@ -87,42 +109,20 @@
       "wave": 0,
       "rooms": 0,
       "date": "2025-12-23 18:20"
-    },
-    {
-      "name": "sss",
-      "score": 0,
-      "plane": "sdmg",
-      "kills": 0,
-      "boss_kills": 0,
-      "survival_time": 5,
-      "wave": 0,
-      "rooms": 0,
-      "date": "2025-12-23 18:39"
-    },
-    {
-      "name": "123",
-      "score": 0,
-      "plane": "striker",
-      "kills": 0,
-      "boss_kills": 0,
-      "survival_time": 8,
-      "wave": 0,
-      "rooms": 0,
-      "date": "2025-12-23 18:51"
     }
   ],
   "roguelike": [],
   "boss_challenge": [],
   "player_stats": {
-    "total_games": 10,
-    "total_kills": 68,
-    "total_time": 172,
+    "total_games": 13,
+    "total_kills": 74,
+    "total_time": 228,
     "best_score": 1120,
     "favorite_plane": "sdmg",
     "plane_usage": {
       "sdmg": 6,
       "crusher": 1,
-      "striker": 3
+      "striker": 6
     }
   }
 }

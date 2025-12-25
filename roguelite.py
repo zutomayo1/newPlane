@@ -415,6 +415,14 @@ class ItemManager:
         # 统计拾取
         self.pickup_count[item.type] = self.pickup_count.get(item.type, 0) + 1
         
+        # 每日任务：道具收集进度
+        try:
+            from main import get_daily_quest_mgr
+            quest_mgr = get_daily_quest_mgr()
+            quest_mgr.update_progress("items_collected", 1)
+        except:
+            pass
+        
         # 恢复类物品
         if item.type in ["health", "health_large"]:
             old_hp = player.hp
@@ -587,6 +595,977 @@ class Achievement:
         if self.target <= 0:
             return 100 if self.unlocked else 0
         return min(100, int(current_value / self.target * 100))
+
+
+# ==============================================================================
+#   每日任务系统 - 高拓展性架构
+# ==============================================================================
+
+# ==================== 任务类型注册系统 ====================
+class QuestTypeRegistry:
+    """任务类型注册表 - 管理所有任务类型的进度追踪方式"""
+    
+    _types = {}  # 存储所有注册的任务类型
+    
+    @classmethod
+    def register(cls, type_id, config):
+        """注册新的任务类型
+        
+        Args:
+            type_id: 类型标识符 (如 "kills", "bosses")
+            config: 配置字典，包含:
+                - default: 默认值 (int/list/dict)
+                - mode: 累加模式 ("add", "max", "set", "list_unique", "dict_count")
+                - getter: 可选的自定义获取函数
+        """
+        cls._types[type_id] = config
+        
+    @classmethod
+    def get_default(cls, type_id):
+        """获取类型的默认值"""
+        config = cls._types.get(type_id, {})
+        default = config.get("default", 0)
+        # 返回副本避免引用问题
+        if isinstance(default, list):
+            return []
+        elif isinstance(default, dict):
+            return {}
+        return default
+    
+    @classmethod
+    def get_mode(cls, type_id):
+        """获取累加模式"""
+        return cls._types.get(type_id, {}).get("mode", "add")
+    
+    @classmethod
+    def get_current_value(cls, type_id, progress_data):
+        """获取当前进度值（用于与target比较）"""
+        config = cls._types.get(type_id, {})
+        raw_value = progress_data.get(type_id, cls.get_default(type_id))
+        
+        # 自定义getter
+        getter = config.get("getter")
+        if getter:
+            return getter(raw_value)
+        
+        # 默认处理
+        if isinstance(raw_value, list):
+            return len(raw_value)
+        elif isinstance(raw_value, dict):
+            return sum(raw_value.values())
+        return raw_value
+    
+    @classmethod
+    def update_value(cls, type_id, progress_data, value):
+        """更新进度值"""
+        mode = cls.get_mode(type_id)
+        current = progress_data.get(type_id, cls.get_default(type_id))
+        
+        if mode == "add":
+            progress_data[type_id] = current + value
+        elif mode == "max":
+            progress_data[type_id] = max(current, value)
+        elif mode == "set":
+            progress_data[type_id] = value
+        elif mode == "list_unique":
+            if isinstance(current, list) and value not in current:
+                current.append(value)
+                progress_data[type_id] = current
+        elif mode == "dict_count":
+            if not isinstance(current, dict):
+                current = {}
+            current[value] = current.get(value, 0) + 1
+            progress_data[type_id] = current
+    
+    @classmethod
+    def get_all_types(cls):
+        """获取所有已注册的类型"""
+        return list(cls._types.keys())
+    
+    @classmethod
+    def init_progress_dict(cls):
+        """初始化进度字典"""
+        return {type_id: cls.get_default(type_id) for type_id in cls._types}
+
+
+# ==================== 注册默认任务类型 ====================
+# 基础类型
+QuestTypeRegistry.register("kills", {"default": 0, "mode": "add"})
+QuestTypeRegistry.register("bosses", {"default": 0, "mode": "add"})
+QuestTypeRegistry.register("score", {"default": 0, "mode": "add"})
+QuestTypeRegistry.register("games", {"default": 0, "mode": "add"})
+
+# 最大值类型（取单局最高）
+QuestTypeRegistry.register("waves", {"default": 0, "mode": "max"})
+QuestTypeRegistry.register("combo", {"default": 0, "mode": "max"})
+
+# 列表类型（去重统计）
+QuestTypeRegistry.register("planes_used", {"default": [], "mode": "list_unique"})
+QuestTypeRegistry.register("enemy_types_killed", {"default": [], "mode": "list_unique"})
+QuestTypeRegistry.register("modes_played", {"default": [], "mode": "list_unique"})
+
+# 模式专属统计
+QuestTypeRegistry.register("roguelike_games", {"default": 0, "mode": "add"})
+QuestTypeRegistry.register("boss_challenge_games", {"default": 0, "mode": "add"})
+QuestTypeRegistry.register("endless_games", {"default": 0, "mode": "add"})
+QuestTypeRegistry.register("training_games", {"default": 0, "mode": "add"})
+
+# 高级统计
+QuestTypeRegistry.register("damage_dealt", {"default": 0, "mode": "add"})
+QuestTypeRegistry.register("bullets_fired", {"default": 0, "mode": "add"})
+QuestTypeRegistry.register("items_collected", {"default": 0, "mode": "add"})
+QuestTypeRegistry.register("perfect_waves", {"default": 0, "mode": "add"})  # 无伤通过波次
+QuestTypeRegistry.register("dodge_count", {"default": 0, "mode": "add"})  # 闪避次数
+QuestTypeRegistry.register("close_calls", {"default": 0, "mode": "add"})  # 惊险躲避
+
+# 字典统计（按类型计数）
+QuestTypeRegistry.register("kills_by_type", {"default": {}, "mode": "dict_count"})
+QuestTypeRegistry.register("bosses_by_name", {"default": {}, "mode": "dict_count"})
+
+
+# ==================== 奖励类型系统 ====================
+class RewardType:
+    """奖励类型枚举"""
+    POINTS = "points"      # 积分
+    COINS = "coins"        # 金币
+    GEMS = "gems"          # 宝石
+    EXP = "exp"            # 经验
+    UNLOCK = "unlock"      # 解锁内容
+    BUFF = "buff"          # 临时增益
+
+
+class QuestReward:
+    """任务奖励定义"""
+    
+    def __init__(self, reward_type=RewardType.POINTS, amount=0, extra=None):
+        self.type = reward_type
+        self.amount = amount
+        self.extra = extra or {}  # 额外数据（如解锁内容ID）
+    
+    @classmethod
+    def points(cls, amount):
+        return cls(RewardType.POINTS, amount)
+    
+    @classmethod
+    def multi(cls, **rewards):
+        """多种奖励"""
+        return {rtype: amount for rtype, amount in rewards.items()}
+    
+    def to_dict(self):
+        return {"type": self.type, "amount": self.amount, "extra": self.extra}
+    
+    @classmethod
+    def from_dict(cls, data):
+        if isinstance(data, (int, float)):
+            return cls(RewardType.POINTS, int(data))
+        return cls(data.get("type", RewardType.POINTS), 
+                   data.get("amount", 0), 
+                   data.get("extra"))
+
+
+# ==================== 任务条件系统 ====================
+class QuestCondition:
+    """任务条件 - 定义任务完成的额外要求"""
+    
+    def __init__(self, condition_type, **params):
+        self.type = condition_type
+        self.params = params
+    
+    def check(self, context):
+        """检查条件是否满足
+        context: 包含游戏状态的字典
+        """
+        if self.type == "no_damage":
+            return context.get("damage_taken", 0) == 0
+        elif self.type == "min_health":
+            return context.get("health_percent", 0) >= self.params.get("min", 50)
+        elif self.type == "use_plane":
+            return context.get("plane_id") in self.params.get("planes", [])
+        elif self.type == "game_mode":
+            return context.get("game_mode") in self.params.get("modes", [])
+        elif self.type == "time_limit":
+            return context.get("game_time", 0) <= self.params.get("max_seconds", 999)
+        elif self.type == "no_items":
+            return context.get("items_used", 0) == 0
+        return True
+    
+    def to_dict(self):
+        return {"type": self.type, "params": self.params}
+    
+    @classmethod
+    def from_dict(cls, data):
+        return cls(data.get("type", "none"), **data.get("params", {}))
+
+
+# ==================== 任务模板构建器 ====================
+class QuestBuilder:
+    """任务模板构建器 - 便于创建任务"""
+    
+    def __init__(self, quest_id):
+        self.id = quest_id
+        self._data = {
+            "name": "",
+            "desc": "",
+            "icon": "📋",
+            "target": 1,
+            "type": "games",
+            "reward": 100,
+            "difficulty": 1,
+            "conditions": [],
+            "tags": [],
+        }
+    
+    def name(self, name): 
+        self._data["name"] = name
+        return self
+    
+    def desc(self, desc): 
+        self._data["desc"] = desc
+        return self
+    
+    def icon(self, icon): 
+        self._data["icon"] = icon
+        return self
+    
+    def target(self, target): 
+        self._data["target"] = target
+        return self
+    
+    def type(self, quest_type): 
+        self._data["type"] = quest_type
+        return self
+    
+    def reward(self, reward): 
+        self._data["reward"] = reward
+        return self
+    
+    def difficulty(self, diff): 
+        self._data["difficulty"] = diff
+        return self
+    
+    def condition(self, condition_type, **params):
+        self._data["conditions"].append({"type": condition_type, "params": params})
+        return self
+    
+    def tag(self, *tags):
+        self._data["tags"].extend(tags)
+        return self
+    
+    def build(self):
+        return (self.id, self._data)
+
+
+def quest(quest_id):
+    """创建任务构建器的便捷函数"""
+    return QuestBuilder(quest_id)
+
+
+# ==================== 每日任务定义模板 ====================
+DAILY_QUEST_TEMPLATES = dict([
+    # ╔══════════════════════════════════════════════════════════════╗
+    # ║                     简单难度任务 (难度1)                        ║
+    # ╚══════════════════════════════════════════════════════════════╝
+    
+    # === 击杀类 ===
+    quest("kill_enemies_50")
+        .name("日常清剿").desc("击杀50个敌人").icon("💀")
+        .type("kills").target(50).reward(100).difficulty(1)
+        .tag("combat", "daily").build(),
+    
+    quest("kill_enemies_30")
+        .name("小试牛刀").desc("击杀30个敌人").icon("🗡️")
+        .type("kills").target(30).reward(60).difficulty(1)
+        .tag("combat", "daily").build(),
+    
+    # === 分数类 ===
+    quest("score_10000")
+        .name("初战告捷").desc("获得10000分").icon("💰")
+        .type("score").target(10000).reward(100).difficulty(1)
+        .tag("score", "daily").build(),
+    
+    quest("score_5000")
+        .name("热身运动").desc("获得5000分").icon("🪙")
+        .type("score").target(5000).reward(60).difficulty(1)
+        .tag("score", "daily").build(),
+    
+    quest("score_20000")
+        .name("稳步前进").desc("获得20000分").icon("💵")
+        .type("score").target(20000).reward(120).difficulty(1)
+        .tag("score", "daily").build(),
+    
+    # === 游戏局数 ===
+    quest("play_games_1")
+        .name("每日出击").desc("完成1局游戏").icon("✈️")
+        .type("games").target(1).reward(80).difficulty(1)
+        .tag("participation", "daily").build(),
+    
+    quest("play_games_2")
+        .name("再接再厉").desc("完成2局游戏").icon("🛩️")
+        .type("games").target(2).reward(100).difficulty(1)
+        .tag("participation", "daily").build(),
+    
+    # === 波次类 ===
+    quest("survive_wave_5")
+        .name("顽强抵抗").desc("生存至第5波").icon("🛡️")
+        .type("waves").target(5).reward(100).difficulty(1)
+        .tag("survival", "daily").build(),
+    
+    quest("survive_wave_3")
+        .name("初次尝试").desc("生存至第3波").icon("🔰")
+        .type("waves").target(3).reward(60).difficulty(1)
+        .tag("survival", "daily").build(),
+    
+    # === 连击类 ===
+    quest("combo_30")
+        .name("连击初级").desc("达成30连击").icon("⚡")
+        .type("combo").target(30).reward(120).difficulty(1)
+        .tag("skill", "daily").build(),
+    
+    quest("combo_20")
+        .name("连击新手").desc("达成20连击").icon("✨")
+        .type("combo").target(20).reward(80).difficulty(1)
+        .tag("skill", "daily").build(),
+    
+    # === 收集类 ===
+    quest("collect_items_10")
+        .name("小小收藏家").desc("收集10个道具").icon("📦")
+        .type("items_collected").target(10).reward(80).difficulty(1)
+        .tag("collection", "daily").build(),
+    
+    quest("collect_items_20")
+        .name("拾荒者").desc("收集20个道具").icon("🎁")
+        .type("items_collected").target(20).reward(120).difficulty(1)
+        .tag("collection", "daily").build(),
+    
+    # === 伤害类 ===
+    quest("damage_10000")
+        .name("火力展示").desc("造成10000点伤害").icon("💢")
+        .type("damage_dealt").target(10000).reward(100).difficulty(1)
+        .tag("combat", "daily").build(),
+    
+    # ╔══════════════════════════════════════════════════════════════╗
+    # ║                     中等难度任务 (难度2)                        ║
+    # ╚══════════════════════════════════════════════════════════════╝
+    
+    # === 击杀类 ===
+    quest("kill_enemies_100")
+        .name("屠杀者").desc("击杀100个敌人").icon("⚔️")
+        .type("kills").target(100).reward(200).difficulty(2)
+        .tag("combat", "daily").build(),
+    
+    quest("kill_enemies_150")
+        .name("战场收割").desc("击杀150个敌人").icon("🔪")
+        .type("kills").target(150).reward(250).difficulty(2)
+        .tag("combat", "daily").build(),
+    
+    quest("kill_enemies_200")
+        .name("无情杀手").desc("击杀200个敌人").icon("🩸")
+        .type("kills").target(200).reward(300).difficulty(2)
+        .tag("combat", "daily").build(),
+    
+    # === Boss类 ===
+    quest("kill_boss_1")
+        .name("Boss猎人").desc("击杀1个Boss").icon("👹")
+        .type("bosses").target(1).reward(150).difficulty(2)
+        .tag("boss", "daily").build(),
+    
+    quest("kill_boss_2")
+        .name("双杀Boss").desc("击杀2个Boss").icon("👺")
+        .type("bosses").target(2).reward(250).difficulty(2)
+        .tag("boss", "daily").build(),
+    
+    # === 分数类 ===
+    quest("score_50000")
+        .name("高分挑战").desc("获得50000分").icon("💎")
+        .type("score").target(50000).reward(250).difficulty(2)
+        .tag("score", "daily").build(),
+    
+    quest("score_30000")
+        .name("分数猎手").desc("获得30000分").icon("💴")
+        .type("score").target(30000).reward(180).difficulty(2)
+        .tag("score", "daily").build(),
+    
+    quest("score_75000")
+        .name("财富累积").desc("获得75000分").icon("💳")
+        .type("score").target(75000).reward(320).difficulty(2)
+        .tag("score", "daily").build(),
+    
+    # === 游戏局数 ===
+    quest("play_games_3")
+        .name("战斗狂人").desc("完成3局游戏").icon("🎮")
+        .type("games").target(3).reward(180).difficulty(2)
+        .tag("participation", "daily").build(),
+    
+    quest("play_games_4")
+        .name("不知疲倦").desc("完成4局游戏").icon("🕹️")
+        .type("games").target(4).reward(220).difficulty(2)
+        .tag("participation", "daily").build(),
+    
+    # === 波次类 ===
+    quest("survive_wave_10")
+        .name("坚守阵地").desc("生存至第10波").icon("🌊")
+        .type("waves").target(10).reward(200).difficulty(2)
+        .tag("survival", "daily").build(),
+    
+    quest("survive_wave_8")
+        .name("中流砥柱").desc("生存至第8波").icon("🏔️")
+        .type("waves").target(8).reward(160).difficulty(2)
+        .tag("survival", "daily").build(),
+    
+    quest("survive_wave_15")
+        .name("久经沙场").desc("生存至第15波").icon("⛰️")
+        .type("waves").target(15).reward(280).difficulty(2)
+        .tag("survival", "daily").build(),
+    
+    # === 连击类 ===
+    quest("combo_50")
+        .name("连击大师").desc("达成50连击").icon("🔥")
+        .type("combo").target(50).reward(220).difficulty(2)
+        .tag("skill", "daily").build(),
+    
+    quest("combo_40")
+        .name("连击专家").desc("达成40连击").icon("🌟")
+        .type("combo").target(40).reward(160).difficulty(2)
+        .tag("skill", "daily").build(),
+    
+    quest("combo_75")
+        .name("连击狂人").desc("达成75连击").icon("💫")
+        .type("combo").target(75).reward(300).difficulty(2)
+        .tag("skill", "daily").build(),
+    
+    # === 机体多样性 ===
+    quest("use_plane_2")
+        .name("多面手").desc("使用2种不同机体完成游戏").icon("🔄")
+        .type("planes_used").target(2).reward(150).difficulty(2)
+        .tag("variety", "daily").build(),
+    
+    # === 模式任务 ===
+    quest("play_roguelike")
+        .name("冒险家").desc("完成1局无尽模式").icon("🏠")
+        .type("roguelike_games").target(1).reward(150).difficulty(2)
+        .tag("mode", "daily").build(),
+    
+    quest("play_boss_challenge")
+        .name("勇往直前").desc("完成1次Boss挑战").icon("👊")
+        .type("boss_challenge_games").target(1).reward(180).difficulty(2)
+        .tag("mode", "daily").build(),
+    
+    quest("play_endless")
+        .name("无尽征程").desc("完成1局无尽模式").icon("∞")
+        .type("endless_games").target(1).reward(160).difficulty(2)
+        .tag("mode", "daily").build(),
+    
+    quest("play_training")
+        .name("刻苦训练").desc("完成1次训练场").icon("🎯")
+        .type("training_games").target(1).reward(100).difficulty(2)
+        .tag("mode", "daily").build(),
+    
+    # === 技巧类 ===
+    quest("perfect_wave_3")
+        .name("完美主义").desc("无伤通过3个波次").icon("💫")
+        .type("perfect_waves").target(3).reward(200).difficulty(2)
+        .tag("skill", "challenge").build(),
+    
+    quest("perfect_wave_2")
+        .name("无懈可击").desc("无伤通过2个波次").icon("🌙")
+        .type("perfect_waves").target(2).reward(150).difficulty(2)
+        .tag("skill", "challenge").build(),
+    
+    # === 多样性任务 ===
+    quest("play_modes_2")
+        .name("模式探索").desc("游玩2种不同模式").icon("🗺️")
+        .type("modes_played").target(2).reward(180).difficulty(2)
+        .tag("variety", "daily").build(),
+    
+    quest("kill_types_5")
+        .name("物种猎人").desc("击杀5种不同类型的敌人").icon("🦎")
+        .type("enemy_types_killed").target(5).reward(150).difficulty(2)
+        .tag("variety", "daily").build(),
+    
+    quest("kill_types_3")
+        .name("多样击杀").desc("击杀3种不同类型的敌人").icon("🐍")
+        .type("enemy_types_killed").target(3).reward(100).difficulty(2)
+        .tag("variety", "daily").build(),
+    
+    # === 伤害类 ===
+    quest("damage_50000")
+        .name("火力全开").desc("造成50000点伤害").icon("💥")
+        .type("damage_dealt").target(50000).reward(220).difficulty(2)
+        .tag("combat", "daily").build(),
+    
+    quest("damage_30000")
+        .name("重炮手").desc("造成30000点伤害").icon("🔫")
+        .type("damage_dealt").target(30000).reward(160).difficulty(2)
+        .tag("combat", "daily").build(),
+    
+    # === 收集类 ===
+    quest("collect_items_50")
+        .name("收藏达人").desc("收集50个道具").icon("🎒")
+        .type("items_collected").target(50).reward(200).difficulty(2)
+        .tag("collection", "daily").build(),
+    
+    # ╔══════════════════════════════════════════════════════════════╗
+    # ║                     困难难度任务 (难度3)                        ║
+    # ╚══════════════════════════════════════════════════════════════╝
+    
+    # === 击杀类 ===
+    quest("kill_enemies_300")
+        .name("死神来临").desc("击杀300个敌人").icon("☠️")
+        .type("kills").target(300).reward(400).difficulty(3)
+        .tag("combat", "daily").build(),
+    
+    quest("kill_enemies_500")
+        .name("万夫莫敌").desc("击杀500个敌人").icon("💀")
+        .type("kills").target(500).reward(600).difficulty(3)
+        .tag("combat", "daily").build(),
+    
+    quest("kill_enemies_400")
+        .name("杀戮机器").desc("击杀400个敌人").icon("🤖")
+        .type("kills").target(400).reward(500).difficulty(3)
+        .tag("combat", "daily").build(),
+    
+    # === Boss类 ===
+    quest("kill_boss_3")
+        .name("Boss终结者").desc("击杀3个Boss").icon("👑")
+        .type("bosses").target(3).reward(350).difficulty(3)
+        .tag("boss", "daily").build(),
+    
+    quest("kill_boss_5")
+        .name("Boss克星").desc("击杀5个Boss").icon("🦴")
+        .type("bosses").target(5).reward(500).difficulty(3)
+        .tag("boss", "daily").build(),
+    
+    quest("kill_boss_4")
+        .name("Boss猎杀者").desc("击杀4个Boss").icon("🎃")
+        .type("bosses").target(4).reward(420).difficulty(3)
+        .tag("boss", "daily").build(),
+    
+    # === 分数类 ===
+    quest("score_100000")
+        .name("百万富翁").desc("获得100000分").icon("🏆")
+        .type("score").target(100000).reward(500).difficulty(3)
+        .tag("score", "daily").build(),
+    
+    quest("score_150000")
+        .name("财阀巨头").desc("获得150000分").icon("👑")
+        .type("score").target(150000).reward(650).difficulty(3)
+        .tag("score", "daily").build(),
+    
+    quest("score_200000")
+        .name("富可敌国").desc("获得200000分").icon("🌟")
+        .type("score").target(200000).reward(800).difficulty(3)
+        .tag("score", "daily").build(),
+    
+    # === 游戏局数 ===
+    quest("play_games_5")
+        .name("永不止步").desc("完成5局游戏").icon("🚀")
+        .type("games").target(5).reward(300).difficulty(3)
+        .tag("participation", "daily").build(),
+    
+    quest("play_games_7")
+        .name("马拉松").desc("完成7局游戏").icon("🏃")
+        .type("games").target(7).reward(450).difficulty(3)
+        .tag("participation", "daily").build(),
+    
+    quest("play_games_10")
+        .name("铁人三项").desc("完成10局游戏").icon("🏋️")
+        .type("games").target(10).reward(600).difficulty(3)
+        .tag("participation", "daily").build(),
+    
+    # === 波次类 ===
+    quest("survive_wave_20")
+        .name("永不言败").desc("生存至第20波").icon("⭐")
+        .type("waves").target(20).reward(400).difficulty(3)
+        .tag("survival", "daily").build(),
+    
+    quest("survive_wave_25")
+        .name("钢铁意志").desc("生存至第25波").icon("🔱")
+        .type("waves").target(25).reward(550).difficulty(3)
+        .tag("survival", "daily").build(),
+    
+    quest("survive_wave_30")
+        .name("不死传说").desc("生存至第30波").icon("👁️")
+        .type("waves").target(30).reward(700).difficulty(3)
+        .tag("survival", "daily").build(),
+    
+    # === 连击类 ===
+    quest("combo_100")
+        .name("连击之神").desc("达成100连击").icon("💥")
+        .type("combo").target(100).reward(400).difficulty(3)
+        .tag("skill", "daily").build(),
+    
+    quest("combo_150")
+        .name("连击传说").desc("达成150连击").icon("🌈")
+        .type("combo").target(150).reward(550).difficulty(3)
+        .tag("skill", "daily").build(),
+    
+    quest("combo_200")
+        .name("连击至尊").desc("达成200连击").icon("👁️‍🗨️")
+        .type("combo").target(200).reward(700).difficulty(3)
+        .tag("skill", "daily").build(),
+    
+    # === 机体多样性 ===
+    quest("use_plane_3")
+        .name("全能飞行员").desc("使用3种不同机体完成游戏").icon("🎨")
+        .type("planes_used").target(3).reward(280).difficulty(3)
+        .tag("variety", "daily").build(),
+    
+    quest("use_plane_5")
+        .name("机体收藏家").desc("使用5种不同机体完成游戏").icon("🎭")
+        .type("planes_used").target(5).reward(450).difficulty(3)
+        .tag("variety", "daily").build(),
+    
+    # === 模式任务 ===
+    quest("play_roguelike_3")
+        .name("探险专家").desc("完成3局无尽模式").icon("🗿")
+        .type("roguelike_games").target(3).reward(400).difficulty(3)
+        .tag("mode", "daily").build(),
+    
+    quest("play_boss_challenge_3")
+        .name("Boss挑战者").desc("完成3次Boss挑战").icon("🐲")
+        .type("boss_challenge_games").target(3).reward(450).difficulty(3)
+        .tag("mode", "daily").build(),
+    
+    quest("play_all_modes")
+        .name("全面体验").desc("游玩3种不同模式").icon("🌈")
+        .type("modes_played").target(3).reward(350).difficulty(3)
+        .tag("variety", "daily").build(),
+    
+    # === 技巧类 ===
+    quest("perfect_wave_5")
+        .name("完美无瑕").desc("无伤通过5个波次").icon("🌟")
+        .type("perfect_waves").target(5).reward(400).difficulty(3)
+        .tag("skill", "challenge").build(),
+    
+    quest("perfect_wave_10")
+        .name("神乎其技").desc("无伤通过10个波次").icon("✨")
+        .type("perfect_waves").target(10).reward(700).difficulty(3)
+        .tag("skill", "challenge").build(),
+    
+    # === 伤害类 ===
+    quest("damage_100000")
+        .name("毁灭之力").desc("造成100000点伤害").icon("☄️")
+        .type("damage_dealt").target(100000).reward(400).difficulty(3)
+        .tag("combat", "daily").build(),
+    
+    quest("damage_200000")
+        .name("终极火力").desc("造成200000点伤害").icon("🌋")
+        .type("damage_dealt").target(200000).reward(600).difficulty(3)
+        .tag("combat", "daily").build(),
+    
+    # === 多样性任务 ===
+    quest("kill_types_10")
+        .name("生物学家").desc("击杀10种不同类型的敌人").icon("🔬")
+        .type("enemy_types_killed").target(10).reward(350).difficulty(3)
+        .tag("variety", "daily").build(),
+    
+    # === 收集类 ===
+    quest("collect_items_100")
+        .name("仓鼠精神").desc("收集100个道具").icon("🧸")
+        .type("items_collected").target(100).reward(400).difficulty(3)
+        .tag("collection", "daily").build(),
+    
+    quest("collect_items_150")
+        .name("终极收藏家").desc("收集150个道具").icon("💼")
+        .type("items_collected").target(150).reward(550).difficulty(3)
+        .tag("collection", "daily").build(),
+])
+
+
+class DailyQuestManager:
+    """每日任务管理器 - 高拓展性版本"""
+    
+    def __init__(self):
+        self.quests = []  # 当天的任务列表
+        self.last_refresh_date = ""
+        self.daily_progress = {}  # 每日进度统计
+        self.claimed_rewards = []  # 已领取奖励的任务ID
+        self.total_points = 0  # 总积分
+        self.streak_days = 0  # 连续完成天数
+        
+        # 扩展数据
+        self.quest_history = []  # 历史完成记录 (可选保存)
+        self.lifetime_stats = {}  # 终身统计数据
+        self.achievements = []  # 解锁的成就
+        self.active_buffs = []  # 激活的增益效果
+        
+        # 事件回调系统
+        self._event_listeners = {}
+        
+        # 加载保存的数据
+        self.load_from_file()
+        
+        # 检查是否需要刷新任务
+        self.check_and_refresh()
+    
+    # ==================== 事件系统 ====================
+    def on(self, event_type, callback):
+        """注册事件监听器
+        event_type: "quest_complete", "reward_claimed", "streak_updated" 等
+        """
+        if event_type not in self._event_listeners:
+            self._event_listeners[event_type] = []
+        self._event_listeners[event_type].append(callback)
+    
+    def emit(self, event_type, **data):
+        """触发事件"""
+        for callback in self._event_listeners.get(event_type, []):
+            try:
+                callback(**data)
+            except Exception as e:
+                log_error(f"事件回调错误 [{event_type}]: {e}")
+    
+    # ==================== 核心方法 ====================
+    def get_today_date(self):
+        """获取今天的日期字符串"""
+        from datetime import datetime
+        return datetime.now().strftime("%Y-%m-%d")
+    
+    def check_and_refresh(self):
+        """检查并刷新每日任务"""
+        today = self.get_today_date()
+        if self.last_refresh_date != today:
+            # 检查连续天数
+            from datetime import datetime, timedelta
+            if self.last_refresh_date:
+                try:
+                    last_date = datetime.strptime(self.last_refresh_date, "%Y-%m-%d")
+                    today_date = datetime.strptime(today, "%Y-%m-%d")
+                    diff = (today_date - last_date).days
+                    if diff == 1 and self.all_quests_completed():
+                        self.streak_days += 1
+                        self.emit("streak_updated", streak=self.streak_days)
+                    elif diff > 1:
+                        self.streak_days = 0
+                except:
+                    self.streak_days = 0
+            
+            self.refresh_daily_quests()
+            self.last_refresh_date = today
+            self.save_to_file()
+    
+    def refresh_daily_quests(self):
+        """刷新每日任务（每天3个任务，不同难度）"""
+        import random
+        
+        # 按难度分组
+        easy_quests = [k for k, v in DAILY_QUEST_TEMPLATES.items() if v["difficulty"] == 1]
+        medium_quests = [k for k, v in DAILY_QUEST_TEMPLATES.items() if v["difficulty"] == 2]
+        hard_quests = [k for k, v in DAILY_QUEST_TEMPLATES.items() if v["difficulty"] == 3]
+        
+        # 随机选择：1个简单 + 1个中等 + 1个困难
+        selected = []
+        if easy_quests:
+            selected.append(random.choice(easy_quests))
+        if medium_quests:
+            selected.append(random.choice(medium_quests))
+        if hard_quests:
+            selected.append(random.choice(hard_quests))
+        
+        # 使用注册表初始化进度
+        self.quests = selected
+        self.daily_progress = QuestTypeRegistry.init_progress_dict()
+        self.claimed_rewards = []
+        
+        log_info(f"每日任务已刷新: {selected}")
+        self.emit("quests_refreshed", quests=selected)
+    
+    def update_progress(self, progress_type, value=1, replace=False):
+        """更新任务进度 - 使用注册表系统
+        progress_type: 任务类型（如 kills, bosses, score 等）
+        value: 增加的值或设置的值
+        replace: 如果为True，使用max模式（向后兼容）
+        """
+        # 初始化进度字典（如果需要）
+        if progress_type not in self.daily_progress:
+            self.daily_progress[progress_type] = QuestTypeRegistry.get_default(progress_type)
+        
+        # 如果replace=True，强制使用max模式
+        if replace:
+            current = self.daily_progress.get(progress_type, 0)
+            self.daily_progress[progress_type] = max(current, value)
+        else:
+            # 使用注册表更新
+            QuestTypeRegistry.update_value(progress_type, self.daily_progress, value)
+        
+        # 更新终身统计
+        if progress_type not in self.lifetime_stats:
+            self.lifetime_stats[progress_type] = QuestTypeRegistry.get_default(progress_type)
+        if not replace:
+            QuestTypeRegistry.update_value(progress_type, self.lifetime_stats, value)
+        
+        # 检查是否有任务完成
+        self._check_quest_completions()
+        
+        self.save_to_file()
+    
+    def _check_quest_completions(self):
+        """检查任务完成情况并触发事件"""
+        for quest_id in self.quests:
+            if self.is_quest_completed(quest_id) and quest_id not in self.claimed_rewards:
+                if not hasattr(self, '_notified_quests'):
+                    self._notified_quests = set()
+                if quest_id not in self._notified_quests:
+                    self._notified_quests.add(quest_id)
+                    self.emit("quest_complete", quest_id=quest_id)
+    
+    def get_quest_progress(self, quest_id):
+        """获取指定任务的进度"""
+        if quest_id not in DAILY_QUEST_TEMPLATES:
+            return 0, 0, 0
+        
+        template = DAILY_QUEST_TEMPLATES[quest_id]
+        target = template["target"]
+        progress_type = template["type"]
+        
+        # 使用注册表获取当前值
+        current = QuestTypeRegistry.get_current_value(progress_type, self.daily_progress)
+        
+        percent = min(100, int(current / target * 100)) if target > 0 else 0
+        return current, target, percent
+    
+    def is_quest_completed(self, quest_id):
+        """检查任务是否完成"""
+        current, target, _ = self.get_quest_progress(quest_id)
+        
+        # 检查额外条件
+        template = DAILY_QUEST_TEMPLATES.get(quest_id, {})
+        conditions = template.get("conditions", [])
+        if conditions and hasattr(self, '_game_context'):
+            for cond_data in conditions:
+                cond = QuestCondition.from_dict(cond_data)
+                if not cond.check(self._game_context):
+                    return False
+        
+        return current >= target
+    
+    def set_game_context(self, context):
+        """设置游戏上下文（用于条件检查）"""
+        self._game_context = context
+    
+    def is_quest_claimed(self, quest_id):
+        """检查任务奖励是否已领取"""
+        return quest_id in self.claimed_rewards
+    
+    def claim_reward(self, quest_id):
+        """领取任务奖励"""
+        if not self.is_quest_completed(quest_id):
+            return False, 0
+        if self.is_quest_claimed(quest_id):
+            return False, 0
+        
+        template = DAILY_QUEST_TEMPLATES.get(quest_id, {})
+        reward = template.get("reward", 0)
+        
+        # 连续天数加成
+        bonus_mult = 1.0 + self.streak_days * 0.1  # 每天+10%，最多+100%
+        bonus_mult = min(bonus_mult, 2.0)
+        reward = int(reward * bonus_mult)
+        
+        self.claimed_rewards.append(quest_id)
+        self.total_points += reward
+        self.save_to_file()
+        
+        log_info(f"领取任务奖励: {quest_id}, 积分: {reward}")
+        return True, reward
+    
+    def all_quests_completed(self):
+        """检查是否所有任务都已完成"""
+        for quest_id in self.quests:
+            if not self.is_quest_completed(quest_id):
+                return False
+        return True
+    
+    def all_rewards_claimed(self):
+        """检查是否所有奖励都已领取"""
+        for quest_id in self.quests:
+            if not self.is_quest_claimed(quest_id):
+                return False
+        return True
+    
+    def get_completion_bonus(self):
+        """获取全部完成奖励"""
+        if not self.all_quests_completed():
+            return 0
+        
+        base_bonus = 300
+        streak_bonus = self.streak_days * 50
+        return base_bonus + streak_bonus
+    
+    def save_to_file(self, filename="daily_quests.json"):
+        """保存每日任务数据"""
+        import json
+        data = {
+            "last_refresh_date": self.last_refresh_date,
+            "quests": self.quests,
+            "daily_progress": self.daily_progress,
+            "claimed_rewards": self.claimed_rewards,
+            "total_points": self.total_points,
+            "streak_days": self.streak_days,
+            # 扩展数据
+            "lifetime_stats": self.lifetime_stats,
+            "achievements": self.achievements,
+        }
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            log_debug(f"每日任务已保存到 {filename}")
+        except Exception as e:
+            log_error(f"保存每日任务失败: {e}")
+    
+    def load_from_file(self, filename="daily_quests.json"):
+        """加载每日任务数据"""
+        import json
+        import os
+        
+        if not os.path.exists(filename):
+            log_info("每日任务文件不存在，将创建新任务")
+            return
+        
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            self.last_refresh_date = data.get("last_refresh_date", "")
+            self.quests = data.get("quests", [])
+            self.daily_progress = data.get("daily_progress", {})
+            self.claimed_rewards = data.get("claimed_rewards", [])
+            self.total_points = data.get("total_points", 0)
+            self.streak_days = data.get("streak_days", 0)
+            # 扩展数据
+            self.lifetime_stats = data.get("lifetime_stats", {})
+            self.achievements = data.get("achievements", [])
+            
+            log_info(f"每日任务已加载，日期: {self.last_refresh_date}")
+        except Exception as e:
+            log_error(f"加载每日任务失败: {e}")
+    
+    # ==================== 便捷方法 ====================
+    def get_quests_by_tag(self, tag):
+        """获取指定标签的任务"""
+        return [qid for qid in self.quests 
+                if tag in DAILY_QUEST_TEMPLATES.get(qid, {}).get("tags", [])]
+    
+    def get_lifetime_stat(self, stat_type):
+        """获取终身统计数据"""
+        return QuestTypeRegistry.get_current_value(stat_type, self.lifetime_stats)
+    
+    def get_daily_summary(self):
+        """获取每日任务摘要"""
+        completed = sum(1 for q in self.quests if self.is_quest_completed(q))
+        claimed = sum(1 for q in self.quests if self.is_quest_claimed(q))
+        total = len(self.quests)
+        return {
+            "completed": completed,
+            "claimed": claimed,
+            "total": total,
+            "all_done": completed == total,
+            "all_claimed": claimed == total,
+            "points_today": sum(
+                DAILY_QUEST_TEMPLATES.get(q, {}).get("reward", 0)
+                for q in self.quests if self.is_quest_claimed(q)
+            ),
+        }
 
 
 class AchievementManager:

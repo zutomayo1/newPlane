@@ -134,11 +134,11 @@ class Particle(pygame.sprite.Sprite):
             self.image.set_alpha(int(self.life/40 * 255))
 
 class FloatingText(pygame.sprite.Sprite):
-    def __init__(self, x, y, text, color):
+    def __init__(self, x, y, text, color, font_size=24):
         super().__init__()
         all_sprites.add(self)
         # 避免循环引用 utils.get_font，这里直接使用pygame.font
-        font = pygame.font.SysFont(["microsoftyahei", "simhei", "arial"], 24, bold=True)
+        font = pygame.font.SysFont(["microsoftyahei", "simhei", "arial"], font_size, bold=True)
         self.image = font.render(str(text), True, color)
         # 描边
         outline = font.render(str(text), True, BLACK)

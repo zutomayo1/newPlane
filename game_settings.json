@@ -7,5 +7,6 @@
   "screen_shake": true,
   "particle_quality": "high",
   "show_damage_numbers": true,
-  "auto_fire": true
+  "auto_fire": true,
+  "ui_theme": "cyberpunk"
 }

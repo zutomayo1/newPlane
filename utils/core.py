@@ -55,7 +55,7 @@ def log_debug(msg):
 # ==============================================================================
 SETTINGS_FILE = "game_settings.json"
 
-def save_settings(background_style=None, master_volume=None, music_volume=None, sfx_volume=None, show_fps=None, screen_shake=None, particle_quality=None, show_damage_numbers=None, auto_fire=None, show_hitbox=None, window_mode=None):
+def save_settings(background_style=None, master_volume=None, music_volume=None, sfx_volume=None, show_fps=None, screen_shake=None, particle_quality=None, show_damage_numbers=None, auto_fire=None, show_hitbox=None, window_mode=None, ui_theme=None):
     """保存游戏设置"""
     # 加载现有设置
     try:
@@ -90,6 +90,8 @@ def save_settings(background_style=None, master_volume=None, music_volume=None, 
         settings["show_hitbox"] = show_hitbox
     if window_mode is not None:
         settings["window_mode"] = window_mode
+    if ui_theme is not None:
+        settings["ui_theme"] = ui_theme
     
     try:
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
@@ -108,7 +110,11 @@ def load_settings():
         "show_fps": True,
         "screen_shake": True,
         "particle_quality": "high",
-        "show_damage_numbers": True
+        "show_damage_numbers": True,
+        "auto_fire": True,
+        "show_hitbox": False,
+        "window_mode": "windowed",
+        "ui_theme": "cyberpunk",  # UI主题
     }
     try:
         if os.path.exists(SETTINGS_FILE):
@@ -119,6 +125,9 @@ def load_settings():
                 for key, value in default_settings.items():
                     if key not in settings:
                         settings[key] = value
+                # 应用UI主题
+                from config import set_theme
+                set_theme(settings.get("ui_theme", "cyberpunk"))
                 return settings
     except Exception as e:
         log_error(f"加载设置失败: {e}")
