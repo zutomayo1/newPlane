@@ -383,12 +383,29 @@ def render_text_with_emoji(text, text_font_name, text_size, color, emoji_size=No
         "\u2714\u2716"           # 对勾叉号
         "\u2764"                 # 心形
         "\u270F-\u2712"          # 铅笔等
+        "\u2605\u2606"           # ★☆ 实心/空心星
+        "\u25CB\u25CE\u25CF"     # ○◎● 圆形符号
+        "\u2726\u2727"           # ✦✧ 四角星
+        "\u25C6-\u25CF"          # ◆◇◈◉◊○◌◍◎● 菱形钻石圆形
+        "\u25B2-\u25C0"          # ▲△▶▼▽◀ 三角箭头
+        "\u21BA-\u21C4"          # ↺↻⇄ 旋转箭头
         "✓✗✔✘⭐✨🎯💀⚔️☠️👹👑💰💎🏆✈️🎮🚀🛡️🌊⭐⚡🔥💥🔄🎨🏠👊📋🎁📅"  # 直接包含用到的emoji
         "]+"
     )
     
     text_font = get_cached_font(text_font_name, text_size)
     emoji_font = get_cached_font("Segoe UI Emoji", emoji_size)
+    symbol_font = get_cached_font("Segoe UI Symbol", emoji_size)  # 几何符号字体
+    
+    # 几何符号正则（这些符号在Segoe UI Symbol中有更好支持）
+    symbol_pattern = re.compile(
+        "["
+        "\u2605\u2606"           # ★☆
+        "\u2726\u2727"           # ✦✧
+        "\u25A0-\u25FF"          # 几何图形块
+        "\u2190-\u21FF"          # 箭头
+        "]+"
+    )
     
     # 分割文本为emoji和普通文字
     parts = []
@@ -396,13 +413,18 @@ def render_text_with_emoji(text, text_font_name, text_size, color, emoji_size=No
     for match in emoji_pattern.finditer(text):
         if match.start() > last_end:
             parts.append(("text", text[last_end:match.start()]))
-        parts.append(("emoji", match.group()))
+        # 判断是几何符号还是emoji
+        matched_text = match.group()
+        if symbol_pattern.match(matched_text):
+            parts.append(("symbol", matched_text))
+        else:
+            parts.append(("emoji", matched_text))
         last_end = match.end()
     if last_end < len(text):
         parts.append(("text", text[last_end:]))
     
     # 如果没有emoji，直接返回普通渲染
-    if not any(p[0] == "emoji" for p in parts):
+    if not any(p[0] in ("emoji", "symbol") for p in parts):
         return text_font.render(text, True, color)
     
     # 计算总宽度
@@ -412,6 +434,8 @@ def render_text_with_emoji(text, text_font_name, text_size, color, emoji_size=No
     for part_type, part_text in parts:
         if part_type == "emoji":
             surf = emoji_font.render(part_text, True, color)
+        elif part_type == "symbol":
+            surf = symbol_font.render(part_text, True, color)
         else:
             surf = text_font.render(part_text, True, color)
         rendered_parts.append((part_type, surf))
@@ -3379,8 +3403,7 @@ def draw_talent_tree_ui():
     
     # 标题文字
     title_glow = int(255 * (0.8 + 0.2 * math.sin(t / 300)))
-    title_font = pygame.font.SysFont("SimHei", 32)
-    title_text = title_font.render("✦ 星轨天赋阵 ✦", True, (title_glow, int(title_glow * 0.85), 0))
+    title_text = render_text_with_emoji("✦ 星轨天赋阵 ✦", "SimHei", 32, (title_glow, int(title_glow * 0.85), 0))
     screen.blit(title_text, (title_panel.centerx - title_text.get_width()//2, title_panel.centery - title_text.get_height()//2))
     
     # 标题下方装饰线
@@ -3405,7 +3428,7 @@ def draw_talent_tree_ui():
     pygame.draw.rect(screen, (50, 90, 120), (WIDTH - 228, 16, 106, 26), 1, border_radius=3)
     
     curr_font = pygame.font.SysFont("SimHei", 14)
-    core_text = curr_font.render(f"◆ 核心: {cores}", True, (120, 200, 255))
+    core_text = render_text_with_emoji(f"◆ 核心: {cores}", "SimHei", 14, (120, 200, 255))
     screen.blit(core_text, (WIDTH - 218, 20))
     
     # 芯片显示
@@ -3416,7 +3439,7 @@ def draw_talent_tree_ui():
     pygame.draw.rect(screen, GOLD, (WIDTH - 112, 14, 100, 30), 2, border_radius=4)
     pygame.draw.rect(screen, (120, 100, 40), (WIDTH - 110, 16, 96, 26), 1, border_radius=3)
     
-    chip_text = curr_font.render(f"◈ 芯片: {chips}", True, GOLD)
+    chip_text = render_text_with_emoji(f"◈ 芯片: {chips}", "SimHei", 14, GOLD)
     screen.blit(chip_text, (WIDTH - 100, 20))
     
     # 消息提示（与排行榜风格一致）
@@ -3453,10 +3476,16 @@ def draw_talent_tree_ui():
         # 路线图标和名称
         icon_chars = {"destruction": "⚔", "guardian": "🛡", "destiny": "✧"}
         emoji_font = pygame.font.SysFont("Segoe UI Emoji", 16)
+        symbol_font = pygame.font.SysFont("Segoe UI Symbol", 16)
         text_font = pygame.font.SysFont("SimHei", 15)
         
         text_col = path_col if is_sel else (WHITE if is_hov else (140, 135, 125))
-        emoji_surf = emoji_font.render(icon_chars.get(path_key, "○"), True, text_col)
+        icon_char = icon_chars.get(path_key, "○")
+        # destiny用Symbol字体渲染几何符号，其他用Emoji字体
+        if path_key == "destiny":
+            emoji_surf = symbol_font.render(icon_char, True, text_col)
+        else:
+            emoji_surf = emoji_font.render(icon_char, True, text_col)
         name_surf = text_font.render(path_name, True, text_col)
         
         # 居中显示
@@ -3593,11 +3622,10 @@ def draw_talent_tree_ui():
                     lvl_surf = lvl_font.render(lvl_text, True, lvl_col)
                     screen.blit(lvl_surf, (nx - lvl_surf.get_width() // 2, ny + node_size // 2 + 3))
                 
-                # 天赋图标
-                icon_font = pygame.font.SysFont("SimHei", 14)
+                # 天赋图标（使用emoji字体渲染）
                 icon_char = talent["icon"][:1] if len(talent["icon"]) > 0 else "◇"
                 icon_col = GOLD if is_maxed else (current_color if level > 0 else (60, 58, 52))
-                icon_surf = icon_font.render(icon_char, True, icon_col)
+                icon_surf = render_text_with_emoji(icon_char, "SimHei", 14, icon_col)
                 screen.blit(icon_surf, (nx - icon_surf.get_width() // 2, ny - icon_surf.get_height() // 2))
                 
                 # 绘制连接线（到前置天赋）
@@ -3661,10 +3689,9 @@ def draw_talent_tree_ui():
         # 边框
         pygame.draw.polygon(screen, (255, 255, 255), hex_points, 3)
         
-        # 中心图标
+        # 中心图标（使用emoji字体渲染）
         ult_icon = "★"
-        icon_font = pygame.font.SysFont("SimHei", 18)
-        icon_surf = icon_font.render(ult_icon, True, (255, 255, 255))
+        icon_surf = render_text_with_emoji(ult_icon, "SimHei", 18, (255, 255, 255))
         screen.blit(icon_surf, (ult_x - icon_surf.get_width() // 2, ult_y - icon_surf.get_height() // 2))
         
     elif can_ult:
@@ -3687,21 +3714,19 @@ def draw_talent_tree_ui():
             pygame.draw.polygon(screen, (40, 38, 32), hex_points)
             pygame.draw.polygon(screen, GOLD, hex_points, 2)
         
-        # 中心图标
+        # 中心图标（使用emoji字体渲染）
         lock_icon = "◎"
-        icon_font = pygame.font.SysFont("SimHei", 16)
         icon_col = (180, 170, 140) if ult_hovered else (120, 110, 90)
-        icon_surf = icon_font.render(lock_icon, True, icon_col)
+        icon_surf = render_text_with_emoji(lock_icon, "SimHei", 16, icon_col)
         screen.blit(icon_surf, (ult_x - icon_surf.get_width() // 2, ult_y - icon_surf.get_height() // 2))
     else:
         # 未解锁：暗淡状态
         pygame.draw.polygon(screen, (20, 18, 15), hex_points)
         pygame.draw.polygon(screen, (50, 47, 40), hex_points, 1)
         
-        # 锁定图标
+        # 锁定图标（使用emoji字体渲染）
         lock_icon = "○"
-        icon_font = pygame.font.SysFont("SimHei", 14)
-        icon_surf = icon_font.render(lock_icon, True, (55, 52, 45))
+        icon_surf = render_text_with_emoji(lock_icon, "SimHei", 14, (55, 52, 45))
         screen.blit(icon_surf, (ult_x - icon_surf.get_width() // 2, ult_y - icon_surf.get_height() // 2))
     
     # 终极名称（金色风格）
@@ -3717,9 +3742,8 @@ def draw_talent_tree_ui():
     
     # 终极悬停提示（金色）
     if ult_hovered and can_ult and not ult_unlocked:
-        hint_font = pygame.font.SysFont("SimHei", 11)
         hint_text = "✦ 点击解锁 ✦"
-        hint_surf = hint_font.render(hint_text, True, GOLD)
+        hint_surf = render_text_with_emoji(hint_text, "SimHei", 11, GOLD)
         screen.blit(hint_surf, (ult_x - hint_surf.get_width() // 2, ult_y + ult_size + 28))
     
     # 存储终极悬停状态供点击事件使用
@@ -3814,9 +3838,8 @@ def draw_talent_tree_ui():
     info_y = info_rect.y + 18
     
     # 路线总览标题（金色风格）
-    sec_font = pygame.font.SysFont("SimHei", 15)
     overview_text = "◈ 路线总览"
-    overview_surf = sec_font.render(overview_text, True, GOLD)
+    overview_surf = render_text_with_emoji(overview_text, "SimHei", 15, GOLD)
     screen.blit(overview_surf, (info_rect.x + 15, info_y))
     
     # 标题装饰线
@@ -3860,14 +3883,14 @@ def draw_talent_tree_ui():
     resonance = PATH_RESONANCE[talent_selected_path]
     is_resonant = talent_manager.data["resonance"].get(talent_selected_path, False)
     
-    res_label = res_font.render("◇ 路线共鸣", True, (180, 170, 140))
+    res_label = render_text_with_emoji("◇ 路线共鸣", "SimHei", 12, (180, 170, 140))
     screen.blit(res_label, (info_rect.x + 15, info_y))
     info_y += 22
     
     if is_resonant:
         # 已激活共鸣
         glow = int(abs(math.sin(t / 500)) * 30)
-        res_name = res_font.render(f"✦ {resonance['name']}", True, (GOLD[0] + glow, GOLD[1] + glow, min(255, GOLD[2] + glow)))
+        res_name = render_text_with_emoji(f"✦ {resonance['name']}", "SimHei", 12, (GOLD[0] + glow, GOLD[1] + glow, min(255, GOLD[2] + glow)))
         screen.blit(res_name, (info_rect.x + 20, info_y))
         info_y += 18
         
@@ -3902,7 +3925,7 @@ def draw_talent_tree_ui():
             pygame.draw.line(screen, (60, 55, 45), (info_rect.x + 12, info_y - 15), (info_rect.right - 12, info_y - 15), 1)
             
             # 天赋详情标题
-            detail_title = pygame.font.SysFont("SimHei", 11).render("◈ 天赋详情", True, (180, 170, 140))
+            detail_title = render_text_with_emoji("◈ 天赋详情", "SimHei", 11, (180, 170, 140))
             screen.blit(detail_title, (info_rect.x + 15, info_y - 12))
             info_y += 8
             
@@ -4000,10 +4023,9 @@ def draw_talent_tree_ui():
     if hb:
         pygame.draw.rect(screen, (120, 110, 80), btn_back.inflate(-4, -4), 1, border_radius=4)
     
-    back_font = pygame.font.SysFont("SimHei", 14)
     back_text = "◀ 返回"
     back_col = GOLD if hb else (180, 170, 140)
-    back_surf = back_font.render(back_text, True, back_col)
+    back_surf = render_text_with_emoji(back_text, "SimHei", 14, back_col)
     screen.blit(back_surf, (btn_back.centerx - back_surf.get_width() // 2, btn_back.centery - 8))
     
     # 重置按钮（金色风格）
@@ -4025,10 +4047,9 @@ def draw_talent_tree_ui():
     if hr:
         pygame.draw.rect(screen, (120, 110, 80), btn_reset.inflate(-4, -4), 1, border_radius=4)
     
-    reset_font = pygame.font.SysFont("SimHei", 14)
     reset_text = "↺ 重置路线"
     reset_col = GOLD if hr else (180, 170, 140)
-    reset_surf = reset_font.render(reset_text, True, reset_col)
+    reset_surf = render_text_with_emoji(reset_text, "SimHei", 14, reset_col)
     screen.blit(reset_surf, (btn_reset.centerx - reset_surf.get_width() // 2, btn_reset.centery - 8))
     
     # ====== 超限核心选择弹窗（金色赛博朋克风格） ======
@@ -4071,9 +4092,8 @@ def draw_talent_tree_ui():
             pygame.draw.line(screen, GOLD, (cx, cy), (cx, cy + 20 * dy), 2)
         
         # 标题
-        title_font = pygame.font.SysFont("SimHei", 20)
         title_text = "✦ 选择超限核心 ✦"
-        title_surf = title_font.render(title_text, True, GOLD)
+        title_surf = render_text_with_emoji(title_text, "SimHei", 20, GOLD)
         screen.blit(title_surf, (popup_x + popup_w // 2 - title_surf.get_width() // 2, popup_y + 18))
         
         # 标题装饰线
