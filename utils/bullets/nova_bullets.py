@@ -10,7 +10,7 @@
 import pygame
 import math
 import random
-from config import all_sprites, mobs
+from config import all_sprites, mobs, get_key_binding_manager
 
 
 class RailgunBullet(pygame.sprite.Sprite):
@@ -161,7 +161,8 @@ class ChargeIndicator(pygame.sprite.Sprite):
             
             # 检查是否在蓄力（按住射击键）
             keys = pygame.key.get_pressed()
-            if keys[pygame.K_SPACE] or keys[pygame.K_z]:
+            kb = get_key_binding_manager()
+            if kb.is_action_pressed(keys, "shoot"):
                 self.charge_time += 1
                 if self.charge_time >= self.max_charge:
                     self.fully_charged = True

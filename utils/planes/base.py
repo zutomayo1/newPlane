@@ -2,6 +2,7 @@
 机体渲染基础模块
 
 包含缓存、通用辅助函数和渲染入口
+支持从资产文件加载（优先）或程序化渲染（回退）
 """
 import pygame
 import math
@@ -14,10 +15,41 @@ from ..core import log_error
 # ==============================================================================
 _plane_cache = {}
 
+# 资产管理器（延迟导入避免循环引用）
+_asset_manager = None
+
+def _get_asset_manager():
+    """获取资产管理器实例"""
+    global _asset_manager
+    if _asset_manager is None:
+        try:
+            from ..asset_manager import asset_manager
+            _asset_manager = asset_manager
+        except ImportError:
+            _asset_manager = False  # 标记为不可用
+    return _asset_manager if _asset_manager else None
+
 
 def get_plane_surf(pid, visual=None, static=False):
-    """获取机体渲染图像（带缓存）"""
+    """
+    获取机体渲染图像（带缓存）
+    
+    优先从 assets/sprites/planes/{pid}/{skin}.png 加载
+    如果不存在则回退到程序化渲染
+    """
     cache_key = None
+    skin_id = "default"
+    
+    # 确定涂装ID
+    if visual:
+        model_style = visual.get("model_style")
+        if model_style:
+            # 从 model_style 提取 skin_id
+            if model_style.startswith(f"{pid}_"):
+                skin_id = model_style[len(pid)+1:]
+            else:
+                skin_id = model_style
+    
     if static:
         vis_key = None
         if visual:
@@ -38,7 +70,18 @@ def get_plane_surf(pid, visual=None, static=False):
         cache_key = (pid, vis_key)
         if cache_key in _plane_cache:
             return _plane_cache[cache_key]
+    
+    # 尝试从资产文件加载
+    asset_mgr = _get_asset_manager()
+    if asset_mgr and static:
+        sprite_path = f"sprites/planes/{pid}/{skin_id}.png"
+        sprite = asset_mgr.get_sprite(sprite_path)
+        if sprite is not None:
+            if cache_key:
+                _plane_cache[cache_key] = sprite
+            return sprite
 
+    # 回退到程序化渲染
     try:
         s = _generate_plane_surf(pid, visual, static)
     except Exception as e:

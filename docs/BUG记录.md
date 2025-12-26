@@ -992,3 +992,101 @@ screen.blit(cost_surf, (start_x + gem_surf.get_width(), btn_rect.centery - cost_
 
 ### 修复日期
 2025年12月23日
+
+---
+
+## Bug #014: 天赋树界面卡死
+
+### 问题描述
+点击天赋树（星轨天赋阵）按钮后，画面直接卡死，无法操作。
+
+### 具体表现
+- 从主菜单点击天赋树按钮
+- 画面冻结，无法响应任何输入
+- 必须强制关闭程序
+
+### 根本原因
+**每帧渐变循环未缓存**：`draw_talent_tree_ui()` 函数中存在多处 `for y in range(height)` 循环用于绘制渐变效果，每帧执行导致严重性能问题。
+
+问题代码示例：
+```python
+# 主背景 - 每帧700次循环
+for y in range(HEIGHT):
+    pygame.draw.line(bg, color, (0, y), (WIDTH, y))
+
+# 面板背景 - 每帧400+次循环
+for ty in range(tree_rect.height):
+    pygame.draw.line(tree_bg, color, (0, ty), (tree_rect.width, ty))
+
+# 信息面板、核心区域、弹出窗口等也有类似循环
+```
+
+此问题与 Bug #011（排行榜界面卡死）完全相同。
+
+### 解决方案
+参照排行榜的缓存模式，创建静态Surface缓存：
+
+```python
+# 缓存字典
+_talent_tree_cache = {
+    "bg_surface": None,
+    "bg_size": (0, 0),
+    "gradient_surfaces": {},
+}
+
+# 主背景缓存
+def _get_talent_tree_background():
+    if _talent_tree_cache["bg_surface"] is None:
+        bg = pygame.Surface((WIDTH, HEIGHT))
+        for y in range(HEIGHT):
+            # ... 渐变绘制（只执行一次）
+        _talent_tree_cache["bg_surface"] = bg
+    return _talent_tree_cache["bg_surface"]
+
+# 通用渐变缓存
+def _get_tt_gradient(key, width, height, colors, alpha=235):
+    cache_key = (key, width, height)
+    if cache_key not in _talent_tree_cache["gradient_surfaces"]:
+        surf = pygame.Surface((width, height), pygame.SRCALPHA)
+        # ... 渐变绘制（只执行一次）
+        _talent_tree_cache["gradient_surfaces"][cache_key] = surf
+    return _talent_tree_cache["gradient_surfaces"][cache_key]
+```
+
+替换所有渐变循环为缓存调用：
+```python
+# 主背景
+screen.blit(_get_talent_tree_background(), (0, 0))
+
+# 各面板背景
+tree_bg = _get_tt_gradient("tree_panel", tree_rect.width, tree_rect.height, [(13, 15, 20), (18, 20, 25)])
+info_bg = _get_tt_gradient("info_panel", info_rect.width, info_rect.height, [(10, 12, 15), (18, 20, 23)])
+core_bg = _get_tt_gradient("core_area", core_area_w, core_area_h, [(12, 11, 9), (18, 17, 15)])
+```
+
+### 缓存的区域
+1. ✅ 主背景 (`_get_talent_tree_background`)
+2. ✅ 标题面板渐变
+3. ✅ 天赋树主面板渐变
+4. ✅ 信息面板渐变
+5. ✅ 核心区域渐变
+6. ✅ 返回/重置按钮渐变
+7. ✅ 弹出窗口背景渐变
+8. ✅ 核心选项卡片渐变
+
+### 预防措施
+1. **禁止在每帧函数中使用大循环**：任何 `for y in range(height)` 都应该缓存
+2. **新UI参考已有缓存模式**：排行榜(`_get_lb_background`)、个性化菜单(`_personalization_cache`)
+3. **渐变效果必须预渲染**：使用 `pygame.Surface` 预渲染后 `blit`
+
+### 相关文件
+- `main.py` - `_talent_tree_cache` 缓存字典（第172行）
+- `main.py` - `_get_talent_tree_background()` 函数（第178行）
+- `main.py` - `_get_tt_gradient()` 函数（第191行）
+- `main.py` - `draw_talent_tree_ui()` 函数（第2991行）
+
+### 相关Bug
+- Bug #011: 排行榜界面卡死（相同原因，相同解决方案）
+
+### 修复日期
+2025年12月23日

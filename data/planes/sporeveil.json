@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "sporeveil",
+  "name": "孢子幕炮·菌幕",
+  "name_en": "Sporeveil",
+  "description": "远程孢子幕覆盖，炮弹最高点炸开成伞状孢子云持续DOT降命中，累计伤害生成子孢子链式传播",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 265,
+    "speed": 3.9,
+    "damage": 17,
+    "fire_rate": 550,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/sporeveil/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "sporeveil",
+    "colors": {
+      "primary": "#64B464",
+      "secondary": "#F0FAF0",
+      "glow": "#64B464",
+      "trail": "#509650"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "spore_chain",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "孢子繁殖",
+      "name": "孢子繁殖",
+      "color": "#96DC96",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "spore_shell",
+    "sprite_path": "sprites/bullets/spore_shell.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "gaia",
+  "name": "大地守护者",
+  "name_en": "Gaia",
+  "description": "坚韧防御型，越战越强的岩石荆棘",
+  "tier": 2,
+  "rarity": 3,
+  "stats": {
+    "hp": 285,
+    "speed": 3.2,
+    "damage": 22,
+    "fire_rate": 180,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/gaia/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "gaia",
+    "colors": {
+      "primary": "#228B22",
+      "secondary": "#FFD700",
+      "glow": "#228B22",
+      "trail": "#228B22"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "none",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "自然之怒",
+      "name": "自然之怒",
+      "color": "#228B22",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "thorn",
+    "sprite_path": "sprites/bullets/thorn.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -2,8 +2,10 @@ import pygame
 import math
 import random
 from config import *
+from config import get_key_binding_manager
 from utils import sound_mgr, draw_text, get_plane_surf, get_boss_surf, draw_cyber_rect, log_error, procedural_interceptor_surface, procedural_juggernaut_surface, procedural_swarmer_surface
 from systems import arsenal_save_data, create_weapon, WeaponSystem
+from talent_system import talent_manager
 
 # ==============================================================================
 #   特效与辅助实体
@@ -10945,6 +10947,22 @@ class Enemy(pygame.sprite.Sprite):
             self.frozen_timer -= 1
             return # 冻结不移动
         
+        # ========== 【星轨天赋阵】天赋燃烧效果处理 ==========
+        if hasattr(self, 'talent_burn_timer') and self.talent_burn_timer > 0:
+            self.talent_burn_timer -= 1
+            if not hasattr(self, 'talent_burn_tick'):
+                self.talent_burn_tick = 0
+            self.talent_burn_tick += 1
+            if self.talent_burn_tick >= 30:  # 每0.5秒造成一次伤害
+                self.talent_burn_tick = 0
+                burn_dmg = getattr(self, 'talent_burn_damage', 0)
+                if burn_dmg > 0:
+                    self.hp -= burn_dmg
+                    FloatingText(self.rect.centerx, self.rect.top - 15, f"-{int(burn_dmg)}", (255, 100, 0))
+                    # 燃烧粒子效果
+                    if random.random() < 0.5:
+                        Particle(self.rect.center, (255, 100, 0))
+        
         # 应用时间膨胀效果：减缓敌人的移动和攻击
         time_slow = getattr(self, 'time_slow_factor', 1.0)
         self.speed = self.base_speed * time_slow
@@ -12117,8 +12135,215 @@ class Player(pygame.sprite.Sprite):
         self.gambit_next_crit = False      # 下次必定暴击
         self.gambit_fortune_wheel_active = False  # 命运轮盘大招是否激活
         self.gambit_wheel_bonus = 1.0      # 轮盘加成倍率
+        
+        # ========== 【星轨天赋阵】天赋效果存储 ==========
+        self.talent_effects = {}           # 存储计算后的天赋效果
+        self.base_damage = self.damage     # 保存基础伤害
+        self.base_speed = self.speed       # 保存基础速度
+        self.base_max_hp = self.max_hp     # 保存基础生命
+        self.base_shoot_delay = self.shoot_delay  # 保存基础射击间隔
+        self.base_crit_chance = self.crit_chance  # 保存基础暴击率
+        self.base_crit_mult = self.crit_mult      # 保存基础暴击伤害
+        
+        # 天赋触发状态
+        self.talent_burn_duration = 0      # 燃烧持续时间（天赋）
+        self.talent_freeze_chance = 0.0    # 冻结几率（天赋）
+        self.talent_chain_chance = 0.0     # 连锁闪电几率（天赋）
+        self.talent_double_damage_chance = 0.0  # 双倍伤害几率（天赋）
+        self.talent_dodge_chance = 0.0     # 闪避率（天赋）
+        self.talent_dodge_invuln = 0.0     # 闪避后无敌时间（天赋）
+        self.talent_execute_damage = 0.0   # 处决伤害加成（天赋）
+        self.talent_kill_energy = 0.0      # 击杀回复能量（天赋）
+        self.talent_kill_heal = 0.0        # 击杀回复生命（天赋）
+        self.talent_exp_mult = 0.0         # 经验倍率加成（天赋）
+        self.talent_pickup_range = 0.0     # 拾取范围加成（天赋）
+        self.talent_drop_rate = 0.0        # 掉落率加成（天赋）
+        self.talent_wingman_damage = 0.0   # 僚机伤害加成（天赋）
+        self.talent_wingman_fire_rate = 0.0  # 僚机射速加成（天赋）
+        self.talent_wingman_max = 0        # 僚机上限加成（天赋）
+        self.talent_shield_capacity = 0.0  # 护盾容量加成（天赋）
+        self.talent_shield_regen = 0.0     # 护盾回复加成（天赋）
+        self.talent_shield_reflect = 0.0   # 护盾反弹伤害（天赋）
+        self.talent_hp_regen_timer = 0     # 生命回复计时器
+        self.talent_hp_regen_percent = 0.0 # 生命回复百分比（天赋）
+        self.talent_low_hp_reduction = 0.0 # 低血量减伤（天赋）
+        self.talent_full_shield_reduction = 0.0  # 满护盾减伤（天赋）
+        self.talent_hit_speed_boost = 0.0  # 被击后移速加成（天赋）
+        self.talent_hit_speed_timer = 0    # 被击后移速持续时间
+        self.talent_rare_chance = 0.0      # 稀有卡概率加成（天赋）
+        self.talent_extra_choices = 0      # 选卡数量加成（天赋）
+        self.talent_gold_pity = 0          # 金卡保底（天赋）
+        self.talent_double_levelup = 0.0   # 双倍升级几率（天赋）
+        self.talent_card_double = 0.0      # 卡牌效果翻倍几率（天赋）
+        
+        # 终极效果
+        self.ultimate_destruction_active = False  # 毁灭终极
+        self.ultimate_guardian_death_save = False # 守护终极（死亡豁免）
+        self.ultimate_destiny_free_reroll = 0     # 命运终极（免费刷新）
+        
+        # 应用天赋效果
+        self.apply_talent_effects()
+
+    def apply_talent_effects(self):
+        """应用星轨天赋阵效果"""
+        # 获取天赋效果
+        self.talent_effects = talent_manager.calculate_effects()
+        effects = self.talent_effects
+        
+        # ==================== 毁灭星轨效果 ====================
+        # 基础伤害加成
+        damage_mult = effects.get("damage_mult", 0)
+        self.damage = self.base_damage * (1 + damage_mult)
+        
+        # 暴击率加成
+        crit_bonus = effects.get("crit_chance", 0)
+        self.crit_chance = self.base_crit_chance + crit_bonus
+        
+        # 暴击伤害加成
+        crit_dmg_bonus = effects.get("crit_damage", 0)
+        self.crit_mult = self.base_crit_mult + crit_dmg_bonus
+        
+        # 射速加成（减少射击间隔）
+        fire_rate = effects.get("fire_rate", 0)
+        self.shoot_delay = max(1, int(self.base_shoot_delay * (1 - fire_rate)))
+        
+        # 子弹速度加成
+        self.bullet_speed_mult = 1.0 + effects.get("bullet_speed", 0)
+        
+        # 穿透加成
+        self.piercing = int(effects.get("pierce", 0))
+        
+        # 特效触发
+        self.talent_burn_duration = effects.get("burn_duration", 0)
+        self.talent_freeze_chance = effects.get("freeze_chance", 0)
+        self.talent_chain_chance = effects.get("chain_chance", 0)
+        self.talent_double_damage_chance = effects.get("double_damage_chance", 0)
+        self.talent_execute_damage = effects.get("execute_damage", 0)
+        self.talent_kill_energy = effects.get("kill_energy", 0)
+        
+        # ==================== 守护星轨效果 ====================
+        # 护盾容量加成
+        shield_capacity = effects.get("shield_capacity", 0)
+        self.talent_shield_capacity = shield_capacity
+        if shield_capacity > 0:
+            # 基础护盾为50，按比例提升
+            base_shield = 50
+            self.max_shield = int(base_shield * (1 + shield_capacity))
+            self.shield = min(self.shield, self.max_shield)
+        
+        # 护盾回复/反射
+        self.talent_shield_regen = effects.get("shield_regen", 0)
+        self.talent_shield_reflect = effects.get("shield_reflect", 0)
+        self.talent_full_shield_reduction = effects.get("full_shield_reduction", 0)
+        
+        # 最大生命加成
+        hp_bonus = effects.get("max_hp", 0)
+        if hp_bonus > 0:
+            old_max = self.max_hp
+            self.max_hp = int(self.base_max_hp * (1 + hp_bonus))
+            # 按比例恢复当前生命
+            if old_max > 0:
+                self.hp = int(self.hp * self.max_hp / old_max)
+        
+        # 生命回复
+        self.talent_hp_regen_percent = effects.get("hp_regen_percent", 0)
+        self.talent_kill_heal = effects.get("kill_heal", 0)
+        self.talent_low_hp_reduction = effects.get("low_hp_reduction", 0)
+        
+        # 移动速度加成
+        speed_bonus = effects.get("move_speed", 0)
+        self.speed = self.base_speed * (1 + speed_bonus)
+        
+        # 闪避相关
+        self.talent_dodge_chance = effects.get("dodge_chance", 0)
+        self.talent_dodge_invuln = effects.get("dodge_invuln", 0)
+        self.talent_hit_speed_boost = effects.get("hit_speed_boost", 0)
+        
+        # ==================== 命运星轨效果 ====================
+        # 经验/成长
+        self.talent_exp_mult = effects.get("exp_mult", 0)
+        self.talent_pickup_range = effects.get("pickup_range", 0)
+        self.talent_drop_rate = effects.get("drop_rate", 0)
+        self.talent_double_levelup = effects.get("double_levelup", 0)
+        
+        # 拾取范围应用
+        if self.talent_pickup_range > 0:
+            base_pickup = 150
+            self.pickup_range = base_pickup * (1 + self.talent_pickup_range)
+        
+        # 幸运/卡牌
+        self.talent_rare_chance = effects.get("rare_chance", 0)
+        self.talent_extra_choices = int(effects.get("extra_choices", 0))
+        self.talent_gold_pity = int(effects.get("gold_pity", 0)) if effects.get("gold_pity", 0) > 0 else 0
+        self.talent_card_double = effects.get("card_double", 0)
+        
+        # 僚机加成
+        self.talent_wingman_damage = effects.get("wingman_damage", 0)
+        self.talent_wingman_fire_rate = effects.get("wingman_fire_rate", 0)
+        self.talent_wingman_max = int(effects.get("wingman_max", 0))
+        if self.talent_wingman_max > 0:
+            self.max_wingmen = 4 + self.talent_wingman_max
+        
+        # ==================== 终极效果 ====================
+        # 毁灭终极：歼星者
+        if "ultimate_destruction_rage_damage" in effects:
+            self.ultimate_destruction_active = True
+        
+        # 守护终极：不朽堡垒（死亡豁免）
+        if "ultimate_guardian_death_save" in effects:
+            self.ultimate_guardian_death_save = True
+        
+        # 命运终极：命运织者（免费刷新）
+        if "ultimate_destiny_free_reroll" in effects:
+            self.ultimate_destiny_free_reroll = effects.get("ultimate_destiny_free_reroll", 0)
+        
+        # ==================== 路线共鸣效果 ====================
+        # 毁灭共鸣：连杀叠加伤害
+        self.resonance_destruction_active = "resonance_destruction_kill_streak_damage" in effects
+        if self.resonance_destruction_active:
+            self.resonance_kill_streak = 0  # 连杀计数
+            self.resonance_kill_streak_max_bonus = effects.get("resonance_destruction_kill_streak_damage", 0.30)
+            self.resonance_kill_streak_timer = 0  # 连杀计时器（3秒内无击杀重置）
+        
+        # 守护共鸣：受伤后减伤递增
+        self.resonance_guardian_active = "resonance_guardian_damage_taken_reduction" in effects
+        if self.resonance_guardian_active:
+            self.resonance_damage_timer = 0  # 受伤后计时
+            self.resonance_damage_max_reduction = effects.get("resonance_guardian_damage_taken_reduction", 0.25)
+        
+        # 命运共鸣：拾取计数器
+        self.resonance_destiny_active = "resonance_destiny_pickup_extra_choice" in effects
+        if self.resonance_destiny_active:
+            self.resonance_pickup_count = 0  # 拾取计数
+            self.resonance_pickup_threshold = effects.get("resonance_destiny_pickup_extra_choice", 5)
+            self.resonance_extra_choice_ready = False  # 下次选卡+1
 
     def update(self):
+        # ========== 【星轨天赋阵】实时效果处理 ==========
+        # 生命回复（每3秒回复一次）
+        if self.talent_hp_regen_percent > 0:
+            self.talent_hp_regen_timer += 1
+            if self.talent_hp_regen_timer >= 180:  # 3秒 = 180帧
+                self.talent_hp_regen_timer = 0
+                heal_amount = int(self.max_hp * self.talent_hp_regen_percent)
+                if self.hp < self.max_hp and heal_amount > 0:
+                    self.hp = min(self.max_hp, self.hp + heal_amount)
+                    FloatingText(self.rect.centerx, self.rect.top - 30, f"+{heal_amount}", (100, 255, 150))
+        
+        # 护盾回复（有护盾容量时缓慢回复）
+        if self.talent_shield_regen > 0 and self.max_shield > 0:
+            if self.shield < self.max_shield:
+                # 基础回复速度0.1/帧，天赋加成后
+                regen_rate = 0.1 * (1 + self.talent_shield_regen)
+                self.shield = min(self.max_shield, self.shield + regen_rate)
+        
+        # 被击后移速加成计时器
+        if self.talent_hit_speed_timer > 0:
+            self.talent_hit_speed_timer -= 1
+            if self.talent_hit_speed_timer <= 0:
+                # 移速恢复正常
+                self.speed = self.base_speed * (1 + self.talent_effects.get("move_speed", 0))
+        
         # 更新动态飞机模型
         plane_surf = get_plane_surf(self.plane_id, self.visual, static=False)
         self.image = pygame.transform.scale(plane_surf, (100, 100))
@@ -12247,15 +12472,18 @@ class Player(pygame.sprite.Sprite):
             self.solar_burn_damage = 0
             self.solar_burn_tick_timer = 0
 
-        # 移动逻辑 (WASD + Arrows) - 改进版支持流畅对角线移动
+        # 移动逻辑 (支持按键重映射) - 改进版支持流畅对角线移动
         keys = pygame.key.get_pressed()
         dx, dy = 0.0, 0.0
         
-        # 累加所有按下的移动键（支持对角线）
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]: dx -= self.speed
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]: dx += self.speed
-        if keys[pygame.K_UP] or keys[pygame.K_w]: dy -= self.speed
-        if keys[pygame.K_DOWN] or keys[pygame.K_s]: dy += self.speed
+        # 获取按键管理器
+        kb = get_key_binding_manager()
+        
+        # 使用按键管理器检测移动
+        if kb.is_action_pressed(keys, "move_left"): dx -= self.speed
+        if kb.is_action_pressed(keys, "move_right"): dx += self.speed
+        if kb.is_action_pressed(keys, "move_up"): dy -= self.speed
+        if kb.is_action_pressed(keys, "move_down"): dy += self.speed
         
         # 对角线移动标准化（避免对角线速度过快）
         if dx != 0 and dy != 0:
@@ -12299,12 +12527,12 @@ class Player(pygame.sprite.Sprite):
             if self.goliath_invincible > 0:
                 self.goliath_invincible -= 1
             
-            # 检测当前按下的方向键
+            # 检测当前按下的方向键（使用按键管理器）
             current_key = None
-            if keys[pygame.K_LEFT] or keys[pygame.K_a]: current_key = 'left'
-            elif keys[pygame.K_RIGHT] or keys[pygame.K_d]: current_key = 'right'
-            elif keys[pygame.K_UP] or keys[pygame.K_w]: current_key = 'up'
-            elif keys[pygame.K_DOWN] or keys[pygame.K_s]: current_key = 'down'
+            if kb.is_action_pressed(keys, "move_left"): current_key = 'left'
+            elif kb.is_action_pressed(keys, "move_right"): current_key = 'right'
+            elif kb.is_action_pressed(keys, "move_up"): current_key = 'up'
+            elif kb.is_action_pressed(keys, "move_down"): current_key = 'down'
             
             # 双击检测逻辑：按下->释放->快速再按
             if current_key:
@@ -12340,8 +12568,8 @@ class Player(pygame.sprite.Sprite):
                 # Reset damage when overdrive ends
                 self.damage = self.plane_data['damage']
         
-        # 冲刺条件：需要足够的能量（>=80/100）且有移动方向
-        if (keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]) and self.dash_energy >= 80 and (dx!=0 or dy!=0) and self.emp_timer <= 0 and not self.is_frozen:
+        # 冲刺条件：需要足够的能量（>=80/100）且有移动方向（使用按键管理器）
+        if kb.is_action_pressed(keys, "dash") and self.dash_energy >= 80 and (dx!=0 or dy!=0) and self.emp_timer <= 0 and not self.is_frozen:
             self.is_dashing = True
             self.dash_energy = max(0, self.dash_energy - 2)  # 扣除能量
             dx *= 2.0; dy *= 2.0
@@ -12398,22 +12626,22 @@ class Player(pygame.sprite.Sprite):
 
         # 切换武器
         if self.switch_cooldown <= 0:
-            if keys[pygame.K_q]:
+            if kb.is_action_pressed(keys, "weapon_prev"):
                 self.current_slot = (self.current_slot - 1) % 3
                 self.switch_cooldown = 60
                 sound_mgr.play("select")
-            elif keys[pygame.K_e]:
+            elif kb.is_action_pressed(keys, "weapon_next"):
                 self.current_slot = (self.current_slot + 1) % 3
                 self.switch_cooldown = 60
                 sound_mgr.play("select")
         
-        # 【MAGNUS】法术轮盘切换（T键）
+        # 【MAGNUS】法术轮盘切换（技能切换键）
         if self.plane_id == "magnus" and hasattr(self, 'magnus_initialized') and self.magnus_initialized:
             if not hasattr(self, 'magnus_switch_cooldown'):
                 self.magnus_switch_cooldown = 0
             if self.magnus_switch_cooldown > 0:
                 self.magnus_switch_cooldown -= 1
-            if keys[pygame.K_t] and self.magnus_switch_cooldown <= 0:
+            if kb.is_action_pressed(keys, "skill_switch") and self.magnus_switch_cooldown <= 0:
                 self.magnus_spell_mode = (self.magnus_spell_mode + 1) % 4
                 self.magnus_switch_cooldown = 30  # 0.5秒冷却
                 spell_name = self.magnus_spell_names[self.magnus_spell_mode]
@@ -12426,7 +12654,7 @@ class Player(pygame.sprite.Sprite):
             
             # 初始化技能冷却
             if not hasattr(self, 'heavymetal_skill_cooldowns'):
-                self.heavymetal_skill_cooldowns = {'q': 0, 't': 0, 'r': 0}
+                self.heavymetal_skill_cooldowns = {'1': 0, '2': 0, '3': 0}
             
             # 更新冷却
             for key in self.heavymetal_skill_cooldowns:
@@ -12435,24 +12663,24 @@ class Player(pygame.sprite.Sprite):
             
             cx, cy = self.rect.centerx, self.rect.centery
             
-            # Q键 - 强力和弦 (冷却2秒)
-            if keys[pygame.K_q] and self.heavymetal_skill_cooldowns['q'] <= 0:
+            # 技能1 - 强力和弦 (冷却2秒)
+            if kb.is_action_pressed(keys, "skill_1") and self.heavymetal_skill_cooldowns['1'] <= 0:
                 PowerChordWave(cx, cy, damage=self.damage * 1.5)
-                self.heavymetal_skill_cooldowns['q'] = 120
+                self.heavymetal_skill_cooldowns['1'] = 120
                 FloatingText(cx, cy - 40, "🎸 POWER CHORD!", (255, 100, 0))
                 sound_mgr.play("explosion")
             
-            # T键 - 舞台俯冲 (冷却5秒)
-            if keys[pygame.K_t] and self.heavymetal_skill_cooldowns['t'] <= 0:
+            # 技能2 - 舞台俯冲 (冷却5秒)
+            if kb.is_action_pressed(keys, "skill_2") and self.heavymetal_skill_cooldowns['2'] <= 0:
                 StageDiveMeteor(cx, cy - 200, cx, cy + 100, damage=self.damage * 5)
-                self.heavymetal_skill_cooldowns['t'] = 300
+                self.heavymetal_skill_cooldowns['2'] = 300
                 FloatingText(cx, cy - 40, "🔥 STAGE DIVE!", (255, 50, 0))
                 sound_mgr.play("explosion")
             
-            # R键 - 死亡金属独奏 (冷却10秒)
-            if keys[pygame.K_r] and self.heavymetal_skill_cooldowns['r'] <= 0:
+            # 技能3 - 死亡金属独奏 (冷却10秒)
+            if kb.is_action_pressed(keys, "skill_3") and self.heavymetal_skill_cooldowns['3'] <= 0:
                 DeathMetalSolo(cx, cy, damage_per_tick=self.damage // 6)
-                self.heavymetal_skill_cooldowns['r'] = 600
+                self.heavymetal_skill_cooldowns['3'] = 600
                 FloatingText(cx, cy - 40, "💀 DEATH METAL SOLO!", (148, 0, 211))
                 sound_mgr.play("ult")
 
@@ -17061,6 +17289,31 @@ class Player(pygame.sprite.Sprite):
     
     def take_damage(self, amount):
         """受到伤害，考虑护盾和装甲"""
+        # ========== 【星轨天赋阵】闪避判定 ==========
+        if hasattr(self, 'talent_dodge_chance') and self.talent_dodge_chance > 0:
+            if random.random() < self.talent_dodge_chance:
+                # 闪避成功
+                FloatingText(self.rect.centerx, self.rect.centery - 20, "闪避!", (150, 200, 255))
+                # 闪避后无敌效果
+                if hasattr(self, 'talent_dodge_invuln') and self.talent_dodge_invuln > 0:
+                    self.overdrive_timer = max(self.overdrive_timer, int(self.talent_dodge_invuln * 60))
+                return self.hp
+        
+        # ========== 【星轨天赋阵】减伤计算 ==========
+        talent_reduction = 0
+        # 低血量减伤
+        if hasattr(self, 'talent_low_hp_reduction') and self.talent_low_hp_reduction > 0:
+            if self.hp / self.max_hp < 0.25:
+                talent_reduction += self.talent_low_hp_reduction
+        # 满护盾减伤
+        if hasattr(self, 'talent_full_shield_reduction') and self.talent_full_shield_reduction > 0:
+            if self.max_shield > 0 and self.shield >= self.max_shield:
+                talent_reduction += self.talent_full_shield_reduction
+        
+        # 应用天赋减伤
+        if talent_reduction > 0:
+            amount = amount * (1 - min(0.8, talent_reduction))  # 最大80%减伤
+        
         # CRUSHER特殊机制：撞击护甲（受到伤害时积累层数，减少受到的伤害）
         if hasattr(self, 'plane_id') and self.plane_id == "crusher":
             # 确保护甲系统已初始化
@@ -17089,6 +17342,30 @@ class Player(pygame.sprite.Sprite):
             shield_absorb = min(self.shield, reduced)
             self.shield -= shield_absorb
             reduced -= shield_absorb
+            
+            # ========== 【星轨天赋阵】护盾反弹伤害 ==========
+            if hasattr(self, 'talent_shield_reflect') and self.talent_shield_reflect > 0:
+                reflect_damage = shield_absorb * self.talent_shield_reflect
+                if reflect_damage > 0:
+                    # 创建反弹伤害效果（在后续调用位置处理）
+                    if not hasattr(self, 'pending_reflect_damage'):
+                        self.pending_reflect_damage = 0
+                    self.pending_reflect_damage += reflect_damage
+        
+        # ========== 【星轨天赋阵】被击后移速加成 ==========
+        if hasattr(self, 'talent_hit_speed_boost') and self.talent_hit_speed_boost > 0:
+            self.talent_hit_speed_timer = 120  # 2秒
+            speed_bonus = self.talent_effects.get("move_speed", 0)
+            self.speed = self.base_speed * (1 + speed_bonus + self.talent_hit_speed_boost)
+        
+        # ========== 【星轨天赋阵】守护终极：不朽堡垒 ==========
+        if hasattr(self, 'ultimate_guardian_death_save') and self.ultimate_guardian_death_save:
+            if self.hp - reduced <= 0 and not hasattr(self, '_death_save_used'):
+                self._death_save_used = True
+                self.hp = 1
+                self.overdrive_timer = 180  # 3秒无敌
+                FloatingText(self.rect.centerx, self.rect.centery, "不朽堡垒!", CYAN)
+                return 1
         
         # 再扣生命
         self.hp -= reduced
@@ -17105,6 +17382,22 @@ class Player(pygame.sprite.Sprite):
     
     def on_kill_enemy(self, enemy):
         """击杀敌人时触发肉鸽效果（吸血、裂变等）"""
+        # ========== 【星轨天赋阵】击杀效果 ==========
+        # 击杀回复生命
+        if hasattr(self, 'talent_kill_heal') and self.talent_kill_heal > 0:
+            heal = int(self.max_hp * self.talent_kill_heal)
+            if heal > 0 and self.hp < self.max_hp:
+                self.hp = min(self.max_hp, self.hp + heal)
+                FloatingText(self.rect.centerx, self.rect.top - 20, f"+{heal}", (100, 255, 150))
+        
+        # 击杀回复能量（大招能量）
+        if hasattr(self, 'talent_kill_energy') and self.talent_kill_energy > 0:
+            energy = int(self.max_ult_charge * self.talent_kill_energy)
+            if energy > 0:
+                self.ult_charge = min(self.max_ult_charge, self.ult_charge + energy)
+                # 也给副大招充能
+                self.ult2_charge = min(self.max_ult2_charge, self.ult2_charge + energy // 2)
+        
         # 优先使用卡牌效果处理器
         if hasattr(self, 'card_effect_processor') and self.card_effect_processor:
             corpse_effect = self.card_effect_processor.on_kill_enemy(enemy)

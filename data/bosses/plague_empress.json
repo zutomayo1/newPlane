@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "plague_empress",
+  "name": "歌莉娅女王",
+  "description": "高机动的空中轰炸机，腹部透明离心机翻滚毒液，翅膀挂载多管导弹巢。",
+  "stats": {
+    "armor": 70,
+    "damage": 95,
+    "mobility": 85
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#55B42F",
+      "core": "#55B42F",
+      "aura": "#39FF14"
+    },
+    "phase_effect": "toxic_trail"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "matrix_bombing",
+        "count": 4
+      },
+      "fire_rate_mult": 0.9
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "matrix_bombing",
+        "count": 3
+      },
+      "fire_rate_mult": 0.75
+    },
+    {
+      "threshold": 0.25,
+      "effect": {
+        "type": "matrix_bombing",
+        "count": 5
+      },
+      "fire_rate_mult": 0.55
+    }
+  ]
+}

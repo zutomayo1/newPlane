@@ -1,0 +1,98 @@
+{
+  "version": "1.0",
+  "base_path": "assets/audio/sfx",
+  "sounds": {
+    "achievement": {
+      "file": "achievement.wav",
+      "volume": 0.6
+    },
+    "blackhole": {
+      "file": "blackhole.wav",
+      "volume": 0.5
+    },
+    "critical": {
+      "file": "critical.wav",
+      "volume": 0.5
+    },
+    "dash": {
+      "file": "dash.wav",
+      "volume": 0.5
+    },
+    "explosion": {
+      "file": "explosion.wav",
+      "volume": 0.6
+    },
+    "freeze": {
+      "file": "freeze.wav",
+      "volume": 0.5
+    },
+    "gameover": {
+      "file": "gameover.wav",
+      "volume": 0.7
+    },
+    "graze": {
+      "file": "graze.wav",
+      "volume": 0.5
+    },
+    "heal": {
+      "file": "heal.wav",
+      "volume": 0.4
+    },
+    "hit": {
+      "file": "hit.wav",
+      "volume": 0.5
+    },
+    "item_pickup": {
+      "file": "item_pickup.wav",
+      "volume": 0.4
+    },
+    "laser": {
+      "file": "laser.wav",
+      "volume": 0.5
+    },
+    "levelup": {
+      "file": "levelup.wav",
+      "volume": 0.5
+    },
+    "nuke": {
+      "file": "nuke.wav",
+      "volume": 0.5
+    },
+    "select": {
+      "file": "select.wav",
+      "volume": 0.3
+    },
+    "shield": {
+      "file": "shield.wav",
+      "volume": 0.45
+    },
+    "shoot": {
+      "file": "shoot.wav",
+      "volume": 0.15
+    },
+    "sniper_charge": {
+      "file": "sniper_charge.wav",
+      "volume": 0.5
+    },
+    "stinger_boss_phase": {
+      "file": "stinger_boss_phase.wav",
+      "volume": 0.85
+    },
+    "stinger_defeat": {
+      "file": "stinger_defeat.wav",
+      "volume": 0.8
+    },
+    "stinger_victory": {
+      "file": "stinger_victory.wav",
+      "volume": 0.85
+    },
+    "warning": {
+      "file": "warning.wav",
+      "volume": 0.8
+    },
+    "zap": {
+      "file": "zap.wav",
+      "volume": 0.5
+    }
+  }
+}

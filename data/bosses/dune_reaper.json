@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "dune_reaper",
+  "name": "旱海狂鲨",
+  "description": "利用屏幕外空间进行突袭的刺客，无眼锯齿口器，身体漏出流沙与能量光。",
+  "stats": {
+    "armor": 65,
+    "damage": 90,
+    "mobility": 95
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#B48C3C",
+      "core": "#B48C3C",
+      "aura": "#DCB450"
+    },
+    "phase_effect": "sand_trail"
+  },
+  "phases": [
+    {
+      "threshold": 0.75,
+      "effect": {
+        "type": "blindspot_rush",
+        "count": 3
+      },
+      "fire_rate_mult": 0.85
+    },
+    {
+      "threshold": 0.45,
+      "effect": {
+        "type": "quicksand_vortex",
+        "count": 1
+      },
+      "fire_rate_mult": 0.7
+    },
+    {
+      "threshold": 0.2,
+      "effect": {
+        "type": "blindspot_rush",
+        "count": 5
+      },
+      "fire_rate_mult": 0.5
+    }
+  ]
+}

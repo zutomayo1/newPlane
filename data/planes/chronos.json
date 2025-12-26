@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "chronos",
+  "name": "永恒时计·卡珊德拉",
+  "name_en": "Chronos",
+  "description": "掌控时空之力，三相大招操纵过去现在未来",
+  "tier": 4,
+  "rarity": 5,
+  "stats": {
+    "hp": 245,
+    "speed": 4.4,
+    "damage": 20,
+    "fire_rate": 180,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/chronos/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "chronos",
+    "colors": {
+      "primary": "#64DCFF",
+      "secondary": "#FFC864",
+      "glow": "#64DCFF",
+      "trail": "#32B4FF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "time_trinity",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "时空三相",
+      "name": "时空三相",
+      "color": "#00C8FF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "chrono",
+    "sprite_path": "sprites/bullets/chrono.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

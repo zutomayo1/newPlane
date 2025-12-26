@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "truth",
+  "name": "至尊·世界的真相",
+  "name_en": "Truth",
+  "description": "洞察万物本质的终极存在，攻击揭示敌人弱点，真言之眼看穿一切虚假，三大神谕重塑现实",
+  "tier": 5,
+  "rarity": 6,
+  "stats": {
+    "hp": 290,
+    "speed": 4.6,
+    "damage": 30,
+    "fire_rate": 165,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/truth/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "truth",
+    "colors": {
+      "primary": "#FFFFFF",
+      "secondary": "#FFD700",
+      "glow": "#FFFFFF",
+      "trail": "#C8C8C8"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "eye_of_truth",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "真理显现",
+      "name": "真理显现",
+      "color": "#FFD700",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "truth_revelation",
+    "sprite_path": "sprites/bullets/truth_revelation.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "star_serpent",
+  "name": "星神游龙",
+  "description": "半透明黑曜石晶体，内部封印流动星云，20节分离浮游单元靠引力场维持蛇形。",
+  "stats": {
+    "armor": 80,
+    "damage": 100,
+    "mobility": 70
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#643296",
+      "core": "#643296",
+      "aura": "#C864FF"
+    },
+    "phase_effect": "nebula_flow"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "star_position_laser",
+        "count": 5
+      },
+      "fire_rate_mult": 0.85
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "fission_charge",
+        "count": 2
+      },
+      "fire_rate_mult": 0.7
+    },
+    {
+      "threshold": 0.25,
+      "effect": {
+        "type": "star_position_laser",
+        "count": 8
+      },
+      "fire_rate_mult": 0.5
+    }
+  ]
+}

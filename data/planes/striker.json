@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "striker",
+  "name": "霓虹突击者",
+  "name_en": "Striker",
+  "description": "均衡型战机，擅长持续输出",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 260,
+    "speed": 4.0,
+    "damage": 18,
+    "fire_rate": 180,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/striker/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "striker",
+    "colors": {
+      "primary": "#00E5FF",
+      "secondary": "#FFD700",
+      "glow": "#00E5FF",
+      "trail": "#00FFFF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "overdrive",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "毁灭光束",
+      "name": "毁灭光束",
+      "color": "#00FFFF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "beam",
+    "sprite_path": "sprites/bullets/beam.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

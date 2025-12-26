@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "mirage",
+  "name": "幻镜·万华",
+  "name_en": "Mirage",
+  "description": "召唤镜像分身协同作战，分身复制攻击形成弹幕矩阵",
+  "tier": 4,
+  "rarity": 5,
+  "stats": {
+    "hp": 245,
+    "speed": 4.6,
+    "damage": 15,
+    "fire_rate": 165,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/mirage/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "mirage",
+    "colors": {
+      "primary": "#C896FF",
+      "secondary": "#FFC8FF",
+      "glow": "#C896FF",
+      "trail": "#B478FF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "mirror_dance",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "无限镜界",
+      "name": "无限镜界",
+      "color": "#DCB4FF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "mirror",
+    "sprite_path": "sprites/bullets/mirror.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

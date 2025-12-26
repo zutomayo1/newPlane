@@ -1,0 +1,301 @@
+{
+  "$schema": "./_schema.json",
+  "plane_id": "striker",
+  "skins": [
+    {
+      "id": "striker_default",
+      "name": "标准涂装",
+      "name_en": "Default",
+      "rarity": 1,
+      "unlock_type": "default",
+      "sprite_override": null,
+      "color_override": null,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "striker_mk2",
+      "name": "MK2 改装型",
+      "name_en": "MK2 Custom",
+      "rarity": 3,
+      "unlock_type": "achievement",
+      "unlock_condition": "complete_100_missions",
+      "sprite_override": "sprites/planes/striker/mk2.png",
+      "fallback_renderer": "striker_mk2",
+      "color_override": {
+        "primary": "#FF6B00",
+        "secondary": "#FFFFFF",
+        "glow": "#FF4500",
+        "trail": "#FF6B00"
+      },
+      "particle_effects": [
+        "afterburner_orange"
+      ],
+      "stat_bonus": {
+        "damage": 1.05,
+        "speed": 1.02
+      }
+    },
+    {
+      "id": "striker_stealth",
+      "name": "隐匿涂装",
+      "name_en": "Stealth",
+      "rarity": 3,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "sprite_override": "sprites/planes/striker/stealth.png",
+      "fallback_renderer": "striker_stealth",
+      "color_override": {
+        "primary": "#1A1A2E",
+        "secondary": "#4A4A6A",
+        "glow": "#2A2A4E",
+        "trail": "#3A3A5E"
+      },
+      "particle_effects": [
+        "shadow_trail"
+      ],
+      "stat_bonus": null
+    },
+    {
+      "id": "striker_overdrive",
+      "name": "超载核心",
+      "name_en": "Overdrive Core",
+      "rarity": 4,
+      "unlock_type": "achievement",
+      "unlock_condition": "defeat_boss_without_damage",
+      "sprite_override": "sprites/planes/striker/overdrive.png",
+      "fallback_renderer": "striker_overdrive",
+      "color_override": {
+        "primary": "#FF0000",
+        "secondary": "#FF6600",
+        "glow": "#FF3300",
+        "trail": "#FF0000"
+      },
+      "particle_effects": [
+        "fire_burst",
+        "energy_pulse"
+      ],
+      "stat_bonus": {
+        "damage": 1.15,
+        "crit_rate": 0.1
+      }
+    },
+    {
+      "id": "striker_quantum",
+      "name": "量子态",
+      "name_en": "Quantum State",
+      "rarity": 5,
+      "unlock_type": "event",
+      "unlock_condition": "quantum_event_2025",
+      "sprite_override": "sprites/planes/striker/quantum.png",
+      "fallback_renderer": "striker_quantum",
+      "color_override": {
+        "primary": "#9400D3",
+        "secondary": "#00BFFF",
+        "glow": "#8A2BE2",
+        "trail": "#9400D3"
+      },
+      "special_shader": "quantum_flicker",
+      "particle_effects": [
+        "quantum_particles",
+        "dimensional_rift"
+      ],
+      "stat_bonus": {
+        "speed": 1.1,
+        "crit_damage": 0.25
+      }
+    },
+    {
+      "id": "striker_holy",
+      "name": "圣光降临",
+      "name_en": "Holy Descent",
+      "rarity": 5,
+      "unlock_type": "hidden",
+      "unlock_condition": "find_secret_shrine",
+      "sprite_override": "sprites/planes/striker/holy.png",
+      "fallback_renderer": "striker_holy",
+      "color_override": {
+        "primary": "#FFFFFF",
+        "secondary": "#FFD700",
+        "glow": "#FFFACD",
+        "trail": "#FFFFFF"
+      },
+      "particle_effects": [
+        "holy_aura",
+        "feather_fall"
+      ],
+      "stat_bonus": {
+        "hp": 1.1,
+        "shield": 20
+      }
+    },
+    {
+      "id": "striker_dragon",
+      "name": "龙骑传说",
+      "name_en": "Dragon Knight",
+      "rarity": 5,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "price": 5000,
+      "sprite_override": "sprites/planes/striker/dragon.png",
+      "fallback_renderer": "striker_dragon",
+      "color_override": {
+        "primary": "#228B22",
+        "secondary": "#FFD700",
+        "glow": "#32CD32",
+        "trail": "#00FF00"
+      },
+      "particle_effects": [
+        "dragon_breath",
+        "scale_shimmer"
+      ],
+      "stat_bonus": {
+        "damage": 1.12,
+        "hp": 1.05
+      }
+    },
+    {
+      "id": "striker_infinity",
+      "name": "无限符文",
+      "name_en": "Infinity Rune",
+      "rarity": 6,
+      "unlock_type": "achievement",
+      "unlock_condition": "complete_all_challenges",
+      "sprite_override": "sprites/planes/striker/infinity.png",
+      "fallback_renderer": "striker_infinity",
+      "color_override": {
+        "primary": "#E040FB",
+        "secondary": "#7B1FA2",
+        "glow": "#EA80FC",
+        "trail": "#E040FB"
+      },
+      "special_shader": "infinity_loop",
+      "particle_effects": [
+        "cosmic_energy",
+        "star_trail",
+        "infinity_glow"
+      ],
+      "stat_bonus": {
+        "damage": 1.2,
+        "speed": 1.1,
+        "crit_rate": 0.15,
+        "crit_damage": 0.3
+      }
+    },
+    {
+      "id": "striker_ex",
+      "name": "裂空雷刃·电光雷霆",
+      "name_en": "Ex",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 3800,
+      "sprite_override": "sprites/planes/striker/ex.png",
+      "fallback_renderer": "striker_ex",
+      "color_override": {
+        "primary": "#50C8FF",
+        "secondary": "#C8E6FF",
+        "glow": "#50C8FF",
+        "trail": "#64DCFF"
+      },
+      "trail_style": "lightning",
+      "trail_width": 17,
+      "particle_count": 125,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "striker_ex2",
+      "name": "龙卷风暴·漩涡之怒",
+      "name_en": "Ex2",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 4000,
+      "sprite_override": "sprites/planes/striker/ex2.png",
+      "fallback_renderer": "striker_ex2",
+      "color_override": {
+        "primary": "#96FF96",
+        "secondary": "#C8FFC8",
+        "glow": "#96FF96",
+        "trail": "#B4FFB4"
+      },
+      "trail_style": "wind",
+      "trail_width": 19,
+      "particle_count": 135,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "striker_ex3",
+      "name": "次元裂缝·空间碎裂",
+      "name_en": "Ex3",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 4200,
+      "sprite_override": "sprites/planes/striker/ex3.png",
+      "fallback_renderer": "striker_ex3",
+      "color_override": {
+        "primary": "#FF00FF",
+        "secondary": "#FF64FF",
+        "glow": "#FF00FF",
+        "trail": "#FF32FF"
+      },
+      "trail_style": "void",
+      "trail_width": 21,
+      "particle_count": 160,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "striker_ex4",
+      "name": "液态金属·活体机械",
+      "name_en": "Ex4",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 4500,
+      "sprite_override": "sprites/planes/striker/ex4.png",
+      "fallback_renderer": "striker_ex4",
+      "color_override": {
+        "primary": "#B4B4C8",
+        "secondary": "#DCDCF0",
+        "glow": "#B4B4C8",
+        "trail": "#A0A0B4"
+      },
+      "trail_style": "liquid_metal",
+      "trail_width": 21,
+      "particle_count": 165,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "striker_ex5",
+      "name": "像素进化·8bit回忆",
+      "name_en": "Ex5",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 4800,
+      "sprite_override": "sprites/planes/striker/ex5.png",
+      "fallback_renderer": "striker_ex5",
+      "color_override": {
+        "primary": "#FF6464",
+        "secondary": "#64FF64",
+        "glow": "#FF6464",
+        "trail": "#6464FF"
+      },
+      "trail_style": "pixel_evolution",
+      "trail_width": 20,
+      "particle_count": 200,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    }
+  ]
+}

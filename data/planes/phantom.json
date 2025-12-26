@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "phantom",
+  "name": "虚空幻影",
+  "name_en": "Phantom",
+  "description": "高机动高射速，终极控制",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 245,
+    "speed": 4.6,
+    "damage": 14,
+    "fire_rate": 150,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/phantom/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "phantom",
+    "colors": {
+      "primary": "#FF00FF",
+      "secondary": "#FFFFFF",
+      "glow": "#FF00FF",
+      "trail": "#FF00FF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "phase_shift",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "时空冻结",
+      "name": "时空冻结",
+      "color": "#FF00FF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "shard",
+    "sprite_path": "sprites/bullets/shard.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

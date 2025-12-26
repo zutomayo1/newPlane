@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "spectrum",
+  "name": "天幕虹裂·光谱",
+  "name_en": "Spectrum",
+  "description": "远程扇形覆盖，7道彩虹光束并行，3道同点命中额外真伤",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 255,
+    "speed": 4.4,
+    "damage": 15,
+    "fire_rate": 180,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/spectrum/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "spectrum",
+    "colors": {
+      "primary": "#C8C8DC",
+      "secondary": "#FF64C8",
+      "glow": "#C8C8DC",
+      "trail": "#B4B4C8"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "spectrum_stack",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "光谱叠加",
+      "name": "光谱叠加",
+      "color": "#FFC8FF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "rainbow_beam",
+    "sprite_path": "sprites/bullets/rainbow_beam.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

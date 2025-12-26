@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "aurora",
+  "name": "极光女神",
+  "name_en": "Aurora",
+  "description": "范围打击，控场专家",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 265,
+    "speed": 3.8,
+    "damage": 18,
+    "fire_rate": 160,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/aurora/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "aurora",
+    "colors": {
+      "primary": "#008080",
+      "secondary": "#00FF00",
+      "glow": "#008080",
+      "trail": "#008080"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "area_field",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "极光天幕",
+      "name": "极光天幕",
+      "color": "#008080",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "aurora_prism",
+    "sprite_path": "sprites/bullets/aurora_prism.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "paradox_clockwork",
+  "name": "悖论时钟",
+  "description": "黄铜齿轮与蒸汽管道构成的机械天使，背后巨大表盘光环。脸是破碎怀表，手握沙漏法杖。",
+  "stats": {
+    "armor": 90,
+    "damage": 85,
+    "mobility": 40
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#C8A03C",
+      "core": "#C8A03C",
+      "aura": "#FFDC64"
+    },
+    "phase_effect": "time_distort"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "time_slow",
+        "count": 3
+      },
+      "fire_rate_mult": 0.9
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "stasis_field",
+        "count": 4
+      },
+      "fire_rate_mult": 0.7
+    },
+    {
+      "threshold": 0.25,
+      "effect": {
+        "type": "time_rewind",
+        "count": 2
+      },
+      "fire_rate_mult": 0.5
+    }
+  ]
+}

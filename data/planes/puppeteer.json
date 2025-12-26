@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "puppeteer",
+  "name": "牵线木偶师·玛丽奥",
+  "name_en": "Puppeteer",
+  "description": "操控敌人的傀儡师，命中敌人叠加傀儡标记，满层后控制敌人为你作战",
+  "tier": 5,
+  "rarity": 6,
+  "stats": {
+    "hp": 250,
+    "speed": 4.2,
+    "damage": 16,
+    "fire_rate": 170,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/puppeteer/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "puppeteer",
+    "colors": {
+      "primary": "#B46496",
+      "secondary": "#FFC864",
+      "glow": "#B46496",
+      "trail": "#965078"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "puppet_master",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "傀儡剧场",
+      "name": "傀儡剧场",
+      "color": "#DC78B4",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "puppet_string",
+    "sprite_path": "sprites/bullets/puppet_string.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "eclipse",
+  "name": "日食幽灵",
+  "name_en": "Eclipse",
+  "description": "双核心战机，双线射击吸收伤害",
+  "tier": 3,
+  "rarity": 4,
+  "stats": {
+    "hp": 260,
+    "speed": 4.2,
+    "damage": 14,
+    "fire_rate": 150,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/eclipse/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "eclipse",
+    "colors": {
+      "primary": "#6432B4",
+      "secondary": "#C864FF",
+      "glow": "#6432B4",
+      "trail": "#6432B4"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "dual_core",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "黑日降临",
+      "name": "黑日降临",
+      "color": "#6432B4",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "shadow",
+    "sprite_path": "sprites/bullets/shadow.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

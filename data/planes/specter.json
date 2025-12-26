@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "specter",
+  "name": "幽灵收割者",
+  "name_en": "Specter",
+  "description": "隐形狙击，单发高伤",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 245,
+    "speed": 4.3,
+    "damage": 35,
+    "fire_rate": 320,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/specter/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "specter",
+    "colors": {
+      "primary": "#9664FF",
+      "secondary": "#FFD700",
+      "glow": "#9664FF",
+      "trail": "#9664FF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "none",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "死神降临",
+      "name": "死神降临",
+      "color": "#9664FF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "spectral",
+    "sprite_path": "sprites/bullets/spectral.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

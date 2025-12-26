@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "dukefishron",
+  "name": "深渊龙鱼·猪公爵",
+  "name_en": "Dukefishron",
+  "description": "鲨龙卷横扫深渊，水矛命中生成龙卷吸扯+小鲨追踪，再次普攻激活爆炸掉落深渊泡回能",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 285,
+    "speed": 4.6,
+    "damage": 28,
+    "fire_rate": 150,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/dukefishron/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "dukefishron",
+    "colors": {
+      "primary": "#1E50B4",
+      "secondary": "#FF78B4",
+      "glow": "#1E50B4",
+      "trail": "#3264C8"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "shark_tornado",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "龙鱼海啸",
+      "name": "龙鱼海啸",
+      "color": "#FF78B4",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "abyss_spear",
+    "sprite_path": "sprites/bullets/abyss_spear.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

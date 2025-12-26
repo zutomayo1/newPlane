@@ -53,7 +53,10 @@ def log_debug(msg):
 # ==============================================================================
 #   游戏设置保存/加载
 # ==============================================================================
-SETTINGS_FILE = "game_settings.json"
+try:
+    from config import GAME_SETTINGS_FILE as SETTINGS_FILE
+except ImportError:
+    SETTINGS_FILE = "saves/game_settings.json"
 
 def save_settings(background_style=None, master_volume=None, music_volume=None, sfx_volume=None, show_fps=None, screen_shake=None, particle_quality=None, show_damage_numbers=None, auto_fire=None, show_hitbox=None, window_mode=None, ui_theme=None):
     """保存游戏设置"""

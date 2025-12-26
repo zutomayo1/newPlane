@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "darkstring",
+  "name": "幽影穿心·冥弦",
+  "name_en": "Darkstring",
+  "description": "远程标记狙杀，亚音速标记弹可二次暴击，标记3秒内穿墙必暴",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 245,
+    "speed": 4.6,
+    "damage": 65,
+    "fire_rate": 1100,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/darkstring/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "darkstring",
+    "colors": {
+      "primary": "#282832",
+      "secondary": "#FF3232",
+      "glow": "#282832",
+      "trail": "#505064"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "deathmark",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "绝杀狙击",
+      "name": "绝杀狙击",
+      "color": "#FF3232",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "mark_shot",
+    "sprite_path": "sprites/bullets/mark_shot.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

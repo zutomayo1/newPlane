@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "exo_ares",
+  "name": "终焉巨械·阿瑞斯",
+  "description": "完美纳米液态金属表面，骷髅核心周围悬浮四条机械触手，RGB霓虹光带。",
+  "stats": {
+    "armor": 90,
+    "damage": 110,
+    "mobility": 60
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#C8C8DC",
+      "core": "#C8C8DC",
+      "aura": "#FF64FF"
+    },
+    "phase_effect": "rgb_pulse"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "weapon_roulette",
+        "count": 4
+      },
+      "fire_rate_mult": 0.9
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "clock_beam",
+        "count": 4
+      },
+      "fire_rate_mult": 0.7
+    },
+    {
+      "threshold": 0.2,
+      "effect": {
+        "type": "weapon_roulette",
+        "count": 6
+      },
+      "fire_rate_mult": 0.5
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "dimension_devourer",
+  "name": "维度之噬",
+  "description": "Vantablack绝对黑装甲吸收所有光线，极长身躯延伸至屏幕外，颚部张开是紫色漩涡。",
+  "stats": {
+    "armor": 75,
+    "damage": 120,
+    "mobility": 90
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#140028",
+      "core": "#140028",
+      "aura": "#7800C8"
+    },
+    "phase_effect": "dimension_crack"
+  },
+  "phases": [
+    {
+      "threshold": 0.75,
+      "effect": {
+        "type": "dimension_charge",
+        "count": 3
+      },
+      "fire_rate_mult": 0.85
+    },
+    {
+      "threshold": 0.45,
+      "effect": {
+        "type": "laser_cage",
+        "count": 6
+      },
+      "fire_rate_mult": 0.65
+    },
+    {
+      "threshold": 0.2,
+      "effect": {
+        "type": "dimension_charge",
+        "count": 5
+      },
+      "fire_rate_mult": 0.45
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "wormhole",
+  "name": "混沌虫洞",
+  "name_en": "Wormhole",
+  "description": "虫洞传送型，子弹从敌人背后虫洞出现",
+  "tier": 3,
+  "rarity": 4,
+  "stats": {
+    "hp": 245,
+    "speed": 4.8,
+    "damage": 16,
+    "fire_rate": 175,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/wormhole/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "wormhole",
+    "colors": {
+      "primary": "#B400FF",
+      "secondary": "#00FFB4",
+      "glow": "#B400FF",
+      "trail": "#7800C8"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "dimension_rift",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "维度坍缩",
+      "name": "维度坍缩",
+      "color": "#FF00FF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "wormhole",
+    "sprite_path": "sprites/bullets/wormhole.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

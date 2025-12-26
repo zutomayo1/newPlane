@@ -1,0 +1,69 @@
+{
+  "$schema": "./_schema.json",
+  "id": "galaxia",
+  "name": "宇宙之弧·Galaxia",
+  "name_en": "Galaxia",
+  "description": "宇宙之弧泰拉之刃的剪刀变形机甲，近战剪切攻击+30%弹反系统+撕裂全屏的时空之刃",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 260,
+    "speed": 4.5,
+    "damage": 35,
+    "fire_rate": 60,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/galaxia/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "galaxia",
+    "colors": {
+      "primary": "#9370DB",
+      "secondary": "#FFD700",
+      "glow": "#9370DB",
+      "trail": "#8A2BE2"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "parry_system",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "次元斩击",
+      "name": "次元斩击",
+      "color": "#9370DB",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "scissor_slash",
+    "sprite_path": "sprites/bullets/scissor_slash.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "次元斩击",
+      "desc": "三道紫光剪切波纹从上到下撕裂全屏"
+    },
+    "skill2": {
+      "name": "星系陷阱",
+      "desc": "剪刀旋转在屏幕中心引力聚敌，释放星座弹幕"
+    },
+    "skill3": {
+      "name": "苍穹撕裂",
+      "desc": "巨型剪刀撕开屏幕，星辰从裂缝中喷涌而出"
+    }
+  }
+}

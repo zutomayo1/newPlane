@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "molten_behemoth",
+  "name": "熔核巨兽",
+  "description": "活过来的火山，皮肤是冷却黑曜石，裂缝流淌高亮橙色岩浆。下半身融化在地面，在岩浆池中游泳。",
+  "stats": {
+    "armor": 140,
+    "damage": 100,
+    "mobility": 10
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#FF5014",
+      "core": "#FF5014",
+      "aura": "#FFB432"
+    },
+    "phase_effect": "lava_surge"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "lava_wave",
+        "count": 4
+      },
+      "fire_rate_mult": 0.9
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "meteor_rain",
+        "count": 5
+      },
+      "fire_rate_mult": 0.7
+    },
+    {
+      "threshold": 0.25,
+      "effect": {
+        "type": "eruption",
+        "count": 6
+      },
+      "fire_rate_mult": 0.5
+    }
+  ]
+}

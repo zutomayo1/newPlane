@@ -1,0 +1,69 @@
+{
+  "$schema": "./_schema.json",
+  "id": "goliath",
+  "name": "瘟疫使者·歌莉娅",
+  "name_en": "Goliath",
+  "description": "柴油朋克重型轰炸机，瘟疫导弹滞留毒云+机械蜂群自爆追踪+全屏瘟疫轰炸覆盖",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 290,
+    "speed": 3.6,
+    "damage": 32,
+    "fire_rate": 250,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/goliath/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "goliath",
+    "colors": {
+      "primary": "#556B2F",
+      "secondary": "#39FF14",
+      "glow": "#556B2F",
+      "trail": "#649650"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "plague_aura",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "饱和轰炸",
+      "name": "饱和轰炸",
+      "color": "#39FF14",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "plague_missile",
+    "sprite_path": "sprites/bullets/plague_missile.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "饱和轰炸",
+      "desc": "数十枚瘟疫炸弹波浪式覆盖全屏，地毯式打击"
+    },
+    "skill2": {
+      "name": "瘟疫核弹",
+      "desc": "投下巨型核弹，蘑菇云清屏毁灭一切"
+    },
+    "skill3": {
+      "name": "盖亚之死",
+      "desc": "15秒废土领域，敌人HP上限-50%，大幅减速"
+    }
+  }
+}

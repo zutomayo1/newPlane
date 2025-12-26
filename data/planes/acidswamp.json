@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "acidswamp",
+  "name": "酸蚀喷溅·腐沼",
+  "name_en": "Acidswamp",
+  "description": "远程抛物酸囊，落地碎裂6股酸液溅射寻敌附着DOT，3股命中同目标合成酸沼池",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 260,
+    "speed": 4.0,
+    "damage": 18,
+    "fire_rate": 450,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/acidswamp/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "acidswamp",
+    "colors": {
+      "primary": "#96FF50",
+      "secondary": "#32321E",
+      "glow": "#96FF50",
+      "trail": "#78C83C"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "acid_merge",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "酸液汇合",
+      "name": "酸液汇合",
+      "color": "#64C832",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "acid_blob",
+    "sprite_path": "sprites/bullets/acid_blob.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "turu",
+  "name": "巨石核拳·图鲁",
+  "name_en": "Turu",
+  "description": "远程岩核飞拳穿透2次，命中爆裂AOE；巨石充能满格可卸甲强化",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 300,
+    "speed": 3.8,
+    "damage": 35,
+    "fire_rate": 600,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/turu/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "turu",
+    "colors": {
+      "primary": "#FF7828",
+      "secondary": "#78736E",
+      "glow": "#FF7828",
+      "trail": "#B4641E"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "rock_charge",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "岩拳暴雨",
+      "name": "岩拳暴雨",
+      "color": "#FF7828",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "rock_fist",
+    "sprite_path": "sprites/bullets/rock_fist.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "$schema": "./_schema.json",
+  "plane_id": "zenith",
+  "skins": [
+    {
+      "id": "zenith_default",
+      "name": "标准涂装",
+      "name_en": "Default",
+      "rarity": 1,
+      "unlock_type": "default",
+      "sprite_override": null,
+      "color_override": null,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "zenith_terra",
+      "name": "泰拉圣剑·翠绿大地",
+      "name_en": "Terra",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 28000,
+      "sprite_override": "sprites/planes/zenith/terra.png",
+      "fallback_renderer": "zenith_terra",
+      "color_override": {
+        "primary": "#00C864",
+        "secondary": "#64FF96",
+        "glow": "#00C864",
+        "trail": "#00B450"
+      },
+      "trail_style": "terra_blade",
+      "trail_width": 33,
+      "particle_count": 240,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "zenith_meowmere",
+      "name": "喵喵彩虹·猫娘之剑",
+      "name_en": "Meowmere",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 30000,
+      "sprite_override": "sprites/planes/zenith/meowmere.png",
+      "fallback_renderer": "zenith_meowmere",
+      "color_override": {
+        "primary": "#FF96C8",
+        "secondary": "#FFC8DC",
+        "glow": "#FF96C8",
+        "trail": "#FFB4DC"
+      },
+      "trail_style": "rainbow_cat",
+      "trail_width": 34,
+      "particle_count": 260,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "zenith_stardust",
+      "name": "星尘龙骸·苍穹之翼",
+      "name_en": "Stardust",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 32000,
+      "sprite_override": "sprites/planes/zenith/stardust.png",
+      "fallback_renderer": "zenith_stardust",
+      "color_override": {
+        "primary": "#0096FF",
+        "secondary": "#64C8FF",
+        "glow": "#0096FF",
+        "trail": "#0078C8"
+      },
+      "trail_style": "stardust_dragon",
+      "trail_width": 34,
+      "particle_count": 250,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "zenith_solar",
+      "name": "日耀烈焰·太阳核心",
+      "name_en": "Solar",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 32000,
+      "sprite_override": "sprites/planes/zenith/solar.png",
+      "fallback_renderer": "zenith_solar",
+      "color_override": {
+        "primary": "#FF6400",
+        "secondary": "#FFB432",
+        "glow": "#FF6400",
+        "trail": "#C85000"
+      },
+      "trail_style": "solar_flare",
+      "trail_width": 35,
+      "particle_count": 260,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "zenith_void",
+      "name": "虚空终末·末日天顶",
+      "name_en": "Void",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 40000,
+      "sprite_override": "sprites/planes/zenith/void.png",
+      "fallback_renderer": "zenith_void",
+      "color_override": {
+        "primary": "#1E0032",
+        "secondary": "#501478",
+        "glow": "#1E0032",
+        "trail": "#3C0064"
+      },
+      "trail_style": "void_collapse",
+      "trail_width": 38,
+      "particle_count": 300,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    }
+  ]
+}

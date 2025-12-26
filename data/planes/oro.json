@@ -1,0 +1,69 @@
+{
+  "$schema": "./_schema.json",
+  "id": "oro",
+  "name": "终噬星链·奥罗",
+  "name_en": "Oro",
+  "description": "神明吞噬者零瞬移完全体，1.6屏千节链生长+激光栅十字轰炸+黑洞终噬三维打击",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 300,
+    "speed": 4.4,
+    "damage": 32,
+    "fire_rate": 140,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/oro/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "oro",
+    "colors": {
+      "primary": "#501478",
+      "secondary": "#C83250",
+      "glow": "#501478",
+      "trail": "#7828A0"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "chain_devour",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "终噬降临",
+      "name": "终噬降临",
+      "color": "#C83250",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "void_chain",
+    "sprite_path": "sprites/bullets/void_chain.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "千节连生·终噬开幕",
+      "desc": "2s内连续9道链段，每道立即生长至5节形成千节墙，结束后同步爆炸"
+    },
+    "skill2": {
+      "name": "激光栅风暴·终噬栅灭",
+      "desc": "所有链节4s持续释放十字激光栅，结束时超大范围真伤爆炸"
+    },
+    "skill3": {
+      "name": "终噬黑洞·终噬闭幕",
+      "desc": "悬浮升空后终噬核心坠地，生成超大黑洞5s持续吞噬，掉落双倍吞噬核"
+    }
+  }
+}

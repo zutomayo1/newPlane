@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "omega",
+  "name": "终末神兵·奥米茄",
+  "name_en": "Omega",
+  "description": "融合所有机体精华的终极形态，攻击自动切换七种属性，大招召唤全属性审判",
+  "tier": 5,
+  "rarity": 6,
+  "stats": {
+    "hp": 280,
+    "speed": 4.8,
+    "damage": 28,
+    "fire_rate": 160,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/omega/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "omega",
+    "colors": {
+      "primary": "#FFFFFF",
+      "secondary": "#FFC864",
+      "glow": "#FFFFFF",
+      "trail": "#C8B4FF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "omega_fusion",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "终焉审判",
+      "name": "终焉审判",
+      "color": "#FFDCFF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "omega_fusion",
+    "sprite_path": "sprites/bullets/omega_fusion.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

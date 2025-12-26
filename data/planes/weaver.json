@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "weaver",
+  "name": "虚空编织者",
+  "name_en": "Weaver",
+  "description": "控制型，相位蛛网穿透减速",
+  "tier": 2,
+  "rarity": 3,
+  "stats": {
+    "hp": 255,
+    "speed": 3.9,
+    "damage": 16,
+    "fire_rate": 180,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/weaver/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "weaver",
+    "colors": {
+      "primary": "#B0C4DE",
+      "secondary": "#FFD700",
+      "glow": "#B0C4DE",
+      "trail": "#B0C4DE"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "none",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "维度陷阱",
+      "name": "维度陷阱",
+      "color": "#B0C4DE",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "web",
+    "sprite_path": "sprites/bullets/web.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

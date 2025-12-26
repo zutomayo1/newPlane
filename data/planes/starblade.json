@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "starblade",
+  "name": "浮游刃环·星镰",
+  "name_en": "Starblade",
+  "description": "远程巡航环刃，飞出后悬停水平往返扫割，可召回瞬间加速暴击×1.8",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 250,
+    "speed": 4.3,
+    "damage": 24,
+    "fire_rate": 500,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/starblade/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "starblade",
+    "colors": {
+      "primary": "#C8D2E6",
+      "secondary": "#64B4FF",
+      "glow": "#C8D2E6",
+      "trail": "#96B4DC"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "blade_recall",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "回环暴击",
+      "name": "回环暴击",
+      "color": "#64B4FF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "ring_blade",
+    "sprite_path": "sprites/bullets/ring_blade.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

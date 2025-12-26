@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "prism",
+  "name": "棱镜分光",
+  "name_en": "Prism",
+  "description": "分裂射击型，一发三道散射",
+  "tier": 3,
+  "rarity": 4,
+  "stats": {
+    "hp": 255,
+    "speed": 4.2,
+    "damage": 14,
+    "fire_rate": 175,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/prism/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "prism",
+    "colors": {
+      "primary": "#00FFC8",
+      "secondary": "#64C8FF",
+      "glow": "#00FFC8",
+      "trail": "#64B4FF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "split_fire",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "光谱爆裂",
+      "name": "光谱爆裂",
+      "color": "#00FFC8",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "prism",
+    "sprite_path": "sprites/bullets/prism.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

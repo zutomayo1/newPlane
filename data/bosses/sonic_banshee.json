@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "sonic_banshee",
+  "name": "绝音夜煞",
+  "description": "覆盖漆黑吸音绒毛，胸腔是惨白骨质扬声器。无脸，只有大嘴和无底扩音喇叭喉咙。",
+  "stats": {
+    "armor": 70,
+    "damage": 95,
+    "mobility": 85
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#1E1E32",
+      "core": "#1E1E32",
+      "aura": "#C8C8FF"
+    },
+    "phase_effect": "sonic_distortion"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "echo_pulse",
+        "count": 3
+      },
+      "fire_rate_mult": 0.9
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "sonic_scream",
+        "count": 5
+      },
+      "fire_rate_mult": 0.7
+    },
+    {
+      "threshold": 0.25,
+      "effect": {
+        "type": "sonic_distortion",
+        "count": 6
+      },
+      "fire_rate_mult": 0.5
+    }
+  ]
+}

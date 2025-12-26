@@ -4073,7 +4073,7 @@ def _load_enemy_data() -> Dict[str, Dict[str, Any]]:
         return _ENEMY_DATA_CACHE
 
     try:
-        with open("enemy_types.json", "r", encoding="utf-8") as f:
+        with open("data/enemies/enemy_types.json", "r", encoding="utf-8") as f:
             data = json.load(f)
         _ENEMY_DATA_CACHE = data.get("enemies", BUILTIN_ENEMIES)
     except Exception:

@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "cthulhu",
+  "name": "月蚀星骸·克苏鲁",
+  "name_en": "Cthulhu",
+  "description": "月虹激光贯穿全屏，命中后生成月眼二段真伤，叠加蚀印触发月蚀削弱和星骸剥离",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 290,
+    "speed": 4.6,
+    "damage": 32,
+    "fire_rate": 180,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/cthulhu/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "cthulhu",
+    "colors": {
+      "primary": "#6496DC",
+      "secondary": "#A064C8",
+      "glow": "#6496DC",
+      "trail": "#8282C8"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "eclipse_mark",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "月蚀降临",
+      "name": "月蚀降临",
+      "color": "#9678DC",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "moon_laser",
+    "sprite_path": "sprites/bullets/moon_laser.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "dragoon",
+  "name": "龙骑士·雷因哈特",
+  "name_en": "Dragoon",
+  "description": "古代龙骑士团的最后传承者，枪气连刺变化多端",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 275,
+    "speed": 4.6,
+    "damage": 32,
+    "fire_rate": 175,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/dragoon/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "dragoon",
+    "colors": {
+      "primary": "#6496DC",
+      "secondary": "#C8DCFF",
+      "glow": "#6496DC",
+      "trail": "#5082C8"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "dragon_charge",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "天龙突刺",
+      "name": "天龙突刺",
+      "color": "#78B4FF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "lance_thrust",
+    "sprite_path": "sprites/bullets/lance_thrust.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

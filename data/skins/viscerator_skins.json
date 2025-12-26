@@ -1,0 +1,132 @@
+{
+  "$schema": "./_schema.json",
+  "plane_id": "viscerator",
+  "skins": [
+    {
+      "id": "viscerator_default",
+      "name": "标准涂装",
+      "name_en": "Default",
+      "rarity": 1,
+      "unlock_type": "default",
+      "sprite_override": null,
+      "color_override": null,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "viscerator_ares",
+      "name": "战争领主·阿瑞斯",
+      "name_en": "Ares",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 28000,
+      "sprite_override": "sprites/planes/viscerator/ares.png",
+      "fallback_renderer": "viscerator_ares",
+      "color_override": {
+        "primary": "#FF3C3C",
+        "secondary": "#FF8C00",
+        "glow": "#FF3C3C",
+        "trail": "#8B0000"
+      },
+      "trail_style": "ares_plasma",
+      "trail_width": 32,
+      "particle_count": 220,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "viscerator_thanatos",
+      "name": "死神链蛇·塔纳托斯",
+      "name_en": "Thanatos",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 28000,
+      "sprite_override": "sprites/planes/viscerator/thanatos.png",
+      "fallback_renderer": "viscerator_thanatos",
+      "color_override": {
+        "primary": "#00FF64",
+        "secondary": "#32CD32",
+        "glow": "#00FF64",
+        "trail": "#006400"
+      },
+      "trail_style": "thanatos_serpent",
+      "trail_width": 31,
+      "particle_count": 230,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "viscerator_artemis",
+      "name": "月神激光·阿尔忒弥斯",
+      "name_en": "Artemis",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 30000,
+      "sprite_override": "sprites/planes/viscerator/artemis.png",
+      "fallback_renderer": "viscerator_artemis",
+      "color_override": {
+        "primary": "#00FFFF",
+        "secondary": "#87CEFA",
+        "glow": "#00FFFF",
+        "trail": "#008B8B"
+      },
+      "trail_style": "artemis_beam",
+      "trail_width": 28,
+      "particle_count": 200,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "viscerator_apollo",
+      "name": "太阳战车·阿波罗",
+      "name_en": "Apollo",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 30000,
+      "sprite_override": "sprites/planes/viscerator/apollo.png",
+      "fallback_renderer": "viscerator_apollo",
+      "color_override": {
+        "primary": "#FFA500",
+        "secondary": "#FFD700",
+        "glow": "#FFA500",
+        "trail": "#FF4500"
+      },
+      "trail_style": "apollo_plasma",
+      "trail_width": 33,
+      "particle_count": 240,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "viscerator_draedon",
+      "name": "造物主·德雷顿",
+      "name_en": "Draedon",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 40000,
+      "sprite_override": "sprites/planes/viscerator/draedon.png",
+      "fallback_renderer": "viscerator_draedon",
+      "color_override": {
+        "primary": "#0096FF",
+        "secondary": "#DCDCFF",
+        "glow": "#0096FF",
+        "trail": "#191970"
+      },
+      "trail_style": "draedon_override",
+      "trail_width": 36,
+      "particle_count": 280,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    }
+  ]
+}

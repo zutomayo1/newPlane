@@ -1,0 +1,132 @@
+{
+  "$schema": "./_schema.json",
+  "plane_id": "crusher",
+  "skins": [
+    {
+      "id": "crusher_default",
+      "name": "标准涂装",
+      "name_en": "Default",
+      "rarity": 1,
+      "unlock_type": "default",
+      "sprite_override": null,
+      "color_override": null,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "crusher_crimson",
+      "name": "熔岩钻头·赤炎",
+      "name_en": "Crimson",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 15000,
+      "sprite_override": "sprites/planes/crusher/crimson.png",
+      "fallback_renderer": "crusher_crimson",
+      "color_override": {
+        "primary": "#B22222",
+        "secondary": "#FF4500",
+        "glow": "#B22222",
+        "trail": "#8B0000"
+      },
+      "trail_style": "magma_flow",
+      "trail_width": 25,
+      "particle_count": 180,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "crusher_azure",
+      "name": "冰晶采集者·极寒",
+      "name_en": "Azure",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 18000,
+      "sprite_override": "sprites/planes/crusher/azure.png",
+      "fallback_renderer": "crusher_azure",
+      "color_override": {
+        "primary": "#00BFFF",
+        "secondary": "#F0FFFF",
+        "glow": "#00BFFF",
+        "trail": "#191970"
+      },
+      "trail_style": "ice_shard",
+      "trail_width": 24,
+      "particle_count": 160,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "crusher_emerald",
+      "name": "翡翠矿脉·翠绿",
+      "name_en": "Emerald",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 20000,
+      "sprite_override": "sprites/planes/crusher/emerald.png",
+      "fallback_renderer": "crusher_emerald",
+      "color_override": {
+        "primary": "#00C957",
+        "secondary": "#FFD700",
+        "glow": "#00C957",
+        "trail": "#006400"
+      },
+      "trail_style": "emerald_pulse",
+      "trail_width": 26,
+      "particle_count": 170,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "crusher_golden",
+      "name": "黄金矿主·财富",
+      "name_en": "Golden",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 35000,
+      "sprite_override": "sprites/planes/crusher/golden.png",
+      "fallback_renderer": "crusher_golden",
+      "color_override": {
+        "primary": "#FFD700",
+        "secondary": "#E5E4E2",
+        "glow": "#FFD700",
+        "trail": "#B8860B"
+      },
+      "trail_style": "gold_dust",
+      "trail_width": 30,
+      "particle_count": 220,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "crusher_void",
+      "name": "虚空撕裂者·深渊",
+      "name_en": "Void",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 50000,
+      "sprite_override": "sprites/planes/crusher/void.png",
+      "fallback_renderer": "crusher_void",
+      "color_override": {
+        "primary": "#300030",
+        "secondary": "#9400D3",
+        "glow": "#300030",
+        "trail": "#000000"
+      },
+      "trail_style": "void_rift",
+      "trail_width": 35,
+      "particle_count": 250,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    }
+  ]
+}

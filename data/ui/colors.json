@@ -1,0 +1,79 @@
+{
+  "theme": "cyberpunk",
+  "version": "1.0",
+  "palette": {
+    "background": {
+      "black": "#0A0A12",
+      "cyber_deep_black": "#050A14",
+      "cyber_midnight": "#000510",
+      "dark_bg": "#050A14",
+      "dark_purple": "#1E0028",
+      "dark_red": "#640000",
+      "stats_bg": "#050A14"
+    },
+    "primary": {
+      "cyan": "#00FFFF",
+      "cyber_cyan": "#00FFFF",
+      "cyber_cyan_bright": "#00E5FF",
+      "ghost_cyan": "#B4FFFF",
+      "score_cyan": "#00BCD4"
+    },
+    "accent": {
+      "bright_orange": "#FF4500",
+      "cyber_amber": "#FFD700",
+      "cyber_lime": "#00FF00",
+      "deep_purple": "#500078",
+      "gold": "#FFD700",
+      "lime": "#32FF32",
+      "magenta": "#FF00FF",
+      "neon_purple": "#9400D3",
+      "orange": "#FFA500",
+      "purple": "#9632FF",
+      "score_orange": "#FF6B00"
+    },
+    "alert": {
+      "alert_red": "#FF0032",
+      "badge_red": "#D32F2F",
+      "cyber_red_alert": "#FF3333",
+      "cyber_red_danger": "#FF0000",
+      "eye_red": "#C80000",
+      "red": "#FF3C3C"
+    },
+    "rarity": {
+      "rarity_1_star": "#969696",
+      "rarity_2_star": "#64C8FF",
+      "rarity_3_star": "#C864FF",
+      "rarity_4_star": "#FFC832",
+      "rarity_5_star": "#FF64C8",
+      "rarity_6_star": "#FFFFFF",
+      "rarity_common": "#969696",
+      "rarity_epic": "#C864FF",
+      "rarity_legend": "#FFC832",
+      "rarity_mythic": "#FF64C8",
+      "rarity_rare": "#64C8FF",
+      "rarity_supreme": "#FFFFFF"
+    },
+    "ui": {},
+    "gameplay": {},
+    "legacy": {
+      "blue": "#3C64FF",
+      "core_grad_end": "#E040FB",
+      "core_grad_start": "#7B1FA2",
+      "crimson": "#DC143C",
+      "cyber_grid_line": "#143C50",
+      "forest": "#228B22",
+      "gray": "#787878",
+      "green": "#00FF00",
+      "homing_color": "#64FF64",
+      "indigo": "#4B0082",
+      "label_gray": "#90A4AE",
+      "neon_green": "#00FF80",
+      "shield_blue": "#64C8FF",
+      "teal": "#008080",
+      "web_gray": "#B0C4DE",
+      "white": "#FFFFFF",
+      "wind_blue": "#87CEFA",
+      "yellow": "#FFE600"
+    }
+  }
+}

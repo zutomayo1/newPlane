@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "frostflare",
+  "name": "极昼寒界·霜曜",
+  "name_en": "Frostflare",
+  "description": "远程直线冻结，极寒激光穿透2次并减速，命中3次冻结目标2秒",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 250,
+    "speed": 4.0,
+    "damage": 22,
+    "fire_rate": 400,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/frostflare/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "frostflare",
+    "colors": {
+      "primary": "#64C8FF",
+      "secondary": "#DCF0FF",
+      "glow": "#64C8FF",
+      "trail": "#96DCFF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "zero_degree",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "零度射线",
+      "name": "零度射线",
+      "color": "#96DCFF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "frost_laser",
+    "sprite_path": "sprites/bullets/frost_laser.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

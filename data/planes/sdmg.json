@@ -1,0 +1,73 @@
+{
+  "$schema": "./_schema.json",
+  "id": "sdmg",
+  "name": "星际海豚·S.D.M.G.",
+  "name_en": "Sdmg",
+  "description": "生物机械海豚加特林，叶绿弹道弱追踪+过热超频系统+海星雷吸附爆炸+鲨卷风导弹齐射+月球领主幻影手掌+轨道轰炸毁灭光束",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 255,
+    "speed": 4.8,
+    "damage": 24,
+    "fire_rate": 17,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/sdmg/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "sdmg",
+    "colors": {
+      "primary": "#00FFFF",
+      "secondary": "#C0C0C0",
+      "glow": "#00FFFF",
+      "trail": "#64C8FF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "overheat_system",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "鲨卷风",
+      "name": "鲨卷风",
+      "color": "#C0C0C0",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "chlorophyte_tracer",
+    "sprite_path": "sprites/bullets/chlorophyte_tracer.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "海星雷",
+      "desc": "发射旋转海星炸弹，吸附敌人后延迟爆炸"
+    },
+    "skill2": {
+      "name": "鲨卷风",
+      "desc": "发射数十枚鲨鱼导弹，形成龙卷风轨迹"
+    },
+    "skill3": {
+      "name": "月球领主之凝视",
+      "desc": "召唤幻影手掌跟随，持续发射穿透光球"
+    },
+    "skill4": {
+      "name": "轨道轰炸",
+      "desc": "召唤轨道炮瞄准，多道垂直毁灭光束从天而降"
+    }
+  }
+}

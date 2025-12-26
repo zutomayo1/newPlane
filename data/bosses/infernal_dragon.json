@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "infernal_dragon",
+  "name": "暴君犽戎",
+  "description": "原始红色龙鳞与金色机械骨骼的结合体，心脏是金源泰斯拉反应堆，翅膀是日耀火焰。",
+  "stats": {
+    "armor": 85,
+    "damage": 100,
+    "mobility": 100
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#FF4500",
+      "core": "#FF4500",
+      "aura": "#FFC832"
+    },
+    "phase_effect": "inferno_aura"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "sonic_dash",
+        "count": 3
+      },
+      "fire_rate_mult": 0.85
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "scorched_earth",
+        "count": 8
+      },
+      "fire_rate_mult": 0.65
+    },
+    {
+      "threshold": 0.2,
+      "effect": {
+        "type": "sonic_dash",
+        "count": 5
+      },
+      "fire_rate_mult": 0.45
+    }
+  ]
+}

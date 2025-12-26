@@ -1,0 +1,69 @@
+{
+  "$schema": "./_schema.json",
+  "id": "zenith",
+  "name": "分形天顶·ZENITH",
+  "name_en": "Zenith",
+  "description": "终极剑阵回旋镖母舰，十余把泰拉名剑环绕旋转形成力场，回旋剑刃穿透攻击+分形护盾格挡+棱镜合体巨剑斩击",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 280,
+    "speed": 4.8,
+    "damage": 35,
+    "fire_rate": 100,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/zenith/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "zenith",
+    "colors": {
+      "primary": "#4B0082",
+      "secondary": "#FFFFFF",
+      "glow": "#4B0082",
+      "trail": "#FF00FF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "fractal_shield",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "天顶霸主",
+      "name": "天顶霸主",
+      "color": "#FFFFFF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "throwing_sword",
+    "sprite_path": "sprites/bullets/throwing_sword.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "泰拉光束",
+      "desc": "召唤绿色泰拉刃幻影，发射全屏绿色剑气波"
+    },
+    "skill2": {
+      "name": "喵星人轰炸",
+      "desc": "召唤大量彩虹猫头疯狂反弹，留下彩虹轨迹"
+    },
+    "skill3": {
+      "name": "天顶霸主",
+      "desc": "化作分形圆环，所有剑以鬼畜速度全屏乱舞，背景崩坏成像素碎片"
+    }
+  }
+}

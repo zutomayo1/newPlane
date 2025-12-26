@@ -1,0 +1,207 @@
+{
+  "version": "1.0",
+  "description": "音效合成参数配置",
+  "presets": {
+    "shoot": {
+      "type": "tone",
+      "description": "射击音效",
+      "params": {
+        "freq": 800,
+        "duration": 0.08,
+        "wave": "square",
+        "envelope": "sharp"
+      }
+    },
+    "explosion": {
+      "type": "noise",
+      "description": "爆炸音效",
+      "params": {
+        "duration": 0.4,
+        "envelope": "decay"
+      }
+    },
+    "hit": {
+      "type": "tone",
+      "description": "击中音效",
+      "params": {
+        "freq": 200,
+        "duration": 0.1,
+        "wave": "noise",
+        "envelope": "sharp"
+      }
+    },
+    "laser": {
+      "type": "sweep",
+      "description": "激光音效",
+      "params": {
+        "freq_start": 1200,
+        "freq_end": 400,
+        "duration": 0.15
+      }
+    },
+    "levelup": {
+      "type": "arpeggio",
+      "description": "升级音效",
+      "params": {
+        "notes": [
+          523,
+          659,
+          784,
+          1047
+        ],
+        "duration": 0.5
+      }
+    },
+    "item_pickup": {
+      "type": "tone",
+      "description": "拾取物品",
+      "params": {
+        "freq": 880,
+        "duration": 0.1,
+        "wave": "sine"
+      }
+    },
+    "warning": {
+      "type": "pulse",
+      "description": "警告音效",
+      "params": {
+        "freq": 440,
+        "duration": 0.3,
+        "pulses": 3
+      }
+    },
+    "shield": {
+      "type": "tone",
+      "description": "护盾音效",
+      "params": {
+        "freq": 300,
+        "duration": 0.2,
+        "wave": "sine",
+        "modulation": true
+      }
+    },
+    "heal": {
+      "type": "sweep",
+      "description": "治疗音效",
+      "params": {
+        "freq_start": 400,
+        "freq_end": 800,
+        "duration": 0.3
+      }
+    },
+    "critical": {
+      "type": "impact",
+      "description": "暴击音效",
+      "params": {
+        "freq": 150,
+        "duration": 0.15
+      }
+    },
+    "dash": {
+      "type": "whoosh",
+      "description": "冲刺音效",
+      "params": {
+        "duration": 0.2
+      }
+    },
+    "freeze": {
+      "type": "crystal",
+      "description": "冰冻音效",
+      "params": {
+        "freq": 2000,
+        "duration": 0.25
+      }
+    },
+    "zap": {
+      "type": "electric",
+      "description": "电击音效",
+      "params": {
+        "duration": 0.15
+      }
+    },
+    "nuke": {
+      "type": "explosion",
+      "description": "核爆音效",
+      "params": {
+        "duration": 0.8,
+        "intensity": 1.0
+      }
+    },
+    "blackhole": {
+      "type": "rumble",
+      "description": "黑洞音效",
+      "params": {
+        "duration": 0.5,
+        "freq": 50
+      }
+    },
+    "graze": {
+      "type": "whoosh",
+      "description": "擦弹音效",
+      "params": {
+        "duration": 0.1,
+        "intensity": 0.3
+      }
+    },
+    "sniper_charge": {
+      "type": "charge",
+      "description": "狙击蓄力",
+      "params": {
+        "duration": 0.5,
+        "freq_start": 200,
+        "freq_end": 1000
+      }
+    },
+    "select": {
+      "type": "click",
+      "description": "选择音效",
+      "params": {
+        "freq": 600,
+        "duration": 0.05
+      }
+    },
+    "gameover": {
+      "type": "descend",
+      "description": "游戏结束",
+      "params": {
+        "duration": 1.0
+      }
+    },
+    "achievement": {
+      "type": "fanfare",
+      "description": "成就音效",
+      "params": {
+        "notes": [
+          523,
+          659,
+          784
+        ],
+        "duration": 0.6
+      }
+    },
+    "stinger_victory": {
+      "type": "stinger",
+      "description": "胜利音效",
+      "params": {
+        "style": "victory",
+        "duration": 2.0
+      }
+    },
+    "stinger_defeat": {
+      "type": "stinger",
+      "description": "失败音效",
+      "params": {
+        "style": "defeat",
+        "duration": 1.5
+      }
+    },
+    "stinger_boss_phase": {
+      "type": "stinger",
+      "description": "Boss阶段转换",
+      "params": {
+        "style": "boss_phase",
+        "duration": 1.0
+      }
+    }
+  }
+}

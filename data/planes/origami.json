@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "origami",
+  "name": "折纸鹤·零式",
+  "name_en": "Origami",
+  "description": "千羽化形的和平使者，12枚钛刃扇形散射三段弹射，召唤纸鹤群协同作战，折跃复活守护全队",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 240,
+    "speed": 5.2,
+    "damage": 16,
+    "fire_rate": 145,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/origami/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "origami",
+    "colors": {
+      "primary": "#F5F5FA",
+      "secondary": "#FF64C8",
+      "glow": "#F5F5FA",
+      "trail": "#C8DCFF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "fold_revival",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "纸鹤群",
+      "name": "纸鹤群",
+      "color": "#FFFFFF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "origami_blade",
+    "sprite_path": "sprites/bullets/origami_blade.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

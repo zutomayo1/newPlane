@@ -1,0 +1,73 @@
+{
+  "$schema": "./_schema.json",
+  "id": "scarlet",
+  "name": "绯红恶魔·SCARLET",
+  "name_en": "Scarlet",
+  "description": "东方幻想风高速截击机，潜行刺客机制+吸血被动+迷雾闪烁瞬移+绯红不夜城弹幕+命运之枪+深红世界时停斩击",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 240,
+    "speed": 5.2,
+    "damage": 38,
+    "fire_rate": 70,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/scarlet/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "scarlet",
+    "colors": {
+      "primary": "#DC143C",
+      "secondary": "#FFD700",
+      "glow": "#DC143C",
+      "trail": "#800000"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "stealth_meter",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "迷雾闪烁",
+      "name": "迷雾闪烁",
+      "color": "#FFD700",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "scarlet_lance",
+    "sprite_path": "sprites/bullets/scarlet_lance.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "迷雾闪烁",
+      "desc": "化作红雾瞬移，过程无敌并对穿过的敌人造成伤害"
+    },
+    "skill2": {
+      "name": "绯红不夜城",
+      "desc": "东方弹幕风格高密度规则弹幕花纹覆盖全屏"
+    },
+    "skill3": {
+      "name": "命运之枪",
+      "desc": "投掷贯穿全屏的巨大红色光枪，在尽头爆炸"
+    },
+    "skill4": {
+      "name": "深红世界",
+      "desc": "时停领域展开，分身斩击全屏敌人，造成大量伤害"
+    }
+  }
+}

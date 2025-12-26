@@ -21,6 +21,9 @@ from .audio import (
     MusicDirector
 )
 
+# 资产管理系统
+from .asset_manager import AssetManager, asset_manager
+
 # 创建全局音频管理器实例
 sound_mgr = SoundManager()
 music_director = MusicDirector(sound_mgr)
@@ -52,6 +55,8 @@ __all__ = [
     # Audio
     'AudioSynthesizer', 'SoundManager', 'MusicDirector',
     'sound_mgr', 'music_director',  # 全局实例
+    # Asset Manager
+    'AssetManager', 'asset_manager',
     # UI
     'get_font',
     'draw_text', 'draw_mono_text', 'draw_spaced_text',

@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "prism_overlord",
+  "name": "棱镜核心",
+  "description": "悬浮正二十面体，每面幻彩镜面，内封雷电球。6块浮游折射盾如钻石切面般璀璨。",
+  "stats": {
+    "armor": 95,
+    "damage": 110,
+    "mobility": 20
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#96DCFF",
+      "core": "#96DCFF",
+      "aura": "#FFB4FF"
+    },
+    "phase_effect": "prism_refract"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "prism_laser",
+        "count": 4
+      },
+      "fire_rate_mult": 0.85
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "mirror_shield",
+        "count": 3
+      },
+      "fire_rate_mult": 0.7
+    },
+    {
+      "threshold": 0.25,
+      "effect": {
+        "type": "laser_web",
+        "count": 6
+      },
+      "fire_rate_mult": 0.5
+    }
+  ]
+}

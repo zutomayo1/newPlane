@@ -14755,7 +14755,11 @@ BULLET_THEMES = {
 
 class CustomizationManager:
     def __init__(self):
-        self.save_file = "customization.json"
+        try:
+            from config import CUSTOMIZATION_FILE
+            self.save_file = CUSTOMIZATION_FILE
+        except ImportError:
+            self.save_file = "saves/customization.json"
         # 解锁所有机体涂装
         self.unlocked_themes = {theme_id: True for theme_id in PAINT_THEMES.keys()}
         self.equipped_themes = {}

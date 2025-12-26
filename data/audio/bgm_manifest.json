@@ -1,0 +1,246 @@
+{
+  "version": "1.0",
+  "base_path": "assets/audio/bgm",
+  "tracks": {
+    "acid": {
+      "file": "bgm_acid.wav",
+      "bpm": 132
+    },
+    "ambient": {
+      "file": "bgm_ambient.wav",
+      "bpm": 60
+    },
+    "boss": {
+      "file": "bgm_boss.wav",
+      "bpm": 120
+    },
+    "boss_final": {
+      "file": "bgm_boss_final.wav",
+      "bpm": 182
+    },
+    "boss_phase1": {
+      "file": "bgm_boss_phase1.wav",
+      "bpm": 160
+    },
+    "boss_phase2": {
+      "file": "bgm_boss_phase2.wav",
+      "bpm": 176
+    },
+    "boss_slow": {
+      "file": "bgm_boss_slow.wav",
+      "bpm": 120
+    },
+    "boss_void": {
+      "file": "bgm_boss_void.wav",
+      "bpm": 150
+    },
+    "breakbeat": {
+      "file": "bgm_breakbeat.wav",
+      "bpm": 150
+    },
+    "calm": {
+      "file": "bgm_calm.wav",
+      "bpm": 120
+    },
+    "chiptune": {
+      "file": "bgm_chiptune.wav",
+      "bpm": 150
+    },
+    "cinematic": {
+      "file": "bgm_cinematic.wav",
+      "bpm": 80
+    },
+    "combat_arena": {
+      "file": "bgm_combat_arena.wav",
+      "bpm": 148
+    },
+    "combat_assault": {
+      "file": "bgm_combat_assault.wav",
+      "bpm": 140
+    },
+    "combat_gauntlet": {
+      "file": "bgm_combat_gauntlet.wav",
+      "bpm": 178
+    },
+    "combat_hazard": {
+      "file": "bgm_combat_hazard.wav",
+      "bpm": 145
+    },
+    "combat_mecha": {
+      "file": "bgm_combat_mecha.wav",
+      "bpm": 150
+    },
+    "combat_pursuit": {
+      "file": "bgm_combat_pursuit.wav",
+      "bpm": 172
+    },
+    "combat_siege": {
+      "file": "bgm_combat_siege.wav",
+      "bpm": 132
+    },
+    "combat_swarm": {
+      "file": "bgm_combat_swarm.wav",
+      "bpm": 156
+    },
+    "cyber": {
+      "file": "bgm_cyber.wav",
+      "bpm": 120
+    },
+    "deep_house": {
+      "file": "bgm_deep_house.wav",
+      "bpm": 124
+    },
+    "dnb": {
+      "file": "bgm_dnb.wav",
+      "bpm": 174
+    },
+    "downtempo": {
+      "file": "bgm_downtempo.wav",
+      "bpm": 92
+    },
+    "drone": {
+      "file": "bgm_drone.wav",
+      "bpm": 60
+    },
+    "dubstep": {
+      "file": "bgm_dubstep.wav",
+      "bpm": 140
+    },
+    "electronic": {
+      "file": "bgm_electronic.wav",
+      "bpm": 130
+    },
+    "epic": {
+      "file": "bgm_epic.wav",
+      "bpm": 120
+    },
+    "ethereal": {
+      "file": "bgm_ethereal.wav",
+      "bpm": 120
+    },
+    "explore_desert": {
+      "file": "bgm_explore_desert.wav",
+      "bpm": 102
+    },
+    "explore_lostlab": {
+      "file": "bgm_explore_lostlab.wav",
+      "bpm": 112
+    },
+    "explore_ocean": {
+      "file": "bgm_explore_ocean.wav",
+      "bpm": 76
+    },
+    "explore_ruins": {
+      "file": "bgm_explore_ruins.wav",
+      "bpm": 96
+    },
+    "explore_sky": {
+      "file": "bgm_explore_sky.wav",
+      "bpm": 120
+    },
+    "explore_snow": {
+      "file": "bgm_explore_snow.wav",
+      "bpm": 88
+    },
+    "explore_void": {
+      "file": "bgm_explore_void.wav",
+      "bpm": 70
+    },
+    "funk": {
+      "file": "bgm_funk.wav",
+      "bpm": 115
+    },
+    "glitch": {
+      "file": "bgm_glitch.wav",
+      "bpm": 150
+    },
+    "industrial": {
+      "file": "bgm_industrial.wav",
+      "bpm": 130
+    },
+    "intense": {
+      "file": "bgm_intense.wav",
+      "bpm": 120
+    },
+    "jazz": {
+      "file": "bgm_jazz.wav",
+      "bpm": 110
+    },
+    "lofi": {
+      "file": "bgm_lofi.wav",
+      "bpm": 85
+    },
+    "menu_alt": {
+      "file": "bgm_menu_alt.wav",
+      "bpm": 84
+    },
+    "menu_arcade": {
+      "file": "bgm_menu_arcade.wav",
+      "bpm": 128
+    },
+    "menu_chill": {
+      "file": "bgm_menu_chill.wav",
+      "bpm": 86
+    },
+    "menu_dark": {
+      "file": "bgm_menu_dark.wav",
+      "bpm": 78
+    },
+    "menu_lounge": {
+      "file": "bgm_menu_lounge.wav",
+      "bpm": 104
+    },
+    "metal": {
+      "file": "bgm_metal.wav",
+      "bpm": 180
+    },
+    "mystery": {
+      "file": "bgm_mystery.wav",
+      "bpm": 120
+    },
+    "normal": {
+      "file": "bgm_normal.wav",
+      "bpm": 120
+    },
+    "orchestra": {
+      "file": "bgm_orchestra.wav",
+      "bpm": 100
+    },
+    "orchestral_dark": {
+      "file": "bgm_orchestral_dark.wav",
+      "bpm": 96
+    },
+    "piano": {
+      "file": "bgm_piano.wav",
+      "bpm": 90
+    },
+    "rock": {
+      "file": "bgm_rock.wav",
+      "bpm": 160
+    },
+    "space": {
+      "file": "bgm_space.wav",
+      "bpm": 72
+    },
+    "synthwave": {
+      "file": "bgm_synthwave.wav",
+      "bpm": 120
+    },
+    "trance": {
+      "file": "bgm_trance.wav",
+      "bpm": 138
+    },
+    "tribal": {
+      "file": "bgm_tribal.wav",
+      "bpm": 120
+    },
+    "victory_fanfare": {
+      "file": "bgm_victory_fanfare.wav",
+      "bpm": 136
+    },
+    "victory_loop": {
+      "file": "bgm_victory_loop.wav",
+      "bpm": 124
+    }
+  }
+}

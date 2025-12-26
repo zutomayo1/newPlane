@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "currencies": {
+    "cores": 52,
+    "chips": 6
+  },
+  "talents": {
+    "destruction": {
+      "sharp": 1,
+      "swift": 3,
+      "burn": 1
+    },
+    "guardian": {},
+    "destiny": {
+      "lucky": 1
+    }
+  },
+  "ultimates": {
+    "destruction": false,
+    "guardian": false,
+    "destiny": false
+  },
+  "awakened": [],
+  "ultimate_core": null,
+  "resonance": {
+    "destruction": false,
+    "guardian": false,
+    "destiny": false
+  },
+  "statistics": {
+    "total_points_spent": 7,
+    "total_cores_spent": 100,
+    "total_chips_spent": 0,
+    "resets": 0
+  }
+}

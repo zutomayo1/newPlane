@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "arbiter",
+  "name": "量子裁决者",
+  "name_en": "Arbiter",
+  "description": "几何科技，分裂碎片",
+  "tier": 2,
+  "rarity": 3,
+  "stats": {
+    "hp": 250,
+    "speed": 4.0,
+    "damage": 18,
+    "fire_rate": 196,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/arbiter/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "arbiter",
+    "colors": {
+      "primary": "#9400D3",
+      "secondary": "#FFD700",
+      "glow": "#9400D3",
+      "trail": "#9400D3"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "none",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "矩阵重置",
+      "name": "矩阵重置",
+      "color": "#9400D3",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "quant",
+    "sprite_path": "sprites/bullets/quant.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

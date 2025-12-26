@@ -1,0 +1,69 @@
+{
+  "$schema": "./_schema.json",
+  "id": "providence",
+  "name": "亵渎天神·普罗维登斯",
+  "name_en": "Providence",
+  "description": "神圣几何堡垒，三对晶体盾翼可合拢防御回血，圣神爆碎滞留炸弹+亵渎之矛开路+治愈守卫护驾",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 300,
+    "speed": 3.2,
+    "damage": 30,
+    "fire_rate": 220,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/providence/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "providence",
+    "colors": {
+      "primary": "#FFD700",
+      "secondary": "#FF69B4",
+      "glow": "#FFD700",
+      "trail": "#FFA500"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "cocoon_mode",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "熔融之雨",
+      "name": "熔融之雨",
+      "color": "#FF69B4",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "holy_shard",
+    "sprite_path": "sprites/bullets/holy_shard.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "熔融之雨",
+      "desc": "天降熔岩球覆盖全屏，造成大范围灼烧伤害"
+    },
+    "skill2": {
+      "name": "神圣射线",
+      "desc": "扇形扫射激光，左右摆动持续伤害"
+    },
+    "skill3": {
+      "name": "超新星爆发",
+      "desc": "化为神圣太阳，六芒星阵法+晶体阵列+圣光射线360度爆发"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "nova",
+  "name": "苍穹轨断·诺娃",
+  "name_en": "Nova",
+  "description": "超远程单点狙击，电磁轨道弹无衰减贯穿全屏，蓄力1秒可穿盾暴击",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 245,
+    "speed": 3.6,
+    "damage": 70,
+    "fire_rate": 1200,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/nova/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "nova",
+    "colors": {
+      "primary": "#C8DCFF",
+      "secondary": "#3264C8",
+      "glow": "#C8DCFF",
+      "trail": "#96B4FF"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "charge_pierce",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "充能击穿",
+      "name": "充能击穿",
+      "color": "#6496FF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "railgun",
+    "sprite_path": "sprites/bullets/railgun.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

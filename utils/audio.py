@@ -15,69 +15,92 @@ import time
 
 from utils.core import log_error, log_info
 
+
+def _load_bgm_presets() -> dict:
+    """从JSON加载BGM预设配置"""
+    manifest_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "audio", "bgm_manifest.json")
+    try:
+        if os.path.exists(manifest_path):
+            with open(manifest_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                tracks = data.get("tracks", {})
+                # 转换为预设格式
+                presets = {}
+                for track_id, config in tracks.items():
+                    presets[track_id] = {
+                        "bpm": config.get("bpm", 120),
+                        "roots": config.get("roots", [110.0, 123.47, 146.83, 130.81]),
+                        "mix": config.get("mix", 0.50),
+                    }
+                return presets
+    except Exception as e:
+        log_error(f"加载bgm_manifest.json失败: {e}")
+    return {}
+
+
+# 硬编码fallback预设
+_FALLBACK_BGM_PRESETS = {
+    "dnb": {"bpm": 174, "roots": [55.0, 49.0, 65.41, 73.42], "mix": 0.52},
+    "downtempo": {"bpm": 92, "roots": [110.0, 98.0, 123.47, 92.50], "mix": 0.50},
+    "deep_house": {"bpm": 124, "roots": [55.0, 65.41, 73.42, 61.74], "mix": 0.52},
+    "acid": {"bpm": 132, "roots": [55.0, 55.0, 65.41, 49.0], "mix": 0.54},
+    "glitch": {"bpm": 150, "roots": [65.41, 73.42, 82.41, 73.42], "mix": 0.50},
+    "drone": {"bpm": 60, "roots": [110.0, 123.47, 98.0, 110.0], "mix": 0.45},
+    "space": {"bpm": 72, "roots": [82.41, 92.50, 73.42, 98.0], "mix": 0.46},
+    "menu_alt": {"bpm": 84, "roots": [110.0, 130.81, 98.0, 123.47], "mix": 0.50},
+    "boss_phase2": {"bpm": 176, "roots": [55.0, 65.41, 49.0, 73.42], "mix": 0.56},
+    "victory_fanfare": {"bpm": 136, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.54},
+    "menu_chill": {"bpm": 86, "roots": [110.0, 98.0, 123.47, 92.50], "mix": 0.46},
+    "menu_dark": {"bpm": 78, "roots": [98.0, 92.50, 82.41, 73.42], "mix": 0.48},
+    "menu_arcade": {"bpm": 128, "roots": [55.0, 65.41, 73.42, 61.74], "mix": 0.52},
+    "menu_lounge": {"bpm": 104, "roots": [130.81, 146.83, 164.81, 146.83], "mix": 0.48},
+    "explore_ruins": {"bpm": 96, "roots": [82.41, 92.50, 73.42, 98.0], "mix": 0.46},
+    "explore_desert": {"bpm": 102, "roots": [73.42, 82.41, 98.0, 92.50], "mix": 0.48},
+    "explore_snow": {"bpm": 88, "roots": [110.0, 123.47, 98.0, 110.0], "mix": 0.44},
+    "explore_void": {"bpm": 70, "roots": [82.41, 73.42, 65.41, 73.42], "mix": 0.44},
+    "explore_lostlab": {"bpm": 112, "roots": [65.41, 73.42, 82.41, 73.42], "mix": 0.50},
+    "explore_ocean": {"bpm": 76, "roots": [92.50, 98.0, 82.41, 110.0], "mix": 0.45},
+    "explore_sky": {"bpm": 120, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.48},
+    "combat_assault": {"bpm": 140, "roots": [55.0, 65.41, 73.42, 61.74], "mix": 0.56},
+    "combat_swarm": {"bpm": 156, "roots": [65.41, 73.42, 82.41, 73.42], "mix": 0.56},
+    "combat_mecha": {"bpm": 150, "roots": [49.0, 55.0, 65.41, 55.0], "mix": 0.58},
+    "combat_siege": {"bpm": 132, "roots": [55.0, 49.0, 65.41, 55.0], "mix": 0.58},
+    "combat_pursuit": {"bpm": 172, "roots": [55.0, 65.41, 49.0, 73.42], "mix": 0.58},
+    "combat_arena": {"bpm": 148, "roots": [82.41, 92.50, 98.0, 110.0], "mix": 0.56},
+    "combat_gauntlet": {"bpm": 178, "roots": [82.41, 73.42, 82.41, 92.50], "mix": 0.60},
+    "combat_hazard": {"bpm": 145, "roots": [65.41, 73.42, 82.41, 73.42], "mix": 0.56},
+    "boss_phase1": {"bpm": 160, "roots": [98.0, 92.50, 82.41, 73.42], "mix": 0.58},
+    "boss_final": {"bpm": 182, "roots": [55.0, 65.41, 49.0, 73.42], "mix": 0.62},
+    "boss_void": {"bpm": 150, "roots": [73.42, 65.41, 82.41, 73.42], "mix": 0.58},
+    "boss_slow": {"bpm": 120, "roots": [98.0, 92.50, 82.41, 73.42], "mix": 0.56},
+    "victory_loop": {"bpm": 124, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.52},
+    "orchestra": {"bpm": 100, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.50},
+    "cinematic": {"bpm": 80, "roots": [110.0, 98.0, 123.47, 92.50], "mix": 0.48},
+    "orchestral_dark": {"bpm": 96, "roots": [98.0, 92.50, 82.41, 73.42], "mix": 0.50},
+    "jazz": {"bpm": 110, "roots": [130.81, 146.83, 164.81, 146.83], "mix": 0.48},
+    "piano": {"bpm": 90, "roots": [110.0, 123.47, 98.0, 130.81], "mix": 0.46},
+    "lofi": {"bpm": 85, "roots": [110.0, 98.0, 92.50, 123.47], "mix": 0.44},
+    "funk": {"bpm": 115, "roots": [82.41, 98.0, 92.50, 110.0], "mix": 0.50},
+    "rock": {"bpm": 160, "roots": [82.41, 73.42, 98.0, 92.50], "mix": 0.56},
+    "metal": {"bpm": 180, "roots": [82.41, 73.42, 82.41, 92.50], "mix": 0.58},
+    "ambient": {"bpm": 60, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.42},
+    "electronic": {"bpm": 130, "roots": [55.0, 65.41, 73.42, 61.74], "mix": 0.52},
+    "synthwave": {"bpm": 120, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.52},
+    "trance": {"bpm": 138, "roots": [82.41, 92.50, 98.0, 110.0], "mix": 0.54},
+    "breakbeat": {"bpm": 150, "roots": [65.41, 73.42, 82.41, 73.42], "mix": 0.54},
+    "tribal": {"bpm": 120, "roots": [82.41, 82.41, 98.0, 82.41], "mix": 0.54},
+    "dubstep": {"bpm": 140, "roots": [55.0, 55.0, 65.41, 49.0], "mix": 0.56},
+    "industrial": {"bpm": 130, "roots": [55.0, 49.0, 65.41, 55.0], "mix": 0.56},
+    "chiptune": {"bpm": 150, "roots": [220.0, 196.0, 246.94, 293.66], "mix": 0.50},
+}
+
+# 从JSON加载，fallback到硬编码
+_LOADED_BGM_PRESETS = _load_bgm_presets()
+
+
 class AudioSynthesizer:
-    _EXTENDED_BGM_PRESETS: dict[str, dict] = {
-        "dnb": {"bpm": 174, "roots": [55.0, 49.0, 65.41, 73.42], "mix": 0.52},
-        "downtempo": {"bpm": 92, "roots": [110.0, 98.0, 123.47, 92.50], "mix": 0.50},
-        "deep_house": {"bpm": 124, "roots": [55.0, 65.41, 73.42, 61.74], "mix": 0.52},
-        "acid": {"bpm": 132, "roots": [55.0, 55.0, 65.41, 49.0], "mix": 0.54},
-        "glitch": {"bpm": 150, "roots": [65.41, 73.42, 82.41, 73.42], "mix": 0.50},
-        "drone": {"bpm": 60, "roots": [110.0, 123.47, 98.0, 110.0], "mix": 0.45},
-        "space": {"bpm": 72, "roots": [82.41, 92.50, 73.42, 98.0], "mix": 0.46},
-        "menu_alt": {"bpm": 84, "roots": [110.0, 130.81, 98.0, 123.47], "mix": 0.50},
-        "boss_phase2": {"bpm": 176, "roots": [55.0, 65.41, 49.0, 73.42], "mix": 0.56},
-        "victory_fanfare": {"bpm": 136, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.54},
-
-        # breadth pack presets (scene-themed ids)
-        "menu_chill": {"bpm": 86, "roots": [110.0, 98.0, 123.47, 92.50], "mix": 0.46},
-        "menu_dark": {"bpm": 78, "roots": [98.0, 92.50, 82.41, 73.42], "mix": 0.48},
-        "menu_arcade": {"bpm": 128, "roots": [55.0, 65.41, 73.42, 61.74], "mix": 0.52},
-        "menu_lounge": {"bpm": 104, "roots": [130.81, 146.83, 164.81, 146.83], "mix": 0.48},
-
-        "explore_ruins": {"bpm": 96, "roots": [82.41, 92.50, 73.42, 98.0], "mix": 0.46},
-        "explore_desert": {"bpm": 102, "roots": [73.42, 82.41, 98.0, 92.50], "mix": 0.48},
-        "explore_snow": {"bpm": 88, "roots": [110.0, 123.47, 98.0, 110.0], "mix": 0.44},
-        "explore_void": {"bpm": 70, "roots": [82.41, 73.42, 65.41, 73.42], "mix": 0.44},
-        "explore_lostlab": {"bpm": 112, "roots": [65.41, 73.42, 82.41, 73.42], "mix": 0.50},
-        "explore_ocean": {"bpm": 76, "roots": [92.50, 98.0, 82.41, 110.0], "mix": 0.45},
-        "explore_sky": {"bpm": 120, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.48},
-
-        "combat_assault": {"bpm": 140, "roots": [55.0, 65.41, 73.42, 61.74], "mix": 0.56},
-        "combat_swarm": {"bpm": 156, "roots": [65.41, 73.42, 82.41, 73.42], "mix": 0.56},
-        "combat_mecha": {"bpm": 150, "roots": [49.0, 55.0, 65.41, 55.0], "mix": 0.58},
-        "combat_siege": {"bpm": 132, "roots": [55.0, 49.0, 65.41, 55.0], "mix": 0.58},
-        "combat_pursuit": {"bpm": 172, "roots": [55.0, 65.41, 49.0, 73.42], "mix": 0.58},
-        "combat_arena": {"bpm": 148, "roots": [82.41, 92.50, 98.0, 110.0], "mix": 0.56},
-        "combat_gauntlet": {"bpm": 178, "roots": [82.41, 73.42, 82.41, 92.50], "mix": 0.60},
-        "combat_hazard": {"bpm": 145, "roots": [65.41, 73.42, 82.41, 73.42], "mix": 0.56},
-
-        "boss_phase1": {"bpm": 160, "roots": [98.0, 92.50, 82.41, 73.42], "mix": 0.58},
-        "boss_final": {"bpm": 182, "roots": [55.0, 65.41, 49.0, 73.42], "mix": 0.62},
-        "boss_void": {"bpm": 150, "roots": [73.42, 65.41, 82.41, 73.42], "mix": 0.58},
-        "boss_slow": {"bpm": 120, "roots": [98.0, 92.50, 82.41, 73.42], "mix": 0.56},
-
-        "victory_loop": {"bpm": 124, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.52},
-
-        # legacy styles migrated to extended generator
-        "orchestra": {"bpm": 100, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.50},
-        "cinematic": {"bpm": 80, "roots": [110.0, 98.0, 123.47, 92.50], "mix": 0.48},
-        "orchestral_dark": {"bpm": 96, "roots": [98.0, 92.50, 82.41, 73.42], "mix": 0.50},
-        "jazz": {"bpm": 110, "roots": [130.81, 146.83, 164.81, 146.83], "mix": 0.48},
-        "piano": {"bpm": 90, "roots": [110.0, 123.47, 98.0, 130.81], "mix": 0.46},
-        "lofi": {"bpm": 85, "roots": [110.0, 98.0, 92.50, 123.47], "mix": 0.44},
-        "funk": {"bpm": 115, "roots": [82.41, 98.0, 92.50, 110.0], "mix": 0.50},
-        "rock": {"bpm": 160, "roots": [82.41, 73.42, 98.0, 92.50], "mix": 0.56},
-        "metal": {"bpm": 180, "roots": [82.41, 73.42, 82.41, 92.50], "mix": 0.58},
-        "ambient": {"bpm": 60, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.42},
-        "electronic": {"bpm": 130, "roots": [55.0, 65.41, 73.42, 61.74], "mix": 0.52},
-        "synthwave": {"bpm": 120, "roots": [110.0, 123.47, 146.83, 130.81], "mix": 0.52},
-        "trance": {"bpm": 138, "roots": [82.41, 92.50, 98.0, 110.0], "mix": 0.54},
-        "breakbeat": {"bpm": 150, "roots": [65.41, 73.42, 82.41, 73.42], "mix": 0.54},
-        "tribal": {"bpm": 120, "roots": [82.41, 82.41, 98.0, 82.41], "mix": 0.54},
-        "dubstep": {"bpm": 140, "roots": [55.0, 55.0, 65.41, 49.0], "mix": 0.56},
-        "industrial": {"bpm": 130, "roots": [55.0, 49.0, 65.41, 55.0], "mix": 0.56},
-        "chiptune": {"bpm": 150, "roots": [220.0, 196.0, 246.94, 293.66], "mix": 0.50},
-    }
+    # 优先使用JSON加载的预设，fallback到硬编码
+    _EXTENDED_BGM_PRESETS: dict[str, dict] = {**_FALLBACK_BGM_PRESETS, **_LOADED_BGM_PRESETS}
 
     def __init__(self):
         self.sample_rate = 44100
@@ -1357,8 +1380,24 @@ class SoundManager:
         except Exception:
             pass
 
+    def _load_sfx_manifest(self) -> dict:
+        """从JSON加载SFX配置"""
+        manifest_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "audio", "sfx_manifest.json")
+        try:
+            if os.path.exists(manifest_path):
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            log_error(f"加载sfx_manifest.json失败: {e}")
+        return {}
+
     def load_sounds(self):
-        volume_map = {
+        # 尝试从manifest加载
+        manifest = self._load_sfx_manifest()
+        sounds_config = manifest.get("sounds", {})
+        
+        # fallback音量配置
+        _FALLBACK_VOLUME = {
             "shoot": 0.15,
             "warning": 0.8,
             "explosion": 0.6,
@@ -1368,11 +1407,21 @@ class SoundManager:
             "critical": 0.5,
             "heal": 0.4,
             "shield": 0.45,
-            # scheme E stingers
             "stinger_victory": 0.85,
             "stinger_defeat": 0.8,
             "stinger_boss_phase": 0.85,
         }
+        
+        # 优先使用manifest中的配置
+        volume_map = {}
+        for name, config in sounds_config.items():
+            volume_map[name] = config.get("volume", 0.5)
+        
+        # 补充fallback
+        for name, vol in _FALLBACK_VOLUME.items():
+            if name not in volume_map:
+                volume_map[name] = vol
+        
         for name, path in self.file_paths.items():
             if path and not name.startswith("bgm") and not name.startswith("layer_"):
                 try:

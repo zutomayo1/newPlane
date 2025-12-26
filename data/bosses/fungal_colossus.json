@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "fungal_colossus",
+  "name": "菌生蟹皇",
+  "description": "迟缓但致命的重型生物坦克，背负古代利维坦头骨，每一步都伴随震动。",
+  "stats": {
+    "armor": 120,
+    "damage": 75,
+    "mobility": 15
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#1E5078",
+      "core": "#1E5078",
+      "aura": "#3CB4C8"
+    },
+    "phase_effect": "ground_shake"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "spore_saturation",
+        "count": 5
+      },
+      "fire_rate_mult": 0.9
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "mycelium_wave",
+        "count": 2
+      },
+      "fire_rate_mult": 0.75
+    },
+    {
+      "threshold": 0.25,
+      "effect": {
+        "type": "ground_shake",
+        "count": 3
+      },
+      "fire_rate_mult": 0.6
+    }
+  ]
+}

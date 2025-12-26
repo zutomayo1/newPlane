@@ -1,0 +1,132 @@
+{
+  "$schema": "./_schema.json",
+  "plane_id": "scarlet",
+  "skins": [
+    {
+      "id": "scarlet_default",
+      "name": "标准涂装",
+      "name_en": "Default",
+      "rarity": 1,
+      "unlock_type": "default",
+      "sprite_override": null,
+      "color_override": null,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "scarlet_lunar",
+      "name": "血月降临·红月之夜",
+      "name_en": "Lunar",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 28000,
+      "sprite_override": "sprites/planes/scarlet/lunar.png",
+      "fallback_renderer": "scarlet_lunar",
+      "color_override": {
+        "primary": "#8B0000",
+        "secondary": "#FFB464",
+        "glow": "#8B0000",
+        "trail": "#640014"
+      },
+      "trail_style": "blood_moon",
+      "trail_width": 32,
+      "particle_count": 220,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "scarlet_golden",
+      "name": "黄金魔枪·神枪冈格尼尔",
+      "name_en": "Golden",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 35000,
+      "sprite_override": "sprites/planes/scarlet/golden.png",
+      "fallback_renderer": "scarlet_golden",
+      "color_override": {
+        "primary": "#FFD700",
+        "secondary": "#FFFFDC",
+        "glow": "#FFD700",
+        "trail": "#FFF096"
+      },
+      "trail_style": "holy_spear",
+      "trail_width": 35,
+      "particle_count": 250,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "scarlet_mist",
+      "name": "红雾迷城·深红世界",
+      "name_en": "Mist",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 32000,
+      "sprite_override": "sprites/planes/scarlet/mist.png",
+      "fallback_renderer": "scarlet_mist",
+      "color_override": {
+        "primary": "#B41432",
+        "secondary": "#C8B4A0",
+        "glow": "#B41432",
+        "trail": "#961E32"
+      },
+      "trail_style": "time_stop",
+      "trail_width": 33,
+      "particle_count": 230,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "scarlet_gothic",
+      "name": "哥特女仆·暗夜侍从",
+      "name_en": "Gothic",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 30000,
+      "sprite_override": "sprites/planes/scarlet/gothic.png",
+      "fallback_renderer": "scarlet_gothic",
+      "color_override": {
+        "primary": "#1E141E",
+        "secondary": "#C8B4C8",
+        "glow": "#1E141E",
+        "trail": "#3C2846"
+      },
+      "trail_style": "knife_throw",
+      "trail_width": 33,
+      "particle_count": 230,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "scarlet_destiny",
+      "name": "命运之枪·红色命运",
+      "name_en": "Destiny",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 38000,
+      "sprite_override": "sprites/planes/scarlet/destiny.png",
+      "fallback_renderer": "scarlet_destiny",
+      "color_override": {
+        "primary": "#FF0032",
+        "secondary": "#FFDCB4",
+        "glow": "#FF0032",
+        "trail": "#B4001E"
+      },
+      "trail_style": "destiny_spear",
+      "trail_width": 36,
+      "particle_count": 260,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    }
+  ]
+}

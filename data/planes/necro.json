@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "necro",
+  "name": "死灵骑士",
+  "name_en": "Necro",
+  "description": "吸血型战机，伤害转化为治疗",
+  "tier": 3,
+  "rarity": 4,
+  "stats": {
+    "hp": 270,
+    "speed": 3.6,
+    "damage": 17,
+    "fire_rate": 175,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/necro/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "necro",
+    "colors": {
+      "primary": "#C83296",
+      "secondary": "#640064",
+      "glow": "#C83296",
+      "trail": "#963264"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "lifesteal",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "亡灵收割",
+      "name": "亡灵收割",
+      "color": "#C83296",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "spectral",
+    "sprite_path": "sprites/bullets/spectral.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

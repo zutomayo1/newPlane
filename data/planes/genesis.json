@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "genesis",
+  "name": "创世之翼·起源",
+  "name_en": "Genesis",
+  "description": "宇宙原初之力的化身，攻击创造与毁灭并存，大招重塑战场引发宇宙大爆炸",
+  "tier": 5,
+  "rarity": 6,
+  "stats": {
+    "hp": 270,
+    "speed": 5.0,
+    "damage": 25,
+    "fire_rate": 150,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/genesis/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "genesis",
+    "colors": {
+      "primary": "#FFC864",
+      "secondary": "#FF64C8",
+      "glow": "#FFC864",
+      "trail": "#FFB450"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "creation_destruction",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "创世纪元",
+      "name": "创世纪元",
+      "color": "#FFE696",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "genesis_star",
+    "sprite_path": "sprites/bullets/genesis_star.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

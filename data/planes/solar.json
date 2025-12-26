@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "solar",
+  "name": "日冕耀斑",
+  "name_en": "Solar",
+  "description": "近战喷火，高频灼烧",
+  "tier": 2,
+  "rarity": 3,
+  "stats": {
+    "hp": 255,
+    "speed": 4.2,
+    "damage": 10,
+    "fire_rate": 55,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/solar/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "solar",
+    "colors": {
+      "primary": "#FF4500",
+      "secondary": "#FFD700",
+      "glow": "#FF4500",
+      "trail": "#FF4500"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "none",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "超新星爆发",
+      "name": "超新星爆发",
+      "color": "#FF4500",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "flame",
+    "sprite_path": "sprites/bullets/flame.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

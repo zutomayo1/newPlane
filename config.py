@@ -1,5 +1,6 @@
 import pygame
 import os
+import json
 
 # ==============================================================================
 #   屏幕与系统设置
@@ -8,9 +9,248 @@ WIDTH = 1280
 HEIGHT = 720
 FPS = 120
 
-# 文件路径配置
-LEADERBOARD_FILE = "leaderboard.json"
-ARSENAL_FILE = "arsenal.json"
+# 存档目录 - 所有玩家数据保存在此
+SAVES_DIR = "saves"
+os.makedirs(SAVES_DIR, exist_ok=True)
+
+# 文件路径配置（存档类）
+LEADERBOARD_FILE = os.path.join(SAVES_DIR, "leaderboard.json")
+ARSENAL_FILE = os.path.join(SAVES_DIR, "arsenal.json")
+KEY_BINDINGS_FILE = os.path.join(SAVES_DIR, "key_bindings.json")
+ACHIEVEMENTS_FILE = os.path.join(SAVES_DIR, "achievements.json")
+TALENT_SAVE_FILE = os.path.join(SAVES_DIR, "talent_data.json")
+CUSTOMIZATION_FILE = os.path.join(SAVES_DIR, "customization.json")
+DAILY_QUESTS_FILE = os.path.join(SAVES_DIR, "daily_quests.json")
+GAME_SETTINGS_FILE = os.path.join(SAVES_DIR, "game_settings.json")
+
+# ==============================================================================
+#   按键映射系统
+# ==============================================================================
+# 默认按键配置
+DEFAULT_KEY_BINDINGS = {
+    # 移动
+    "move_up": [pygame.K_UP, pygame.K_w],
+    "move_down": [pygame.K_DOWN, pygame.K_s],
+    "move_left": [pygame.K_LEFT, pygame.K_a],
+    "move_right": [pygame.K_RIGHT, pygame.K_d],
+    # 战斗
+    "shoot": [pygame.K_SPACE],
+    "dash": [pygame.K_LSHIFT, pygame.K_RSHIFT],
+    # 武器切换
+    "weapon_prev": [pygame.K_q],
+    "weapon_next": [pygame.K_e],
+    # 技能
+    "skill_1": [pygame.K_1],
+    "skill_2": [pygame.K_2],
+    "skill_3": [pygame.K_3],
+    "skill_switch": [pygame.K_t],
+    # 大招
+    "ultimate_1": [pygame.K_f],
+    "ultimate_2": [pygame.K_g],
+    "ultimate_3": [pygame.K_c],
+    "ultimate_4": [pygame.K_r],
+    # 系统
+    "pause": [pygame.K_ESCAPE, pygame.K_p],
+    "map": [pygame.K_m],
+    "tab_info": [pygame.K_TAB],
+    "confirm": [pygame.K_RETURN, pygame.K_KP_ENTER],
+    "cancel": [pygame.K_ESCAPE, pygame.K_BACKSPACE],
+}
+
+# 按键动作名称（用于UI显示）
+KEY_ACTION_NAMES = {
+    "move_up": "向上移动",
+    "move_down": "向下移动",
+    "move_left": "向左移动",
+    "move_right": "向右移动",
+    "shoot": "射击",
+    "dash": "冲刺",
+    "weapon_prev": "切换上一武器",
+    "weapon_next": "切换下一武器",
+    "skill_1": "技能1",
+    "skill_2": "技能2",
+    "skill_3": "技能3",
+    "skill_switch": "切换技能模式",
+    "ultimate_1": "大招1",
+    "ultimate_2": "大招2",
+    "ultimate_3": "大招3",
+    "ultimate_4": "大招4",
+    "pause": "暂停",
+    "map": "打开地图",
+    "tab_info": "显示信息",
+    "confirm": "确认",
+    "cancel": "取消/返回",
+}
+
+# 按键分组（用于UI分类显示）
+KEY_ACTION_GROUPS = {
+    "移动": ["move_up", "move_down", "move_left", "move_right"],
+    "战斗": ["shoot", "dash"],
+    "武器": ["weapon_prev", "weapon_next"],
+    "大招": ["ultimate_1", "ultimate_2", "ultimate_3", "ultimate_4"],
+    "系统": ["pause", "map", "tab_info", "confirm", "cancel"],
+}
+
+# 高级按键分组（默认隐藏，需开启开关才显示）
+KEY_ACTION_GROUPS_ADVANCED = {
+    "特殊机体": ["skill_1", "skill_2", "skill_3", "skill_switch"],
+}
+
+# 按键名称映射（用于显示）
+def get_key_name(key_code):
+    """获取按键的显示名称"""
+    key_names = {
+        pygame.K_UP: "↑", pygame.K_DOWN: "↓",
+        pygame.K_LEFT: "←", pygame.K_RIGHT: "→",
+        pygame.K_SPACE: "空格",
+        pygame.K_LSHIFT: "左Shift", pygame.K_RSHIFT: "右Shift",
+        pygame.K_LCTRL: "左Ctrl", pygame.K_RCTRL: "右Ctrl",
+        pygame.K_LALT: "左Alt", pygame.K_RALT: "右Alt",
+        pygame.K_TAB: "Tab", pygame.K_RETURN: "回车",
+        pygame.K_ESCAPE: "Esc", pygame.K_BACKSPACE: "退格",
+        pygame.K_DELETE: "Delete", pygame.K_INSERT: "Insert",
+        pygame.K_HOME: "Home", pygame.K_END: "End",
+        pygame.K_PAGEUP: "PgUp", pygame.K_PAGEDOWN: "PgDn",
+        pygame.K_F1: "F1", pygame.K_F2: "F2", pygame.K_F3: "F3",
+        pygame.K_F4: "F4", pygame.K_F5: "F5", pygame.K_F6: "F6",
+        pygame.K_F7: "F7", pygame.K_F8: "F8", pygame.K_F9: "F9",
+        pygame.K_F10: "F10", pygame.K_F11: "F11", pygame.K_F12: "F12",
+    }
+    if key_code in key_names:
+        return key_names[key_code]
+    # 尝试获取按键字符
+    try:
+        name = pygame.key.name(key_code)
+        if len(name) == 1:
+            return name.upper()
+        return name.capitalize()
+    except:
+        return f"键{key_code}"
+
+class KeyBindingManager:
+    """按键绑定管理器"""
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
+    def __init__(self):
+        if self._initialized:
+            return
+        self._initialized = True
+        self.bindings = {}
+        self.load_bindings()
+    
+    def load_bindings(self):
+        """加载按键绑定"""
+        try:
+            if os.path.exists(KEY_BINDINGS_FILE):
+                with open(KEY_BINDINGS_FILE, 'r', encoding='utf-8') as f:
+                    saved = json.load(f)
+                # 合并保存的和默认的
+                self.bindings = DEFAULT_KEY_BINDINGS.copy()
+                for action, keys in saved.items():
+                    if action in self.bindings:
+                        self.bindings[action] = keys
+            else:
+                self.bindings = DEFAULT_KEY_BINDINGS.copy()
+        except Exception as e:
+            print(f"加载按键绑定失败: {e}")
+            self.bindings = DEFAULT_KEY_BINDINGS.copy()
+    
+    def save_bindings(self):
+        """保存按键绑定"""
+        try:
+            with open(KEY_BINDINGS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(self.bindings, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"保存按键绑定失败: {e}")
+            return False
+    
+    def reset_to_default(self):
+        """重置为默认按键"""
+        self.bindings = DEFAULT_KEY_BINDINGS.copy()
+        self.save_bindings()
+    
+    def set_binding(self, action, key_index, new_key):
+        """设置按键绑定
+        action: 动作名称
+        key_index: 第几个按键 (0 或 1)
+        new_key: 新的按键代码
+        """
+        if action not in self.bindings:
+            return False
+        
+        # 检查是否与其他动作冲突
+        for other_action, keys in self.bindings.items():
+            if other_action != action and new_key in keys:
+                # 从其他动作中移除这个按键
+                self.bindings[other_action] = [k for k in keys if k != new_key]
+        
+        # 设置新按键
+        while len(self.bindings[action]) <= key_index:
+            self.bindings[action].append(0)
+        self.bindings[action][key_index] = new_key
+        
+        # 移除空按键
+        self.bindings[action] = [k for k in self.bindings[action] if k != 0]
+        
+        self.save_bindings()
+        return True
+    
+    def is_action_pressed(self, keys, action):
+        """检查动作是否被按下
+        keys: pygame.key.get_pressed() 的返回值
+        action: 动作名称
+        """
+        if action not in self.bindings:
+            return False
+        for key in self.bindings[action]:
+            if key and keys[key]:
+                return True
+        return False
+    
+    def is_action_key(self, event_key, action):
+        """检查事件按键是否匹配某个动作
+        event_key: event.key 的值
+        action: 动作名称
+        """
+        if action not in self.bindings:
+            return False
+        return event_key in self.bindings[action]
+    
+    def is_any_action_key(self, event_key, actions):
+        """检查事件按键是否匹配任一动作
+        event_key: event.key 的值
+        actions: 动作名称列表
+        """
+        for action in actions:
+            if self.is_action_key(event_key, action):
+                return True
+        return False
+    
+    def get_action_keys(self, action):
+        """获取动作绑定的按键列表"""
+        return self.bindings.get(action, [])
+    
+    def get_action_key_names(self, action):
+        """获取动作按键的显示名称"""
+        keys = self.get_action_keys(action)
+        return [get_key_name(k) for k in keys if k]
+
+# 全局按键管理器实例
+key_binding_manager = None
+
+def get_key_binding_manager():
+    """获取按键管理器单例"""
+    global key_binding_manager
+    if key_binding_manager is None:
+        key_binding_manager = KeyBindingManager()
+    return key_binding_manager
 
 # ==============================================================================
 #   颜色定义 - 赛博朋克霓虹视觉规范
@@ -107,7 +347,9 @@ supplies = pygame.sprite.Group()
 #   游戏数据 (机体、物品、BOSS)
 # ==============================================================================
 
-PLANES = {
+# 硬编码的机体数据作为备用 (fallback)
+# 正式数据从 data/planes/*.json 加载
+_FALLBACK_PLANES = {
     "striker": { "name": "霓虹突击者", "desc": "均衡型战机，擅长持续输出", "hp": 260, "speed": 4.0, "damage": 18, "delay": 180, "color": CYAN, "ult_name": "毁灭光束", "ult_color": CYAN, "bullet_type": "beam", "visual": {"neon_color": CYBER_CYAN_BRIGHT, "accent_color": CYBER_AMBER, "trail_color": CYAN, "ability": "overdrive"} },
     "phantom": { "name": "虚空幻影", "desc": "高机动高射速，终极控制", "hp": 245, "speed": 4.6, "damage": 14, "delay": 150, "color": MAGENTA, "ult_name": "时空冻结", "ult_color": MAGENTA, "bullet_type": "shard", "visual": {"neon_color": MAGENTA, "accent_color": WHITE, "trail_color": MAGENTA, "ability": "phase_shift"} },
     "titan": { "name": "钢铁泰坦", "desc": "重装甲高火力，全屏核爆", "hp": 290, "speed": 3.2, "damage": 26, "delay": 245, "color": ORANGE, "ult_name": "战术核弹", "ult_color": ORANGE, "bullet_type": "rocket", "visual": {"neon_color": CYBER_AMBER, "accent_color": ORANGE, "trail_color": ORANGE, "ability": "armor_plating"} },
@@ -166,7 +408,31 @@ PLANES = {
     "sdmg": { "name": "星际海豚·S.D.M.G.", "desc": "生物机械海豚加特林，叶绿弹道弱追踪+过热超频系统+海星雷吸附爆炸+鲨卷风导弹齐射+月球领主幻影手掌+轨道轰炸毁灭光束", "hp": 255, "speed": 4.8, "damage": 24, "delay": 17, "color": (0, 255, 255), "ult_name": "鲨卷风", "ult_color": (192, 192, 192), "bullet_type": "chlorophyte_tracer", "visual": {"neon_color": (0, 255, 255), "accent_color": (192, 192, 192), "trail_color": (100, 200, 255), "ability": "overheat_system"}, "skills": {"skill1": {"name": "海星雷", "desc": "发射旋转海星炸弹，吸附敌人后延迟爆炸"}, "skill2": {"name": "鲨卷风", "desc": "发射数十枚鲨鱼导弹，形成龙卷风轨迹"}, "skill3": {"name": "月球领主之凝视", "desc": "召唤幻影手掌跟随，持续发射穿透光球"}, "skill4": {"name": "轨道轰炸", "desc": "召唤轨道炮瞄准，多道垂直毁灭光束从天而降"}} }
 }
 
-BOSS_DB = {
+# ==============================================================================
+#   从 JSON 加载 PLANES 数据（优先使用 JSON，失败时回退到硬编码）
+# ==============================================================================
+
+def _load_planes_from_json():
+    """
+    尝试从 JSON 文件加载机体数据
+    
+    Returns:
+        加载的 PLANES 字典，失败时返回 _FALLBACK_PLANES
+    """
+    try:
+        from utils.asset_manager import asset_manager
+        loaded = asset_manager.load_planes_dict(_FALLBACK_PLANES)
+        if loaded:
+            return loaded
+    except Exception as e:
+        print(f"[config] Failed to load planes from JSON: {e}, using fallback")
+    return _FALLBACK_PLANES
+
+# PLANES 字典 - 从 JSON 加载，JSON 不可用时使用硬编码备用
+PLANES = _load_planes_from_json()
+
+# 硬编码的 Boss 数据作为备用 (fallback)
+_FALLBACK_BOSS_DB = {
     # Boss 1: 菌生蟹皇 - 重型生物坦克，六足震地，孢子地雷+菌丝波浪
     "fungal_colossus": {
         "name": "菌生蟹皇",
@@ -363,6 +629,26 @@ BOSS_DB = {
         ]
     }
 }
+
+# ==============================================================================
+#   从 JSON 加载 BOSS_DB 数据
+# ==============================================================================
+
+def _load_boss_db_from_json():
+    """
+    尝试从 JSON 文件加载 Boss 数据
+    """
+    try:
+        from utils.asset_manager import asset_manager
+        loaded = asset_manager.load_boss_db(_FALLBACK_BOSS_DB)
+        if loaded:
+            return loaded
+    except Exception as e:
+        print(f"[config] Failed to load bosses from JSON: {e}, using fallback")
+    return _FALLBACK_BOSS_DB
+
+# BOSS_DB 字典 - 从 JSON 加载，JSON 不可用时使用硬编码备用
+BOSS_DB = _load_boss_db_from_json()
 BOSS_KEYS = list(BOSS_DB.keys())
 
 WEAPON_TYPES = {
@@ -495,3 +781,444 @@ def set_theme(theme_id):
         current_theme = theme_id
         return True
     return False
+
+
+# ==============================================================================
+#   星轨天赋阵系统
+# ==============================================================================
+
+TALENT_TREE = {
+    # ==================== 毁灭星轨 ====================
+    "destruction": {
+        "name": "毁灭星轨",
+        "subtitle": "歼灭一切",
+        "color": RED,
+        "icon": "🔴",
+        "branches": {
+            # 爆发分支
+            "burst": {
+                "name": "爆发",
+                "talents": {
+                    "sharp": {
+                        "name": "锐利", "icon": "🗡️", "max_level": 5,
+                        "desc": "基础伤害 +{value}%",
+                        "values": [5, 10, 15, 20, 25],
+                        "costs": [5, 10, 15, 20, 25],
+                        "effect": {"damage_mult": [0.05, 0.10, 0.15, 0.20, 0.25]},
+                        "tier": 1
+                    },
+                    "heavy": {
+                        "name": "重击", "icon": "💥", "max_level": 5,
+                        "desc": "暴击率 +{value}%",
+                        "values": [4, 8, 12, 16, 20],
+                        "costs": [10, 15, 20, 25, 30],
+                        "effect": {"crit_chance": [0.04, 0.08, 0.12, 0.16, 0.20]},
+                        "tier": 2, "requires": "sharp"
+                    },
+                    "fatal": {
+                        "name": "致命", "icon": "☠️", "max_level": 5,
+                        "desc": "暴击伤害 +{value}%",
+                        "values": [20, 40, 60, 80, 100],
+                        "costs": [15, 20, 25, 30, 40],
+                        "effect": {"crit_damage": [0.20, 0.40, 0.60, 0.80, 1.00]},
+                        "tier": 3, "requires": "heavy"
+                    },
+                    "execute": {
+                        "name": "处决", "icon": "💀", "max_level": 5,
+                        "desc": "敌人<30%血时伤害 +{value}%",
+                        "values": [15, 30, 45, 60, 75],
+                        "costs": [25, 30, 40, 50, 60],
+                        "effect": {"execute_damage": [0.15, 0.30, 0.45, 0.60, 0.75]},
+                        "tier": 4, "requires": "fatal"
+                    },
+                }
+            },
+            # 持续分支
+            "sustained": {
+                "name": "持续",
+                "talents": {
+                    "swift": {
+                        "name": "迅捷", "icon": "⚡", "max_level": 5,
+                        "desc": "射速 +{value}%",
+                        "values": [6, 12, 18, 24, 30],
+                        "costs": [5, 10, 15, 20, 25],
+                        "effect": {"fire_rate": [0.06, 0.12, 0.18, 0.24, 0.30]},
+                        "tier": 1
+                    },
+                    "precise": {
+                        "name": "精准", "icon": "🎯", "max_level": 5,
+                        "desc": "弹速 +{value}%",
+                        "values": [10, 20, 30, 40, 50],
+                        "costs": [10, 15, 20, 25, 30],
+                        "effect": {"bullet_speed": [0.10, 0.20, 0.30, 0.40, 0.50]},
+                        "tier": 2, "requires": "swift"
+                    },
+                    "pierce": {
+                        "name": "穿透", "icon": "🔗", "max_level": 5,
+                        "desc": "穿透 +{value}",
+                        "values": [1, 1, 2, 2, 3],
+                        "costs": [15, 20, 25, 30, 40],
+                        "effect": {"pierce": [1, 1, 2, 2, 3]},
+                        "tier": 3, "requires": "precise"
+                    },
+                    "endless": {
+                        "name": "无尽", "icon": "♾️", "max_level": 5,
+                        "desc": "击杀回复{value}%能量",
+                        "values": [1, 2, 3, 4, 5],
+                        "costs": [25, 30, 40, 50, 60],
+                        "effect": {"kill_energy": [0.01, 0.02, 0.03, 0.04, 0.05]},
+                        "tier": 4, "requires": "pierce"
+                    },
+                }
+            },
+            # 特效分支
+            "effect": {
+                "name": "特效",
+                "talents": {
+                    "burn": {
+                        "name": "灼烧", "icon": "🔥", "max_level": 5,
+                        "desc": "攻击附带燃烧({value}s)",
+                        "values": [2, 3, 4, 5, 6],
+                        "costs": [5, 10, 15, 20, 25],
+                        "effect": {"burn_duration": [2, 3, 4, 5, 6]},
+                        "tier": 1
+                    },
+                    "freeze": {
+                        "name": "冰封", "icon": "❄️", "max_level": 5,
+                        "desc": "攻击{value}%几率冻结1s",
+                        "values": [5, 10, 15, 20, 25],
+                        "costs": [10, 15, 20, 25, 30],
+                        "effect": {"freeze_chance": [0.05, 0.10, 0.15, 0.20, 0.25]},
+                        "tier": 2, "requires": "burn"
+                    },
+                    "thunder": {
+                        "name": "雷击", "icon": "⚡", "max_level": 5,
+                        "desc": "攻击{value}%几率连锁闪电",
+                        "values": [8, 12, 16, 20, 25],
+                        "costs": [15, 20, 25, 30, 40],
+                        "effect": {"chain_chance": [0.08, 0.12, 0.16, 0.20, 0.25]},
+                        "tier": 3, "requires": "freeze"
+                    },
+                    "void_strike": {
+                        "name": "虚空", "icon": "🌀", "max_level": 5,
+                        "desc": "攻击{value}%几率双倍伤害",
+                        "values": [3, 5, 7, 9, 12],
+                        "costs": [25, 30, 40, 50, 60],
+                        "effect": {"double_damage_chance": [0.03, 0.05, 0.07, 0.09, 0.12]},
+                        "tier": 4, "requires": "thunder"
+                    },
+                }
+            },
+        },
+        "ultimate": {
+            "name": "歼星者", "icon": "🔥",
+            "desc": "狂暴状态伤害+50%，持续+3s，冷却-30%",
+            "effect": {"rage_damage": 0.50, "rage_duration": 3, "rage_cooldown": 0.30},
+            "requires_t4": True
+        },
+    },
+    
+    # ==================== 守护星轨 ====================
+    "guardian": {
+        "name": "守护星轨",
+        "subtitle": "坚不可摧",
+        "color": CYAN,
+        "icon": "🔵",
+        "branches": {
+            # 护盾分支
+            "shield": {
+                "name": "护盾",
+                "talents": {
+                    "capacitor": {
+                        "name": "电容", "icon": "🔋", "max_level": 5,
+                        "desc": "护盾容量 +{value}%",
+                        "values": [10, 20, 30, 40, 50],
+                        "costs": [5, 10, 15, 20, 25],
+                        "effect": {"shield_capacity": [0.10, 0.20, 0.30, 0.40, 0.50]},
+                        "tier": 1
+                    },
+                    "recharge": {
+                        "name": "充能", "icon": "⚡", "max_level": 5,
+                        "desc": "护盾回复 +{value}%",
+                        "values": [15, 30, 45, 60, 75],
+                        "costs": [10, 15, 20, 25, 30],
+                        "effect": {"shield_regen": [0.15, 0.30, 0.45, 0.60, 0.75]},
+                        "tier": 2, "requires": "capacitor"
+                    },
+                    "reflect": {
+                        "name": "反射", "icon": "🪞", "max_level": 5,
+                        "desc": "护盾反弹{value}%伤害",
+                        "values": [5, 10, 15, 20, 25],
+                        "costs": [15, 20, 25, 30, 40],
+                        "effect": {"shield_reflect": [0.05, 0.10, 0.15, 0.20, 0.25]},
+                        "tier": 3, "requires": "recharge"
+                    },
+                    "crystallize": {
+                        "name": "晶化", "icon": "💠", "max_level": 5,
+                        "desc": "护盾满时减伤 +{value}%",
+                        "values": [15, 20, 25, 30, 35],
+                        "costs": [25, 30, 40, 50, 60],
+                        "effect": {"full_shield_reduction": [0.15, 0.20, 0.25, 0.30, 0.35]},
+                        "tier": 4, "requires": "reflect"
+                    },
+                }
+            },
+            # 生命分支
+            "vitality": {
+                "name": "生命",
+                "talents": {
+                    "sturdy": {
+                        "name": "强壮", "icon": "💚", "max_level": 5,
+                        "desc": "最大生命 +{value}%",
+                        "values": [8, 16, 24, 32, 40],
+                        "costs": [5, 10, 15, 20, 25],
+                        "effect": {"max_hp": [0.08, 0.16, 0.24, 0.32, 0.40]},
+                        "tier": 1
+                    },
+                    "regen": {
+                        "name": "再生", "icon": "💗", "max_level": 5,
+                        "desc": "每3s回复{value}%生命",
+                        "values": [1, 1.5, 2, 2.5, 3],
+                        "costs": [10, 15, 20, 25, 30],
+                        "effect": {"hp_regen_percent": [0.01, 0.015, 0.02, 0.025, 0.03]},
+                        "tier": 2, "requires": "sturdy"
+                    },
+                    "leech": {
+                        "name": "汲取", "icon": "🩸", "max_level": 5,
+                        "desc": "击杀回复{value}%生命",
+                        "values": [1, 2, 3, 4, 5],
+                        "costs": [15, 20, 25, 30, 40],
+                        "effect": {"kill_heal": [0.01, 0.02, 0.03, 0.04, 0.05]},
+                        "tier": 3, "requires": "regen"
+                    },
+                    "unyielding": {
+                        "name": "不屈", "icon": "♻️", "max_level": 5,
+                        "desc": "血量<25%时减伤 +{value}%",
+                        "values": [10, 15, 20, 25, 30],
+                        "costs": [25, 30, 40, 50, 60],
+                        "effect": {"low_hp_reduction": [0.10, 0.15, 0.20, 0.25, 0.30]},
+                        "tier": 4, "requires": "leech"
+                    },
+                }
+            },
+            # 闪避分支
+            "evasion": {
+                "name": "闪避",
+                "talents": {
+                    "agile": {
+                        "name": "灵巧", "icon": "🏃", "max_level": 5,
+                        "desc": "移动速度 +{value}%",
+                        "values": [5, 10, 15, 20, 25],
+                        "costs": [5, 10, 15, 20, 25],
+                        "effect": {"move_speed": [0.05, 0.10, 0.15, 0.20, 0.25]},
+                        "tier": 1
+                    },
+                    "dodge": {
+                        "name": "闪避", "icon": "💨", "max_level": 5,
+                        "desc": "闪避率 +{value}%",
+                        "values": [3, 6, 9, 12, 15],
+                        "costs": [10, 15, 20, 25, 30],
+                        "effect": {"dodge_chance": [0.03, 0.06, 0.09, 0.12, 0.15]},
+                        "tier": 2, "requires": "agile"
+                    },
+                    "afterimage": {
+                        "name": "残影", "icon": "👻", "max_level": 5,
+                        "desc": "闪避后{value}s无敌",
+                        "values": [0.3, 0.5, 0.7, 0.9, 1.2],
+                        "costs": [15, 20, 25, 30, 40],
+                        "effect": {"dodge_invuln": [0.3, 0.5, 0.7, 0.9, 1.2]},
+                        "tier": 3, "requires": "dodge"
+                    },
+                    "surge": {
+                        "name": "涌动", "icon": "🌊", "max_level": 5,
+                        "desc": "被击后移速+{value}% 2s",
+                        "values": [20, 30, 40, 50, 60],
+                        "costs": [25, 30, 40, 50, 60],
+                        "effect": {"hit_speed_boost": [0.20, 0.30, 0.40, 0.50, 0.60]},
+                        "tier": 4, "requires": "afterimage"
+                    },
+                }
+            },
+        },
+        "ultimate": {
+            "name": "不朽堡垒", "icon": "🛡️",
+            "desc": "每局首次致死伤害改为剩余1HP，获得3s无敌",
+            "effect": {"death_save": True, "save_invuln": 3},
+            "requires_t4": True
+        },
+    },
+    
+    # ==================== 命运星轨 ====================
+    "destiny": {
+        "name": "命运星轨",
+        "subtitle": "命运编织",
+        "color": YELLOW,
+        "icon": "🟡",
+        "branches": {
+            # 成长分支
+            "growth": {
+                "name": "成长",
+                "talents": {
+                    "scholar": {
+                        "name": "学识", "icon": "📚", "max_level": 5,
+                        "desc": "经验获取 +{value}%",
+                        "values": [8, 16, 24, 32, 40],
+                        "costs": [5, 10, 15, 20, 25],
+                        "effect": {"exp_mult": [0.08, 0.16, 0.24, 0.32, 0.40]},
+                        "tier": 1
+                    },
+                    "magnet": {
+                        "name": "磁力", "icon": "🧲", "max_level": 5,
+                        "desc": "拾取范围 +{value}%",
+                        "values": [20, 40, 60, 80, 100],
+                        "costs": [10, 15, 20, 25, 30],
+                        "effect": {"pickup_range": [0.20, 0.40, 0.60, 0.80, 1.00]},
+                        "tier": 2, "requires": "scholar"
+                    },
+                    "treasure": {
+                        "name": "宝藏", "icon": "💎", "max_level": 5,
+                        "desc": "掉落率 +{value}%",
+                        "values": [5, 10, 15, 20, 25],
+                        "costs": [15, 20, 25, 30, 40],
+                        "effect": {"drop_rate": [0.05, 0.10, 0.15, 0.20, 0.25]},
+                        "tier": 3, "requires": "magnet"
+                    },
+                    "starshine": {
+                        "name": "星耀", "icon": "⭐", "max_level": 5,
+                        "desc": "升级{value}%几率额外+1级",
+                        "values": [10, 15, 20, 25, 30],
+                        "costs": [25, 30, 40, 50, 60],
+                        "effect": {"double_levelup": [0.10, 0.15, 0.20, 0.25, 0.30]},
+                        "tier": 4, "requires": "treasure"
+                    },
+                }
+            },
+            # 幸运分支
+            "fortune": {
+                "name": "幸运",
+                "talents": {
+                    "lucky": {
+                        "name": "幸运", "icon": "🍀", "max_level": 5,
+                        "desc": "稀有卡概率 +{value}%",
+                        "values": [5, 10, 15, 20, 25],
+                        "costs": [5, 10, 15, 20, 25],
+                        "effect": {"rare_chance": [0.05, 0.10, 0.15, 0.20, 0.25]},
+                        "tier": 1
+                    },
+                    "draw": {
+                        "name": "抽牌", "icon": "🃏", "max_level": 5,
+                        "desc": "选卡数量 +{value}",
+                        "values": [0, 0, 1, 1, 1],
+                        "costs": [10, 15, 20, 25, 30],
+                        "effect": {"extra_choices": [0, 0, 1, 1, 1]},
+                        "tier": 2, "requires": "lucky"
+                    },
+                    "sparkle": {
+                        "name": "闪耀", "icon": "✨", "max_level": 5,
+                        "desc": "每{value}次选卡必出金卡",
+                        "values": [5, 4, 3, 2, 2],
+                        "costs": [15, 20, 25, 30, 40],
+                        "effect": {"gold_pity": [5, 4, 3, 2, 2]},
+                        "tier": 3, "requires": "draw"
+                    },
+                    "gambler": {
+                        "name": "赌运", "icon": "🎰", "max_level": 5,
+                        "desc": "卡牌效果{value}%几率翻倍",
+                        "values": [5, 8, 12, 16, 20],
+                        "costs": [25, 30, 40, 50, 60],
+                        "effect": {"card_double": [0.05, 0.08, 0.12, 0.16, 0.20]},
+                        "tier": 4, "requires": "sparkle"
+                    },
+                }
+            },
+            # 僚机分支
+            "wingman": {
+                "name": "僚机",
+                "talents": {
+                    "synergy": {
+                        "name": "协同", "icon": "👥", "max_level": 5,
+                        "desc": "僚机伤害 +{value}%",
+                        "values": [10, 20, 30, 40, 50],
+                        "costs": [5, 10, 15, 20, 25],
+                        "effect": {"wingman_damage": [0.10, 0.20, 0.30, 0.40, 0.50]},
+                        "tier": 1
+                    },
+                    "sync": {
+                        "name": "同步", "icon": "🔄", "max_level": 5,
+                        "desc": "僚机射速 +{value}%",
+                        "values": [10, 20, 30, 40, 50],
+                        "costs": [10, 15, 20, 25, 30],
+                        "effect": {"wingman_fire_rate": [0.10, 0.20, 0.30, 0.40, 0.50]},
+                        "tier": 2, "requires": "synergy"
+                    },
+                    "formation": {
+                        "name": "编队", "icon": "🛸", "max_level": 5,
+                        "desc": "僚机上限 +{value}",
+                        "values": [0, 0, 1, 1, 2],
+                        "costs": [15, 20, 25, 30, 40],
+                        "effect": {"wingman_max": [0, 0, 1, 1, 2]},
+                        "tier": 3, "requires": "sync"
+                    },
+                    "resonance": {
+                        "name": "共鸣", "icon": "🌐", "max_level": 5,
+                        "desc": "僚机继承{value}%属性",
+                        "values": [30, 40, 50, 60, 70],
+                        "costs": [25, 30, 40, 50, 60],
+                        "effect": {"wingman_inherit": [0.30, 0.40, 0.50, 0.60, 0.70]},
+                        "tier": 4, "requires": "formation"
+                    },
+                }
+            },
+        },
+        "ultimate": {
+            "name": "命运织者", "icon": "🌟",
+            "desc": "选卡可免费刷新一次，商店价格-20%",
+            "effect": {"free_reroll": 1, "shop_discount": 0.20},
+            "requires_t4": True
+        },
+    },
+}
+
+# 超限核心
+ULTIMATE_CORES = {
+    "star_resonance": {
+        "name": "星轨共鸣", "icon": "⭐",
+        "desc": "所有已解锁天赋效果 +25%",
+        "effect": {"talent_boost": 0.25},
+        "requires_points": 45  # 三条路线各15点
+    },
+    "fate_control": {
+        "name": "命运掌控", "icon": "🎯",
+        "desc": "开局可选1张金卡携带",
+        "effect": {"start_gold_card": 1},
+        "requires_points": 45
+    },
+    "infinite_potential": {
+        "name": "无限潜能", "icon": "♾️",
+        "desc": "等级上限+5，每级额外属性",
+        "effect": {"level_cap": 5, "level_bonus": 0.02},
+        "requires_points": 45
+    },
+}
+
+# 路线共鸣（点满20点解锁）
+PATH_RESONANCE = {
+    "destruction": {
+        "name": "毁灭共鸣",
+        "desc": "连续击杀叠加伤害，最高+30%",
+        "effect": {"kill_streak_damage": 0.30},
+        "requires_points": 20
+    },
+    "guardian": {
+        "name": "守护共鸣",
+        "desc": "受伤后3秒内减伤逐渐增加，最高+25%",
+        "effect": {"damage_taken_reduction": 0.25},
+        "requires_points": 20
+    },
+    "destiny": {
+        "name": "命运共鸣",
+        "desc": "每拾取5个道具，下次选卡+1选择",
+        "effect": {"pickup_extra_choice": 5},
+        "requires_points": 20
+    },
+}

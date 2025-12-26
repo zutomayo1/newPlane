@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "viper",
+  "name": "剧毒蝰蛇",
+  "name_en": "Viper",
+  "description": "发射腐蚀酸液，持续伤害",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 260,
+    "speed": 3.8,
+    "damage": 18,
+    "fire_rate": 196,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/viper/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "viper",
+    "colors": {
+      "primary": "#32FF32",
+      "secondary": "#FFD700",
+      "glow": "#32FF32",
+      "trail": "#32FF32"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "none",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "腐蚀毒雾",
+      "name": "腐蚀毒雾",
+      "color": "#32FF32",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "acid",
+    "sprite_path": "sprites/bullets/acid.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

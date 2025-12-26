@@ -17,11 +17,11 @@ class EnemyTypeManager:
         enemies = []
 
         try:
-            with open('enemy_types.json', 'r', encoding='utf-8') as f:
+            with open('data/enemies/enemy_types.json', 'r', encoding='utf-8') as f:
                 data = json.load(f)
             source = data.get('enemies', {})
         except Exception as e:
-            print(f"警告：加载 enemy_types.json 失败 ({e})，使用默认敌人")
+            print(f"警告：加载 data/enemies/enemy_types.json 失败 ({e})，使用默认敌人")
             from enemies import BUILTIN_ENEMIES
 
             source = BUILTIN_ENEMIES

@@ -1,0 +1,69 @@
+{
+  "last_refresh_date": "2025-12-26",
+  "quests": [
+    "score_20000",
+    "kill_boss_1",
+    "collect_items_150"
+  ],
+  "daily_progress": {
+    "kills": 46,
+    "bosses": 1,
+    "score": 580,
+    "games": 6,
+    "waves": 0,
+    "combo": 8,
+    "planes_used": [
+      "sdmg",
+      "eclipse",
+      "striker"
+    ],
+    "enemy_types_killed": [
+      "wisp",
+      "plague_drone",
+      "void_hunter"
+    ],
+    "modes_played": [
+      "normal"
+    ],
+    "roguelike_games": 0,
+    "boss_challenge_games": 0,
+    "endless_games": 0,
+    "training_games": 0,
+    "damage_dealt": 10595,
+    "bullets_fired": 0,
+    "items_collected": 2,
+    "perfect_waves": 0,
+    "dodge_count": 0,
+    "close_calls": 0,
+    "kills_by_type": {},
+    "bosses_by_name": {}
+  },
+  "claimed_rewards": [
+    "kill_boss_1"
+  ],
+  "total_points": 150,
+  "streak_days": 0,
+  "lifetime_stats": {
+    "bosses": 2,
+    "damage_dealt": 11199,
+    "combo": 0,
+    "kills": 48,
+    "enemy_types_killed": [
+      "plague_drone",
+      "wisp",
+      "void_hunter"
+    ],
+    "games": 6,
+    "score": 580,
+    "modes_played": [
+      "normal"
+    ],
+    "planes_used": [
+      "sdmg",
+      "eclipse",
+      "striker"
+    ],
+    "items_collected": 2
+  },
+  "achievements": []
+}

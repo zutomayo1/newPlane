@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "staradia",
+  "name": "辉耀天女·斯塔德",
+  "name_en": "Staradia",
+  "description": "虹幕连闪，月虹光梭命中展开辉耀残痕光板，再次普攻激活发射真伤皇辉束；5层升格展开皇辉领域",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 270,
+    "speed": 4.8,
+    "damage": 35,
+    "fire_rate": 140,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/staradia/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "staradia",
+    "colors": {
+      "primary": "#FFB4DC",
+      "secondary": "#FFD778",
+      "glow": "#FFB4DC",
+      "trail": "#FFC8E6"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "radiant_ascension",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "皇辉暴雨",
+      "name": "皇辉暴雨",
+      "color": "#FFD778",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "moon_shuttle",
+    "sprite_path": "sprites/bullets/moon_shuttle.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1492,9 +1492,15 @@ class DailyQuestManager:
         streak_bonus = self.streak_days * 50
         return base_bonus + streak_bonus
     
-    def save_to_file(self, filename="daily_quests.json"):
+    def save_to_file(self, filename=None):
         """保存每日任务数据"""
         import json
+        if filename is None:
+            try:
+                from config import DAILY_QUESTS_FILE
+                filename = DAILY_QUESTS_FILE
+            except ImportError:
+                filename = "saves/daily_quests.json"
         data = {
             "last_refresh_date": self.last_refresh_date,
             "quests": self.quests,
@@ -1513,10 +1519,17 @@ class DailyQuestManager:
         except Exception as e:
             log_error(f"保存每日任务失败: {e}")
     
-    def load_from_file(self, filename="daily_quests.json"):
+    def load_from_file(self, filename=None):
         """加载每日任务数据"""
         import json
         import os
+        
+        if filename is None:
+            try:
+                from config import DAILY_QUESTS_FILE
+                filename = DAILY_QUESTS_FILE
+            except ImportError:
+                filename = "saves/daily_quests.json"
         
         if not os.path.exists(filename):
             log_info("每日任务文件不存在，将创建新任务")
@@ -2022,10 +2035,17 @@ class AchievementManager:
         """记录Boss击杀"""
         self.stats["bosses_killed"] += 1
     
-    def save_to_file(self, filename="achievements.json"):
+    def save_to_file(self, filename=None):
         """将成就数据保存到JSON文件"""
         import json
         import os
+        
+        if filename is None:
+            try:
+                from config import ACHIEVEMENTS_FILE
+                filename = ACHIEVEMENTS_FILE
+            except ImportError:
+                filename = "saves/achievements.json"
         
         # 准备要保存的数据（包含解锁日期）
         unlocked_data = {}
@@ -2063,10 +2083,17 @@ class AchievementManager:
             log_error(f"保存成就数据失败: {e}")
             return False
     
-    def load_from_file(self, filename="achievements.json"):
+    def load_from_file(self, filename=None):
         """从JSON文件加载成就数据"""
         import json
         import os
+        
+        if filename is None:
+            try:
+                from config import ACHIEVEMENTS_FILE
+                filename = ACHIEVEMENTS_FILE
+            except ImportError:
+                filename = "saves/achievements.json"
         
         if not os.path.exists(filename):
             log_info(f"成就文件不存在: {filename}")
@@ -4229,6 +4256,10 @@ class ExperienceSystem:
         
     def add_xp(self, amount):
         """增加 XP，检查是否升级"""
+        # ========== 【星轨天赋阵】经验加成 ==========
+        if hasattr(self.player, 'talent_exp_mult') and self.player.talent_exp_mult > 0:
+            amount = int(amount * (1 + self.player.talent_exp_mult))
+        
         self.xp_collected += amount
         
         while self.xp_collected >= self.next_level_xp:

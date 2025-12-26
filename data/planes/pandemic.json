@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "pandemic",
+  "name": "末日瘟神·零号",
+  "name_en": "Pandemic",
+  "description": "病毒传播者，感染在敌群中连锁传播并变异进化，敌人越多越强",
+  "tier": 5,
+  "rarity": 6,
+  "stats": {
+    "hp": 250,
+    "speed": 4.0,
+    "damage": 15,
+    "fire_rate": 175,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/pandemic/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "pandemic",
+    "colors": {
+      "primary": "#64C850",
+      "secondary": "#C8FF64",
+      "glow": "#64C850",
+      "trail": "#50B43C"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "plague_spread",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "终末审判",
+      "name": "终末审判",
+      "color": "#96FF64",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "virus",
+    "sprite_path": "sprites/bullets/virus.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

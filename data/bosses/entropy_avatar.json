@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "entropy_avatar",
+  "name": "熵之化身",
+  "description": "漂浮虚空的苍白巨人躯干，胸口手心额头三只真理之眼，触手化为光纤数据线。",
+  "stats": {
+    "armor": 100,
+    "damage": 100,
+    "mobility": 10
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#DCDCE6",
+      "core": "#DCDCE6",
+      "aura": "#FFFFFF"
+    },
+    "phase_effect": "ui_interference"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "phantom_deathray",
+        "count": 1
+      },
+      "fire_rate_mult": 0.9
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "life_drain",
+        "count": 3
+      },
+      "fire_rate_mult": 0.7
+    },
+    {
+      "threshold": 0.2,
+      "effect": {
+        "type": "phantom_deathray",
+        "count": 2
+      },
+      "fire_rate_mult": 0.5
+    }
+  ]
+}

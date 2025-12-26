@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "radiance_goddess",
+  "name": "亵渎天神",
+  "description": "燃烧的熔岩心脏被三对彩色玻璃晶体翼包裹，全身散发金色粒子尘埃。",
+  "stats": {
+    "armor": 85,
+    "damage": 85,
+    "mobility": 25
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#FFD700",
+      "core": "#FFD700",
+      "aura": "#FFB464"
+    },
+    "phase_effect": "holy_radiance"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "cocoon_defense",
+        "count": 3
+      },
+      "fire_rate_mult": 0.95
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "holy_judgment",
+        "count": 5
+      },
+      "fire_rate_mult": 0.7
+    },
+    {
+      "threshold": 0.25,
+      "effect": {
+        "type": "fractal_beam",
+        "count": 6
+      },
+      "fire_rate_mult": 0.5
+    }
+  ]
+}

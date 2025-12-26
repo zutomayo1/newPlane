@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "thunderbird",
+  "name": "雷霆战鹰",
+  "name_en": "Thunderbird",
+  "description": "发射连锁闪电，召唤雷暴",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 260,
+    "speed": 4.3,
+    "damage": 18,
+    "fire_rate": 175,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/thunderbird/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "thunderbird",
+    "colors": {
+      "primary": "#FFE600",
+      "secondary": "#FFD700",
+      "glow": "#FFE600",
+      "trail": "#FFE600"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "none",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "雷神降世",
+      "name": "雷神降世",
+      "color": "#FFE600",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "lightning",
+    "sprite_path": "sprites/bullets/lightning.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "flesh_totem",
+  "name": "毁灭魔像",
+  "description": "由古代黑砖和鲜活肌肉缝合而成，双臂是悬浮石拳，只有一只巨大电子眼。",
+  "stats": {
+    "armor": 150,
+    "damage": 80,
+    "mobility": 5
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#3C1414",
+      "core": "#3C1414",
+      "aura": "#B41E1E"
+    },
+    "phase_effect": "blood_seep"
+  },
+  "phases": [
+    {
+      "threshold": 0.85,
+      "effect": {
+        "type": "rocket_fist",
+        "count": 2
+      },
+      "fire_rate_mult": 0.9
+    },
+    {
+      "threshold": 0.55,
+      "effect": {
+        "type": "stone_pillar_cage",
+        "count": 3
+      },
+      "fire_rate_mult": 0.7
+    },
+    {
+      "threshold": 0.3,
+      "effect": {
+        "type": "rocket_fist",
+        "count": 4
+      },
+      "fire_rate_mult": 0.5
+    }
+  ]
+}

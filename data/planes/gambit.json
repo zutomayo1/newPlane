@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "gambit",
+  "name": "命运赌徒·艾斯",
+  "name_en": "Gambit",
+  "description": "每次攻击随机触发效果，暴击连锁可一发清屏",
+  "tier": 4,
+  "rarity": 5,
+  "stats": {
+    "hp": 255,
+    "speed": 4.4,
+    "damage": 18,
+    "fire_rate": 180,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/gambit/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "gambit",
+    "colors": {
+      "primary": "#FFD700",
+      "secondary": "#FF3232",
+      "glow": "#FFD700",
+      "trail": "#FFB400"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "fortune_wheel",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "命运轮盘",
+      "name": "命运轮盘",
+      "color": "#FFC832",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "card",
+    "sprite_path": "sprites/bullets/card.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Boss 配置 Schema",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "stats",
+    "visuals",
+    "phases"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "armor": {
+          "type": "integer"
+        },
+        "damage": {
+          "type": "integer"
+        },
+        "mobility": {
+          "type": "integer"
+        }
+      }
+    },
+    "visuals": {
+      "type": "object",
+      "properties": {
+        "colors": {
+          "type": "object"
+        },
+        "phase_effect": {
+          "type": "string"
+        }
+      }
+    },
+    "phases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "threshold": {
+            "type": "number"
+          },
+          "effect": {
+            "type": "object"
+          },
+          "fire_rate_mult": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

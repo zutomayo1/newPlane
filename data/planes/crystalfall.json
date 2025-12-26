@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "crystalfall",
+  "name": "晶簇射流·晶瀑",
+  "name_en": "Crystalfall",
+  "description": "远程晶簇扇喷，箭矢落地竖立成晶柱持续穿刺，2柱间距<200px自动连接成水晶墙",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 255,
+    "speed": 4.2,
+    "damage": 20,
+    "fire_rate": 400,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/crystalfall/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "crystalfall",
+    "colors": {
+      "primary": "#B478DC",
+      "secondary": "#6496B4",
+      "glow": "#B478DC",
+      "trail": "#A064C8"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "crystal_link",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "晶簇连锁",
+      "name": "晶簇连锁",
+      "color": "#C896FF",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "crystal_arrow",
+    "sprite_path": "sprites/bullets/crystal_arrow.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "thornvine",
+  "name": "棘刺藤骨·荆穹",
+  "name_en": "Thornvine",
+  "description": "远程骨蔓鞭射，命中后缠绕目标2s持续抽打，受击5次藤骨断裂生成次级短鞭追踪攻击",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 265,
+    "speed": 3.8,
+    "damage": 19,
+    "fire_rate": 600,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/thornvine/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "thornvine",
+    "colors": {
+      "primary": "#F0F0E6",
+      "secondary": "#B43232",
+      "glow": "#F0F0E6",
+      "trail": "#C8B4A0"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "vine_split",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "骨蔓分裂",
+      "name": "骨蔓分裂",
+      "color": "#B43232",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "bone_whip",
+    "sprite_path": "sprites/bullets/bone_whip.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

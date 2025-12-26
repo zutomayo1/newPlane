@@ -1,0 +1,132 @@
+{
+  "$schema": "./_schema.json",
+  "plane_id": "sdmg",
+  "skins": [
+    {
+      "id": "sdmg_default",
+      "name": "标准涂装",
+      "name_en": "Default",
+      "rarity": 1,
+      "unlock_type": "default",
+      "sprite_override": null,
+      "color_override": null,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "sdmg_neon",
+      "name": "霓虹鲨潮·狂欢",
+      "name_en": "Neon",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 15000,
+      "sprite_override": "sprites/planes/sdmg/neon.png",
+      "fallback_renderer": "sdmg_neon",
+      "color_override": {
+        "primary": "#FF00FF",
+        "secondary": "#C800FF",
+        "glow": "#FF00FF",
+        "trail": "#FF32C8"
+      },
+      "trail_style": "neon_pulse",
+      "trail_width": 24,
+      "particle_count": 180,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "sdmg_abyss",
+      "name": "深渊猎手·海沟",
+      "name_en": "Abyss",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 18000,
+      "sprite_override": "sprites/planes/sdmg/abyss.png",
+      "fallback_renderer": "sdmg_abyss",
+      "color_override": {
+        "primary": "#64C8FF",
+        "secondary": "#5096DC",
+        "glow": "#64C8FF",
+        "trail": "#3C78C8"
+      },
+      "trail_style": "bubble_trail",
+      "trail_width": 22,
+      "particle_count": 160,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "sdmg_golden",
+      "name": "黄金暴君·君王",
+      "name_en": "Golden",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 35000,
+      "sprite_override": "sprites/planes/sdmg/golden.png",
+      "fallback_renderer": "sdmg_golden",
+      "color_override": {
+        "primary": "#FFFFC8",
+        "secondary": "#FFD700",
+        "glow": "#FFFFC8",
+        "trail": "#FFC864"
+      },
+      "trail_style": "gold_stream",
+      "trail_width": 28,
+      "particle_count": 200,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "sdmg_void",
+      "name": "虚空噬星·湮灭",
+      "name_en": "Void",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 45000,
+      "sprite_override": "sprites/planes/sdmg/void.png",
+      "fallback_renderer": "sdmg_void",
+      "color_override": {
+        "primary": "#9664FF",
+        "secondary": "#7850C8",
+        "glow": "#9664FF",
+        "trail": "#643CB4"
+      },
+      "trail_style": "void_pulse",
+      "trail_width": 30,
+      "particle_count": 220,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    },
+    {
+      "id": "sdmg_lunar",
+      "name": "月球领主·天启",
+      "name_en": "Lunar",
+      "rarity": 4,
+      "unlock_type": "shop",
+      "unlock_condition": null,
+      "cost": 50000,
+      "sprite_override": "sprites/planes/sdmg/lunar.png",
+      "fallback_renderer": "sdmg_lunar",
+      "color_override": {
+        "primary": "#64FFC8",
+        "secondary": "#50C8B4",
+        "glow": "#64FFC8",
+        "trail": "#3CB496"
+      },
+      "trail_style": "lunar_phase",
+      "trail_width": 35,
+      "particle_count": 250,
+      "animated": true,
+      "particle_effects": [],
+      "stat_bonus": null
+    }
+  ]
+}

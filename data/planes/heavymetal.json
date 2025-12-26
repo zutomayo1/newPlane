@@ -1,0 +1,69 @@
+{
+  "$schema": "./_schema.json",
+  "id": "heavymetal",
+  "name": "维那斯万岁·HEAVY METAL",
+  "name_en": "Heavymetal",
+  "description": "飞行双颈电吉他堡垒，音符弹幕+强力和弦冲击波+舞台俯冲+死亡金属独奏全屏音波",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 265,
+    "speed": 4.4,
+    "damage": 32,
+    "fire_rate": 90,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/heavymetal/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "heavymetal",
+    "colors": {
+      "primary": "#9400D3",
+      "secondary": "#00FF00",
+      "glow": "#9400D3",
+      "trail": "#FF0080"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "bpm_sync",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "死亡金属独奏",
+      "name": "死亡金属独奏",
+      "color": "#00FF00",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "note_blaster",
+    "sprite_path": "sprites/bullets/note_blaster.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "强力和弦",
+      "desc": "90°扇形冲击波清弹+击退敌人"
+    },
+    "skill2": {
+      "name": "舞台俯冲",
+      "desc": "火焰流星从天而降，200伤害+150像素爆炸"
+    },
+    "skill3": {
+      "name": "死亡金属独奏",
+      "desc": "全屏音波持续伤害+敌人混乱效果"
+    }
+  }
+}

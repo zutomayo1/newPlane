@@ -105,7 +105,6 @@ def apply_window_mode(mode):
 
 # 加载数据
 try:
-    load_arsenal()
     leaderboard_data = load_leaderboard()
 except Exception as e:
     log_error(f"数据加载警告: {e}")
@@ -114,7 +113,7 @@ except Exception as e:
 # 初始化敌人系统
 try:
     init_enemy_system()
-    enemy_factory.load_from_json('enemy_types.json')
+    enemy_factory.load_from_json('data/enemies/enemy_types.json')
 except Exception as e:
     log_error(f"敌人系统初始化失败: {e}")
 
@@ -156,17 +155,17 @@ apply_menu_theme("menu_home", force=True)
 # ==============================================================================
 #   UI 布局常量
 # ==============================================================================
-# 武器库布局常量
-ARSENAL_UI = {
-    'list_area': pygame.Rect(30, 70, 340, HEIGHT - 120),
-    'slot_0': pygame.Rect(395, 120, 280, 95),
-    'slot_1': pygame.Rect(395, 235, 280, 95),
-    'slot_2': pygame.Rect(395, 350, 280, 95),
-    'btn_research_normal': pygame.Rect(395, HEIGHT - 115, 135, 55),
-    'btn_research_elite': pygame.Rect(540, HEIGHT - 115, 135, 55),
-    'detail_area': pygame.Rect(WIDTH - 380, 70, 350, HEIGHT - 120),
-    'btn_upgrade': pygame.Rect(WIDTH - 330, HEIGHT - 135, 250, 55),
-    'btn_back': pygame.Rect(30, HEIGHT - 55, 110, 45)
+# 天赋树布局常量
+TALENT_TREE_UI = {
+    'path_tabs': [
+        pygame.Rect(50, 80, 160, 45),    # 毁灭星轨
+        pygame.Rect(220, 80, 160, 45),   # 守护星轨
+        pygame.Rect(390, 80, 160, 45),   # 命运星轨
+    ],
+    'tree_area': pygame.Rect(30, 140, WIDTH - 260, HEIGHT - 200),  # 天赋节点区域
+    'info_panel': pygame.Rect(WIDTH - 220, 80, 200, HEIGHT - 140), # 右侧信息面板
+    'btn_back': pygame.Rect(30, HEIGHT - 55, 110, 45),
+    'btn_reset': pygame.Rect(150, HEIGHT - 55, 110, 45),
 }
 
 # 机密档案布局常量
@@ -273,14 +272,18 @@ current_plane_idx = 0
 plane_keys = list(PLANES.keys())
 
 # --- UI 状态 ---
-# 武器库 (新增滚动变量)
-arsenal_scroll_y = 0 
-arsenal_selected_weapon_idx = -1
-arsenal_msg = ""
-arsenal_msg_timer = 0
-arsenal_dragging_scrollbar = False  # 滚动条拖动状态
-arsenal_drag_start_y = 0
-arsenal_drag_start_scroll = 0
+# 天赋树系统
+talent_selected_path = "destruction"  # 当前选中的路线
+talent_selected_talent = None         # 当前选中的天赋 (path, branch, talent_id)
+talent_msg = ""
+talent_msg_timer = 0
+talent_scroll_y = 0  # 天赋树滚动
+talent_ult_hovered = False  # 终极天赋悬停状态
+talent_ult_can_unlock = False  # 终极天赋可解锁状态
+talent_core_area = None  # 超限核心区域矩形
+talent_core_select_open = False  # 超限核心选择弹窗开关
+talent_core_btns = []  # 超限核心选择按钮列表
+talent_core_close_btn = None  # 超限核心弹窗关闭按钮
 
 # 飞机选择界面滚动
 plane_select_scroll_y = 0
@@ -295,6 +298,17 @@ customization_selected_plane = None
 settings_dragging = None  # 当前拖动的滑块 ('master', 'music', 'sfx')
 settings_saved_msg = ""   # 保存提示消息
 settings_saved_timer = 0  # 提示消息计时器
+
+# 按键设置界面
+keybind_editing_action = None  # 当前正在编辑的动作
+keybind_editing_index = 0      # 当前编辑的按键索引 (0 或 1)
+keybind_waiting_key = False    # 是否正在等待按键输入
+keybind_scroll_y = 0           # 按键设置列表滚动位置
+keybind_dragging_scrollbar = False  # 滚动条拖动状态
+keybind_drag_start_y = 0            # 拖动开始时的鼠标Y坐标
+keybind_drag_start_scroll = 0       # 拖动开始时的滚动位置
+keybind_show_advanced = False       # 是否显示高级按键
+
 customization_scroll_y = 0
 customization_plane_scroll_y = 0
 customization_msg = ""
@@ -423,9 +437,10 @@ def get_cached_achievement_mgr():
     """获取缓存的成就管理器"""
     global _ach_mgr_cache
     import os
-    if _ach_mgr_cache is None and os.path.exists("achievements.json"):
+    from config import ACHIEVEMENTS_FILE
+    if _ach_mgr_cache is None and os.path.exists(ACHIEVEMENTS_FILE):
         _ach_mgr_cache = AchievementManager()
-        _ach_mgr_cache.load_from_file("achievements.json")
+        _ach_mgr_cache.load_from_file(ACHIEVEMENTS_FILE)
     return _ach_mgr_cache
 
 # 成就通知队列
@@ -662,9 +677,12 @@ def update_training_dps():
             training_stats["peak_dps"] = max(training_stats["peak_dps"], training_stats["current_dps"])
 
 
-def save_achievements_to_file(filename="achievements.json"):
+def save_achievements_to_file(filename=None):
     """辅助函数：在有玩家和成就管理时保存成就数据"""
     try:
+        if filename is None:
+            from config import ACHIEVEMENTS_FILE
+            filename = ACHIEVEMENTS_FILE
         if player and hasattr(player, 'achievement_manager'):
             player.achievement_manager.save_to_file(filename)
     except Exception as e:
@@ -1559,7 +1577,8 @@ def reset_game():
     
     # 加载成就数据
     if hasattr(player, 'achievement_manager'):
-        player.achievement_manager.load_from_file("achievements.json")
+        from config import ACHIEVEMENTS_FILE
+        player.achievement_manager.load_from_file(ACHIEVEMENTS_FILE)
     
     all_sprites.add(player)
     
@@ -1579,7 +1598,7 @@ def get_menu_buttons():
     data = [
         ("开始游戏", YELLOW, "select_plane"),
         ("每日任务", (255, 200, 50), "daily_quests"),
-        ("武器库", ORANGE, "arsenal"),
+        ("天赋树", (220, 60, 80), "talent_tree"),
         ("个性化", (150, 100, 255), "personalization"),
         ("系统设置", (255, 150, 0), "settings"),
         ("音乐", CYAN, "audio_hub"),
@@ -2870,6 +2889,19 @@ def draw_settings_ui():
     warn_text = warn_font.render("⚠️ 重置将清除所有游戏数据！", True, (180, 100, 100))
     screen.blit(warn_text, (section_x + 10, save_mgmt_y + 102))
     
+    # ====== 按键设置按钮（存档管理下方）======
+    keybind_btn = pygame.Rect(section_x, save_mgmt_y + 120, 350, 45)
+    keybind_hover = keybind_btn.collidepoint(mx, my)
+    pygame.draw.rect(screen, (30, 40, 60) if keybind_hover else (20, 30, 45), keybind_btn, border_radius=6)
+    pygame.draw.rect(screen, CYAN if keybind_hover else (60, 90, 120), keybind_btn, 1, border_radius=6)
+    keybind_icon = vol_emoji.render("⌨️", True, CYAN)
+    keybind_text = label_font.render("按键设置", True, WHITE if keybind_hover else (180, 180, 180))
+    screen.blit(keybind_icon, (keybind_btn.x + 15, keybind_btn.centery - 10))
+    screen.blit(keybind_text, (keybind_btn.x + 55, keybind_btn.centery - 10))
+    # 提示文字
+    hint_text = warn_font.render("自定义游戏按键绑定", True, (100, 120, 150))
+    screen.blit(hint_text, (keybind_btn.x + 150, keybind_btn.centery - 5))
+    
     # ====== 底部按钮区域 ======
     btn_y = HEIGHT - 75
     btn_width = 150
@@ -2932,6 +2964,7 @@ def draw_settings_ui():
         'save': save_btn,
         'reset': reset_btn,
         'back': back_btn,
+        'keybind': keybind_btn,
         'fps_checkbox': checkboxes['fps'],
         'shake_checkbox': checkboxes['shake'],
         'damage_checkbox': checkboxes['damage'],
@@ -2948,506 +2981,1199 @@ def draw_settings_ui():
         ]
     }
 
-def draw_arsenal_ui():
-    """绘制武器库界面 - 精致典雅风格（放大版）"""
-    global arsenal_selected_weapon_idx
+# ====== 按键设置界面缓存 ======
+_keybind_ui_cache = {}
+_keybind_key_name_cache = {}
+
+def _init_keybind_ui_cache():
+    """初始化按键设置UI缓存"""
+    global _keybind_ui_cache
+    if _keybind_ui_cache:
+        return _keybind_ui_cache
+        
+    from config import KEY_ACTION_GROUPS, KEY_ACTION_NAMES
+    
+    # 缓存字体
+    _keybind_ui_cache['title_font'] = pygame.font.SysFont("SimHei", 28)
+    _keybind_ui_cache['emoji_font'] = pygame.font.SysFont("Segoe UI Emoji", 24)
+    _keybind_ui_cache['emoji_font_small'] = pygame.font.SysFont("Segoe UI Emoji", 14)
+    _keybind_ui_cache['label_font'] = pygame.font.SysFont("SimHei", 16)
+    _keybind_ui_cache['group_font'] = pygame.font.SysFont("SimHei", 14)
+    _keybind_ui_cache['key_font'] = pygame.font.SysFont("SimHei", 14)
+    _keybind_ui_cache['hint_font'] = pygame.font.SysFont("SimHei", 12)
+    
+    # 缓存面板尺寸
+    panel_w, panel_h = 650, 580
+    _keybind_ui_cache['panel_size'] = (panel_w, panel_h)
+    
+    # 预渲染面板背景（渐变）
+    panel_bg = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+    for py_off in range(panel_h):
+        ratio = py_off / panel_h
+        shade = int(12 + ratio * 8)
+        pygame.draw.line(panel_bg, (shade, shade + 3, shade + 8, 250), (0, py_off), (panel_w, py_off))
+    _keybind_ui_cache['panel_bg'] = panel_bg
+    
+    # 预渲染遮罩
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((5, 10, 20, 230))
+    _keybind_ui_cache['overlay'] = overlay
+    
+    # 预渲染标题
+    title_icon = _keybind_ui_cache['emoji_font'].render("⌨️", True, CYAN)
+    title_text = _keybind_ui_cache['title_font'].render(" 按键设置", True, CYAN)
+    _keybind_ui_cache['title_icon'] = title_icon
+    _keybind_ui_cache['title_text'] = title_text
+    _keybind_ui_cache['title_total_w'] = title_icon.get_width() + title_text.get_width()
+    
+    # 预渲染按钮文字（emoji单独渲染）
+    _keybind_ui_cache['reset_icon'] = _keybind_ui_cache['emoji_font_small'].render("🔄", True, YELLOW)
+    _keybind_ui_cache['reset_text'] = _keybind_ui_cache['hint_font'].render("恢复默认", True, WHITE)
+    _keybind_ui_cache['close_icon'] = _keybind_ui_cache['emoji_font_small'].render("✓", True, LIME)
+    _keybind_ui_cache['close_text'] = _keybind_ui_cache['hint_font'].render("完成", True, WHITE)
+    _keybind_ui_cache['hint_text'] = _keybind_ui_cache['hint_font'].render(
+        "点击按键槽位修改绑定 | 按 ESC 取消编辑 | 滚轮滚动列表", True, (100, 120, 150))
+    _keybind_ui_cache['wait_text'] = _keybind_ui_cache['key_font'].render("按下按键...", True, (200, 200, 200))
+    _keybind_ui_cache['clear_text'] = _keybind_ui_cache['key_font'].render("清除", True, (180, 120, 120))
+    _keybind_ui_cache['clear_text_hover'] = _keybind_ui_cache['key_font'].render("清除", True, RED)
+    _keybind_ui_cache['unset_text'] = _keybind_ui_cache['key_font'].render("未设置", True, (100, 100, 120))
+    
+    # 预渲染分组标题
+    from config import KEY_ACTION_GROUPS_ADVANCED
+    _keybind_ui_cache['group_titles'] = {}
+    for group_name in KEY_ACTION_GROUPS.keys():
+        _keybind_ui_cache['group_titles'][group_name] = _keybind_ui_cache['group_font'].render(
+            f"【{group_name}】", True, (150, 180, 220))
+    # 高级分组标题
+    for group_name in KEY_ACTION_GROUPS_ADVANCED.keys():
+        _keybind_ui_cache['group_titles'][group_name] = _keybind_ui_cache['group_font'].render(
+            f"【{group_name}】", True, (180, 150, 220))  # 紫色区分
+    
+    # 预渲染动作名称
+    _keybind_ui_cache['action_names'] = {}
+    for action, name in KEY_ACTION_NAMES.items():
+        _keybind_ui_cache['action_names'][action] = _keybind_ui_cache['label_font'].render(name, True, WHITE)
+    
+    # 预渲染按钮背景（悬停和普通）
+    btn_width, btn_height = 140, 42
+    reset_bg_normal = pygame.Surface((btn_width, btn_height), pygame.SRCALPHA)
+    reset_bg_hover = pygame.Surface((btn_width, btn_height), pygame.SRCALPHA)
+    close_bg_normal = pygame.Surface((btn_width, btn_height), pygame.SRCALPHA)
+    close_bg_hover = pygame.Surface((btn_width, btn_height), pygame.SRCALPHA)
+    for by in range(btn_height):
+        alpha = 200 - by * 3
+        pygame.draw.line(reset_bg_normal, (80, 60, 0, alpha), (0, by), (btn_width, by))
+        pygame.draw.line(reset_bg_hover, (120, 100, 0, alpha), (0, by), (btn_width, by))
+        pygame.draw.line(close_bg_normal, (0, 80, 0, alpha), (0, by), (btn_width, by))
+        pygame.draw.line(close_bg_hover, (0, 120, 0, alpha), (0, by), (btn_width, by))
+    _keybind_ui_cache['reset_bg_normal'] = reset_bg_normal
+    _keybind_ui_cache['reset_bg_hover'] = reset_bg_hover
+    _keybind_ui_cache['close_bg_normal'] = close_bg_normal
+    _keybind_ui_cache['close_bg_hover'] = close_bg_hover
+    
+    return _keybind_ui_cache
+
+def _get_key_name_surf(cache, key_code, hover=False):
+    """获取按键名称Surface（带缓存）"""
+    global _keybind_key_name_cache
+    from config import get_key_name
+    
+    cache_key = (key_code, hover)
+    if cache_key not in _keybind_key_name_cache:
+        key_name = get_key_name(key_code)
+        color = CYAN if hover else (180, 200, 220)
+        _keybind_key_name_cache[cache_key] = cache['key_font'].render(key_name, True, color)
+    return _keybind_key_name_cache[cache_key]
+
+def clear_keybind_ui_cache():
+    """清除按键设置UI缓存（按键绑定改变时调用）"""
+    global _keybind_key_name_cache
+    _keybind_key_name_cache = {}
+
+def draw_keybind_settings_ui():
+    """绘制按键设置界面 - 赛博朋克风格（性能优化版）"""
+    global keybind_editing_action, keybind_editing_index, keybind_waiting_key, keybind_scroll_y, keybind_show_advanced
+    
+    from config import get_key_binding_manager, KEY_ACTION_GROUPS, KEY_ACTION_GROUPS_ADVANCED
+    
+    cache = _init_keybind_ui_cache()
+    t = pygame.time.get_ticks()
+    mx, my = get_mouse_pos()
+    kb = get_key_binding_manager()
+    
+    panel_w, panel_h = cache['panel_size']
+    panel_x = (WIDTH - panel_w) // 2
+    panel_y = (HEIGHT - panel_h) // 2
+    
+    # ====== 半透明遮罩（使用缓存） ======
+    screen.blit(cache['overlay'], (0, 0))
+    
+    # ====== 主面板（使用缓存） ======
+    screen.blit(cache['panel_bg'], (panel_x, panel_y))
+    
+    # 边框（双层）
+    pygame.draw.rect(screen, (60, 100, 150), (panel_x, panel_y, panel_w, panel_h), 2, border_radius=12)
+    pygame.draw.rect(screen, (40, 60, 90), (panel_x + 4, panel_y + 4, panel_w - 8, panel_h - 8), 1, border_radius=10)
+    
+    # 角落装饰
+    for cx, cy, dx, dy in [(panel_x, panel_y, 1, 1), (panel_x + panel_w, panel_y, -1, 1),
+                           (panel_x, panel_y + panel_h, 1, -1), (panel_x + panel_w, panel_y + panel_h, -1, -1)]:
+        pygame.draw.line(screen, CYAN, (cx, cy), (cx + 20 * dx, cy), 2)
+        pygame.draw.line(screen, CYAN, (cx, cy), (cx, cy + 20 * dy), 2)
+    
+    # ====== 标题（使用缓存） ======
+    title_x = panel_x + panel_w // 2 - cache['title_total_w'] // 2
+    screen.blit(cache['title_icon'], (title_x, panel_y + 18))
+    screen.blit(cache['title_text'], (title_x + cache['title_icon'].get_width(), panel_y + 15))
+    
+    # 标题装饰线
+    line_y = panel_y + 55
+    pygame.draw.line(screen, (50, 70, 100), (panel_x + 30, line_y), (panel_x + panel_w - 30, line_y), 1)
+    pygame.draw.circle(screen, CYAN, (panel_x + panel_w // 2, line_y), 3)
+    
+    # ====== 按键列表区域 ======
+    list_area_y = panel_y + 65
+    list_area_h = 430
+    list_area_rect = pygame.Rect(panel_x + 20, list_area_y, panel_w - 40, list_area_h)
+    
+    pygame.draw.rect(screen, (15, 20, 30), list_area_rect, border_radius=6)
+    
+    btn_rects = []
+    row_height = 42
+    group_height = 30
+    
+    # 构建要显示的分组（基础 + 可选高级）
+    display_groups = dict(KEY_ACTION_GROUPS)
+    if keybind_show_advanced:
+        display_groups.update(KEY_ACTION_GROUPS_ADVANCED)
+    
+    # 计算内容高度
+    content_height = 10
+    for group_name, actions in display_groups.items():
+        content_height += group_height + len(actions) * row_height
+    
+    scroll_max = max(0, content_height - list_area_h)
+    keybind_scroll_y = max(0, min(keybind_scroll_y, scroll_max))
+    
+    # 绘制内容
+    current_y = list_area_y + 5 - keybind_scroll_y
+    
+    for group_name, actions in display_groups.items():
+        # 组标题（使用缓存）
+        if list_area_y <= current_y < list_area_y + list_area_h:
+            screen.blit(cache['group_titles'][group_name], (list_area_rect.x + 15, current_y + 5))
+        current_y += group_height
+        
+        for action in actions:
+            if current_y + row_height > list_area_y and current_y < list_area_y + list_area_h:
+                row_rect = pygame.Rect(list_area_rect.x + 10, current_y, list_area_rect.width - 20, row_height - 4)
+                
+                if row_rect.top >= list_area_y and row_rect.bottom <= list_area_y + list_area_h:
+                    is_hover = row_rect.collidepoint(mx, my) and list_area_rect.collidepoint(mx, my)
+                    
+                    # 行背景
+                    row_bg_color = (25, 35, 55) if is_hover else (18, 25, 40)
+                    pygame.draw.rect(screen, row_bg_color, row_rect, border_radius=5)
+                    pygame.draw.rect(screen, (50, 70, 100) if is_hover else (40, 55, 80), row_rect, 1, border_radius=5)
+                    
+                    # 动作名称（使用缓存）
+                    name_surf = cache['action_names'].get(action)
+                    if name_surf:
+                        screen.blit(name_surf, (row_rect.x + 12, row_rect.centery - name_surf.get_height() // 2))
+                    
+                    # 按键按钮
+                    keys = kb.get_action_keys(action)
+                    btn_x = row_rect.x + 150
+                    
+                    for key_idx in range(2):
+                        btn_rect = pygame.Rect(btn_x + key_idx * 115, row_rect.y + 5, 105, 28)
+                        btn_hover = btn_rect.collidepoint(mx, my) and list_area_rect.collidepoint(mx, my)
+                        btn_rects.append((btn_rect, action, key_idx))
+                        
+                        is_waiting = (keybind_waiting_key and 
+                                     keybind_editing_action == action and 
+                                     keybind_editing_index == key_idx)
+                        
+                        if is_waiting:
+                            pulse = int(abs(math.sin(t / 200)) * 50 + 150)
+                            pygame.draw.rect(screen, (pulse // 3, pulse // 2, pulse // 2), btn_rect, border_radius=4)
+                            pygame.draw.rect(screen, (pulse, pulse, pulse), btn_rect, 2, border_radius=4)
+                            screen.blit(cache['wait_text'], (btn_rect.centerx - cache['wait_text'].get_width() // 2, 
+                                                            btn_rect.centery - cache['wait_text'].get_height() // 2))
+                        else:
+                            btn_bg = (40, 55, 80) if btn_hover else (30, 42, 60)
+                            pygame.draw.rect(screen, btn_bg, btn_rect, border_radius=4)
+                            pygame.draw.rect(screen, CYAN if btn_hover else (60, 90, 130), btn_rect, 1, border_radius=4)
+                            
+                            if key_idx < len(keys) and keys[key_idx]:
+                                key_surf = _get_key_name_surf(cache, keys[key_idx], btn_hover)
+                            else:
+                                key_surf = cache['unset_text']
+                            
+                            screen.blit(key_surf, (btn_rect.centerx - key_surf.get_width() // 2,
+                                                  btn_rect.centery - key_surf.get_height() // 2))
+                    
+                    # 清除按钮（使用缓存）
+                    clear_btn_rect = pygame.Rect(btn_x + 240, row_rect.y + 5, 55, 28)
+                    clear_hover = clear_btn_rect.collidepoint(mx, my) and list_area_rect.collidepoint(mx, my)
+                    pygame.draw.rect(screen, (60, 40, 40) if clear_hover else (40, 30, 35), clear_btn_rect, border_radius=4)
+                    pygame.draw.rect(screen, RED if clear_hover else (100, 60, 60), clear_btn_rect, 1, border_radius=4)
+                    clear_text = cache['clear_text_hover'] if clear_hover else cache['clear_text']
+                    screen.blit(clear_text, (clear_btn_rect.centerx - clear_text.get_width() // 2,
+                                            clear_btn_rect.centery - clear_text.get_height() // 2))
+                    btn_rects.append((clear_btn_rect, action, -1))
+            
+            current_y += row_height
+    
+    # 滚动条
+    if scroll_max > 0:
+        sb_x = list_area_rect.right - 8
+        sb_h = max(30, int(list_area_h * list_area_h / content_height))
+        sb_y = list_area_y + int((list_area_h - sb_h) * keybind_scroll_y / scroll_max)
+        pygame.draw.rect(screen, (60, 80, 100), (sb_x, sb_y, 6, sb_h), border_radius=3)
+    
+    # ====== 底部按钮（使用缓存） ======
+    btn_y = panel_y + panel_h - 60
+    btn_width, btn_height = 120, 38
+    
+    # 高级按键开关（左侧）
+    adv_btn = pygame.Rect(panel_x + 30, btn_y + 2, 130, 36)
+    adv_hover = adv_btn.collidepoint(mx, my)
+    adv_color = (80, 60, 120) if keybind_show_advanced else (40, 35, 60)
+    adv_border = (180, 150, 220) if keybind_show_advanced else (100, 80, 140)
+    if adv_hover:
+        adv_color = (100, 80, 150) if keybind_show_advanced else (60, 50, 90)
+    pygame.draw.rect(screen, adv_color, adv_btn, border_radius=6)
+    pygame.draw.rect(screen, adv_border, adv_btn, 2, border_radius=6)
+    
+    # 开关指示器
+    toggle_x = adv_btn.x + 8
+    toggle_y = adv_btn.centery - 8
+    pygame.draw.rect(screen, (60, 50, 80), (toggle_x, toggle_y, 32, 16), border_radius=8)
+    if keybind_show_advanced:
+        pygame.draw.circle(screen, (180, 150, 220), (toggle_x + 24, toggle_y + 8), 6)
+    else:
+        pygame.draw.circle(screen, (100, 80, 120), (toggle_x + 8, toggle_y + 8), 6)
+    
+    adv_text = cache['hint_font'].render("特殊机体", True, (180, 150, 220) if keybind_show_advanced else (120, 100, 150))
+    screen.blit(adv_text, (toggle_x + 40, adv_btn.centery - adv_text.get_height() // 2))
+    
+    # 重置默认按钮（中间偏左）
+    reset_btn = pygame.Rect(panel_x + panel_w // 2 - btn_width - 10, btn_y, btn_width, btn_height)
+    reset_hover = reset_btn.collidepoint(mx, my)
+    reset_color = (100, 80, 0) if reset_hover else (60, 50, 0)
+    pygame.draw.rect(screen, reset_color, reset_btn, border_radius=8)
+    pygame.draw.rect(screen, YELLOW if reset_hover else (150, 120, 0), reset_btn, 2, border_radius=8)
+    # emoji和文字分开渲染
+    reset_icon = cache['reset_icon']
+    reset_text = cache['reset_text']
+    total_w = reset_icon.get_width() + 4 + reset_text.get_width()
+    screen.blit(reset_icon, (reset_btn.centerx - total_w // 2, reset_btn.centery - reset_icon.get_height() // 2))
+    screen.blit(reset_text, (reset_btn.centerx - total_w // 2 + reset_icon.get_width() + 4, reset_btn.centery - reset_text.get_height() // 2))
+    
+    # 完成按钮（中间偏右）
+    close_btn = pygame.Rect(panel_x + panel_w // 2 + 10, btn_y, btn_width, btn_height)
+    close_hover = close_btn.collidepoint(mx, my)
+    close_color = (0, 80, 0) if close_hover else (0, 50, 0)
+    pygame.draw.rect(screen, close_color, close_btn, border_radius=8)
+    pygame.draw.rect(screen, LIME if close_hover else (0, 150, 0), close_btn, 2, border_radius=8)
+    # emoji和文字分开渲染
+    close_icon = cache['close_icon']
+    close_text = cache['close_text']
+    total_w = close_icon.get_width() + 4 + close_text.get_width()
+    screen.blit(close_icon, (close_btn.centerx - total_w // 2, close_btn.centery - close_icon.get_height() // 2))
+    screen.blit(close_text, (close_btn.centerx - total_w // 2 + close_icon.get_width() + 4, close_btn.centery - close_text.get_height() // 2))
+    
+    # 操作提示
+    screen.blit(cache['hint_text'], (panel_x + panel_w // 2 - cache['hint_text'].get_width() // 2, btn_y + 42))
+    
+    return {
+        'btn_rects': btn_rects,
+        'reset_btn': reset_btn,
+        'close_btn': close_btn,
+        'adv_btn': adv_btn,
+        'list_area_rect': list_area_rect,
+        'scroll_max': scroll_max
+    }
+
+def draw_talent_tree_ui():
+    """绘制星轨天赋阵界面 - 赛博朋克风格（与排行榜风格统一）"""
+    global talent_selected_path, talent_selected_talent, talent_msg, talent_msg_timer
+    
+    from talent_system import talent_manager
+    from config import TALENT_TREE, PATH_RESONANCE, ULTIMATE_CORES
+    import math
     
     t = pygame.time.get_ticks()
     mx, my = get_mouse_pos()
     
-    # ====== 深邃背景 ======
+    # 路线主题色
+    PATH_COLORS = {
+        "destruction": (220, 60, 60),   # 红色 - 毁灭
+        "guardian": (60, 180, 200),     # 青色 - 守护
+        "destiny": (220, 180, 60)       # 金色 - 命运
+    }
+    PATH_NAMES = {
+        "destruction": "毁灭星轨",
+        "guardian": "守护星轨", 
+        "destiny": "命运星轨"
+    }
+    
+    current_color = PATH_COLORS[talent_selected_path]
+    
+    # ====== 背景（与排行榜一致） ======
+    # 深色渐变背景
     for y in range(HEIGHT):
         ratio = y / HEIGHT
-        r = int(8 + ratio * 6)
-        g = int(10 + ratio * 8)
-        b = int(16 + ratio * 10)
-        pygame.draw.line(screen, (r, g, b), (0, y), (WIDTH, y))
+        shade = int(18 + ratio * 8)
+        pygame.draw.line(screen, (shade - 5, shade - 2, shade + 5), (0, y), (WIDTH, y))
     
-    # 精致的装饰线条
-    accent_gold = (180, 150, 90)
-    accent_gold_dim = (90, 75, 45)
+    # 动态星空粒子（与排行榜一致）
+    for i in range(80):
+        star_x = (i * 137 + int(t / 50)) % WIDTH
+        star_y = (i * 89 + int(t / 80)) % HEIGHT
+        star_alpha = int(80 + 60 * math.sin(t / 300 + i))
+        star_size = 1 if i % 3 else 2
+        star_color = (star_alpha, star_alpha, int(star_alpha * 1.2))
+        pygame.draw.circle(screen, star_color, (star_x, star_y), star_size)
     
-    # 顶部金色细线
-    pygame.draw.line(screen, accent_gold_dim, (30, 58), (WIDTH - 30, 58), 1)
-    pygame.draw.circle(screen, accent_gold, (30, 58), 3)
-    pygame.draw.circle(screen, accent_gold, (WIDTH - 30, 58), 3)
+    # 流光扫描线
+    scan_y = int((t / 15) % (HEIGHT + 100)) - 50
+    pygame.draw.rect(screen, (200, 180, 50), (0, scan_y, WIDTH, 2))
     
-    # ====== 标题 ======
+    # 边框发光装饰（动态）
+    glow_intensity = int(150 + 80 * math.sin(t / 400))
+    border_color = (glow_intensity, int(glow_intensity * 0.85), 20)
+    # 顶部横条
+    pygame.draw.rect(screen, border_color, (0, 0, WIDTH, 3))
+    pygame.draw.rect(screen, (border_color[0]//3, border_color[1]//3, 10), (0, 3, WIDTH, 2))
+    # 底部横条
+    pygame.draw.rect(screen, border_color, (0, HEIGHT - 3, WIDTH, 3))
+    pygame.draw.rect(screen, (border_color[0]//3, border_color[1]//3, 10), (0, HEIGHT - 5, WIDTH, 2))
+    
+    # 角落霓虹装饰
+    corner_size = 50
+    for corner in [(0, 0, 1, 1), (WIDTH, 0, -1, 1), (0, HEIGHT, 1, -1), (WIDTH, HEIGHT, -1, -1)]:
+        cx, cy, dx, dy = corner
+        pygame.draw.line(screen, GOLD, (cx, cy + dy * 5), (cx, cy + dy * corner_size), 2)
+        pygame.draw.line(screen, GOLD, (cx + dx * 5, cy), (cx + dx * corner_size, cy), 2)
+        pygame.draw.circle(screen, (255, 200, 50), (cx + dx * 8, cy + dy * 8), 3)
+    
+    # ====== 豪华标题区 ======
+    title_panel = pygame.Rect(WIDTH//2 - 200, 12, 400, 50)
+    # 标题背景渐变
+    title_bg = pygame.Surface((400, 50), pygame.SRCALPHA)
+    for ty in range(50):
+        ratio = ty / 50
+        shade = int(60 - ratio * 20)
+        pygame.draw.line(title_bg, (shade, int(shade * 0.85), int(shade * 0.35), 240), (0, ty), (400, ty))
+    screen.blit(title_bg, title_panel.topleft)
+    pygame.draw.rect(screen, GOLD, title_panel, 2, border_radius=5)
+    # 内发光
+    inner_rect = title_panel.inflate(-6, -6)
+    pygame.draw.rect(screen, (255, 220, 100), inner_rect, 1, border_radius=3)
+    
+    # 标题文字
+    title_glow = int(255 * (0.8 + 0.2 * math.sin(t / 300)))
     title_font = pygame.font.SysFont("SimHei", 32)
-    title_surf = title_font.render("轨道武器库", True, (230, 225, 210))
-    screen.blit(title_surf, (WIDTH // 2 - title_surf.get_width() // 2, 15))
+    title_text = title_font.render("✦ 星轨天赋阵 ✦", True, (title_glow, int(title_glow * 0.85), 0))
+    screen.blit(title_text, (title_panel.centerx - title_text.get_width()//2, title_panel.centery - title_text.get_height()//2))
     
-    # 标题下装饰
-    title_w = title_surf.get_width()
-    pygame.draw.line(screen, accent_gold, (WIDTH//2 - title_w//2 - 30, 52), (WIDTH//2 - 40, 52), 1)
-    pygame.draw.line(screen, accent_gold, (WIDTH//2 + 40, 52), (WIDTH//2 + title_w//2 + 30, 52), 1)
+    # 标题下方装饰线
+    line_y = 66
+    line_w = 350
+    pygame.draw.line(screen, (80, 70, 30), (WIDTH//2 - line_w//2, line_y), (WIDTH//2 + line_w//2, line_y), 1)
+    # 中心菱形
+    diamond_x = WIDTH // 2
+    pygame.draw.polygon(screen, GOLD, [(diamond_x, line_y - 5), (diamond_x + 6, line_y), (diamond_x, line_y + 5), (diamond_x - 6, line_y)])
     
-    # 货币显示 - 右上角精致徽章
-    cores = arsenal_save_data['currencies']['cores']
-    chips = arsenal_save_data['currencies']['chips']
+    # ====== 货币显示 - 右上角（赛博朋克风格） ======
+    cores = talent_manager.cores
+    chips = talent_manager.chips
     
-    # 核心徽章
-    core_x = WIDTH - 220
-    pygame.draw.polygon(screen, (20, 35, 45), [(core_x, 18), (core_x + 95, 18), (core_x + 88, 42), (core_x + 7, 42)])
-    pygame.draw.polygon(screen, (60, 120, 140), [(core_x, 18), (core_x + 95, 18), (core_x + 88, 42), (core_x + 7, 42)], 1)
+    # 核心显示
+    core_bg = pygame.Surface((110, 30), pygame.SRCALPHA)
+    for cy in range(30):
+        ratio = cy / 30
+        pygame.draw.line(core_bg, (20, 35, 50, 230), (0, cy), (110, cy))
+    screen.blit(core_bg, (WIDTH - 230, 14))
+    pygame.draw.rect(screen, (80, 140, 180), (WIDTH - 230, 14, 110, 30), 2, border_radius=4)
+    pygame.draw.rect(screen, (50, 90, 120), (WIDTH - 228, 16, 106, 26), 1, border_radius=3)
+    
     curr_font = pygame.font.SysFont("SimHei", 14)
-    core_label = curr_font.render("核心", True, (80, 140, 160))
-    screen.blit(core_label, (core_x + 10, 23))
-    core_val = pygame.font.SysFont("SimHei", 15).render(str(cores), True, (140, 200, 220))
-    screen.blit(core_val, (core_x + 52, 22))
+    core_text = curr_font.render(f"◆ 核心: {cores}", True, (120, 200, 255))
+    screen.blit(core_text, (WIDTH - 218, 20))
     
-    # 芯片徽章
-    chip_x = WIDTH - 115
-    pygame.draw.polygon(screen, (35, 30, 20), [(chip_x, 18), (chip_x + 95, 18), (chip_x + 88, 42), (chip_x + 7, 42)])
-    pygame.draw.polygon(screen, accent_gold_dim, [(chip_x, 18), (chip_x + 95, 18), (chip_x + 88, 42), (chip_x + 7, 42)], 1)
-    chip_label = curr_font.render("芯片", True, accent_gold_dim)
-    screen.blit(chip_label, (chip_x + 10, 23))
-    chip_val = pygame.font.SysFont("SimHei", 15).render(str(chips), True, accent_gold)
-    screen.blit(chip_val, (chip_x + 52, 22))
+    # 芯片显示
+    chip_bg = pygame.Surface((100, 30), pygame.SRCALPHA)
+    for cy in range(30):
+        pygame.draw.line(chip_bg, (50, 40, 20, 230), (0, cy), (100, cy))
+    screen.blit(chip_bg, (WIDTH - 112, 14))
+    pygame.draw.rect(screen, GOLD, (WIDTH - 112, 14, 100, 30), 2, border_radius=4)
+    pygame.draw.rect(screen, (120, 100, 40), (WIDTH - 110, 16, 96, 26), 1, border_radius=3)
     
-    # 消息提示
-    if arsenal_msg_timer > 0:
+    chip_text = curr_font.render(f"◈ 芯片: {chips}", True, GOLD)
+    screen.blit(chip_text, (WIDTH - 100, 20))
+    
+    # 消息提示（与排行榜风格一致）
+    if talent_msg_timer > 0:
+        talent_msg_timer -= 1
         msg_font = pygame.font.SysFont("SimHei", 16)
-        msg_surf = msg_font.render(arsenal_msg, True, (220, 120, 120))
-        screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 60))
+        msg_surf = msg_font.render(talent_msg, True, GOLD)
+        msg_bg_w = msg_surf.get_width() + 40
+        msg_bg = pygame.Surface((msg_bg_w, 32), pygame.SRCALPHA)
+        msg_bg.fill((40, 35, 20, 220))
+        screen.blit(msg_bg, (WIDTH // 2 - msg_bg_w // 2, 72))
+        pygame.draw.rect(screen, GOLD, (WIDTH // 2 - msg_bg_w // 2, 72, msg_bg_w, 32), 1, border_radius=4)
+        screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 78))
     
-    r = ARSENAL_UI
-    weapons = arsenal_save_data["weapons"]
+    r = TALENT_TREE_UI
     
-    # ====== 左栏：武器列表 ======
-    list_area = r['list_area']
+    # ====== 路线标签页（与排行榜风格统一） ======
+    for i, (path_key, tab_rect) in enumerate(zip(["destruction", "guardian", "destiny"], r['path_tabs'])):
+        is_sel = (path_key == talent_selected_path)
+        is_hov = tab_rect.collidepoint(mx, my) and not is_sel
+        path_col = PATH_COLORS[path_key]
+        path_name = PATH_NAMES[path_key]
+        
+        # 标签背景
+        if is_sel:
+            pygame.draw.rect(screen, (path_col[0]//4, path_col[1]//4, path_col[2]//4), tab_rect, border_radius=8)
+            pygame.draw.rect(screen, path_col, tab_rect, 2, border_radius=8)
+            # 底部高亮条
+            pygame.draw.rect(screen, path_col, (tab_rect.x + 10, tab_rect.bottom - 3, tab_rect.width - 20, 3), border_radius=2)
+        else:
+            pygame.draw.rect(screen, (35, 32, 28) if is_hov else (25, 23, 20), tab_rect, border_radius=8)
+            pygame.draw.rect(screen, (100, 90, 70) if is_hov else (60, 55, 45), tab_rect, 1, border_radius=8)
+        
+        # 路线图标和名称
+        icon_chars = {"destruction": "⚔", "guardian": "🛡", "destiny": "✧"}
+        emoji_font = pygame.font.SysFont("Segoe UI Emoji", 16)
+        text_font = pygame.font.SysFont("SimHei", 15)
+        
+        text_col = path_col if is_sel else (WHITE if is_hov else (140, 135, 125))
+        emoji_surf = emoji_font.render(icon_chars.get(path_key, "○"), True, text_col)
+        name_surf = text_font.render(path_name, True, text_col)
+        
+        # 居中显示
+        total_w = emoji_surf.get_width() + 5 + name_surf.get_width()
+        start_x = tab_rect.centerx - total_w // 2
+        screen.blit(emoji_surf, (start_x, tab_rect.y + 8))
+        screen.blit(name_surf, (start_x + emoji_surf.get_width() + 5, tab_rect.y + 8))
+        
+        # 点数显示
+        points = talent_manager.get_path_points(path_key)
+        pts_font = pygame.font.SysFont("SimHei", 11)
+        pts_col = path_col if is_sel else (100, 95, 85)
+        pts_surf = pts_font.render(f"{points} 点", True, pts_col)
+        screen.blit(pts_surf, (tab_rect.centerx - pts_surf.get_width()//2, tab_rect.y + 28))
     
-    # 面板背景
-    panel_bg = pygame.Surface((list_area.width, list_area.height), pygame.SRCALPHA)
-    for py in range(list_area.height):
-        alpha = 225
-        shade = int(12 + (py / list_area.height) * 4)
-        pygame.draw.line(panel_bg, (shade, shade + 2, shade + 6, alpha), (0, py), (list_area.width, py))
-    screen.blit(panel_bg, list_area.topleft)
+    # ====== 天赋树主面板（与排行榜风格统一） ======
+    tree_rect = r['tree_area']
     
-    # 精致边框 - 双线效果
-    pygame.draw.rect(screen, (25, 30, 40), list_area, 1)
-    inner_rect = list_area.inflate(-4, -4)
-    pygame.draw.rect(screen, (40, 50, 65), inner_rect, 1)
+    # 面板背景渐变
+    tree_bg = pygame.Surface((tree_rect.width, tree_rect.height), pygame.SRCALPHA)
+    for ty in range(tree_rect.height):
+        ratio = ty / tree_rect.height
+        shade = int(15 + ratio * 5)
+        pygame.draw.line(tree_bg, (shade - 2, shade, shade + 5, 235), (0, ty), (tree_rect.width, ty))
+    screen.blit(tree_bg, tree_rect.topleft)
     
-    # 顶部标题栏
-    header_h = 38
-    header_rect = pygame.Rect(list_area.x + 2, list_area.y + 2, list_area.width - 4, header_h)
-    pygame.draw.rect(screen, (22, 28, 38), header_rect)
-    pygame.draw.line(screen, accent_gold_dim, (header_rect.x, header_rect.bottom), (header_rect.right, header_rect.bottom), 1)
+    # 面板边框（双层）- 与排行榜一致
+    pygame.draw.rect(screen, (80, 75, 55), tree_rect, 2, border_radius=10)
+    inner = tree_rect.inflate(-8, -8)
+    pygame.draw.rect(screen, (45, 42, 35), inner, 1, border_radius=8)
     
-    header_font = pygame.font.SysFont("SimHei", 15)
-    header_text = header_font.render(f"武器仓库", True, (160, 155, 140))
-    screen.blit(header_text, (list_area.x + 18, list_area.y + 10))
-    count_text = header_font.render(f"{len(weapons)}", True, accent_gold)
-    screen.blit(count_text, (list_area.right - 35, list_area.y + 10))
+    # 绘制当前路线的天赋树
+    path_data = TALENT_TREE[talent_selected_path]
+    branches = path_data["branches"]
+    branch_ids = list(branches.keys())
     
-    # 列表内容区
-    list_inner = pygame.Rect(list_area.x + 3, list_area.y + header_h + 5, list_area.width - 10, list_area.height - header_h - 10)
-    screen.set_clip(list_inner)
+    branch_width = (tree_rect.width - 60) // 3
+    start_x = tree_rect.x + 30
     
-    item_height = 65
-    start_y = list_inner.y - arsenal_scroll_y
-    
-    if not weapons:
-        empty_font = pygame.font.SysFont("SimHei", 16)
-        empty_surf = empty_font.render("暂无武器", True, (60, 65, 75))
-        screen.blit(empty_surf, (list_area.centerx - empty_surf.get_width() // 2, list_area.centery))
-    else:
-        for i, w in enumerate(weapons):
-            item_y = start_y + i * item_height
-            
-            if item_y + item_height < list_inner.top - 10 or item_y > list_inner.bottom + 10:
-                continue
-            
-            item_rect = pygame.Rect(list_inner.x + 2, item_y, list_inner.width - 8, item_height - 5)
-            info = WEAPON_TYPES[w['type']]
-            is_sel = (i == arsenal_selected_weapon_idx)
-            is_eq = (w in arsenal_save_data["loadout"])
-            is_hov = item_rect.collidepoint(mx, my) and not is_sel
-            
-            # 卡片背景
-            card_bg = pygame.Surface((item_rect.width, item_rect.height), pygame.SRCALPHA)
-            if is_sel:
-                for cy in range(item_rect.height):
-                    ratio = cy / item_rect.height
-                    cr = int(info['color'][0] * 0.12 + 18)
-                    cg = int(info['color'][1] * 0.12 + 20)
-                    cb = int(info['color'][2] * 0.12 + 28)
-                    pygame.draw.line(card_bg, (cr, cg, cb, 250), (0, cy), (item_rect.width, cy))
-            elif is_hov:
-                for cy in range(item_rect.height):
-                    pygame.draw.line(card_bg, (22, 26, 35, 240), (0, cy), (item_rect.width, cy))
-            else:
-                for cy in range(item_rect.height):
-                    pygame.draw.line(card_bg, (16, 19, 26, 230), (0, cy), (item_rect.width, cy))
-            screen.blit(card_bg, item_rect.topleft)
-            
-            # 边框
-            if is_sel:
-                pygame.draw.rect(screen, info['color'], item_rect, 1)
-                pygame.draw.rect(screen, info['color'], (item_rect.x, item_rect.y + 5, 4, item_rect.height - 10))
-            elif is_hov:
-                pygame.draw.rect(screen, (55, 65, 80), item_rect, 1)
-            
-            # 武器图标 - 精致的菱形框
-            icon_cx = item_rect.x + 32
-            icon_cy = item_rect.centery
-            icon_size = 18
-            diamond = [(icon_cx, icon_cy - icon_size), (icon_cx + icon_size, icon_cy), 
-                       (icon_cx, icon_cy + icon_size), (icon_cx - icon_size, icon_cy)]
-            pygame.draw.polygon(screen, info['color'], diamond)
-            pygame.draw.polygon(screen, (255, 255, 255, 80), diamond, 1)
-            
-            # 武器名称
-            name_font = pygame.font.SysFont("SimHei", 17)
-            name_col = (235, 230, 220) if is_sel else ((200, 195, 185) if is_hov else (140, 135, 125))
-            name_surf = name_font.render(info['name'], True, name_col)
-            screen.blit(name_surf, (item_rect.x + 58, item_rect.y + 10))
-            
-            # 星级 - 精致小菱形
-            star_y = item_rect.y + 38
-            for si in range(5):
-                sx = item_rect.x + 62 + si * 16
-                if si < w['stars']:
-                    pts = [(sx, star_y - 5), (sx + 5, star_y), (sx, star_y + 5), (sx - 5, star_y)]
-                    pygame.draw.polygon(screen, accent_gold, pts)
+    # 绘制各分支
+    for bi, branch_id in enumerate(branch_ids):
+        branch = branches[branch_id]
+        bx = start_x + bi * branch_width
+        by = tree_rect.y + 15
+        
+        # 分支分隔线
+        if bi > 0:
+            sep_x = bx - 10
+            pygame.draw.line(screen, (50, 45, 35), (sep_x, tree_rect.y + 45), (sep_x, tree_rect.bottom - 75), 1)
+        
+        # 分支标题
+        branch_font = pygame.font.SysFont("SimHei", 14)
+        branch_surf = branch_font.render(branch["name"], True, current_color)
+        title_x = bx + branch_width // 2 - branch_surf.get_width() // 2
+        screen.blit(branch_surf, (title_x, by))
+        
+        # 分支标题下划线
+        pygame.draw.line(screen, (60, 55, 40), (title_x - 5, by + 18), (title_x + branch_surf.get_width() + 5, by + 18), 1)
+        
+        # 分支进度
+        cur_pts, max_pts = talent_manager.get_branch_progress(talent_selected_path, branch_id)
+        prog_font = pygame.font.SysFont("SimHei", 10)
+        prog_text = f"{cur_pts}/{max_pts}"
+        prog_surf = prog_font.render(prog_text, True, (100, 95, 85))
+        screen.blit(prog_surf, (bx + branch_width // 2 - prog_surf.get_width() // 2, by + 22))
+        
+        # 迷你进度条
+        prog_bar_w = 50
+        prog_bar_h = 3
+        prog_bar_x = bx + branch_width // 2 - prog_bar_w // 2
+        prog_bar_y = by + 38
+        pygame.draw.rect(screen, (30, 28, 22), (prog_bar_x, prog_bar_y, prog_bar_w, prog_bar_h), border_radius=1)
+        if max_pts > 0:
+            fill_ratio = cur_pts / max_pts
+            fill_w = int(prog_bar_w * fill_ratio)
+            if fill_w > 0:
+                pygame.draw.rect(screen, current_color, (prog_bar_x, prog_bar_y, fill_w, prog_bar_h), border_radius=1)
+        
+        # 绘制天赋节点（按层级排列）
+        talents = branch["talents"]
+        tier_y = by + 50
+        node_size = 40
+        node_gap = 58
+        
+        for tier in range(1, 5):  # T1-T4
+            tier_talents = [(tid, t) for tid, t in talents.items() if t["tier"] == tier]
+            for tid, talent in tier_talents:
+                level = talent_manager.get_talent_level(talent_selected_path, tid)
+                max_lvl = talent["max_level"]
+                
+                # 节点位置
+                nx = bx + branch_width // 2
+                ny = tier_y + (tier - 1) * node_gap
+                
+                # 检查是否可解锁
+                can_unlock, _ = talent_manager.can_unlock_talent(talent_selected_path, tid)
+                is_maxed = level >= max_lvl
+                is_hov = abs(mx - nx) < node_size // 2 + 5 and abs(my - ny) < node_size // 2 + 5
+                is_sel = talent_selected_talent == (talent_selected_path, branch_id, tid)
+                
+                # 节点颜色
+                if is_maxed:
+                    node_col = current_color
+                    border_col = GOLD
+                elif level > 0:
+                    node_col = tuple(int(c * 0.5) for c in current_color)
+                    border_col = current_color
+                elif can_unlock:
+                    node_col = (35, 38, 48)
+                    border_col = (80, 85, 95) if is_hov else (55, 60, 70)
                 else:
-                    pts = [(sx, star_y - 4), (sx + 4, star_y), (sx, star_y + 4), (sx - 4, star_y)]
-                    pygame.draw.polygon(screen, (40, 42, 50), pts)
-            
-            # 已装备标记
-            if is_eq:
-                eq_x = item_rect.right - 50
-                eq_y = item_rect.centery - 8
-                pygame.draw.rect(screen, (25, 50, 35), (eq_x, eq_y, 42, 18), border_radius=3)
-                pygame.draw.rect(screen, (70, 130, 90), (eq_x, eq_y, 42, 18), 1, border_radius=3)
-                eq_font = pygame.font.SysFont("SimHei", 11)
-                eq_text = eq_font.render("装备中", True, (100, 180, 120))
-                screen.blit(eq_text, (eq_x + 4, eq_y + 2))
-                pygame.draw.rect(screen, (70, 130, 90), (eq_x, eq_y, 32, 14), 1, border_radius=2)
-                eq_font = pygame.font.SysFont("SimHei", 9)
-                eq_text = eq_font.render("装备中", True, (100, 180, 120))
-                screen.blit(eq_text, (eq_x + 3, eq_y + 1))
+                    node_col = (22, 25, 32)
+                    border_col = (40, 42, 50)
+                
+                # 绘制菱形节点
+                diamond = [
+                    (nx, ny - node_size // 2),
+                    (nx + node_size // 2, ny),
+                    (nx, ny + node_size // 2),
+                    (nx - node_size // 2, ny)
+                ]
+                pygame.draw.polygon(screen, node_col, diamond)
+                pygame.draw.polygon(screen, border_col, diamond, 2 if (is_maxed or is_sel or is_hov) else 1)
+                
+                # 选中/悬停高亮
+                if is_sel or (is_hov and can_unlock):
+                    pygame.draw.polygon(screen, (255, 255, 255), diamond, 2)
+                
+                # 等级指示器
+                if max_lvl > 1:
+                    lvl_font = pygame.font.SysFont("SimHei", 10)
+                    lvl_text = f"{level}/{max_lvl}"
+                    lvl_col = current_color if level > 0 else (70, 70, 80)
+                    lvl_surf = lvl_font.render(lvl_text, True, lvl_col)
+                    screen.blit(lvl_surf, (nx - lvl_surf.get_width() // 2, ny + node_size // 2 + 3))
+                
+                # 天赋图标
+                icon_font = pygame.font.SysFont("SimHei", 14)
+                icon_char = talent["icon"][:1] if len(talent["icon"]) > 0 else "◇"
+                icon_col = GOLD if is_maxed else (current_color if level > 0 else (60, 58, 52))
+                icon_surf = icon_font.render(icon_char, True, icon_col)
+                screen.blit(icon_surf, (nx - icon_surf.get_width() // 2, ny - icon_surf.get_height() // 2))
+                
+                # 绘制连接线（到前置天赋）
+                if "requires" in talent:
+                    req_id = talent["requires"]
+                    req_talent = talents[req_id]
+                    req_tier = req_talent["tier"]
+                    req_ny = tier_y + (req_tier - 1) * node_gap
+                    
+                    line_start = (nx, ny - node_size // 2)
+                    line_end = (nx, req_ny + node_size // 2)
+                    
+                    line_col = current_color if level > 0 else (40, 42, 50)
+                    pygame.draw.line(screen, line_col, line_start, line_end, 2 if level > 0 else 1)
     
-    screen.set_clip(None)
+    # ====== 路线终极（美化版） ======
+    ultimate = path_data["ultimate"]
+    ult_y = tree_rect.bottom - 55
+    ult_x = tree_rect.centerx
+    ult_unlocked = talent_manager.data["ultimates"].get(talent_selected_path, False)
+    can_ult, ult_msg = talent_manager.can_unlock_ultimate(talent_selected_path)
     
-    # 滚动条 - 精致细长
-    total_h = len(weapons) * item_height
-    view_h = list_inner.height
-    if total_h > view_h:
-        track_x = list_area.right - 8
-        track_y = list_inner.y + 2
-        track_h = list_inner.height - 4
-        thumb_h = max(25, int(track_h * view_h / total_h))
-        thumb_y = track_y + int((track_h - thumb_h) * arsenal_scroll_y / max(1, total_h - view_h))
+    # 终极节点（大号六边形）
+    ult_size = 38
+    hex_points = []
+    for i in range(6):
+        angle = i * 60 - 90
+        px = ult_x + ult_size * math.cos(math.radians(angle))
+        py = ult_y + ult_size * math.sin(math.radians(angle))
+        hex_points.append((px, py))
+    
+    # 检测终极节点悬停
+    ult_hovered = abs(mx - ult_x) < ult_size + 5 and abs(my - ult_y) < ult_size + 5
+    
+    # 终极节点绘制（金色赛博朋克风格）
+    if ult_unlocked:
+        # 已解锁：多层发光效果
+        for gl in range(4):
+            glow_size = ult_size + 12 + gl * 5 + int(math.sin(t / 200 + gl) * 3)
+            glow_points = []
+            for i in range(6):
+                angle = i * 60 - 90
+                px = ult_x + glow_size * math.cos(math.radians(angle))
+                py = ult_y + glow_size * math.sin(math.radians(angle))
+                glow_points.append((px, py))
+            pygame.draw.polygon(screen, GOLD, glow_points, 2)
         
-        pygame.draw.rect(screen, (25, 30, 40), (track_x, track_y, 4, track_h), border_radius=2)
-        pygame.draw.rect(screen, accent_gold_dim, (track_x, thumb_y, 4, thumb_h), border_radius=2)
-    
-    # ====== 中栏：装备配置 ======
-    mid_x = 375
-    
-    # 区域标题
-    sec_font = pygame.font.SysFont("SimHei", 13)
-    sec_text = sec_font.render("装备配置", True, (160, 155, 140))
-    screen.blit(sec_text, (mid_x, 88))
-    pygame.draw.line(screen, accent_gold_dim, (mid_x + 70, 96), (mid_x + 255, 96), 1)
-    pygame.draw.circle(screen, accent_gold, (mid_x + 255, 96), 2)
-    
-    slots = [r['slot_0'], r['slot_1'], r['slot_2']]
-    slot_names = ["主武装", "副武装", "辅助系统"]
-    
-    for i, (slot_rect, sname) in enumerate(zip(slots, slot_names)):
-        w = arsenal_save_data["loadout"][i]
-        is_hov = slot_rect.collidepoint(mx, my)
+        # 主体六边形
+        pygame.draw.polygon(screen, GOLD, hex_points)
         
-        # 槽位背景 - 精致渐变
-        slot_bg = pygame.Surface((slot_rect.width, slot_rect.height), pygame.SRCALPHA)
-        for sy in range(slot_rect.height):
-            ratio = sy / slot_rect.height
-            shade = int(18 + ratio * 6)
-            pygame.draw.line(slot_bg, (shade, shade + 2, shade + 4, 240), (0, sy), (slot_rect.width, sy))
-        screen.blit(slot_bg, slot_rect.topleft)
+        # 内部高光
+        inner_size = ult_size - 8
+        inner_points = []
+        for i in range(6):
+            angle = i * 60 - 90
+            px = ult_x + inner_size * math.cos(math.radians(angle))
+            py = ult_y - 5 + inner_size * math.sin(math.radians(angle))
+            inner_points.append((px, py))
+        pygame.draw.polygon(screen, (255, 255, 255, 40), inner_points)
         
-        if w:
-            info = WEAPON_TYPES[w['type']]
-            # 左边武器色条
-            pygame.draw.rect(screen, info['color'], (slot_rect.x, slot_rect.y, 4, slot_rect.height))
-            border_col = (60, 70, 85) if not is_hov else (80, 90, 105)
+        # 边框
+        pygame.draw.polygon(screen, (255, 255, 255), hex_points, 3)
+        
+        # 中心图标
+        ult_icon = "★"
+        icon_font = pygame.font.SysFont("SimHei", 18)
+        icon_surf = icon_font.render(ult_icon, True, (255, 255, 255))
+        screen.blit(icon_surf, (ult_x - icon_surf.get_width() // 2, ult_y - icon_surf.get_height() // 2))
+        
+    elif can_ult:
+        # 可解锁：脉冲提示效果
+        pulse_phase = (t % 1500) / 1500
+        pulse_size = ult_size + 5 + int(pulse_phase * 10)
+        pulse_points = []
+        for i in range(6):
+            angle = i * 60 - 90
+            px = ult_x + pulse_size * math.cos(math.radians(angle))
+            py = ult_y + pulse_size * math.sin(math.radians(angle))
+            pulse_points.append((px, py))
+        pygame.draw.polygon(screen, GOLD, pulse_points, 2)
+        
+        if ult_hovered:
+            pygame.draw.polygon(screen, (55, 52, 45), hex_points)
+            glow = int(abs(math.sin(t / 150)) * 60 + 140)
+            pygame.draw.polygon(screen, (glow, glow, glow), hex_points, 3)
         else:
-            border_col = (40, 45, 55) if not is_hov else (55, 60, 70)
+            pygame.draw.polygon(screen, (40, 38, 32), hex_points)
+            pygame.draw.polygon(screen, GOLD, hex_points, 2)
         
-        # 双线边框
-        pygame.draw.rect(screen, (25, 30, 40), slot_rect, 1)
-        pygame.draw.rect(screen, border_col, slot_rect.inflate(-3, -3), 1)
+        # 中心图标
+        lock_icon = "◎"
+        icon_font = pygame.font.SysFont("SimHei", 16)
+        icon_col = (180, 170, 140) if ult_hovered else (120, 110, 90)
+        icon_surf = icon_font.render(lock_icon, True, icon_col)
+        screen.blit(icon_surf, (ult_x - icon_surf.get_width() // 2, ult_y - icon_surf.get_height() // 2))
+    else:
+        # 未解锁：暗淡状态
+        pygame.draw.polygon(screen, (20, 18, 15), hex_points)
+        pygame.draw.polygon(screen, (50, 47, 40), hex_points, 1)
         
-        # 槽位标签
-        label_font = pygame.font.SysFont("SimHei", 12)
-        label_surf = label_font.render(f"[{chr(65+i)}] {sname}", True, (100, 95, 85))
-        screen.blit(label_surf, (slot_rect.x + 10, slot_rect.y - 18))
-        
-        if w:
-            info = WEAPON_TYPES[w['type']]
-            
-            # 武器图标 - 菱形
-            icon_cx = slot_rect.x + 35
-            icon_cy = slot_rect.centery
-            diamond = [(icon_cx, icon_cy - 20), (icon_cx + 20, icon_cy), 
-                       (icon_cx, icon_cy + 20), (icon_cx - 20, icon_cy)]
-            pygame.draw.polygon(screen, info['color'], diamond)
-            pygame.draw.polygon(screen, (255, 255, 255, 50), diamond, 1)
-            
-            # 武器名
-            wname_font = pygame.font.SysFont("SimHei", 17)
-            wname_surf = wname_font.render(info['name'], True, (220, 215, 205))
-            screen.blit(wname_surf, (slot_rect.x + 65, slot_rect.y + 20))
-            
-            # 星级菱形
-            for si in range(w['stars']):
-                sx = slot_rect.x + 68 + si * 14
-                sy = slot_rect.y + 55
-                pts = [(sx, sy - 5), (sx + 5, sy), (sx, sy + 5), (sx - 5, sy)]
-                pygame.draw.polygon(screen, accent_gold, pts)
-            
-            # 倍率
-            mult = 1 + (w['stars'] - 1) * 0.3
-            mult_font = pygame.font.SysFont("SimHei", 13)
-            mult_surf = mult_font.render(f"×{mult:.1f}", True, (120, 160, 120))
-            screen.blit(mult_surf, (slot_rect.right - 45, slot_rect.centery - 7))
-        else:
-            empty_font = pygame.font.SysFont("SimHei", 14)
-            empty_surf = empty_font.render("- 空 -", True, (50, 55, 65))
-            screen.blit(empty_surf, (slot_rect.centerx - empty_surf.get_width() // 2, slot_rect.centery - 8))
+        # 锁定图标
+        lock_icon = "○"
+        icon_font = pygame.font.SysFont("SimHei", 14)
+        icon_surf = icon_font.render(lock_icon, True, (55, 52, 45))
+        screen.blit(icon_surf, (ult_x - icon_surf.get_width() // 2, ult_y - icon_surf.get_height() // 2))
     
-    # 研发区域
-    research_y = HEIGHT - 148
-    sec_text2 = sec_font.render("武器研发", True, (160, 155, 140))
-    screen.blit(sec_text2, (mid_x, research_y))
-    pygame.draw.line(screen, accent_gold_dim, (mid_x + 75, research_y + 8), (mid_x + 270, research_y + 8), 1)
-    pygame.draw.circle(screen, accent_gold, (mid_x + 270, research_y + 8), 2)
+    # 终极名称（金色风格）
+    ult_font = pygame.font.SysFont("SimHei", 12)
+    ult_name_text = ultimate["name"]
+    ult_name = ult_font.render(ult_name_text, True, GOLD if ult_unlocked else (110, 100, 80))
     
-    # 标准研发按钮
-    btn_normal = r['btn_research_normal']
-    hn = btn_normal.collidepoint(mx, my)
-    can_normal = cores >= 20
+    name_bg_w = ult_name.get_width() + 16
+    name_bg = pygame.Surface((name_bg_w, 20), pygame.SRCALPHA)
+    name_bg.fill((12, 12, 10, 200))
+    screen.blit(name_bg, (ult_x - name_bg_w // 2, ult_y + ult_size + 6))
+    screen.blit(ult_name, (ult_x - ult_name.get_width() // 2, ult_y + ult_size + 9))
     
-    # 按钮渐变背景
-    btn_bg = pygame.Surface((btn_normal.width, btn_normal.height), pygame.SRCALPHA)
-    for by in range(btn_normal.height):
-        ratio = by / btn_normal.height
-        if can_normal:
-            shade = int(30 + ratio * 8) if hn else int(22 + ratio * 6)
-            pygame.draw.line(btn_bg, (shade - 5, shade, shade + 15, 245), (0, by), (btn_normal.width, by))
-        else:
-            shade = int(20 + ratio * 4)
-            pygame.draw.line(btn_bg, (shade, shade, shade + 2, 230), (0, by), (btn_normal.width, by))
-    screen.blit(btn_bg, btn_normal.topleft)
+    # 终极悬停提示（金色）
+    if ult_hovered and can_ult and not ult_unlocked:
+        hint_font = pygame.font.SysFont("SimHei", 11)
+        hint_text = "✦ 点击解锁 ✦"
+        hint_surf = hint_font.render(hint_text, True, GOLD)
+        screen.blit(hint_surf, (ult_x - hint_surf.get_width() // 2, ult_y + ult_size + 28))
     
-    border_n = (80, 100, 140) if can_normal else (45, 50, 60)
-    pygame.draw.rect(screen, (25, 30, 40), btn_normal, 1)
-    pygame.draw.rect(screen, border_n, btn_normal.inflate(-3, -3), 1)
+    # 存储终极悬停状态供点击事件使用
+    global talent_ult_hovered, talent_ult_can_unlock
+    talent_ult_hovered = ult_hovered
+    talent_ult_can_unlock = can_ult and not ult_unlocked
     
-    btn_font = pygame.font.SysFont("SimHei", 15)
-    btn_text = btn_font.render("标准研发", True, (200, 200, 210) if can_normal else (80, 85, 95))
-    screen.blit(btn_text, (btn_normal.x + btn_normal.width//2 - btn_text.get_width()//2, btn_normal.y + 12))
-    cost_font = pygame.font.SysFont("SimHei", 12)
-    cost_text = cost_font.render("消耗 20 核心", True, (100, 150, 180) if can_normal else (55, 60, 70))
-    screen.blit(cost_text, (btn_normal.x + btn_normal.width//2 - cost_text.get_width()//2, btn_normal.y + 35))
+    # ====== 超限核心区域（金色风格） ======
+    core_area_x = tree_rect.x + tree_rect.width // 2 - 110
+    core_area_y = tree_rect.bottom + 12
+    core_area_w = 220
+    core_area_h = 55
     
-    # 精密研发按钮
-    btn_elite = r['btn_research_elite']
-    he = btn_elite.collidepoint(mx, my)
-    can_elite = chips >= 3
+    # 核心区域背景（深色渐变）
+    core_bg = pygame.Surface((core_area_w, core_area_h), pygame.SRCALPHA)
+    for cy in range(core_area_h):
+        ratio = cy / core_area_h
+        shade = int(12 + ratio * 6)
+        pygame.draw.line(core_bg, (shade, shade - 1, shade - 3, 230), (0, cy), (core_area_w, cy))
+    screen.blit(core_bg, (core_area_x, core_area_y))
     
-    btn_bg2 = pygame.Surface((btn_elite.width, btn_elite.height), pygame.SRCALPHA)
-    for by in range(btn_elite.height):
-        ratio = by / btn_elite.height
-        if can_elite:
-            shade = int(30 + ratio * 8) if he else int(24 + ratio * 6)
-            pygame.draw.line(btn_bg2, (shade + 8, shade + 2, shade - 10, 245), (0, by), (btn_elite.width, by))
-        else:
-            shade = int(20 + ratio * 4)
-            pygame.draw.line(btn_bg2, (shade + 2, shade, shade - 2, 230), (0, by), (btn_elite.width, by))
-    screen.blit(btn_bg2, btn_elite.topleft)
+    # 装饰边框（金色）
+    pygame.draw.rect(screen, (80, 75, 55), (core_area_x, core_area_y, core_area_w, core_area_h), 1, border_radius=5)
     
-    border_e = accent_gold_dim if can_elite else (45, 42, 38)
-    pygame.draw.rect(screen, (30, 28, 25), btn_elite, 1)
-    pygame.draw.rect(screen, border_e, btn_elite.inflate(-3, -3), 1)
+    # 悬停检测
+    core_area_hovered = pygame.Rect(core_area_x, core_area_y, core_area_w, core_area_h).collidepoint(mx, my)
+    if core_area_hovered:
+        pygame.draw.rect(screen, GOLD, (core_area_x, core_area_y, core_area_w, core_area_h), 2, border_radius=5)
     
-    btn_text2 = btn_font.render("精密研发", True, (210, 200, 180) if can_elite else (85, 80, 70))
-    screen.blit(btn_text2, (btn_elite.x + btn_elite.width//2 - btn_text2.get_width()//2, btn_elite.y + 12))
-    cost_text2 = cost_font.render("消耗 3 芯片", True, accent_gold_dim if can_elite else (60, 55, 45))
-    screen.blit(cost_text2, (btn_elite.x + btn_elite.width//2 - cost_text2.get_width()//2, btn_elite.y + 35))
+    # 已选核心显示
+    selected_core = talent_manager.data.get("ultimate_core")
+    core_font = pygame.font.SysFont("SimHei", 13)
     
-    # ====== 右栏：武器详情 ======
-    detail_area = r['detail_area']
-    
-    # 面板背景
-    detail_bg = pygame.Surface((detail_area.width, detail_area.height), pygame.SRCALPHA)
-    for dy in range(detail_area.height):
-        ratio = dy / detail_area.height
-        shade = int(14 + ratio * 5)
-        pygame.draw.line(detail_bg, (shade, shade + 1, shade + 4, 235), (0, dy), (detail_area.width, dy))
-    screen.blit(detail_bg, detail_area.topleft)
-    
-    # 双线边框
-    pygame.draw.rect(screen, (25, 30, 40), detail_area, 1)
-    pygame.draw.rect(screen, (45, 55, 70), detail_area.inflate(-4, -4), 1)
-    
-    if 0 <= arsenal_selected_weapon_idx < len(weapons):
-        w = weapons[arsenal_selected_weapon_idx]
-        info = WEAPON_TYPES[w['type']]
+    if selected_core:
+        core_data = ULTIMATE_CORES[selected_core]
         
-        # 顶部武器色条
-        pygame.draw.rect(screen, info['color'], (detail_area.x + 2, detail_area.y + 2, detail_area.width - 4, 3))
+        # 核心图标（金色发光）
+        glow = int(abs(math.sin(t / 400)) * 20)
+        icon_col = (GOLD[0] + glow, GOLD[1] + glow, min(255, GOLD[2] + glow))
+        core_icon = core_font.render("⚡", True, icon_col)
+        screen.blit(core_icon, (core_area_x + 12, core_area_y + 10))
         
-        cx = detail_area.centerx
-        base_y = detail_area.y
-        
-        # 武器图标区域 - 大号菱形
-        icon_y = base_y + 85
-        icon_size = 45
-        
-        # 外层装饰环
-        outer_size = icon_size + 14
-        outer_diamond = [(cx, icon_y - outer_size), (cx + outer_size, icon_y),
-                         (cx, icon_y + outer_size), (cx - outer_size, icon_y)]
-        pygame.draw.polygon(screen, (30, 35, 45), outer_diamond)
-        pygame.draw.polygon(screen, (50, 60, 75), outer_diamond, 1)
-        
-        # 内层图标
-        inner_diamond = [(cx, icon_y - icon_size), (cx + icon_size, icon_y),
-                         (cx, icon_y + icon_size), (cx - icon_size, icon_y)]
-        pygame.draw.polygon(screen, info['color'], inner_diamond)
-        pygame.draw.polygon(screen, (255, 255, 255, 60), inner_diamond, 2)
-        
-        # 武器名称
-        name_y = icon_y + icon_size + 28
-        name_font = pygame.font.SysFont("SimHei", 24)
-        name_surf = name_font.render(info['name'], True, (235, 230, 220))
-        screen.blit(name_surf, (cx - name_surf.get_width() // 2, name_y))
-        
-        # 名称下装饰线
-        line_w = name_surf.get_width() + 50
-        pygame.draw.line(screen, accent_gold_dim, (cx - line_w//2, name_y + 35), (cx - 10, name_y + 35), 1)
-        pygame.draw.line(screen, accent_gold_dim, (cx + 10, name_y + 35), (cx + line_w//2, name_y + 35), 1)
-        pygame.draw.circle(screen, accent_gold, (cx, name_y + 35), 4)
-        
-        # 星级
-        star_y = name_y + 58
-        for si in range(5):
-            sx = cx - 42 + si * 21
-            if si < w['stars']:
-                pts = [(sx, star_y - 8), (sx + 8, star_y), (sx, star_y + 8), (sx - 8, star_y)]
-                pygame.draw.polygon(screen, accent_gold, pts)
-                pygame.draw.polygon(screen, (255, 240, 180), pts, 1)
-            else:
-                pts = [(sx, star_y - 6), (sx + 6, star_y), (sx, star_y + 6), (sx - 6, star_y)]
-                pygame.draw.polygon(screen, (35, 38, 48), pts)
-                pygame.draw.polygon(screen, (55, 60, 70), pts, 1)
-        
-        # 属性区域
-        stat_y = star_y + 32
-        stat_rect = pygame.Rect(detail_area.x + 20, stat_y, detail_area.width - 40, 90)
-        pygame.draw.rect(screen, (18, 22, 30), stat_rect)
-        pygame.draw.rect(screen, (40, 48, 60), stat_rect, 1)
-        
-        stat_font = pygame.font.SysFont("SimHei", 14)
-        mult = 1 + (w['stars'] - 1) * 0.3
-        
-        # 伤害
-        pygame.draw.line(screen, (35, 40, 50), (stat_rect.x + 12, stat_y + 28), (stat_rect.right - 12, stat_y + 28), 1)
-        dmg_label = stat_font.render("伤害倍率", True, (110, 105, 95))
-        screen.blit(dmg_label, (stat_rect.x + 15, stat_y + 8))
-        dmg_val = stat_font.render(f"×{mult:.2f}", True, (140, 180, 140))
-        screen.blit(dmg_val, (stat_rect.right - 60, stat_y + 8))
-        
-        # 等级
-        pygame.draw.line(screen, (35, 40, 50), (stat_rect.x + 12, stat_y + 56), (stat_rect.right - 12, stat_y + 56), 1)
-        lvl_label = stat_font.render("强化等级", True, (110, 105, 95))
-        screen.blit(lvl_label, (stat_rect.x + 15, stat_y + 34))
-        lvl_val = stat_font.render(f"Lv.{w['stars']}", True, accent_gold)
-        screen.blit(lvl_val, (stat_rect.right - 55, stat_y + 34))
-        
-        # 类型
-        type_label = stat_font.render("武器类型", True, (110, 105, 95))
-        screen.blit(type_label, (stat_rect.x + 15, stat_y + 62))
-        type_val = stat_font.render(w['type'], True, info['color'])
-        screen.blit(type_val, (stat_rect.right - 60, stat_y + 62))
+        # 核心名称
+        core_text = core_font.render(core_data['name'], True, GOLD)
+        screen.blit(core_text, (core_area_x + 32, core_area_y + 10))
         
         # 描述
-        desc_y = stat_y + 105
-        desc_font = pygame.font.SysFont("SimHei", 13)
-        desc = info['desc']
-        desc_lines = textwrap.wrap(desc, width=16)
-        for di, dline in enumerate(desc_lines[:3]):
-            dsurf = desc_font.render(dline, True, (120, 115, 105))
-            screen.blit(dsurf, (detail_area.x + 25, desc_y + di * 20))
-        
-        # 升级按钮
-        btn_upgrade = r['btn_upgrade']
-        h_up = btn_upgrade.collidepoint(mx, my)
-        cost = w['stars'] * 10
-        can_up = cores >= cost and w['stars'] < 5
-        
-        # 按钮渐变
-        up_bg = pygame.Surface((btn_upgrade.width, btn_upgrade.height), pygame.SRCALPHA)
-        for uy in range(btn_upgrade.height):
-            ratio = uy / btn_upgrade.height
-            if can_up:
-                shade = int(28 + ratio * 8) if h_up else int(22 + ratio * 6)
-                pygame.draw.line(up_bg, (shade - 5, shade + 5, shade - 2, 245), (0, uy), (btn_upgrade.width, uy))
-            elif w['stars'] >= 5:
-                shade = int(25 + ratio * 5)
-                pygame.draw.line(up_bg, (shade + 5, shade + 3, shade - 5, 230), (0, uy), (btn_upgrade.width, uy))
-            else:
-                shade = int(20 + ratio * 4)
-                pygame.draw.line(up_bg, (shade, shade, shade, 220), (0, uy), (btn_upgrade.width, uy))
-        screen.blit(up_bg, btn_upgrade.topleft)
-        
-        if w['stars'] >= 5:
-            border_up = accent_gold_dim
-            pygame.draw.rect(screen, (35, 32, 25), btn_upgrade, 1)
-        elif can_up:
-            border_up = (80, 130, 90)
-            pygame.draw.rect(screen, (25, 35, 30), btn_upgrade, 1)
-        else:
-            border_up = (50, 50, 55)
-            pygame.draw.rect(screen, (25, 28, 32), btn_upgrade, 1)
-        pygame.draw.rect(screen, border_up, btn_upgrade.inflate(-3, -3), 1)
-        
-        up_font = pygame.font.SysFont("SimHei", 15)
-        if w['stars'] >= 5:
-            up_text = up_font.render("已达满级", True, accent_gold)
-            screen.blit(up_text, (btn_upgrade.centerx - up_text.get_width() // 2, btn_upgrade.centery - 9))
-        else:
-            up_text = up_font.render("升级强化", True, (200, 210, 200) if can_up else (90, 90, 95))
-            screen.blit(up_text, (btn_upgrade.centerx - up_text.get_width() // 2, btn_upgrade.y + 12))
-            up_cost = cost_font.render(f"消耗 {cost} 核心", True, (100, 160, 120) if can_up else (65, 70, 75))
-            screen.blit(up_cost, (btn_upgrade.centerx - up_cost.get_width() // 2, btn_upgrade.y + 34))
+        desc_font = pygame.font.SysFont("SimHei", 10)
+        desc_text = core_data['desc'][:20] + "..." if len(core_data['desc']) > 20 else core_data['desc']
+        desc_surf = desc_font.render(desc_text, True, (130, 120, 100))
+        screen.blit(desc_surf, (core_area_x + 12, core_area_y + 32))
     else:
-        hint_font = pygame.font.SysFont("SimHei", 15)
-        hint_surf = hint_font.render("选择武器查看详情", True, (70, 75, 85))
-        screen.blit(hint_surf, (detail_area.centerx - hint_surf.get_width() // 2, detail_area.centery - 10))
+        # 显示可解锁核心数量
+        total_pts = talent_manager.get_total_points()
+        total_pts = talent_manager.get_total_points()
+        available_cores = sum(1 for c in ULTIMATE_CORES.values() if total_pts >= c["requires_points"])
+        
+        if available_cores > 0:
+            core_text = core_font.render(f"⚡ 可选超限核心 ({available_cores})", True, GOLD)
+        else:
+            need_pts = min(c["requires_points"] for c in ULTIMATE_CORES.values())
+            core_text = core_font.render(f"超限核心 (需{need_pts}点)", True, (90, 85, 70))
+        screen.blit(core_text, (core_area_x + core_area_w // 2 - core_text.get_width() // 2, core_area_y + 15))
     
-    # ====== 返回按钮 ======
+    # 存储核心区域供点击事件
+    global talent_core_area
+    talent_core_area = pygame.Rect(core_area_x, core_area_y, core_area_w, core_area_h)
+    
+    # ====== 右侧信息面板（金色赛博朋克风格） ======
+    info_rect = r['info_panel']
+    
+    # 面板背景（深色渐变）
+    info_bg = pygame.Surface((info_rect.width, info_rect.height), pygame.SRCALPHA)
+    for iy in range(info_rect.height):
+        ratio = iy / info_rect.height
+        shade = int(10 + ratio * 8)
+        pygame.draw.line(info_bg, (shade, shade + 2, shade + 5, 240), (0, iy), (info_rect.width, iy))
+    screen.blit(info_bg, info_rect.topleft)
+    
+    # 双层边框（排行榜风格）
+    pygame.draw.rect(screen, (80, 75, 55), info_rect, 2, border_radius=8)
+    pygame.draw.rect(screen, (45, 42, 35), info_rect.inflate(-6, -6), 1, border_radius=6)
+    
+    # 角落霓虹装饰（金色）
+    for cx, cy, dx, dy in [(info_rect.x, info_rect.y, 1, 1), 
+                           (info_rect.right, info_rect.y, -1, 1),
+                           (info_rect.x, info_rect.bottom, 1, -1),
+                           (info_rect.right, info_rect.bottom, -1, -1)]:
+        pygame.draw.line(screen, GOLD, (cx, cy), (cx + 15 * dx, cy), 2)
+        pygame.draw.line(screen, GOLD, (cx, cy), (cx, cy + 15 * dy), 2)
+    
+    info_y = info_rect.y + 18
+    
+    # 路线总览标题（金色风格）
+    sec_font = pygame.font.SysFont("SimHei", 15)
+    overview_text = "◈ 路线总览"
+    overview_surf = sec_font.render(overview_text, True, GOLD)
+    screen.blit(overview_surf, (info_rect.x + 15, info_y))
+    
+    # 标题装饰线
+    line_y = info_y + 24
+    pygame.draw.line(screen, (80, 75, 55), (info_rect.x + 12, line_y), (info_rect.right - 12, line_y), 1)
+    pygame.draw.circle(screen, GOLD, (info_rect.x + 12, line_y), 2)
+    pygame.draw.circle(screen, GOLD, (info_rect.right - 12, line_y), 2)
+    
+    # 统计信息（金色风格）
+    stat_font = pygame.font.SysFont("SimHei", 12)
+    info_y += 38
+    
+    total_pts = talent_manager.get_total_points()
+    path_pts = talent_manager.get_path_points(talent_selected_path)
+    
+    # 路线点数
+    stat_surf = stat_font.render(f"已投入点数: {path_pts}", True, GOLD)
+    screen.blit(stat_surf, (info_rect.x + 15, info_y))
+    info_y += 18
+    
+    # 进度条（金色渐变）
+    prog_w = info_rect.width - 30
+    prog_h = 6
+    max_path_pts = 60
+    pygame.draw.rect(screen, (35, 33, 28), (info_rect.x + 15, info_y, prog_w, prog_h), border_radius=3)
+    if path_pts > 0:
+        fill_w = int(prog_w * min(1.0, path_pts / max_path_pts))
+        pygame.draw.rect(screen, GOLD, (info_rect.x + 15, info_y, fill_w, prog_h), border_radius=3)
+    info_y += 15
+    
+    # 总点数
+    total_surf = stat_font.render(f"总计点数: {total_pts}", True, (180, 170, 140))
+    screen.blit(total_surf, (info_rect.x + 15, info_y))
+    info_y += 25
+    
+    # 共鸣状态（金色分隔线）
+    pygame.draw.line(screen, (60, 55, 45), (info_rect.x + 12, info_y), (info_rect.right - 12, info_y), 1)
+    info_y += 12
+    
+    res_font = pygame.font.SysFont("SimHei", 12)
+    resonance = PATH_RESONANCE[talent_selected_path]
+    is_resonant = talent_manager.data["resonance"].get(talent_selected_path, False)
+    
+    res_label = res_font.render("◇ 路线共鸣", True, (180, 170, 140))
+    screen.blit(res_label, (info_rect.x + 15, info_y))
+    info_y += 22
+    
+    if is_resonant:
+        # 已激活共鸣
+        glow = int(abs(math.sin(t / 500)) * 30)
+        res_name = res_font.render(f"✦ {resonance['name']}", True, (GOLD[0] + glow, GOLD[1] + glow, min(255, GOLD[2] + glow)))
+        screen.blit(res_name, (info_rect.x + 20, info_y))
+        info_y += 18
+        
+        # 共鸣效果描述
+        eff_font = pygame.font.SysFont("SimHei", 10)
+        eff_surf = eff_font.render(resonance.get('effect', '特殊效果已激活'), True, (120, 180, 120))
+        screen.blit(eff_surf, (info_rect.x + 20, info_y))
+    else:
+        # 未激活
+        need_pts = resonance['requires_points']
+        progress = min(1.0, path_pts / need_pts)
+        
+        res_name = res_font.render(f"○ 需要 {need_pts} 点", True, (100, 95, 80))
+        screen.blit(res_name, (info_rect.x + 20, info_y))
+        info_y += 18
+        
+        # 解锁进度条
+        res_prog_w = 100
+        res_prog_h = 4
+        pygame.draw.rect(screen, (35, 33, 28), (info_rect.x + 20, info_y, res_prog_w, res_prog_h), border_radius=2)
+        if progress > 0:
+            fill_w = int(res_prog_w * progress)
+            pygame.draw.rect(screen, (100, 95, 80), (info_rect.x + 20, info_y, fill_w, res_prog_h), border_radius=2)
+    
+    # 选中天赋详情（金色风格）
+    info_y += 40
+    if talent_selected_talent:
+        sel_path, sel_branch, sel_tid = talent_selected_talent
+        sel_talent = talent_manager.get_talent_info(sel_path, sel_branch, sel_tid)
+        if sel_talent:
+            # 分隔线
+            pygame.draw.line(screen, (60, 55, 45), (info_rect.x + 12, info_y - 15), (info_rect.right - 12, info_y - 15), 1)
+            
+            # 天赋详情标题
+            detail_title = pygame.font.SysFont("SimHei", 11).render("◈ 天赋详情", True, (180, 170, 140))
+            screen.blit(detail_title, (info_rect.x + 15, info_y - 12))
+            info_y += 8
+            
+            # 天赋名称（带高亮背景）
+            name_font = pygame.font.SysFont("SimHei", 14)
+            name_surf = name_font.render(sel_talent["name"], True, GOLD)
+            
+            name_bg = pygame.Surface((name_surf.get_width() + 16, 24), pygame.SRCALPHA)
+            name_bg.fill((40, 38, 32, 180))
+            screen.blit(name_bg, (info_rect.x + 12, info_y - 2))
+            screen.blit(name_surf, (info_rect.x + 20, info_y))
+            info_y += 28
+            
+            # 等级
+            level = talent_manager.get_talent_level(sel_path, sel_tid)
+            max_lvl = sel_talent["max_level"]
+            
+            lvl_font = pygame.font.SysFont("SimHei", 11)
+            lvl_text = f"等级: {level}/{max_lvl}"
+            lvl_col = GOLD if level > 0 else (100, 95, 80)
+            lvl_surf = lvl_font.render(lvl_text, True, lvl_col)
+            screen.blit(lvl_surf, (info_rect.x + 15, info_y))
+            
+            # 等级点指示器（金色）
+            dot_x = info_rect.x + 80
+            for i in range(max_lvl):
+                dot_col = GOLD if i < level else (45, 42, 35)
+                pygame.draw.circle(screen, dot_col, (dot_x + i * 12, info_y + 7), 4)
+                pygame.draw.circle(screen, (80, 75, 55), (dot_x + i * 12, info_y + 7), 4, 1)
+            info_y += 24
+            
+            # 描述（换行显示）
+            desc_font = pygame.font.SysFont("SimHei", 11)
+            desc = sel_talent["desc"]
+            if level < max_lvl:
+                next_val = sel_talent["values"][level] if level < len(sel_talent["values"]) else sel_talent["values"][-1]
+                desc = desc.format(val=next_val)
+            else:
+                desc = desc.format(val=sel_talent["values"][-1])
+            
+            import textwrap
+            desc_lines = textwrap.wrap(desc, width=14)
+            for dline in desc_lines[:4]:
+                dsurf = desc_font.render(dline, True, (145, 140, 130))
+                screen.blit(dsurf, (info_rect.x + 15, info_y))
+                info_y += 16
+            
+            # 升级消耗（金色风格）
+            if level < max_lvl:
+                info_y += 12
+                cost = sel_talent["costs"][level]
+                
+                # 消耗背景
+                cost_bg = pygame.Surface((info_rect.width - 30, 26), pygame.SRCALPHA)
+                cost_bg.fill((40, 38, 32, 200))
+                screen.blit(cost_bg, (info_rect.x + 15, info_y - 2))
+                pygame.draw.rect(screen, (80, 75, 55), (info_rect.x + 15, info_y - 2, info_rect.width - 30, 26), 1, border_radius=3)
+                
+                cost_font = pygame.font.SysFont("SimHei", 11)
+                cost_icon = cost_font.render("◆", True, GOLD)
+                screen.blit(cost_icon, (info_rect.x + 22, info_y + 3))
+                
+                cost_text = cost_font.render(f"升级消耗: {cost} 核心", True, (180, 170, 140))
+                screen.blit(cost_text, (info_rect.x + 40, info_y + 3))
+    
+    # ====== 底部按钮（金色赛博朋克风格） ======
     btn_back = r['btn_back']
-    hb = btn_back.collidepoint(mx, my)
+    btn_reset = r['btn_reset']
     
+    # 返回按钮（排行榜风格）
+    hb = btn_back.collidepoint(mx, my)
     back_bg = pygame.Surface((btn_back.width, btn_back.height), pygame.SRCALPHA)
     for by in range(btn_back.height):
         ratio = by / btn_back.height
-        shade = int(28 + ratio * 6) if hb else int(20 + ratio * 5)
-        pygame.draw.line(back_bg, (shade + 5, shade - 2, shade - 2, 240), (0, by), (btn_back.width, by))
+        if hb:
+            shade = int(35 + ratio * 15)
+            pygame.draw.line(back_bg, (shade, shade - 2, shade - 8, 250), (0, by), (btn_back.width, by))
+        else:
+            shade = int(18 + ratio * 10)
+            pygame.draw.line(back_bg, (shade, shade - 1, shade - 4, 230), (0, by), (btn_back.width, by))
     screen.blit(back_bg, btn_back.topleft)
     
-    pygame.draw.rect(screen, (30, 25, 25), btn_back, 1)
-    pygame.draw.rect(screen, (100, 70, 70) if hb else (65, 50, 50), btn_back.inflate(-3, -3), 1)
+    # 边框
+    border_col = GOLD if hb else (80, 75, 55)
+    pygame.draw.rect(screen, border_col, btn_back, 2, border_radius=6)
+    if hb:
+        pygame.draw.rect(screen, (120, 110, 80), btn_back.inflate(-4, -4), 1, border_radius=4)
     
     back_font = pygame.font.SysFont("SimHei", 14)
-    back_surf = back_font.render("返回", True, (180, 175, 170) if hb else (130, 125, 120))
+    back_text = "◀ 返回"
+    back_col = GOLD if hb else (180, 170, 140)
+    back_surf = back_font.render(back_text, True, back_col)
     screen.blit(back_surf, (btn_back.centerx - back_surf.get_width() // 2, btn_back.centery - 8))
+    
+    # 重置按钮（金色风格）
+    hr = btn_reset.collidepoint(mx, my)
+    reset_bg = pygame.Surface((btn_reset.width, btn_reset.height), pygame.SRCALPHA)
+    for by in range(btn_reset.height):
+        ratio = by / btn_reset.height
+        if hr:
+            shade = int(35 + ratio * 15)
+            pygame.draw.line(reset_bg, (shade, shade - 2, shade - 8, 250), (0, by), (btn_reset.width, by))
+        else:
+            shade = int(18 + ratio * 10)
+            pygame.draw.line(reset_bg, (shade, shade - 1, shade - 4, 230), (0, by), (btn_reset.width, by))
+    screen.blit(reset_bg, btn_reset.topleft)
+    
+    # 边框
+    border_col = GOLD if hr else (80, 75, 55)
+    pygame.draw.rect(screen, border_col, btn_reset, 2, border_radius=6)
+    if hr:
+        pygame.draw.rect(screen, (120, 110, 80), btn_reset.inflate(-4, -4), 1, border_radius=4)
+    
+    reset_font = pygame.font.SysFont("SimHei", 14)
+    reset_text = "↺ 重置路线"
+    reset_col = GOLD if hr else (180, 170, 140)
+    reset_surf = reset_font.render(reset_text, True, reset_col)
+    screen.blit(reset_surf, (btn_reset.centerx - reset_surf.get_width() // 2, btn_reset.centery - 8))
+    
+    # ====== 超限核心选择弹窗（金色赛博朋克风格） ======
+    global talent_core_select_open
+    if talent_core_select_open:
+        # 遮罩层
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((5, 8, 12, 200))
+        screen.blit(overlay, (0, 0))
+        
+        # 弹窗面板
+        popup_w, popup_h = 420, 380
+        popup_x = (WIDTH - popup_w) // 2
+        popup_y = (HEIGHT - popup_h) // 2
+        
+        # 外发光效果（金色）
+        glow_surf = pygame.Surface((popup_w + 40, popup_h + 40), pygame.SRCALPHA)
+        for gi in range(20, 0, -2):
+            glow_alpha = 8 - gi // 3
+            pygame.draw.rect(glow_surf, (GOLD[0], GOLD[1], GOLD[2], glow_alpha), 
+                (20 - gi, 20 - gi, popup_w + gi * 2, popup_h + gi * 2), border_radius=12)
+        screen.blit(glow_surf, (popup_x - 20, popup_y - 20))
+        
+        # 弹窗背景（深色渐变）
+        popup_bg = pygame.Surface((popup_w, popup_h), pygame.SRCALPHA)
+        for py_offset in range(popup_h):
+            ratio = py_offset / popup_h
+            shade = int(12 + ratio * 10)
+            pygame.draw.line(popup_bg, (shade, shade + 2, shade + 5, 252), (0, py_offset), (popup_w, py_offset))
+        screen.blit(popup_bg, (popup_x, popup_y))
+        
+        # 双层边框（排行榜风格）
+        pygame.draw.rect(screen, (80, 75, 55), (popup_x, popup_y, popup_w, popup_h), 2, border_radius=10)
+        pygame.draw.rect(screen, (45, 42, 35), (popup_x + 4, popup_y + 4, popup_w - 8, popup_h - 8), 1, border_radius=8)
+        
+        # 角落霓虹装饰（金色）
+        for cx, cy, dx, dy in [(popup_x, popup_y, 1, 1), (popup_x + popup_w, popup_y, -1, 1),
+                               (popup_x, popup_y + popup_h, 1, -1), (popup_x + popup_w, popup_y + popup_h, -1, -1)]:
+            pygame.draw.line(screen, GOLD, (cx, cy), (cx + 20 * dx, cy), 2)
+            pygame.draw.line(screen, GOLD, (cx, cy), (cx, cy + 20 * dy), 2)
+        
+        # 标题
+        title_font = pygame.font.SysFont("SimHei", 20)
+        title_text = "✦ 选择超限核心 ✦"
+        title_surf = title_font.render(title_text, True, GOLD)
+        screen.blit(title_surf, (popup_x + popup_w // 2 - title_surf.get_width() // 2, popup_y + 18))
+        
+        # 标题装饰线
+        line_y = popup_y + 50
+        pygame.draw.line(screen, (60, 55, 45), (popup_x + 20, line_y), (popup_x + popup_w - 20, line_y), 1)
+        pygame.draw.circle(screen, GOLD, (popup_x + popup_w // 2, line_y), 3)
+        
+        # 核心选项
+        total_pts = talent_manager.get_total_points()
+        core_y = popup_y + 65
+        core_btns = []
+        
+        for core_id, core_data in ULTIMATE_CORES.items():
+            can_select = total_pts >= core_data["requires_points"]
+            core_rect = pygame.Rect(popup_x + 25, core_y, popup_w - 50, 85)
+            core_btns.append((core_id, core_rect))
+            
+            # 核心卡片背景（金色风格）
+            hovered = core_rect.collidepoint(mx, my) and can_select
+            card_bg = pygame.Surface((core_rect.width, core_rect.height), pygame.SRCALPHA)
+            
+            if can_select:
+                if hovered:
+                    for cy_off in range(core_rect.height):
+                        ratio = cy_off / core_rect.height
+                        shade = int(40 + ratio * 15)
+                        pygame.draw.line(card_bg, (shade, shade - 2, shade - 8, 255), 
+                            (0, cy_off), (core_rect.width, cy_off))
+                else:
+                    for cy_off in range(core_rect.height):
+                        ratio = cy_off / core_rect.height
+                        shade = int(25 + ratio * 10)
+                        pygame.draw.line(card_bg, (shade, shade - 1, shade - 4, 250), 
+                            (0, cy_off), (core_rect.width, cy_off))
+            else:
+                card_bg.fill((18, 17, 15, 230))
+            screen.blit(card_bg, core_rect.topleft)
+            
+            # 边框（金色）
+            if can_select:
+                glow = int(abs(math.sin(t / 400)) * 30) if hovered else 0
+                border_col = (GOLD[0] + glow, GOLD[1] + glow, min(255, GOLD[2] + glow))
+                pygame.draw.rect(screen, border_col, core_rect, 2, border_radius=6)
+                if hovered:
+                    pygame.draw.rect(screen, (GOLD[0], GOLD[1], GOLD[2]), core_rect.inflate(-4, -4), 1, border_radius=4)
+            else:
+                pygame.draw.rect(screen, (50, 47, 40), core_rect, 1, border_radius=6)
+            
+            # 核心图标
+            icon_font = pygame.font.SysFont("SimHei", 22)
+            icon_col = GOLD if can_select else (60, 55, 45)
+            icon_surf = icon_font.render(core_data['icon'], True, icon_col)
+            screen.blit(icon_surf, (core_rect.x + 15, core_rect.y + 15))
+            
+            # 核心名称
+            name_font = pygame.font.SysFont("SimHei", 15)
+            name_col = GOLD if can_select else (75, 70, 60)
+            name_surf = name_font.render(core_data['name'], True, name_col)
+            screen.blit(name_surf, (core_rect.x + 50, core_rect.y + 12))
+            
+            # 描述
+            desc_font = pygame.font.SysFont("SimHei", 11)
+            desc_col = (180, 170, 140) if can_select else (65, 60, 50)
+            desc_surf = desc_font.render(core_data['desc'], True, desc_col)
+            screen.blit(desc_surf, (core_rect.x + 50, core_rect.y + 35))
+            
+            # 要求点数
+            req_font = pygame.font.SysFont("SimHei", 10)
+            if can_select:
+                req_text = f"✓ 已满足 ({total_pts}/{core_data['requires_points']})"
+                req_col = (100, 200, 120)
+            else:
+                req_text = f"○ 需要 {core_data['requires_points']} 总点数"
+                req_col = (120, 90, 90)
+            req_surf = req_font.render(req_text, True, req_col)
+            screen.blit(req_surf, (core_rect.x + 50, core_rect.y + 58))
+            
+            # 进度条
+            if not can_select:
+                prog_w = 100
+                prog_h = 4
+                prog_x = core_rect.x + 50
+                prog_y = core_rect.y + 72
+                pygame.draw.rect(screen, (35, 33, 28), (prog_x, prog_y, prog_w, prog_h), border_radius=2)
+                fill_ratio = total_pts / core_data['requires_points']
+                fill_w = int(prog_w * fill_ratio)
+                if fill_w > 0:
+                    pygame.draw.rect(screen, (80, 75, 55), (prog_x, prog_y, fill_w, prog_h), border_radius=2)
+            
+            core_y += 95
+        
+        # 关闭按钮（金色风格）
+        close_rect = pygame.Rect(popup_x + popup_w - 40, popup_y + 10, 30, 30)
+        hc = close_rect.collidepoint(mx, my)
+        
+        close_bg = pygame.Surface((30, 30), pygame.SRCALPHA)
+        if hc:
+            close_bg.fill((100, 50, 40, 250))
+        else:
+            close_bg.fill((50, 45, 38, 230))
+        screen.blit(close_bg, close_rect.topleft)
+        
+        pygame.draw.rect(screen, GOLD if hc else (80, 75, 55), close_rect, 2, border_radius=4)
+        
+        close_font = pygame.font.SysFont("SimHei", 16)
+        close_col = GOLD if hc else (180, 170, 140)
+        close_surf = close_font.render("×", True, close_col)
+        screen.blit(close_surf, (close_rect.centerx - close_surf.get_width() // 2, close_rect.centery - close_surf.get_height() // 2))
+        
+        # 存储按钮区域供点击事件使用
+        global talent_core_btns, talent_core_close_btn
+        talent_core_btns = core_btns
+        talent_core_close_btn = close_rect
 
 def draw_background_settings_ui():
     """背景设置界面 - 使用当前装备的背景"""
@@ -8958,12 +9684,10 @@ def handle_plane_customization_click(mx, my):
                         except Exception as e:
                             log_error(f"Failed to update player visual: {e}")
                 else:
+                    from talent_system import talent_manager
                     cost = theme.get("cost", 0)
-                    if arsenal_save_data["currencies"]["cores"] >= cost:
-                        arsenal_save_data["currencies"]["cores"] -= cost
-                        # 保存arsenal数据
-                        with open("arsenal.json", "w", encoding="utf-8") as f:
-                            json.dump(arsenal_save_data, f, ensure_ascii=False, indent=2)
+                    if talent_manager.cores >= cost:
+                        talent_manager.spend_cores(cost)
                         customization_manager.unlock_theme(theme_id)
                         customization_msg = f"已解锁 {theme['name']}！"
                         customization_msg_timer = 120
@@ -9067,11 +9791,10 @@ def handle_wingman_customization_click(mx, my):
                 sound_mgr.play("powerup")
             elif not is_unlocked:
                 # 解锁涂装
+                from talent_system import talent_manager
                 cost = theme.get("cost", 0)
-                if arsenal_save_data["currencies"]["cores"] >= cost:
-                    arsenal_save_data["currencies"]["cores"] -= cost
-                    with open("arsenal.json", "w", encoding="utf-8") as f:
-                        json.dump(arsenal_save_data, f, ensure_ascii=False, indent=2)
+                if talent_manager.cores >= cost:
+                    talent_manager.spend_cores(cost)
                     customization_manager.unlock_theme(theme_id)
                     customization_msg = f"已解锁 {theme['name']}！"
                     customization_msg_timer = 120
@@ -9270,8 +9993,9 @@ def draw_plane_customization_ui():
     pygame.draw.rect(screen, (60, 100, 140), res_panel, 1, border_radius=8)
     
     # 核心数量
+    from talent_system import talent_manager
     core_icon = emoji_16.render("💎", True, GOLD)
-    core_text = font_18.render(f"核心: {arsenal_save_data['currencies']['cores']}", True, GOLD)
+    core_text = font_18.render(f"核心: {talent_manager.cores}", True, GOLD)
     screen.blit(core_icon, (res_panel.x + 15, res_panel.y + 12))
     screen.blit(core_text, (res_panel.x + 42, res_panel.y + 12))
     
@@ -9615,8 +10339,9 @@ def draw_plane_customization_ui():
                 screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
             else:
                 # 需解锁
+                from talent_system import talent_manager
                 cost = theme.get("cost", 0)
-                can_afford = arsenal_save_data['currencies']['cores'] >= cost
+                can_afford = talent_manager.cores >= cost
                 
                 unlock_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
                 for by in range(btn_h):
@@ -9769,8 +10494,9 @@ def draw_wingman_customization_ui():
     screen.blit(res_bg, res_panel.topleft)
     pygame.draw.rect(screen, (60, 100, 140), res_panel, 1, border_radius=8)
     
+    from talent_system import talent_manager
     core_icon = emoji_15.render("💎", True, GOLD)
-    core_text = font_17.render(f"核心: {arsenal_save_data['currencies']['cores']}", True, GOLD)
+    core_text = font_17.render(f"核心: {talent_manager.cores}", True, GOLD)
     screen.blit(core_icon, (res_panel.x + 15, res_panel.y + 12))
     screen.blit(core_text, (res_panel.x + 40, res_panel.y + 12))
     
@@ -10098,8 +10824,9 @@ def draw_wingman_customization_ui():
             btn_text = font_14.render("装备", True, WHITE)
             screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
         else:
+            from talent_system import talent_manager
             cost = theme.get("cost", 0)
-            can_afford = arsenal_save_data["currencies"]["cores"] >= cost
+            can_afford = talent_manager.cores >= cost
             
             unlock_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
             for by in range(btn_h):
@@ -13345,16 +14072,17 @@ while True:
             bg_manager.draw(screen)
         except Exception as e:
             log_error(f"BG Manager error: {e}")
-        if arsenal_msg_timer > 0: arsenal_msg_timer -= 1
+        if talent_msg_timer > 0: talent_msg_timer -= 1
         
         # ========== Boss挑战模式：持续按键处理 ==========
+        kb = get_key_binding_manager()
         if game_state == "boss_challenge":
             keys = pygame.key.get_pressed()
             # 初始延迟：100ms，重复速率：60ms
             initial_delay = 6  # 100ms at 60FPS
             repeat_rate = 3    # 60ms at 60FPS
             
-            if keys[pygame.K_UP]:
+            if kb.is_action_pressed(keys, "move_up"):
                 boss_challenge_key_repeat["up"] += 1
                 if boss_challenge_key_repeat["up"] == 1 or (boss_challenge_key_repeat["up"] > initial_delay and (boss_challenge_key_repeat["up"] - initial_delay) % repeat_rate == 0):
                     boss_challenge_selected = max(0, boss_challenge_selected - 1)
@@ -13362,7 +14090,7 @@ while True:
             else:
                 boss_challenge_key_repeat["up"] = 0
             
-            if keys[pygame.K_DOWN]:
+            if kb.is_action_pressed(keys, "move_down"):
                 boss_challenge_key_repeat["down"] += 1
                 if boss_challenge_key_repeat["down"] == 1 or (boss_challenge_key_repeat["down"] > initial_delay and (boss_challenge_key_repeat["down"] - initial_delay) % repeat_rate == 0):
                     boss_challenge_selected = min(len(boss_challenge_order)-1, boss_challenge_selected + 1)
@@ -13370,7 +14098,7 @@ while True:
             else:
                 boss_challenge_key_repeat["down"] = 0
             
-            if keys[pygame.K_LEFT]:
+            if kb.is_action_pressed(keys, "move_left"):
                 boss_challenge_key_repeat["left"] += 1
                 if boss_challenge_key_repeat["left"] == 1 and boss_challenge_selected > 0:
                     boss_challenge_swap_timer = 15
@@ -13380,7 +14108,7 @@ while True:
             else:
                 boss_challenge_key_repeat["left"] = 0
             
-            if keys[pygame.K_RIGHT]:
+            if kb.is_action_pressed(keys, "move_right"):
                 boss_challenge_key_repeat["right"] += 1
                 if boss_challenge_key_repeat["right"] == 1 and boss_challenge_selected < len(boss_challenge_order)-1:
                     boss_challenge_swap_timer = 15
@@ -13396,7 +14124,7 @@ while True:
             initial_delay = 20  # 增加到约333ms，避免误触
             repeat_rate = 8     # 增加到约133ms，减慢连续切换速度
             
-            if keys[pygame.K_LEFT]:
+            if kb.is_action_pressed(keys, "move_left"):
                 boss_challenge_key_repeat["left"] += 1
                 if boss_challenge_key_repeat["left"] == 1 or (boss_challenge_key_repeat["left"] > initial_delay and (boss_challenge_key_repeat["left"] - initial_delay) % repeat_rate == 0):
                     current_plane_idx = (current_plane_idx - 1) % len(plane_keys)
@@ -13404,7 +14132,7 @@ while True:
             else:
                 boss_challenge_key_repeat["left"] = 0
             
-            if keys[pygame.K_RIGHT]:
+            if kb.is_action_pressed(keys, "move_right"):
                 boss_challenge_key_repeat["right"] += 1
                 if boss_challenge_key_repeat["right"] == 1 or (boss_challenge_key_repeat["right"] > initial_delay and (boss_challenge_key_repeat["right"] - initial_delay) % repeat_rate == 0):
                     current_plane_idx = (current_plane_idx + 1) % len(plane_keys)
@@ -13502,14 +14230,35 @@ while True:
                     max_scroll = max(0, content_h - view_h)
                     codex_scroll_y = max(0, min(codex_scroll_y - event.y * 30, max_scroll))
                     
-                elif game_state == "arsenal":
-                    # 新增：武器库滚动逻辑
-                    total_items = len(arsenal_save_data["weapons"])
-                    item_h = 60
-                    content_h = total_items * item_h
-                    view_h = ARSENAL_UI['list_area'].height
-                    max_scroll = max(0, content_h - view_h)
-                    arsenal_scroll_y = max(0, min(arsenal_scroll_y - event.y * 30, max_scroll))
+                elif game_state == "talent_tree":
+                    # 天赋树暂无滚动需求
+                    pass
+                
+                elif game_state == "keybind_settings":
+                    # 按键设置界面滚动 - 检查鼠标是否在列表区域内
+                    mx, my = get_mouse_pos()
+                    panel_w, panel_h = 650, 580
+                    panel_x = (WIDTH - panel_w) // 2
+                    panel_y = (HEIGHT - panel_h) // 2
+                    list_area_y = panel_y + 65
+                    list_area_h = 430
+                    list_area_rect = pygame.Rect(panel_x + 20, list_area_y, panel_w - 40, list_area_h)
+                    
+                    if list_area_rect.collidepoint(mx, my):
+                        from config import KEY_ACTION_GROUPS, KEY_ACTION_GROUPS_ADVANCED
+                        # 构建显示分组
+                        display_groups = dict(KEY_ACTION_GROUPS)
+                        if keybind_show_advanced:
+                            display_groups.update(KEY_ACTION_GROUPS_ADVANCED)
+                        
+                        row_height = 42
+                        group_height = 30
+                        content_height = 10
+                        for group_name, actions in display_groups.items():
+                            content_height += group_height + len(actions) * row_height
+                        scroll_max = max(0, content_height - list_area_h)
+                        # event.y > 0 向上滚(内容向下移)，event.y < 0 向下滚(内容向上移)
+                        keybind_scroll_y = max(0, min(keybind_scroll_y - event.y * 35, scroll_max))
                     
                 elif game_state == "background_settings":
                     # 背景设置分页切换（鼠标滚轮）
@@ -13565,30 +14314,54 @@ while True:
 
             # --- 键盘事件 ---
             if event.type == pygame.KEYDOWN:
-                # 【新】游戏结束时按R快速重开
-                if game_state == "gameover" and event.key == pygame.K_r:
+                # 按键设置界面：处理按键输入
+                if game_state == "keybind_settings":
+                    if keybind_waiting_key:
+                        if event.key == pygame.K_ESCAPE:
+                            # ESC取消编辑
+                            keybind_waiting_key = False
+                            keybind_editing_action = None
+                            sound_mgr.play("select")
+                        else:
+                            # 设置新按键
+                            from config import get_key_binding_manager
+                            kb = get_key_binding_manager()
+                            kb.set_binding(keybind_editing_action, keybind_editing_index, event.key)
+                            clear_keybind_ui_cache()  # 清除按键名称缓存
+                            keybind_waiting_key = False
+                            keybind_editing_action = None
+                            sound_mgr.play("powerup")
+                        continue
+                    elif event.key == pygame.K_ESCAPE:
+                        # ESC返回设置
+                        game_state = "settings"
+                        sound_mgr.play("select")
+                        continue
+                
+                # 【新】游戏结束时快速重开
+                if game_state == "gameover" and kb.is_action_key(event.key, "ultimate_4"):
                     reset_game()
                     game_state = "game"
                     music_director.set_state("combat", intensity=0.8, immediate=True, force=True)
                     sound_mgr.play("select")
                     continue
                 
-                # 菜单子页：ESC 返回主菜单
-                if event.key == pygame.K_ESCAPE and game_state in ["arsenal", "database", "leaderboard", "personalization", "settings", "achievements"]:
+                # 菜单子页：ESC/取消键 返回主菜单
+                if kb.is_action_key(event.key, "cancel") and game_state in ["talent_tree", "database", "leaderboard", "personalization", "settings", "achievements"]:
                     game_state = "menu"
                     main_menu_selected = 0
                     music_director.set_state("menu", intensity=0.25)
                     sound_mgr.play("select")
                     continue
                 
-                # 图鉴/档案：ESC 返回资料库
-                if event.key == pygame.K_ESCAPE and game_state in ["gallery", "codex"]:
+                # 图鉴/档案：取消键 返回资料库
+                if kb.is_action_key(event.key, "cancel") and game_state in ["gallery", "codex"]:
                     game_state = "database"
                     sound_mgr.play("select")
                     continue
                 
-                # 背景设置/外观设置/涂装：ESC 返回个性化菜单
-                if event.key == pygame.K_ESCAPE and game_state in ["background_settings", "appearance_settings", "customization"]:
+                # 背景设置/外观设置/涂装：取消键 返回个性化菜单
+                if kb.is_action_key(event.key, "cancel") and game_state in ["background_settings", "appearance_settings", "customization"]:
                     game_state = "personalization"
                     personalization_selected = 0
                     sound_mgr.play("select")
@@ -13596,13 +14369,13 @@ while True:
                 
                 # 资料库菜单 键盘控制
                 if game_state == "database":
-                    if event.key == pygame.K_LEFT:
+                    if kb.is_action_key(event.key, "move_left"):
                         database_main_tab = (database_main_tab - 1) % 2
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_RIGHT:
+                    elif kb.is_action_key(event.key, "move_right"):
                         database_main_tab = (database_main_tab + 1) % 2
                         sound_mgr.play("select")
-                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    elif kb.is_action_key(event.key, "confirm"):
                         options = ["gallery", "codex"]
                         game_state = options[database_main_tab]
                         if game_state == "gallery":
@@ -13617,13 +14390,13 @@ while True:
                 
                 # 个性化菜单 键盘控制
                 if game_state == "personalization":
-                    if event.key == pygame.K_LEFT:
+                    if kb.is_action_key(event.key, "move_left"):
                         personalization_selected = (personalization_selected - 1) % 3
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_RIGHT:
+                    elif kb.is_action_key(event.key, "move_right"):
                         personalization_selected = (personalization_selected + 1) % 3
                         sound_mgr.play("select")
-                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    elif kb.is_action_key(event.key, "confirm"):
                         options = ["background_settings", "appearance_settings", "customization"]
                         game_state = options[personalization_selected]
                         if game_state == "background_settings":
@@ -13639,14 +14412,14 @@ while True:
                     theme_count = len(UI_THEMES)
                     theme_keys = list(UI_THEMES.keys())
                     
-                    if event.key == pygame.K_LEFT:
+                    if kb.is_action_key(event.key, "move_left"):
                         appearance_settings_selected = (appearance_settings_selected - 1) % theme_count
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_RIGHT:
+                    elif kb.is_action_key(event.key, "move_right"):
                         appearance_settings_selected = (appearance_settings_selected + 1) % theme_count
                         sound_mgr.play("select")
                     
-                    if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    if kb.is_action_key(event.key, "confirm"):
                         # 切换到选中的主题
                         if 0 <= appearance_settings_selected < len(theme_keys):
                             theme_id = theme_keys[appearance_settings_selected]
@@ -13665,25 +14438,25 @@ while True:
                     cards_per_page = 8
                     total_pages = (bg_count + cards_per_page - 1) // cards_per_page
                     
-                    if event.key == pygame.K_LEFT:
+                    if kb.is_action_key(event.key, "move_left"):
                         background_settings_selected = (background_settings_selected - 1) % bg_count
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_RIGHT:
+                    elif kb.is_action_key(event.key, "move_right"):
                         background_settings_selected = (background_settings_selected + 1) % bg_count
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_UP:
+                    elif kb.is_action_key(event.key, "move_up"):
                         background_settings_selected = (background_settings_selected - cards_per_row) % bg_count
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_DOWN:
+                    elif kb.is_action_key(event.key, "move_down"):
                         background_settings_selected = (background_settings_selected + cards_per_row) % bg_count
                         sound_mgr.play("select")
                     
                     # 自动切换到选中项所在的页
-                    if event.key in (pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT):
+                    if kb.is_any_action_key(event.key, ["move_up", "move_down", "move_left", "move_right"]):
                         selected_page = background_settings_selected // cards_per_page
                         background_settings_page = selected_page
                     
-                    if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    if kb.is_action_key(event.key, "confirm"):
                         # 切换到选中的背景
                         style_keys = list(BackgroundManager.BG_STYLES.keys())
                         if 0 <= background_settings_selected < len(style_keys):
@@ -13696,13 +14469,13 @@ while True:
                 
                 # 飞机选择界面 键盘控制
                 if game_state == "select_plane":
-                    if event.key in (pygame.K_LEFT, pygame.K_a, pygame.K_UP, pygame.K_w):
+                    if kb.is_any_action_key(event.key, ["move_left", "move_up"]):
                         current_plane_idx = (current_plane_idx - 1) % len(plane_keys)
                         sound_mgr.play("select")
-                    elif event.key in (pygame.K_RIGHT, pygame.K_d, pygame.K_DOWN, pygame.K_s):
+                    elif kb.is_any_action_key(event.key, ["move_right", "move_down"]):
                         current_plane_idx = (current_plane_idx + 1) % len(plane_keys)
                         sound_mgr.play("select")
-                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    elif kb.is_action_key(event.key, "confirm"):
                         selected_plane = plane_keys[current_plane_idx]
                         print(f"选择飞机: {selected_plane}")
                         # player selected via keyboard
@@ -13717,20 +14490,20 @@ while True:
                             log_error(f"reset_game failed: {e}")
                             traceback.print_exc()
                             game_state = "menu"
-                    elif event.key == pygame.K_ESCAPE:
+                    elif kb.is_action_key(event.key, "cancel"):
                         game_state = "mode_select"
                         sound_mgr.play("select")
                     continue
 
                 # 升级选择 UI 键盘控制
                 if levelup_ready and upgrade_options:
-                    if event.key == pygame.K_LEFT:
+                    if kb.is_action_key(event.key, "move_left"):
                         upgrade_selected = (upgrade_selected - 1) % len(upgrade_options)
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_RIGHT:
+                    elif kb.is_action_key(event.key, "move_right"):
                         upgrade_selected = (upgrade_selected + 1) % len(upgrade_options)
                         sound_mgr.play("select")
-                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    elif kb.is_action_key(event.key, "confirm"):
                         # 玩家选择一个卡牌
                         if player and hasattr(player, 'upgrade_manager'):
                             try:
@@ -13801,7 +14574,8 @@ while True:
                     continue
 
                 # TAB 键按下：显示属性面板并暂停游戏（游戏中和Boss挑战模式都支持）
-                if event.key == pygame.K_TAB and game_state in ("game", "boss_challenge_play", "training_play") and not levelup_ready:
+                kb = get_key_binding_manager()
+                if kb.is_action_key(event.key, "tab_info") and game_state in ("game", "boss_challenge_play", "training_play") and not levelup_ready:
                     is_paused = True
                     tab_paused = True
                     if frozen_screen is None:
@@ -13815,13 +14589,13 @@ while True:
                 if game_state in ("game", "boss_challenge_play", "training_play"):
                     # 商店UI输入处理（最高优先级）
                     if room_manager and room_manager.show_shop_ui:
-                        if event.key == pygame.K_LEFT:
+                        if kb.is_action_key(event.key, "move_left"):
                             room_manager.shop_selected = max(0, room_manager.shop_selected - 1)
                             sound_mgr.play("select")
-                        elif event.key == pygame.K_RIGHT:
+                        elif kb.is_action_key(event.key, "move_right"):
                             room_manager.shop_selected = min(len(room_manager.shop_items) - 1, room_manager.shop_selected + 1)
                             sound_mgr.play("select")
-                        elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        elif kb.is_action_key(event.key, "confirm"):
                             # 尝试购买物品
                             purchased = room_manager.try_purchase_item(room_manager.shop_selected)
                             if purchased:
@@ -13838,7 +14612,7 @@ while True:
                                 elif item_type == "card":
                                     for _ in range(value):
                                         player.gain_exp(player.exp_to_next_level)
-                        elif event.key == pygame.K_ESCAPE:
+                        elif kb.is_action_key(event.key, "cancel"):
                             # 离开商店
                             room_manager.close_shop()
                             room_rewards = room_manager._finish_room()
@@ -13849,13 +14623,13 @@ while True:
                             sound_mgr.play("select")
                     # 房间选择UI输入处理
                     elif room_manager and room_manager.show_completion_ui:
-                        if event.key == pygame.K_LEFT and room_manager.available_next_rooms:
+                        if kb.is_action_key(event.key, "move_left") and room_manager.available_next_rooms:
                             room_manager.selected_next_room = max(0, room_manager.selected_next_room - 1)
                             sound_mgr.play("select")
-                        elif event.key == pygame.K_RIGHT and room_manager.available_next_rooms:
+                        elif kb.is_action_key(event.key, "move_right") and room_manager.available_next_rooms:
                             room_manager.selected_next_room = min(len(room_manager.available_next_rooms) - 1, room_manager.selected_next_room + 1)
                             sound_mgr.play("select")
-                        elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        elif kb.is_action_key(event.key, "confirm"):
                             # 确认选择房间或进入下一地图
                             log_info(f"Enter按下 - available_next_rooms数量: {len(room_manager.available_next_rooms)}, 当前房间类型: {room_manager.current_room.room_type if room_manager.current_room else 'None'}")
                             
@@ -13897,7 +14671,7 @@ while True:
                                         silence_ms=1400,
                                     )
                                     sound_mgr.play("achievement")
-                    elif event.key == pygame.K_m and room_manager and game_mode == "roguelike":
+                    elif kb.is_action_key(event.key, "map") and room_manager and game_mode == "roguelike":
                         show_full_map = not show_full_map
                         if show_full_map:
                             # 打开地图时暂停游戏并冻结画面
@@ -13922,13 +14696,13 @@ while True:
                             sound_mgr.play("select")
                             continue
                     elif is_paused:
-                        if event.key == pygame.K_UP:
+                        if kb.is_action_key(event.key, "move_up"):
                             pause_menu_selected = (pause_menu_selected - 1) % 3
                             sound_mgr.play("select")
-                        elif event.key == pygame.K_DOWN:
+                        elif kb.is_action_key(event.key, "move_down"):
                             pause_menu_selected = (pause_menu_selected + 1) % 3
                             sound_mgr.play("select")
-                        elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        elif kb.is_action_key(event.key, "confirm"):
                             sound_mgr.play("select")
                             if pause_menu_selected == 0:
                                 is_paused = False
@@ -13941,23 +14715,21 @@ while True:
                                 game_state = "menu"
                                 # 菜单使用电影配乐
                                 music_director.set_state("menu", intensity=0.25)
-                        elif event.key == pygame.K_p:
+                        elif kb.is_action_key(event.key, "pause"):
                             is_paused = False; sound_mgr.play("select")
-                        elif event.key == pygame.K_r:
-                            reset_game(); is_paused = False; sound_mgr.play("select")
                     else:
-                        if event.key == pygame.K_p:
+                        if kb.is_action_key(event.key, "pause"):
                             is_paused = True; pause_menu_selected = 0; sound_mgr.play("select")
-                        elif event.key == pygame.K_f:
+                        elif kb.is_action_key(event.key, "ultimate_1"):
                             player.use_ultimate()
-                        elif event.key == pygame.K_g:
-                            # G键释放第二大招
+                        elif kb.is_action_key(event.key, "ultimate_2"):
+                            # 释放第二大招
                             player.use_secondary_ultimate()
-                        elif event.key == pygame.K_c:
-                            # C键释放第三大招
+                        elif kb.is_action_key(event.key, "ultimate_3"):
+                            # 释放第三大招
                             player.use_tertiary_ultimate()
-                        elif event.key == pygame.K_r and training_mode:
-                            # 训练模式: R键重置Boss
+                        elif kb.is_action_key(event.key, "ultimate_4") and training_mode:
+                            # 训练模式: 重置Boss
                             boss_keys = list(BOSS_DB.keys())
                             selected_boss_key = boss_keys[training_selected_boss]
                             # 清除当前Boss
@@ -13971,8 +14743,8 @@ while True:
                                 training_stats["boss_max_hp"] = boss.max_hp
                             FloatingText(WIDTH // 2, 100, "Boss已重置!", (255, 200, 100), font_size=32)
                             sound_mgr.play("select")
-                        elif event.key == pygame.K_r and not training_mode:
-                            # R键释放第四大招
+                        elif kb.is_action_key(event.key, "ultimate_4") and not training_mode:
+                            # 释放第四大招
                             player.use_quaternary_ultimate()
                         elif event.key == pygame.K_h and training_mode:
                             # 训练模式: H键切换无敌
@@ -13980,20 +14752,20 @@ while True:
                             status = "开启" if training_invincible else "关闭"
                             FloatingText(WIDTH // 2, 100, f"无敌模式{status}!", (100, 255, 150) if training_invincible else (255, 100, 100), font_size=28)
                             sound_mgr.play("select")
-                        elif event.key == pygame.K_t and training_mode:
+                        elif kb.is_action_key(event.key, "skill_switch") and training_mode:
                             # 训练模式: T键重置统计
                             reset_training_stats()
                             if boss:
                                 training_stats["boss_max_hp"] = boss.max_hp
                             FloatingText(WIDTH // 2, 100, "统计已重置!", (150, 200, 255), font_size=28)
                             sound_mgr.play("select")
-                        elif event.key == pygame.K_ESCAPE and training_mode:
-                            # 训练模式: ESC直接返回训练场选择界面
+                        elif kb.is_action_key(event.key, "cancel") and training_mode:
+                            # 训练模式: 返回训练场选择界面
                             training_mode = False
                             game_state = "training_ground"
                             reset_training_stats()
                             sound_mgr.play("select")
-                        elif event.key == pygame.K_SPACE:
+                        elif kb.is_action_key(event.key, "shoot"):
                             if player.skill_cd <= 0:
                                 player.skill_cd = player.max_skill_cd
                                 sound_mgr.play("dash")
@@ -14005,16 +14777,16 @@ while True:
 
                 # 模式选择界面
                 elif game_state == "mode_select":
-                    if event.key == pygame.K_ESCAPE:
+                    if kb.is_action_key(event.key, "cancel"):
                         game_state = "menu"
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_LEFT:
+                    elif kb.is_action_key(event.key, "move_left"):
                         mode_select_selected = (mode_select_selected - 1) % 4
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_RIGHT:
+                    elif kb.is_action_key(event.key, "move_right"):
                         mode_select_selected = (mode_select_selected + 1) % 4
                         sound_mgr.play("select")
-                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    elif kb.is_action_key(event.key, "confirm"):
                         modes = ["normal", "roguelike", "boss_challenge", "training_ground"]
                         selected_mode = modes[mode_select_selected]
                         sound_mgr.play("select")
@@ -14036,11 +14808,11 @@ while True:
                 
                 # 主菜单导航：上下键 + Enter 确认
                 elif game_state == "menu":
-                    if event.key == pygame.K_UP:
+                    if kb.is_action_key(event.key, "move_up"):
                         main_menu_selected = (main_menu_selected - 1) % len(get_menu_buttons()); sound_mgr.play("select")
-                    elif event.key == pygame.K_DOWN:
+                    elif kb.is_action_key(event.key, "move_down"):
                         main_menu_selected = (main_menu_selected + 1) % len(get_menu_buttons()); sound_mgr.play("select")
-                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    elif kb.is_action_key(event.key, "confirm"):
                         buttons = get_menu_buttons()
                         if 0 <= main_menu_selected < len(buttons):
                             r, txt, col, act = buttons[main_menu_selected]
@@ -14061,11 +14833,14 @@ while True:
                             elif act == "database":
                                 game_state = "database"
                                 database_main_tab = 0
-                            elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization", "background_settings", "settings"]:
+                            elif act == "talent_tree":
+                                game_state = "talent_tree"
+                                talent_selected_path = "destruction"
+                                talent_selected_talent = None
+                            elif act in ["gallery", "codex", "leaderboard", "achievements", "customization", "background_settings", "settings"]:
                                 game_state = act
                                 if act == "gallery": gallery_page = 0; gallery_tab = 0
                                 if act == "codex": codex_tab = 0; codex_idx = 0; codex_scroll_y = 0
-                                if act == "arsenal": arsenal_scroll_y = 0; arsenal_selected_weapon_idx = -1
                                 if act == "achievements": achievement_page = 0
                                 if act == "customization": customization_scroll_y = 0; customization_plane_scroll_y = 0; customization_selected_plane = None; customization_tab = 0
                                 if act == "background_settings": background_settings_selected = 0
@@ -14073,18 +14848,18 @@ while True:
 
                 # 每日任务键盘处理
                 elif game_state == "daily_quests":
-                    if event.key in (pygame.K_ESCAPE, pygame.K_BACKSPACE):
+                    if kb.is_action_key(event.key, "cancel"):
                         game_state = "menu"
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_UP:
+                    elif kb.is_action_key(event.key, "move_up"):
                         quest_mgr = get_daily_quest_mgr()
                         daily_quest_selected = (daily_quest_selected - 1) % len(quest_mgr.quests)
                         sound_mgr.play("select")
-                    elif event.key == pygame.K_DOWN:
+                    elif kb.is_action_key(event.key, "move_down"):
                         quest_mgr = get_daily_quest_mgr()
                         daily_quest_selected = (daily_quest_selected + 1) % len(quest_mgr.quests)
                         sound_mgr.play("select")
-                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    elif kb.is_action_key(event.key, "confirm"):
                         # 领取奖励
                         quest_mgr = get_daily_quest_mgr()
                         if daily_quest_selected < len(quest_mgr.quests):
@@ -14101,15 +14876,15 @@ while True:
                                 FloatingText(WIDTH // 2, HEIGHT // 2, "任务未完成!", (255, 100, 100), font_size=24)
 
                 elif game_state == "audio_hub":
-                    if event.key in (pygame.K_ESCAPE, pygame.K_BACKSPACE):
+                    if kb.is_action_key(event.key, "cancel"):
                         game_state = "menu"; sound_mgr.play("select")
-                    elif event.key in (pygame.K_LEFT, pygame.K_a):
+                    elif kb.is_action_key(event.key, "move_left"):
                         audio_hub_selected = (audio_hub_selected - 1) % len(AUDIO_HUB_OPTIONS)
                         sound_mgr.play("select")
-                    elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                    elif kb.is_action_key(event.key, "move_right"):
                         audio_hub_selected = (audio_hub_selected + 1) % len(AUDIO_HUB_OPTIONS)
                         sound_mgr.play("select")
-                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    elif kb.is_action_key(event.key, "confirm"):
                         sound_mgr.play("select")
                         _activate_audio_hub_option(audio_hub_selected)
 
@@ -14119,7 +14894,7 @@ while True:
                         if event.key == pygame.K_ESCAPE:
                             music_library_search_active = False
                             handled = True
-                        elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        elif kb.is_action_key(event.key, "confirm"):
                             music_library_search_active = False
                             handled = True
                         elif event.key == pygame.K_BACKSPACE:
@@ -14136,17 +14911,15 @@ while True:
                         if handled:
                             continue
 
-                    if event.key == pygame.K_ESCAPE:
+                    if kb.is_action_key(event.key, "cancel"):
                         return_to_audio_hub_from_music_library(); sound_mgr.play("select")
-                    elif event.key == pygame.K_BACKSPACE:
-                        return_to_menu_from_music_library(); sound_mgr.play("select")
-                    elif event.key in (pygame.K_UP, pygame.K_w):
+                    elif kb.is_action_key(event.key, "move_up"):
                         move_music_library_selection(-1); sound_mgr.play("select")
-                    elif event.key in (pygame.K_DOWN, pygame.K_s):
+                    elif kb.is_action_key(event.key, "move_down"):
                         move_music_library_selection(1); sound_mgr.play("select")
-                    elif event.key == pygame.K_q:
+                    elif kb.is_action_key(event.key, "weapon_prev"):
                         cycle_music_library_filter(-1); sound_mgr.play("select")
-                    elif event.key == pygame.K_e:
+                    elif kb.is_action_key(event.key, "weapon_next"):
                         cycle_music_library_filter(1); sound_mgr.play("select")
                     elif event.key == pygame.K_PAGEUP:
                         move_music_library_selection(-_music_library_visible_rows()); sound_mgr.play("select")
@@ -14648,11 +15421,15 @@ while True:
                                 game_state = "database"
                                 database_main_tab = 0
                                 log_info("Game state changed to: database")
-                            elif act in ["arsenal", "gallery", "codex", "leaderboard", "achievements", "customization", "settings"]: 
+                            elif act == "talent_tree":
+                                game_state = "talent_tree"
+                                talent_selected_path = "destruction"
+                                talent_selected_talent = None
+                                log_info("Game state changed to: talent_tree")
+                            elif act in ["gallery", "codex", "leaderboard", "achievements", "customization", "settings"]: 
                                 game_state = act
                                 if act == "gallery": gallery_page = 0; gallery_tab = 0
                                 if act == "codex": codex_tab = 0; codex_idx = 0; codex_scroll_y = 0
-                                if act == "arsenal": arsenal_scroll_y = 0; arsenal_selected_weapon_idx = -1
                                 if act == "achievements": achievement_page = 0
                                 if act == "customization": customization_scroll_y = 0; customization_plane_scroll_y = 0; customization_selected_plane = None; customization_tab = 0
                                 if act == "settings": settings_dragging = None; settings_saved_timer = 0
@@ -15338,86 +16115,114 @@ while True:
                         game_state = "boss_challenge"
                         sound_mgr.play("select")
                     
-                elif game_state == "arsenal":
+                elif game_state == "talent_tree":
+                    from talent_system import talent_manager
+                    from config import TALENT_TREE
                     sound_mgr.play("select")
-                    r = ARSENAL_UI
-                    weapons = arsenal_save_data["weapons"]
-                    item_height = 65  # 与draw_arsenal_ui保持一致
-                    total_h = len(weapons) * item_height
-                    view_h = r['list_area'].height
-                    max_scroll = max(0, total_h - view_h)
+                    r = TALENT_TREE_UI
                     
-                    # 滚动条拖动检测
-                    if total_h > view_h:
-                        bar_h = max(20, (view_h / total_h) * view_h)
-                        bar_y = r['list_area'].y + (arsenal_scroll_y / total_h) * view_h if total_h > 0 else r['list_area'].y
-                        scrollbar_rect = pygame.Rect(r['list_area'].right - 8, bar_y, 8, bar_h)
-                        track_rect = pygame.Rect(r['list_area'].right - 8, r['list_area'].y, 8, view_h)
+                    # 路线标签页点击
+                    path_keys = ["destruction", "guardian", "destiny"]
+                    for i, tab_rect in enumerate(r['path_tabs']):
+                        if tab_rect.collidepoint(mx, my):
+                            talent_selected_path = path_keys[i]
+                            talent_selected_talent = None
+                            break
+                    
+                    # 天赋节点点击检测
+                    tree_rect = r['tree_area']
+                    if tree_rect.collidepoint(mx, my):
+                        path_data = TALENT_TREE[talent_selected_path]
+                        branches = path_data["branches"]
+                        branch_ids = list(branches.keys())
+                        branch_width = (tree_rect.width - 60) // 3
+                        start_x = tree_rect.x + 30
                         
-                        if scrollbar_rect.collidepoint(mx, my):
-                            # 点击滑块开始拖动
-                            arsenal_dragging_scrollbar = True
-                            arsenal_drag_start_y = my
-                            arsenal_drag_start_scroll = arsenal_scroll_y
-                        elif track_rect.collidepoint(mx, my):
-                            # 点击轨道跳转
-                            click_ratio = (my - r['list_area'].y) / view_h
-                            arsenal_scroll_y = int(click_ratio * max_scroll)
-                            arsenal_scroll_y = max(0, min(arsenal_scroll_y, max_scroll))
-                    
-                    # 列表点击 (修正为支持滚动)
-                    if r['list_area'].collidepoint(mx, my) and mx < r['list_area'].right - 10:
-                        # 计算相对于列表内容顶部的坐标（需考虑header高度38）
-                        click_offset = my - (r['list_area'].y + 43) + arsenal_scroll_y
-                        idx = click_offset // 65
-                        # 确保点击有效范围
-                        if 0 <= idx < len(arsenal_save_data["weapons"]):
-                            arsenal_selected_weapon_idx = int(idx)
+                        for bi, branch_id in enumerate(branch_ids):
+                            branch = branches[branch_id]
+                            bx = start_x + bi * branch_width
+                            tier_y = tree_rect.y + 65
+                            node_size = 42
+                            node_gap = 58
                             
-                    # 槽位
-                    slots = [r['slot_0'], r['slot_1'], r['slot_2']]
-                    for i, s in enumerate(slots):
-                        if s.collidepoint(mx, my):
-                            if 0 <= arsenal_selected_weapon_idx < len(arsenal_save_data["weapons"]):
-                                arsenal_save_data["loadout"][i] = arsenal_save_data["weapons"][arsenal_selected_weapon_idx]
-                            else: arsenal_save_data["loadout"][i] = None
-                            save_arsenal()
-                    # 研发
-                    pool = None; cc = 0; ch = 0
-                    if r['btn_research_normal'].collidepoint(mx, my):
-                        if arsenal_save_data["currencies"]["cores"] >= 20: cc=20; pool=list(WEAPON_TYPES.keys())
-                        else: sound_mgr.play("warning")
-                    elif r['btn_research_elite'].collidepoint(mx, my):
-                        if arsenal_save_data["currencies"]["chips"] >= 3: ch=3; pool=["railgun", "void", "frost", "swarm"]
-                        else: sound_mgr.play("warning")
-                    if pool:
-                        arsenal_save_data["currencies"]["cores"] -= cc
-                        arsenal_save_data["currencies"]["chips"] -= ch
-                        nt = random.choice(pool)
-                        dup = False
-                        for w in arsenal_save_data["weapons"]:
-                            if w["type"] == nt: dup = True; break
-                        if dup:
-                            arsenal_save_data["currencies"]["cores"] += 20
-                            arsenal_msg = f"重复武器 {WEAPON_TYPES[nt]['name']}，已返还20核心"; arsenal_msg_timer = 180
-                            sound_mgr.play("select")
-                        else:
-                            nw = create_weapon(nt); arsenal_save_data["weapons"].append(nw)
-                            arsenal_msg = f"研发成功: {WEAPON_TYPES[nt]['name']}"; arsenal_msg_timer = 180
-                            sound_mgr.play("levelup")
-                        save_arsenal()
-                    # 升级
-                    if r['btn_upgrade'].collidepoint(mx, my) and 0 <= arsenal_selected_weapon_idx < len(arsenal_save_data["weapons"]):
-                        w = arsenal_save_data["weapons"][arsenal_selected_weapon_idx]
-                        cost = w['stars'] * 10
-                        if arsenal_save_data["currencies"]["cores"] >= cost:
-                            arsenal_save_data["currencies"]["cores"] -= cost; w['stars'] += 1
-                            save_arsenal(); sound_mgr.play("levelup")
-                        else: sound_mgr.play("warning")
+                            for tier in range(1, 5):
+                                tier_talents = [(tid, t) for tid, t in branch["talents"].items() if t["tier"] == tier]
+                                for tid, talent in tier_talents:
+                                    nx = bx + branch_width // 2
+                                    ny = tier_y + (tier - 1) * node_gap
+                                    
+                                    if abs(mx - nx) < node_size // 2 + 5 and abs(my - ny) < node_size // 2 + 5:
+                                        # 点击天赋节点
+                                        if talent_selected_talent == (talent_selected_path, branch_id, tid):
+                                            # 双击升级
+                                            success, msg = talent_manager.upgrade_talent(talent_selected_path, tid)
+                                            if success:
+                                                talent_msg = msg
+                                                talent_msg_timer = 120
+                                                sound_mgr.play("levelup")
+                                            else:
+                                                talent_msg = msg
+                                                talent_msg_timer = 90
+                                                sound_mgr.play("warning")
+                                        else:
+                                            # 单击选中
+                                            talent_selected_talent = (talent_selected_path, branch_id, tid)
+                                        break
+                    
+                    # 返回按钮
                     if r['btn_back'].collidepoint(mx, my):
-                        if player and hasattr(player, 'achievement_manager'):
-                            player.achievement_manager.save_to_file()
+                        talent_manager.save()
                         game_state = "menu"
+                    
+                    # 重置按钮
+                    if r['btn_reset'].collidepoint(mx, my):
+                        success, msg = talent_manager.reset_path(talent_selected_path)
+                        talent_msg = msg
+                        talent_msg_timer = 120
+                        if success:
+                            sound_mgr.play("levelup")
+                        else:
+                            sound_mgr.play("warning")
+                    
+                    # ====== 【星轨天赋阵】终极天赋点击解锁 ======
+                    if 'talent_ult_hovered' in globals() and talent_ult_hovered and talent_ult_can_unlock:
+                        success, msg = talent_manager.unlock_ultimate(talent_selected_path)
+                        talent_msg = msg
+                        talent_msg_timer = 150
+                        if success:
+                            sound_mgr.play("ultimate")  # 使用大招音效
+                        else:
+                            sound_mgr.play("warning")
+                    
+                    # ====== 【星轨天赋阵】超限核心区域点击 ======
+                    if 'talent_core_area' in globals() and talent_core_area is not None and talent_core_area.collidepoint(mx, my):
+                        # 检查是否已选择核心
+                        if not talent_manager.data.get("ultimate_core"):
+                            # 打开核心选择界面
+                            talent_core_select_open = True
+                    
+                    # ====== 【星轨天赋阵】超限核心弹窗点击 ======
+                    if talent_core_select_open:
+                        from config import ULTIMATE_CORES
+                        # 关闭按钮
+                        if 'talent_core_close_btn' in globals() and talent_core_close_btn.collidepoint(mx, my):
+                            talent_core_select_open = False
+                        # 核心选择按钮
+                        elif 'talent_core_btns' in globals():
+                            total_pts = talent_manager.get_total_points()
+                            for core_id, core_rect in talent_core_btns:
+                                if core_rect.collidepoint(mx, my):
+                                    core_data = ULTIMATE_CORES[core_id]
+                                    if total_pts >= core_data["requires_points"]:
+                                        success, msg = talent_manager.unlock_core(core_id)
+                                        talent_msg = msg
+                                        talent_msg_timer = 150
+                                        if success:
+                                            sound_mgr.play("ultimate")
+                                            talent_core_select_open = False
+                                        else:
+                                            sound_mgr.play("warning")
+                                    break
 
                 elif game_state == "gallery":
                     sound_mgr.play("select")
@@ -15689,7 +16494,7 @@ while True:
                             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                             zip_path = os.path.join(desktop, f"霓虹深空存档_{timestamp}.zip")
                             with zipfile.ZipFile(zip_path, 'w') as zf:
-                                for f in ["arsenal.json", "achievements.json", "leaderboard.json", "game_settings.json"]:
+                                for f in ["saves/talent_data.json", "saves/achievements.json", "saves/leaderboard.json", "saves/game_settings.json"]:
                                     if os.path.exists(f):
                                         zf.write(f)
                             settings_saved_msg = f"存档已导出到桌面!"
@@ -15709,11 +16514,13 @@ while True:
                             # 第二次点击，执行重置
                             try:
                                 import os
-                                for f in ["arsenal.json", "achievements.json", "leaderboard.json"]:
+                                for f in ["saves/talent_data.json", "saves/achievements.json", "saves/leaderboard.json"]:
                                     if os.path.exists(f):
                                         os.remove(f)
-                                # 重置内存数据 - 使用函数重新加载
-                                load_arsenal()  # 重新加载会得到默认值
+                                # 重置天赋数据
+                                from talent_system import talent_manager
+                                talent_manager.data = talent_manager._default_data()
+                                talent_manager.save()
                                 settings_saved_msg = "存档已重置！请重启游戏"
                                 settings_saved_timer = 120
                                 sound_mgr.play("explosion")
@@ -15759,6 +16566,16 @@ while True:
                                     clicked_quality = True
                                     break
                         
+                        # 按键设置按钮
+                        if not clicked_quality and 'keybind' in settings_ui:
+                            if settings_ui['keybind'].collidepoint(mx, my):
+                                keybind_editing_action = None
+                                keybind_editing_index = 0
+                                keybind_waiting_key = False
+                                game_state = "keybind_settings"
+                                sound_mgr.play("select")
+                                clicked_quality = True
+                        
                         # 检查滑块点击
                         if not clicked_quality:
                             for slider_rect, key in settings_ui['sliders']:
@@ -15775,6 +16592,85 @@ while True:
                                         sound_mgr.set_sfx_volume(new_value)
                                         sound_mgr.play("select")  # 播放音效测试
                                     break
+                
+                elif game_state == "keybind_settings":
+                    # 按键设置界面点击处理
+                    from config import get_key_binding_manager, KEY_ACTION_GROUPS, KEY_ACTION_GROUPS_ADVANCED
+                    kb = get_key_binding_manager()
+                    keybind_ui = draw_keybind_settings_ui()
+                    
+                    # 高级按键开关
+                    if keybind_ui['adv_btn'].collidepoint(mx, my):
+                        keybind_show_advanced = not keybind_show_advanced
+                        keybind_scroll_y = 0  # 重置滚动位置
+                        sound_mgr.play("select")
+                    
+                    # 滚动条区域计算
+                    list_area_rect = keybind_ui['list_area_rect']
+                    scroll_max = keybind_ui['scroll_max']
+                    
+                    if scroll_max > 0:
+                        # 构建显示分组
+                        display_groups = dict(KEY_ACTION_GROUPS)
+                        if keybind_show_advanced:
+                            display_groups.update(KEY_ACTION_GROUPS_ADVANCED)
+                        
+                        # 滚动条参数
+                        list_area_h = 430
+                        row_height = 42
+                        group_height = 30
+                        content_height = 10
+                        for group_name, actions in display_groups.items():
+                            content_height += group_height + len(actions) * row_height
+                        
+                        sb_x = list_area_rect.right - 8
+                        sb_h = max(30, int(list_area_h * list_area_h / content_height))
+                        sb_y = list_area_rect.y + int((list_area_h - sb_h) * keybind_scroll_y / scroll_max)
+                        scrollbar_rect = pygame.Rect(sb_x - 4, sb_y, 14, sb_h)
+                        track_rect = pygame.Rect(sb_x - 4, list_area_rect.y, 14, list_area_h)
+                        
+                        # 检查滚动条点击
+                        if scrollbar_rect.collidepoint(mx, my):
+                            # 开始拖动滚动条
+                            keybind_dragging_scrollbar = True
+                            keybind_drag_start_y = my
+                            keybind_drag_start_scroll = keybind_scroll_y
+                        elif track_rect.collidepoint(mx, my):
+                            # 点击轨道直接跳转
+                            relative_y = my - list_area_rect.y
+                            keybind_scroll_y = int(relative_y / list_area_h * scroll_max)
+                            keybind_scroll_y = max(0, min(keybind_scroll_y, scroll_max))
+                    
+                    # 关闭按钮
+                    if keybind_ui['close_btn'].collidepoint(mx, my):
+                        game_state = "settings"
+                        keybind_waiting_key = False
+                        keybind_dragging_scrollbar = False
+                        sound_mgr.play("select")
+                    
+                    # 重置默认按钮
+                    elif keybind_ui['reset_btn'].collidepoint(mx, my):
+                        kb.reset_to_default()
+                        clear_keybind_ui_cache()  # 清除按键名称缓存
+                        sound_mgr.play("levelup")
+                    
+                    # 按键槽位点击
+                    elif not keybind_waiting_key and not keybind_dragging_scrollbar:
+                        for btn_rect, action, key_idx in keybind_ui['btn_rects']:
+                            if btn_rect.collidepoint(mx, my):
+                                if key_idx == -1:
+                                    # 清除按钮
+                                    kb.bindings[action] = []
+                                    kb.save_bindings()
+                                    clear_keybind_ui_cache()  # 清除按键名称缓存
+                                    sound_mgr.play("select")
+                                else:
+                                    # 开始等待按键输入
+                                    keybind_editing_action = action
+                                    keybind_editing_index = key_idx
+                                    keybind_waiting_key = True
+                                    sound_mgr.play("select")
+                                break
                 
                 elif game_state == "customization":
                     # 根据模式处理点击
@@ -15900,9 +16796,6 @@ while True:
                 # 成就滚动条拖动结束
                 if game_state == "achievements":
                     achievement_dragging_scrollbar = False
-                # 武器库滚动条拖动结束
-                if game_state == "arsenal":
-                    arsenal_dragging_scrollbar = False
                 # 图鉴滚动条拖动结束
                 if game_state == "codex":
                     codex_dragging_scrollbar = False
@@ -15918,6 +16811,9 @@ while True:
                 # 飞机选择界面滚动条拖动结束
                 if game_state in ["select_plane", "boss_challenge_select_plane", "training_select_plane"]:
                     plane_select_dragging_scrollbar = False
+                # 按键设置滚动条拖动结束
+                if game_state == "keybind_settings":
+                    keybind_dragging_scrollbar = False
 
             if event.type == pygame.MOUSEWHEEL:
                 if game_state == "music_library":
@@ -16025,27 +16921,6 @@ while True:
             else:
                 plane_select_dragging_scrollbar = False
 
-        # 武器库滚动条拖动更新
-        if game_state == "arsenal" and arsenal_dragging_scrollbar:
-            mouse_buttons = pygame.mouse.get_pressed()
-            if mouse_buttons[0]:
-                mx, my = get_mouse_pos()
-                r = ARSENAL_UI
-                weapons = arsenal_save_data["weapons"]
-                item_height = 65  # 与draw_arsenal_ui保持一致
-                total_h = len(weapons) * item_height
-                view_h = r['list_area'].height
-                max_scroll = max(0, total_h - view_h)
-                
-                if max_scroll > 0:
-                    bar_h = max(20, (view_h / total_h) * view_h)
-                    delta_y = my - arsenal_drag_start_y
-                    scroll_ratio = delta_y / (view_h - bar_h) if (view_h - bar_h) > 0 else 0
-                    new_scroll = arsenal_drag_start_scroll + scroll_ratio * max_scroll
-                    arsenal_scroll_y = max(0, min(int(new_scroll), max_scroll))
-            else:
-                arsenal_dragging_scrollbar = False
-
         # 图鉴滚动条拖动更新
         if game_state == "codex" and codex_dragging_scrollbar:
             mouse_buttons = pygame.mouse.get_pressed()
@@ -16143,6 +17018,46 @@ while True:
             else:
                 leaderboard_dragging_scrollbar = False
 
+        # 按键设置滚动条拖动更新
+        if game_state == "keybind_settings" and keybind_dragging_scrollbar:
+            mouse_buttons = pygame.mouse.get_pressed()
+            if mouse_buttons[0]:
+                mx, my = get_mouse_pos()
+                from config import KEY_ACTION_GROUPS, KEY_ACTION_GROUPS_ADVANCED
+                
+                # 构建显示分组
+                display_groups = dict(KEY_ACTION_GROUPS)
+                if keybind_show_advanced:
+                    display_groups.update(KEY_ACTION_GROUPS_ADVANCED)
+                
+                # 布局参数
+                panel_w, panel_h = 650, 580
+                panel_x = (WIDTH - panel_w) // 2
+                panel_y = (HEIGHT - panel_h) // 2
+                list_area_y = panel_y + 65
+                list_area_h = 430
+                
+                # 计算内容高度
+                row_height = 42
+                group_height = 30
+                content_height = 10
+                for group_name, actions in display_groups.items():
+                    content_height += group_height + len(actions) * row_height
+                
+                scroll_max = max(0, content_height - list_area_h)
+                
+                if scroll_max > 0:
+                    sb_h = max(30, int(list_area_h * list_area_h / content_height))
+                    track_height = list_area_h - sb_h
+                    
+                    # 计算拖动偏移
+                    delta_y = my - keybind_drag_start_y
+                    scroll_ratio = delta_y / track_height if track_height > 0 else 0
+                    new_scroll = keybind_drag_start_scroll + scroll_ratio * scroll_max
+                    keybind_scroll_y = max(0, min(int(new_scroll), scroll_max))
+            else:
+                keybind_dragging_scrollbar = False
+
         if game_state == "menu": 
             draw_menu_ui()
         elif game_state == "audio_hub":
@@ -16164,8 +17079,8 @@ while True:
             draw_select_plane_ui()
         elif game_state == "boss_challenge_select_plane":
             draw_select_plane_ui()
-        elif game_state == "arsenal": 
-            draw_arsenal_ui()
+        elif game_state == "talent_tree": 
+            draw_talent_tree_ui()
         elif game_state == "personalization":
             draw_personalization_ui()
         elif game_state == "background_settings":
@@ -16254,6 +17169,11 @@ while True:
             draw_daily_quests_ui()
         elif game_state == "settings":
             draw_settings_ui()
+        elif game_state == "keybind_settings":
+            # 先绘制设置界面作为背景
+            draw_settings_ui()
+            # 再绘制按键设置弹窗
+            draw_keybind_settings_ui()
         elif game_state == "leaderboard": 
             draw_leaderboard_ui()
         elif game_state == "customization":
@@ -16363,9 +17283,11 @@ while True:
                         # 自动射击
                         player.shoot()
                     else:
-                        # 手动射击（按住空格键）
+                        # 手动射击（使用按键管理器）
+                        from config import get_key_binding_manager
+                        kb = get_key_binding_manager()
                         keys = pygame.key.get_pressed()
-                        if keys[pygame.K_SPACE]:
+                        if kb.is_action_pressed(keys, "shoot"):
                             player.shoot()
                 
                 if global_time_freeze > 0:
@@ -17003,10 +17925,20 @@ while True:
                                 if item_manager:
                                     item_manager.try_spawn_drop(m.rect.centerx, m.rect.centery)
                                 
-                                # 核心掉落
-                                if random.random() < 0.25:
-                                    arsenal_save_data["currencies"]["cores"] += 1
-                                    FloatingText(m.rect.centerx, m.rect.top-20, "核心+1", CYAN)
+                                # ========== 【星轨天赋阵】核心掉落 ==========
+                                core_drop_chance = 0.25  # 基础25%
+                                if hasattr(player, 'talent_drop_rate') and player.talent_drop_rate > 0:
+                                    core_drop_chance *= (1 + player.talent_drop_rate)
+                                if m.is_elite:
+                                    core_drop_chance = min(0.8, core_drop_chance * 2)  # 精英敌人双倍几率
+                                if random.random() < core_drop_chance:
+                                    try:
+                                        from talent_system import talent_manager
+                                        core_amount = 2 if m.is_elite else 1
+                                        talent_manager.add_cores(core_amount)
+                                        FloatingText(m.rect.centerx, m.rect.top - 50, f"核心+{core_amount}", (120, 180, 220))
+                                    except:
+                                        pass
                                 
                                 # 成就系统
                                 if player and hasattr(player, 'achievement_manager'):
@@ -17571,6 +18503,19 @@ while True:
                                         if hp_ratio <= 0.1:
                                             dmg = m.hp + 1000  # 确保击杀
                             
+                            # ========== 【星轨天赋阵】伤害效果 ==========
+                            # 天赋处决伤害（敌人<30%血时）
+                            if hasattr(player, 'talent_execute_damage') and player.talent_execute_damage > 0:
+                                hp_ratio = m.hp / m.max_hp if hasattr(m, 'max_hp') and m.max_hp > 0 else 1.0
+                                if hp_ratio < 0.3:
+                                    dmg *= (1 + player.talent_execute_damage)
+                            
+                            # 天赋双倍伤害几率
+                            if hasattr(player, 'talent_double_damage_chance') and player.talent_double_damage_chance > 0:
+                                if random.random() < player.talent_double_damage_chance:
+                                    dmg *= 2
+                                    FloatingText(m.rect.centerx, m.rect.top - 35, "虚空!", (150, 50, 200))
+                            
                             # 应用暴击
                             is_crit = random.random() < crit_chance
                             if is_crit:
@@ -17724,6 +18669,42 @@ while True:
                             DamageNumber(m.rect.centerx, m.rect.top, dmg, dmg > player.damage)
                             if random.random() < 0.7:  # 70%概率显示粒子
                                 Particle(b.rect.center, b.color)
+                            
+                            # ========== 【星轨天赋阵】命中触发效果 ==========
+                            # 天赋燃烧效果
+                            if hasattr(player, 'talent_burn_duration') and player.talent_burn_duration > 0:
+                                if not hasattr(m, 'talent_burn_timer'):
+                                    m.talent_burn_timer = 0
+                                    m.talent_burn_damage = 0
+                                m.talent_burn_timer = int(player.talent_burn_duration * 60)  # 转换为帧数
+                                m.talent_burn_damage = player.damage * 0.1  # 每秒10%基础伤害
+                                m.talent_burn_tick = 0
+                            
+                            # 天赋冻结效果
+                            if hasattr(player, 'talent_freeze_chance') and player.talent_freeze_chance > 0:
+                                if random.random() < player.talent_freeze_chance:
+                                    if not hasattr(m, 'frozen_timer'):
+                                        m.frozen_timer = 0
+                                    m.frozen_timer = max(m.frozen_timer, 60)  # 冻结1秒
+                                    FloatingText(m.rect.centerx, m.rect.top - 25, "冻结!", (100, 200, 255))
+                            
+                            # 天赋连锁闪电效果
+                            if hasattr(player, 'talent_chain_chance') and player.talent_chain_chance > 0:
+                                if random.random() < player.talent_chain_chance:
+                                    # 对周围敌人造成闪电伤害
+                                    chain_range = 150
+                                    chain_dmg = dmg * 0.5
+                                    for enemy in list(mobs):
+                                        if enemy != m and enemy.hp > 0:
+                                            dist = math.hypot(enemy.rect.centerx - m.rect.centerx,
+                                                            enemy.rect.centery - m.rect.centery)
+                                            if dist < chain_range:
+                                                enemy.hp -= chain_dmg
+                                                pygame.draw.line(screen, (100, 150, 255), 
+                                                               m.rect.center, enemy.rect.center, 2)
+                                                FloatingText(enemy.rect.centerx, enemy.rect.top - 10, 
+                                                           f"-{int(chain_dmg)}", (100, 150, 255))
+                                                break  # 只连锁一个敌人
                             
                             # 3. 暴击特效（减少频率）
                             if dmg > player.damage and random.random() < 0.4:  # 40%概率显示暰击特效
@@ -18012,6 +18993,21 @@ while True:
                                 if item_manager:
                                     item_manager.try_spawn_drop(m.rect.centerx, m.rect.centery)
                                 
+                                # ========== 【星轨天赋阵】核心掉落 ==========
+                                core_drop_chance = 0.25  # 基础25%
+                                if hasattr(player, 'talent_drop_rate') and player.talent_drop_rate > 0:
+                                    core_drop_chance *= (1 + player.talent_drop_rate)
+                                if m.is_elite:
+                                    core_drop_chance = min(0.8, core_drop_chance * 2)  # 精英敌人双倍几率
+                                if random.random() < core_drop_chance:
+                                    try:
+                                        from talent_system import talent_manager
+                                        core_amount = 2 if m.is_elite else 1
+                                        talent_manager.add_cores(core_amount)
+                                        FloatingText(m.rect.centerx, m.rect.top - 50, f"核心+{core_amount}", (120, 180, 220))
+                                    except:
+                                        pass
+                                
                                 # 触发击杀效果 (吸血、能量虹吸、裂变反应等)
                                 corpse_effect = player.on_kill_enemy(m)
                                 if corpse_effect:
@@ -18028,7 +19024,8 @@ while True:
                                         player.gain_necro_soul(m.rect.center)
                                 
                                 if random.random() < 0.25:
-                                    arsenal_save_data["currencies"]["cores"] += 1
+                                    from talent_system import talent_manager
+                                    talent_manager.add_cores(1)
                                     FloatingText(m.rect.centerx, m.rect.top-20, "核心+1", CYAN)
                                 m.kill()
                     
@@ -18670,6 +19667,25 @@ while True:
                                 # ========== Boss击杀奖励：物品掉落 ==========
                                 if item_manager:
                                     item_manager.spawn_boss_drops(boss_death_x, boss_death_y)
+                                
+                                # ========== 【星轨天赋阵】Boss击杀奖励：核心掉落 ==========
+                                try:
+                                    from talent_system import talent_manager
+                                    # 基础掉落：10-30核心
+                                    core_reward = random.randint(10, 30)
+                                    # 高难度奖励加成（如果有难度系统）
+                                    if hasattr(player, 'talent_drop_rate') and player.talent_drop_rate > 0:
+                                        core_reward = int(core_reward * (1 + player.talent_drop_rate))
+                                    talent_manager.add_cores(core_reward)
+                                    FloatingText(boss_death_x, boss_death_top - 70, f"核心+{core_reward}", (120, 180, 220))
+                                    
+                                    # 小概率掉落芯片（10%）
+                                    if random.random() < 0.10:
+                                        chip_reward = 1
+                                        talent_manager.add_chips(chip_reward)
+                                        FloatingText(boss_death_x + 50, boss_death_top - 70, f"芯片+{chip_reward}", (200, 160, 80))
+                                except Exception as e:
+                                    log_error(f"核心掉落失败: {e}")
                                 
                                 # ========== Boss击杀奖励：大量经验 ==========
                                 boss_xp_reward = 200 + player.level * 50  # 基础200 + 等级*50

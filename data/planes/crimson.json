@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "crimson",
+  "name": "绯红之刃",
+  "name_en": "Crimson",
+  "description": "近战爆发型，高射速短程光刃",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 250,
+    "speed": 4.5,
+    "damage": 20,
+    "fire_rate": 160,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/crimson/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "crimson",
+    "colors": {
+      "primary": "#DC143C",
+      "secondary": "#FFD700",
+      "glow": "#DC143C",
+      "trail": "#DC143C"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "none",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "鲜血新月",
+      "name": "鲜血新月",
+      "color": "#DC143C",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "blade",
+    "sprite_path": "sprites/bullets/blade.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

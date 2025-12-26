@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "stalker",
+  "name": "星界潜行者",
+  "name_en": "Stalker",
+  "description": "异星科技，自动追踪星镖",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 250,
+    "speed": 4.2,
+    "damage": 16,
+    "fire_rate": 175,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/stalker/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "stalker",
+    "colors": {
+      "primary": "#4B0082",
+      "secondary": "#FFD700",
+      "glow": "#4B0082",
+      "trail": "#4B0082"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "none",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "群星坠落",
+      "name": "群星坠落",
+      "color": "#4B0082",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "star",
+    "sprite_path": "sprites/bullets/star.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

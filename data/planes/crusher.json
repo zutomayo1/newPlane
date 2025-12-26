@@ -1,0 +1,73 @@
+{
+  "$schema": "./_schema.json",
+  "id": "crusher",
+  "name": "晶体粉碎者·CRUSHER",
+  "name_en": "Crusher",
+  "description": "重型太空采矿舰，晶体钻头激光切割器。荒芜光束穿透攻击+相位冲撞破盾+牵引光束拉敌+共振破碎全屏震爆+核心过载终极",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 300,
+    "speed": 3.8,
+    "damage": 30,
+    "fire_rate": 120,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/crusher/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "crusher",
+    "colors": {
+      "primary": "#8A2BE2",
+      "secondary": "#E6E6FA",
+      "glow": "#8A2BE2",
+      "trail": "#191919"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "collision_resist",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "相位冲撞",
+      "name": "相位冲撞",
+      "color": "#E6E6FA",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "desolation_beam",
+    "sprite_path": "sprites/bullets/desolation_beam.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "相位冲撞",
+      "desc": "向前相位冲刺，过程无敌并击穿敌人护盾"
+    },
+    "skill2": {
+      "name": "牵引光束",
+      "desc": "扇形牵引波将敌人拉向玩家并减速"
+    },
+    "skill3": {
+      "name": "共振破碎",
+      "desc": "全屏晶体震爆，伤害所有敌人并清除敌弹"
+    },
+    "skill4": {
+      "name": "次元坍缩",
+      "desc": "巨型晶体钻头从天而降，撞击全屏产生毁灭性爆炸，护甲层数越高伤害越大"
+    }
+  }
+}

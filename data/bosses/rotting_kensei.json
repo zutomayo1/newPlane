@@ -1,0 +1,45 @@
+{
+  "$schema": "./_boss_schema.json",
+  "id": "rotting_kensei",
+  "name": "腐朽剑圣",
+  "description": "残破战国盔甲，缝隙中钻出红色寄生触手。40米野太刀生锈却泛妖异紫光，攻击留下水墨残影。",
+  "stats": {
+    "armor": 65,
+    "damage": 130,
+    "mobility": 110
+  },
+  "visuals": {
+    "colors": {
+      "primary": "#501E50",
+      "core": "#501E50",
+      "aura": "#C864FF"
+    },
+    "phase_effect": "ink_trail"
+  },
+  "phases": [
+    {
+      "threshold": 0.8,
+      "effect": {
+        "type": "blade_storm",
+        "count": 4
+      },
+      "fire_rate_mult": 0.8
+    },
+    {
+      "threshold": 0.5,
+      "effect": {
+        "type": "iai_slash",
+        "count": 2
+      },
+      "fire_rate_mult": 0.6
+    },
+    {
+      "threshold": 0.25,
+      "effect": {
+        "type": "death_blade",
+        "count": 5
+      },
+      "fire_rate_mult": 0.4
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "helios",
+  "name": "星渊火陨·赫利俄斯",
+  "name_en": "Helios",
+  "description": "超远程AOE轰炸，抛物线火雨弹落地分裂燃烧区，流星群覆盖全场",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 260,
+    "speed": 3.8,
+    "damage": 28,
+    "fire_rate": 900,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/helios/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "helios",
+    "colors": {
+      "primary": "#FF6414",
+      "secondary": "#1E1428",
+      "glow": "#FF6414",
+      "trail": "#FF9632"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "meteor_shower",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "流星群",
+      "name": "流星群",
+      "color": "#FF5000",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "meteor",
+    "sprite_path": "sprites/bullets/meteor.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

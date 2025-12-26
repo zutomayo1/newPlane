@@ -1,0 +1,69 @@
+{
+  "$schema": "./_schema.json",
+  "id": "sepulcher",
+  "name": "至尊灾厄·终末王座",
+  "name_en": "Sepulcher",
+  "description": "哥特式黑曜石祭坛，硫磺火矢折射弹幕+双子魔君僚机+骷髅尾巴浮游炮，擦弹积累暴怒值提升火力",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 220,
+    "speed": 4.2,
+    "damage": 45,
+    "fire_rate": 80,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/sepulcher/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "sepulcher",
+    "colors": {
+      "primary": "#DC143C",
+      "secondary": "#FF4500",
+      "glow": "#DC143C",
+      "trail": "#B41E1E"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "calamity_aura",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "狱火方阵",
+      "name": "狱火方阵",
+      "color": "#DC143C",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "brimstone_bolt",
+    "sprite_path": "sprites/bullets/brimstone_bolt.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "狱火方阵",
+      "desc": "火墙缩圈困敌，骷髅尾巴脱离反弹绞杀"
+    },
+    "skill2": {
+      "name": "天降灾厄",
+      "desc": "血红天空降下硫磺火球暴雨，全屏轰炸"
+    },
+    "skill3": {
+      "name": "湮灭之眼",
+      "desc": "灾厄之眼暴睁，1/3屏宽毁灭光束持续5秒"
+    }
+  }
+}

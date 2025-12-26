@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "机体配置Schema",
+  "description": "定义机体配置文件的结构",
+  "type": "object",
+  
+  "required": ["id", "name", "stats", "visuals", "bullet"],
+  
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "机体唯一标识符"
+    },
+    "name": {
+      "type": "string",
+      "description": "机体中文名称"
+    },
+    "name_en": {
+      "type": "string",
+      "description": "机体英文名称"
+    },
+    "description": {
+      "type": "string",
+      "description": "机体描述"
+    },
+    "tier": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 6,
+      "description": "机体等级 (1-6)"
+    },
+    "rarity": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 6,
+      "description": "稀有度 (1-6星)"
+    },
+    
+    "stats": {
+      "type": "object",
+      "required": ["hp", "speed", "damage", "fire_rate"],
+      "properties": {
+        "hp": { "type": "number", "minimum": 1 },
+        "speed": { "type": "number", "minimum": 0 },
+        "damage": { "type": "number", "minimum": 0 },
+        "fire_rate": { "type": "number", "description": "射击间隔(ms)" },
+        "shield": { "type": "number", "default": 0 },
+        "crit_rate": { "type": "number", "default": 0.05 },
+        "crit_damage": { "type": "number", "default": 1.5 }
+      }
+    },
+    
+    "visuals": {
+      "type": "object",
+      "properties": {
+        "sprite_path": { "type": "string" },
+        "sprite_size": { 
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "colors": {
+          "type": "object",
+          "properties": {
+            "primary": { "type": "string" },
+            "secondary": { "type": "string" },
+            "glow": { "type": "string" },
+            "trail": { "type": "string" }
+          }
+        },
+        "animation": {
+          "type": "object",
+          "properties": {
+            "idle_frames": { "type": "integer" },
+            "thrust_frames": { "type": "integer" },
+            "frame_duration": { "type": "integer" }
+          }
+        }
+      }
+    },
+    
+    "abilities": {
+      "type": "object",
+      "properties": {
+        "passive": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "description": { "type": "string" }
+          }
+        },
+        "ultimate": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "damage_multiplier": { "type": "number" },
+            "cooldown": { "type": "number" },
+            "effect_sprite": { "type": "string" }
+          }
+        }
+      }
+    },
+    
+    "bullet": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "sprite_path": { "type": "string" },
+        "sound": { "type": "string" }
+      }
+    },
+    
+    "unlock": {
+      "type": "object",
+      "properties": {
+        "type": { 
+          "type": "string",
+          "enum": ["default", "achievement", "shop", "event", "hidden"]
+        },
+        "condition": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

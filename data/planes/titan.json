@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "titan",
+  "name": "钢铁泰坦",
+  "name_en": "Titan",
+  "description": "重装甲高火力，全屏核爆",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 290,
+    "speed": 3.2,
+    "damage": 26,
+    "fire_rate": 245,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/titan/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "titan",
+    "colors": {
+      "primary": "#FFD700",
+      "secondary": "#FFA500",
+      "glow": "#FFD700",
+      "trail": "#FFA500"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "armor_plating",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "战术核弹",
+      "name": "战术核弹",
+      "color": "#FFA500",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "rocket",
+    "sprite_path": "sprites/bullets/rocket.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

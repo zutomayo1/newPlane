@@ -1,0 +1,55 @@
+{
+  "$schema": "./_schema.json",
+  "id": "asura",
+  "name": "修罗·斩龙者",
+  "name_en": "Asura",
+  "description": "六臂战神的化身，剑气纵横斩尽苍穹，三道剑气轮斩敌群",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 255,
+    "speed": 5.0,
+    "damage": 28,
+    "fire_rate": 150,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/asura/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "asura",
+    "colors": {
+      "primary": "#B43232",
+      "secondary": "#FF643C",
+      "glow": "#B43232",
+      "trail": "#C85050"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "asura_rage",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "修罗斩",
+      "name": "修罗斩",
+      "color": "#FF5050",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "sword_slash",
+    "sprite_path": "sprites/bullets/sword_slash.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  }
+}

@@ -1,0 +1,3995 @@
+{
+  "version": "1.0",
+  "sprites": {
+    "planes/striker/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "default"
+    },
+    "planes/striker/mk2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "mk2"
+    },
+    "planes/striker/stealth.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "stealth"
+    },
+    "planes/striker/overdrive.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "overdrive"
+    },
+    "planes/striker/quantum.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "quantum"
+    },
+    "planes/striker/holy.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "holy"
+    },
+    "planes/striker/dragon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "dragon"
+    },
+    "planes/striker/infinity.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "infinity"
+    },
+    "planes/striker/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "ex"
+    },
+    "planes/striker/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "ex2"
+    },
+    "planes/striker/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "ex3"
+    },
+    "planes/striker/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "ex4"
+    },
+    "planes/striker/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "striker",
+      "skin_id": "ex5"
+    },
+    "planes/phantom/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "default"
+    },
+    "planes/phantom/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "void"
+    },
+    "planes/phantom/ghost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "ghost"
+    },
+    "planes/phantom/mirror.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "mirror"
+    },
+    "planes/phantom/nightmare.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "nightmare"
+    },
+    "planes/phantom/aurora.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "aurora"
+    },
+    "planes/phantom/time.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "time"
+    },
+    "planes/phantom/matrix.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "matrix"
+    },
+    "planes/phantom/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "ex"
+    },
+    "planes/phantom/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "ex2"
+    },
+    "planes/phantom/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "ex3"
+    },
+    "planes/phantom/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "ex4"
+    },
+    "planes/phantom/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "phantom",
+      "skin_id": "ex5"
+    },
+    "planes/titan/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "default"
+    },
+    "planes/titan/fortress.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "fortress"
+    },
+    "planes/titan/nuclear.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "nuclear"
+    },
+    "planes/titan/volcano.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "volcano"
+    },
+    "planes/titan/mech.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "mech"
+    },
+    "planes/titan/crystal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "crystal"
+    },
+    "planes/titan/demon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "demon"
+    },
+    "planes/titan/orbital.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "orbital"
+    },
+    "planes/titan/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "ex"
+    },
+    "planes/titan/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "ex2"
+    },
+    "planes/titan/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "ex3"
+    },
+    "planes/titan/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "ex4"
+    },
+    "planes/titan/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "titan",
+      "skin_id": "ex5"
+    },
+    "planes/thunderbird/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "default"
+    },
+    "planes/thunderbird/storm.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "storm"
+    },
+    "planes/thunderbird/tesla.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "tesla"
+    },
+    "planes/thunderbird/plasma.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "plasma"
+    },
+    "planes/thunderbird/aurora.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "aurora"
+    },
+    "planes/thunderbird/valkyrie.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "valkyrie"
+    },
+    "planes/thunderbird/phoenix.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "phoenix"
+    },
+    "planes/thunderbird/cosmic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "cosmic"
+    },
+    "planes/thunderbird/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "ex"
+    },
+    "planes/thunderbird/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "ex2"
+    },
+    "planes/thunderbird/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "ex3"
+    },
+    "planes/thunderbird/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "ex4"
+    },
+    "planes/thunderbird/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thunderbird",
+      "skin_id": "ex5"
+    },
+    "planes/viper/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "default"
+    },
+    "planes/viper/cobra.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "cobra"
+    },
+    "planes/viper/acid.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "acid"
+    },
+    "planes/viper/bio.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "bio"
+    },
+    "planes/viper/plasma.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "plasma"
+    },
+    "planes/viper/hydra.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "hydra"
+    },
+    "planes/viper/neon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "neon"
+    },
+    "planes/viper/serpent_god.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "serpent_god"
+    },
+    "planes/viper/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "ex"
+    },
+    "planes/viper/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "ex2"
+    },
+    "planes/viper/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "ex3"
+    },
+    "planes/viper/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "ex4"
+    },
+    "planes/viper/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viper",
+      "skin_id": "ex5"
+    },
+    "planes/specter/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "default"
+    },
+    "planes/specter/reaper.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "reaper"
+    },
+    "planes/specter/assassin.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "assassin"
+    },
+    "planes/specter/wraith.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "wraith"
+    },
+    "planes/specter/sniper.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "sniper"
+    },
+    "planes/specter/poltergeist.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "poltergeist"
+    },
+    "planes/specter/angel.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "angel"
+    },
+    "planes/specter/void_hunter.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "void_hunter"
+    },
+    "planes/specter/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "ex"
+    },
+    "planes/specter/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "ex2"
+    },
+    "planes/specter/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "ex3"
+    },
+    "planes/specter/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "ex4"
+    },
+    "planes/specter/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "specter",
+      "skin_id": "ex5"
+    },
+    "planes/aurora/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "default"
+    },
+    "planes/aurora/goddess.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "goddess"
+    },
+    "planes/aurora/nebula.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "nebula"
+    },
+    "planes/aurora/ice_queen.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "ice_queen"
+    },
+    "planes/aurora/rainbow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "rainbow"
+    },
+    "planes/aurora/prism.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "prism"
+    },
+    "planes/aurora/sakura.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "sakura"
+    },
+    "planes/aurora/celestial.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "celestial"
+    },
+    "planes/aurora/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "ex"
+    },
+    "planes/aurora/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "ex2"
+    },
+    "planes/aurora/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "ex3"
+    },
+    "planes/aurora/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "ex4"
+    },
+    "planes/aurora/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "aurora",
+      "skin_id": "ex5"
+    },
+    "planes/crimson/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "default"
+    },
+    "planes/crimson/blood.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "blood"
+    },
+    "planes/crimson/samurai.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "samurai"
+    },
+    "planes/crimson/demon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "demon"
+    },
+    "planes/crimson/inferno.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "inferno"
+    },
+    "planes/crimson/rose.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "rose"
+    },
+    "planes/crimson/dragon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "dragon"
+    },
+    "planes/crimson/vampire.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "vampire"
+    },
+    "planes/crimson/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "ex"
+    },
+    "planes/crimson/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "ex2"
+    },
+    "planes/crimson/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "ex3"
+    },
+    "planes/crimson/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "ex4"
+    },
+    "planes/crimson/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crimson",
+      "skin_id": "ex5"
+    },
+    "planes/stalker/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "default"
+    },
+    "planes/stalker/predator.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "predator"
+    },
+    "planes/stalker/alien.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "alien"
+    },
+    "planes/stalker/chameleon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "chameleon"
+    },
+    "planes/stalker/insect.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "insect"
+    },
+    "planes/stalker/drone.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "drone"
+    },
+    "planes/stalker/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "void"
+    },
+    "planes/stalker/xenomorph.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "xenomorph"
+    },
+    "planes/stalker/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "ex"
+    },
+    "planes/stalker/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "ex2"
+    },
+    "planes/stalker/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "ex3"
+    },
+    "planes/stalker/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "ex4"
+    },
+    "planes/stalker/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "stalker",
+      "skin_id": "ex5"
+    },
+    "planes/gaia/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "default"
+    },
+    "planes/gaia/forest.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "forest"
+    },
+    "planes/gaia/crystal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "crystal"
+    },
+    "planes/gaia/rock.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "rock"
+    },
+    "planes/gaia/elemental.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "elemental"
+    },
+    "planes/gaia/overgrowth.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "overgrowth"
+    },
+    "planes/gaia/treant.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "treant"
+    },
+    "planes/gaia/titan.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "titan"
+    },
+    "planes/gaia/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "ex"
+    },
+    "planes/gaia/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "ex2"
+    },
+    "planes/gaia/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "ex3"
+    },
+    "planes/gaia/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "ex4"
+    },
+    "planes/gaia/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gaia",
+      "skin_id": "ex5"
+    },
+    "planes/weaver/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "default"
+    },
+    "planes/weaver/spider.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "spider"
+    },
+    "planes/weaver/web.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "web"
+    },
+    "planes/weaver/silk.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "silk"
+    },
+    "planes/weaver/network.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "network"
+    },
+    "planes/weaver/matrix.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "matrix"
+    },
+    "planes/weaver/destiny.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "destiny"
+    },
+    "planes/weaver/cosmic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "cosmic"
+    },
+    "planes/weaver/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "ex"
+    },
+    "planes/weaver/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "ex2"
+    },
+    "planes/weaver/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "ex3"
+    },
+    "planes/weaver/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "ex4"
+    },
+    "planes/weaver/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "weaver",
+      "skin_id": "ex5"
+    },
+    "planes/solar/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "default"
+    },
+    "planes/solar/sun_god.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "sun_god"
+    },
+    "planes/solar/phoenix.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "phoenix"
+    },
+    "planes/solar/fusion.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "fusion"
+    },
+    "planes/solar/flare.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "flare"
+    },
+    "planes/solar/corona.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "corona"
+    },
+    "planes/solar/supernova.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "supernova"
+    },
+    "planes/solar/eclipse.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "eclipse"
+    },
+    "planes/solar/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "ex"
+    },
+    "planes/solar/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "ex2"
+    },
+    "planes/solar/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "ex3"
+    },
+    "planes/solar/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "ex4"
+    },
+    "planes/solar/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "solar",
+      "skin_id": "ex5"
+    },
+    "planes/arbiter/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "default"
+    },
+    "planes/arbiter/quantum.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "quantum"
+    },
+    "planes/arbiter/fractal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "fractal"
+    },
+    "planes/arbiter/law.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "law"
+    },
+    "planes/arbiter/balance.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "balance"
+    },
+    "planes/arbiter/judge.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "judge"
+    },
+    "planes/arbiter/matrix.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "matrix"
+    },
+    "planes/arbiter/truth.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "truth"
+    },
+    "planes/arbiter/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "ex"
+    },
+    "planes/arbiter/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "ex2"
+    },
+    "planes/arbiter/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "ex3"
+    },
+    "planes/arbiter/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "ex4"
+    },
+    "planes/arbiter/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "arbiter",
+      "skin_id": "ex5"
+    },
+    "planes/eclipse/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "default"
+    },
+    "planes/eclipse/moon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "moon"
+    },
+    "planes/eclipse/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "void"
+    },
+    "planes/eclipse/shadow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "shadow"
+    },
+    "planes/eclipse/abyss.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "abyss"
+    },
+    "planes/eclipse/night.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "night"
+    },
+    "planes/eclipse/dual.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "dual"
+    },
+    "planes/eclipse/cosmos.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "cosmos"
+    },
+    "planes/eclipse/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "ex"
+    },
+    "planes/eclipse/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "ex2"
+    },
+    "planes/eclipse/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "ex3"
+    },
+    "planes/eclipse/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "ex4"
+    },
+    "planes/eclipse/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "eclipse",
+      "skin_id": "ex5"
+    },
+    "planes/prism/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "default"
+    },
+    "planes/prism/diamond.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "diamond"
+    },
+    "planes/prism/refraction.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "refraction"
+    },
+    "planes/prism/laser.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "laser"
+    },
+    "planes/prism/glass.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "glass"
+    },
+    "planes/prism/crystal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "crystal"
+    },
+    "planes/prism/rainbow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "rainbow"
+    },
+    "planes/prism/aurora.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "aurora"
+    },
+    "planes/prism/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "ex"
+    },
+    "planes/prism/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "ex2"
+    },
+    "planes/prism/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "ex3"
+    },
+    "planes/prism/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "ex4"
+    },
+    "planes/prism/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "prism",
+      "skin_id": "ex5"
+    },
+    "planes/necro/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "default"
+    },
+    "planes/necro/lich.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "lich"
+    },
+    "planes/necro/bone.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "bone"
+    },
+    "planes/necro/plague.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "plague"
+    },
+    "planes/necro/soul.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "soul"
+    },
+    "planes/necro/reaper.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "reaper"
+    },
+    "planes/necro/vampire.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "vampire"
+    },
+    "planes/necro/undead.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "undead"
+    },
+    "planes/necro/ex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "ex"
+    },
+    "planes/necro/ex2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "ex2"
+    },
+    "planes/necro/ex3.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "ex3"
+    },
+    "planes/necro/ex4.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "ex4"
+    },
+    "planes/necro/ex5.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "necro",
+      "skin_id": "ex5"
+    },
+    "planes/wormhole/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "default"
+    },
+    "planes/wormhole/monsoon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "monsoon"
+    },
+    "planes/wormhole/mirage.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "mirage"
+    },
+    "planes/wormhole/bonsai.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "bonsai"
+    },
+    "planes/wormhole/lantern.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "lantern"
+    },
+    "planes/wormhole/geode.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "geode"
+    },
+    "planes/wormhole/totem.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "totem"
+    },
+    "planes/wormhole/ruins.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "ruins"
+    },
+    "planes/wormhole/teaceremony.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "teaceremony"
+    },
+    "planes/wormhole/windchime.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "windchime"
+    },
+    "planes/wormhole/silk_road.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "silk_road"
+    },
+    "planes/wormhole/supercell.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "supercell"
+    },
+    "planes/wormhole/paperlamp.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "wormhole",
+      "skin_id": "paperlamp"
+    },
+    "planes/chronos/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "default"
+    },
+    "planes/chronos/memoir.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "memoir"
+    },
+    "planes/chronos/biological.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "biological"
+    },
+    "planes/chronos/tidal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "tidal"
+    },
+    "planes/chronos/musical.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "musical"
+    },
+    "planes/chronos/geological.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "geological"
+    },
+    "planes/chronos/culinary.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "culinary"
+    },
+    "planes/chronos/athletic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "athletic"
+    },
+    "planes/chronos/gardening.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "gardening"
+    },
+    "planes/chronos/theatrical.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "theatrical"
+    },
+    "planes/chronos/chemical.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "chemical"
+    },
+    "planes/chronos/meteorological.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "meteorological"
+    },
+    "planes/chronos/archaeological.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "chronos",
+      "skin_id": "archaeological"
+    },
+    "planes/mirage/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "default"
+    },
+    "planes/mirage/fractal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "fractal"
+    },
+    "planes/mirage/butterfly.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "butterfly"
+    },
+    "planes/mirage/kaleidoscope.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "kaleidoscope"
+    },
+    "planes/mirage/crystal_palace.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "crystal_palace"
+    },
+    "planes/mirage/funhouse.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "funhouse"
+    },
+    "planes/mirage/doppelganger.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "doppelganger"
+    },
+    "planes/mirage/infinity_room.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "infinity_room"
+    },
+    "planes/mirage/alice.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "alice"
+    },
+    "planes/mirage/narcissus.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "narcissus"
+    },
+    "planes/mirage/hologram.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "hologram"
+    },
+    "planes/mirage/phantom_opera.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "phantom_opera"
+    },
+    "planes/mirage/ouroboros.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "mirage",
+      "skin_id": "ouroboros"
+    },
+    "planes/gambit/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "default"
+    },
+    "planes/gambit/vegas.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "vegas"
+    },
+    "planes/gambit/tarot.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "tarot"
+    },
+    "planes/gambit/mahjong.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "mahjong"
+    },
+    "planes/gambit/lottery.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "lottery"
+    },
+    "planes/gambit/blackjack.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "blackjack"
+    },
+    "planes/gambit/russian_roulette.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "russian_roulette"
+    },
+    "planes/gambit/horseshoe.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "horseshoe"
+    },
+    "planes/gambit/casino_royale.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "casino_royale"
+    },
+    "planes/gambit/pachinko.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "pachinko"
+    },
+    "planes/gambit/fortune_cookie.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "fortune_cookie"
+    },
+    "planes/gambit/probability.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "probability"
+    },
+    "planes/gambit/joker.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "gambit",
+      "skin_id": "joker"
+    },
+    "planes/puppeteer/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "default"
+    },
+    "planes/puppeteer/gothic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "gothic"
+    },
+    "planes/puppeteer/music_box.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "music_box"
+    },
+    "planes/puppeteer/voodoo.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "voodoo"
+    },
+    "planes/puppeteer/circus.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "circus"
+    },
+    "planes/puppeteer/kabuki.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "kabuki"
+    },
+    "planes/puppeteer/clockwork.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "clockwork"
+    },
+    "planes/puppeteer/shadow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "shadow"
+    },
+    "planes/puppeteer/marionette.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "marionette"
+    },
+    "planes/puppeteer/porcelain.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "porcelain"
+    },
+    "planes/puppeteer/nightmare.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "nightmare"
+    },
+    "planes/puppeteer/eden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "eden"
+    },
+    "planes/puppeteer/fate.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "puppeteer",
+      "skin_id": "fate"
+    },
+    "planes/pandemic/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "default"
+    },
+    "planes/pandemic/plague.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "plague"
+    },
+    "planes/pandemic/biohazard.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "biohazard"
+    },
+    "planes/pandemic/fungal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "fungal"
+    },
+    "planes/pandemic/neon_virus.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "neon_virus"
+    },
+    "planes/pandemic/zombie.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "zombie"
+    },
+    "planes/pandemic/parasite.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "parasite"
+    },
+    "planes/pandemic/radiation.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "radiation"
+    },
+    "planes/pandemic/coral.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "coral"
+    },
+    "planes/pandemic/prion.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "prion"
+    },
+    "planes/pandemic/alien.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "alien"
+    },
+    "planes/pandemic/chimera.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "chimera"
+    },
+    "planes/pandemic/omega.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "pandemic",
+      "skin_id": "omega"
+    },
+    "planes/omega/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "default"
+    },
+    "planes/omega/divine.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "divine"
+    },
+    "planes/omega/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "void"
+    },
+    "planes/omega/aurora.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "aurora"
+    },
+    "planes/omega/celestial.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "celestial"
+    },
+    "planes/omega/infernal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "infernal"
+    },
+    "planes/omega/quantum.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "quantum"
+    },
+    "planes/omega/primal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "primal"
+    },
+    "planes/omega/clockwork.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "clockwork"
+    },
+    "planes/omega/dragon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "dragon"
+    },
+    "planes/omega/galactic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "galactic"
+    },
+    "planes/omega/runic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "runic"
+    },
+    "planes/omega/tempest.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "omega",
+      "skin_id": "tempest"
+    },
+    "planes/genesis/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "default"
+    },
+    "planes/genesis/cosmic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "cosmic"
+    },
+    "planes/genesis/solar.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "solar"
+    },
+    "planes/genesis/nebula.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "nebula"
+    },
+    "planes/genesis/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "void"
+    },
+    "planes/genesis/life.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "life"
+    },
+    "planes/genesis/crystal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "crystal"
+    },
+    "planes/genesis/chaos.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "chaos"
+    },
+    "planes/genesis/phoenix.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "phoenix"
+    },
+    "planes/genesis/ocean.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "ocean"
+    },
+    "planes/genesis/sakura.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "sakura"
+    },
+    "planes/genesis/mecha.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "mecha"
+    },
+    "planes/genesis/constellation.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "genesis",
+      "skin_id": "constellation"
+    },
+    "planes/truth/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "default"
+    },
+    "planes/truth/base.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "base"
+    },
+    "planes/truth/enlightened.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "enlightened"
+    },
+    "planes/truth/shadow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "shadow"
+    },
+    "planes/truth/balance.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "balance"
+    },
+    "planes/truth/cosmic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "cosmic"
+    },
+    "planes/truth/revelation.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "revelation"
+    },
+    "planes/truth/judgment.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "judgment"
+    },
+    "planes/truth/oracle.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "oracle"
+    },
+    "planes/truth/infinity.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "infinity"
+    },
+    "planes/truth/absolute.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "truth",
+      "skin_id": "absolute"
+    },
+    "planes/asura/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "default"
+    },
+    "planes/asura/base.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "base"
+    },
+    "planes/asura/rage.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "rage"
+    },
+    "planes/asura/shadow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "shadow"
+    },
+    "planes/asura/crimson.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "crimson"
+    },
+    "planes/asura/golden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "golden"
+    },
+    "planes/asura/demon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "demon"
+    },
+    "planes/asura/dragon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "dragon"
+    },
+    "planes/asura/celestial.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "celestial"
+    },
+    "planes/asura/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "void"
+    },
+    "planes/asura/divine.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "asura",
+      "skin_id": "divine"
+    },
+    "planes/dragoon/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "default"
+    },
+    "planes/dragoon/base.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "base"
+    },
+    "planes/dragoon/knight.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "knight"
+    },
+    "planes/dragoon/azure.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "azure"
+    },
+    "planes/dragoon/silver.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "silver"
+    },
+    "planes/dragoon/storm.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "storm"
+    },
+    "planes/dragoon/ancient.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "ancient"
+    },
+    "planes/dragoon/dragon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "dragon"
+    },
+    "planes/dragoon/royal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "royal"
+    },
+    "planes/dragoon/valkyrie.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "valkyrie"
+    },
+    "planes/dragoon/divine.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dragoon",
+      "skin_id": "divine"
+    },
+    "planes/origami/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "default"
+    },
+    "planes/origami/golden_crane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "golden_crane"
+    },
+    "planes/origami/shadow_crane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "shadow_crane"
+    },
+    "planes/origami/sakura_crane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "sakura_crane"
+    },
+    "planes/origami/cyber_crane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "cyber_crane"
+    },
+    "planes/origami/phoenix_crane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "phoenix_crane"
+    },
+    "planes/origami/ice_crane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "ice_crane"
+    },
+    "planes/origami/jade_crane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "jade_crane"
+    },
+    "planes/origami/master.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "master"
+    },
+    "planes/origami/celestial_crane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "celestial_crane"
+    },
+    "planes/origami/void_crane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "void_crane"
+    },
+    "planes/origami/festival_crane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "origami",
+      "skin_id": "festival_crane"
+    },
+    "planes/helios/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "default"
+    },
+    "planes/helios/solar_flare.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "solar_flare"
+    },
+    "planes/helios/magma_core.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "magma_core"
+    },
+    "planes/helios/sunset_god.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "sunset_god"
+    },
+    "planes/helios/white_dwarf.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "white_dwarf"
+    },
+    "planes/helios/red_giant.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "red_giant"
+    },
+    "planes/helios/supernova.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "supernova"
+    },
+    "planes/helios/obsidian_sun.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "obsidian_sun"
+    },
+    "planes/helios/plasma_storm.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "plasma_storm"
+    },
+    "planes/helios/ancient_flame.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "ancient_flame"
+    },
+    "planes/helios/celestial_forge.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "celestial_forge"
+    },
+    "planes/helios/frozen_sun.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "helios",
+      "skin_id": "frozen_sun"
+    },
+    "planes/frostflare/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "default"
+    },
+    "planes/frostflare/absolute_zero.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "absolute_zero"
+    },
+    "planes/frostflare/blizzard.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "blizzard"
+    },
+    "planes/frostflare/glacier.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "glacier"
+    },
+    "planes/frostflare/aurora_borealis.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "aurora_borealis"
+    },
+    "planes/frostflare/ice_queen.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "ice_queen"
+    },
+    "planes/frostflare/permafrost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "permafrost"
+    },
+    "planes/frostflare/diamond_dust.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "diamond_dust"
+    },
+    "planes/frostflare/polar_night.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "polar_night"
+    },
+    "planes/frostflare/frost_fire.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "frost_fire"
+    },
+    "planes/frostflare/crystal_palace.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "crystal_palace"
+    },
+    "planes/frostflare/winter_solstice.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "frostflare",
+      "skin_id": "winter_solstice"
+    },
+    "planes/nova/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "default"
+    },
+    "planes/nova/electromagnetic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "electromagnetic"
+    },
+    "planes/nova/quantum.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "quantum"
+    },
+    "planes/nova/railgun_mk2.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "railgun_mk2"
+    },
+    "planes/nova/stealth_ops.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "stealth_ops"
+    },
+    "planes/nova/hyperion.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "hyperion"
+    },
+    "planes/nova/void_hunter.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "void_hunter"
+    },
+    "planes/nova/thunder_god.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "thunder_god"
+    },
+    "planes/nova/ion_storm.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "ion_storm"
+    },
+    "planes/nova/mecha_prime.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "mecha_prime"
+    },
+    "planes/nova/orbital_station.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "orbital_station"
+    },
+    "planes/nova/magnetic_north.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "nova",
+      "skin_id": "magnetic_north"
+    },
+    "planes/spectrum/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "default"
+    },
+    "planes/spectrum/full_spectrum.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "full_spectrum"
+    },
+    "planes/spectrum/aurora.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "aurora"
+    },
+    "planes/spectrum/neon_city.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "neon_city"
+    },
+    "planes/spectrum/opal_dream.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "opal_dream"
+    },
+    "planes/spectrum/sunset_prism.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "sunset_prism"
+    },
+    "planes/spectrum/deep_ocean.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "deep_ocean"
+    },
+    "planes/spectrum/crystal_rainbow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "crystal_rainbow"
+    },
+    "planes/spectrum/infrared.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "infrared"
+    },
+    "planes/spectrum/ultraviolet.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "ultraviolet"
+    },
+    "planes/spectrum/monochrome.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "monochrome"
+    },
+    "planes/spectrum/chaos_spectrum.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "spectrum",
+      "skin_id": "chaos_spectrum"
+    },
+    "planes/darkstring/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "default"
+    },
+    "planes/darkstring/reaper.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "reaper"
+    },
+    "planes/darkstring/void_hunter.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "void_hunter"
+    },
+    "planes/darkstring/shadow_assassin.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "shadow_assassin"
+    },
+    "planes/darkstring/phantom_thread.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "phantom_thread"
+    },
+    "planes/darkstring/eclipse_dark.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "eclipse_dark"
+    },
+    "planes/darkstring/death_dealer.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "death_dealer"
+    },
+    "planes/darkstring/nightmare.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "nightmare"
+    },
+    "planes/darkstring/obsidian_arrow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "obsidian_arrow"
+    },
+    "planes/darkstring/fate_weaver.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "fate_weaver"
+    },
+    "planes/darkstring/silent_death.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "silent_death"
+    },
+    "planes/darkstring/blood_moon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "darkstring",
+      "skin_id": "blood_moon"
+    },
+    "planes/thornvine/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "default"
+    },
+    "planes/thornvine/bloodthorn.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "bloodthorn"
+    },
+    "planes/thornvine/fossil.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "fossil"
+    },
+    "planes/thornvine/venom.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "venom"
+    },
+    "planes/thornvine/winter.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "winter"
+    },
+    "planes/thornvine/infernal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "infernal"
+    },
+    "planes/thornvine/jade.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "jade"
+    },
+    "planes/thornvine/nightmare.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "nightmare"
+    },
+    "planes/thornvine/golden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "golden"
+    },
+    "planes/thornvine/spectral.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "spectral"
+    },
+    "planes/thornvine/coral.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "coral"
+    },
+    "planes/thornvine/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "thornvine",
+      "skin_id": "void"
+    },
+    "planes/starblade/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "default"
+    },
+    "planes/starblade/chrome.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "chrome"
+    },
+    "planes/starblade/nebula.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "nebula"
+    },
+    "planes/starblade/golden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "golden"
+    },
+    "planes/starblade/blood.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "blood"
+    },
+    "planes/starblade/crystal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "crystal"
+    },
+    "planes/starblade/shadow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "shadow"
+    },
+    "planes/starblade/electric.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "electric"
+    },
+    "planes/starblade/jade.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "jade"
+    },
+    "planes/starblade/phoenix.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "phoenix"
+    },
+    "planes/starblade/frost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "frost"
+    },
+    "planes/starblade/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "starblade",
+      "skin_id": "void"
+    },
+    "planes/acidswamp/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "default"
+    },
+    "planes/acidswamp/toxic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "toxic"
+    },
+    "planes/acidswamp/biohazard.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "biohazard"
+    },
+    "planes/acidswamp/slime.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "slime"
+    },
+    "planes/acidswamp/nuclear.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "nuclear"
+    },
+    "planes/acidswamp/plague.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "plague"
+    },
+    "planes/acidswamp/venom.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "venom"
+    },
+    "planes/acidswamp/swamp.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "swamp"
+    },
+    "planes/acidswamp/neon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "neon"
+    },
+    "planes/acidswamp/crystal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "crystal"
+    },
+    "planes/acidswamp/lava.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "lava"
+    },
+    "planes/acidswamp/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "acidswamp",
+      "skin_id": "void"
+    },
+    "planes/crystalfall/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "default"
+    },
+    "planes/crystalfall/amethyst.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "amethyst"
+    },
+    "planes/crystalfall/diamond.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "diamond"
+    },
+    "planes/crystalfall/emerald.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "emerald"
+    },
+    "planes/crystalfall/ruby.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "ruby"
+    },
+    "planes/crystalfall/sapphire.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "sapphire"
+    },
+    "planes/crystalfall/obsidian.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "obsidian"
+    },
+    "planes/crystalfall/opal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "opal"
+    },
+    "planes/crystalfall/quartz.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "quartz"
+    },
+    "planes/crystalfall/geode.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "geode"
+    },
+    "planes/crystalfall/frost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "frost"
+    },
+    "planes/crystalfall/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crystalfall",
+      "skin_id": "void"
+    },
+    "planes/sporeveil/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "default"
+    },
+    "planes/sporeveil/mushroom.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "mushroom"
+    },
+    "planes/sporeveil/toxic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "toxic"
+    },
+    "planes/sporeveil/biolume.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "biolume"
+    },
+    "planes/sporeveil/pollen.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "pollen"
+    },
+    "planes/sporeveil/mycelium.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "mycelium"
+    },
+    "planes/sporeveil/ancient.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "ancient"
+    },
+    "planes/sporeveil/frost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "frost"
+    },
+    "planes/sporeveil/ember.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "ember"
+    },
+    "planes/sporeveil/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "void"
+    },
+    "planes/sporeveil/crystal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "crystal"
+    },
+    "planes/sporeveil/rainbow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sporeveil",
+      "skin_id": "rainbow"
+    },
+    "planes/cthulhu/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "default"
+    },
+    "planes/cthulhu/abyss.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "abyss"
+    },
+    "planes/cthulhu/bloodmoon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "bloodmoon"
+    },
+    "planes/cthulhu/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "void"
+    },
+    "planes/cthulhu/starfall.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "starfall"
+    },
+    "planes/cthulhu/cosmos.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "cosmos"
+    },
+    "planes/cthulhu/nightmare.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "nightmare"
+    },
+    "planes/cthulhu/aurora.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "aurora"
+    },
+    "planes/cthulhu/eldritch.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "eldritch"
+    },
+    "planes/cthulhu/eclipse.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "eclipse"
+    },
+    "planes/cthulhu/dreamland.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "dreamland"
+    },
+    "planes/cthulhu/primordial.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "cthulhu",
+      "skin_id": "primordial"
+    },
+    "planes/turu/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "default"
+    },
+    "planes/turu/magma.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "magma"
+    },
+    "planes/turu/obsidian.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "obsidian"
+    },
+    "planes/turu/crystal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "crystal"
+    },
+    "planes/turu/jade.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "jade"
+    },
+    "planes/turu/meteor.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "meteor"
+    },
+    "planes/turu/sandstone.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "sandstone"
+    },
+    "planes/turu/ice.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "ice"
+    },
+    "planes/turu/volcanic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "volcanic"
+    },
+    "planes/turu/diamond.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "diamond"
+    },
+    "planes/turu/rusty.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "rusty"
+    },
+    "planes/turu/golden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "turu",
+      "skin_id": "golden"
+    },
+    "planes/staradia/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "default"
+    },
+    "planes/staradia/empress.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "empress"
+    },
+    "planes/staradia/twilight.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "twilight"
+    },
+    "planes/staradia/moonlight.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "moonlight"
+    },
+    "planes/staradia/prismatic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "prismatic"
+    },
+    "planes/staradia/aurora_weaver.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "aurora_weaver"
+    },
+    "planes/staradia/sakura.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "sakura"
+    },
+    "planes/staradia/dawn.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "dawn"
+    },
+    "planes/staradia/rainbow_fury.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "rainbow_fury"
+    },
+    "planes/staradia/ethereal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "ethereal"
+    },
+    "planes/staradia/solar_flare.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "solar_flare"
+    },
+    "planes/staradia/void_empress.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "staradia",
+      "skin_id": "void_empress"
+    },
+    "planes/dukefishron/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "default"
+    },
+    "planes/dukefishron/duke_default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_default"
+    },
+    "planes/dukefishron/duke_abyss.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_abyss"
+    },
+    "planes/dukefishron/duke_rage.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_rage"
+    },
+    "planes/dukefishron/duke_storm.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_storm"
+    },
+    "planes/dukefishron/duke_coral.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_coral"
+    },
+    "planes/dukefishron/duke_void_sea.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_void_sea"
+    },
+    "planes/dukefishron/duke_tsunami.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_tsunami"
+    },
+    "planes/dukefishron/duke_phantom.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_phantom"
+    },
+    "planes/dukefishron/duke_blood_moon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_blood_moon"
+    },
+    "planes/dukefishron/duke_tropical.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_tropical"
+    },
+    "planes/dukefishron/duke_frost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_frost"
+    },
+    "planes/dukefishron/duke_golden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "dukefishron",
+      "skin_id": "duke_golden"
+    },
+    "planes/slime/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "default"
+    },
+    "planes/slime/cosmic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "cosmic"
+    },
+    "planes/slime/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "void"
+    },
+    "planes/slime/crystal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "crystal"
+    },
+    "planes/slime/toxic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "toxic"
+    },
+    "planes/slime/royal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "royal"
+    },
+    "planes/slime/blood.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "blood"
+    },
+    "planes/slime/ice.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "ice"
+    },
+    "planes/slime/flame.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "flame"
+    },
+    "planes/slime/phantom.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "phantom"
+    },
+    "planes/slime/rainbow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "rainbow"
+    },
+    "planes/slime/abyss.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "slime",
+      "skin_id": "abyss"
+    },
+    "planes/oro/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "default"
+    },
+    "planes/oro/crimson.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "crimson"
+    },
+    "planes/oro/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "void"
+    },
+    "planes/oro/inferno.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "inferno"
+    },
+    "planes/oro/frost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "frost"
+    },
+    "planes/oro/toxic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "toxic"
+    },
+    "planes/oro/royal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "royal"
+    },
+    "planes/oro/phantom.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "phantom"
+    },
+    "planes/oro/blood.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "blood"
+    },
+    "planes/oro/cosmic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "cosmic"
+    },
+    "planes/oro/abyss.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "abyss"
+    },
+    "planes/oro/golden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "oro",
+      "skin_id": "golden"
+    },
+    "planes/yharon/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "default"
+    },
+    "planes/yharon/pharaoh.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "pharaoh"
+    },
+    "planes/yharon/galleon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "galleon"
+    },
+    "planes/yharon/trojan.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "trojan"
+    },
+    "planes/yharon/sashimi.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "sashimi"
+    },
+    "planes/yharon/candy.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "candy"
+    },
+    "planes/yharon/pizza.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "pizza"
+    },
+    "planes/yharon/surgeon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "surgeon"
+    },
+    "planes/yharon/jackpot.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "jackpot"
+    },
+    "planes/yharon/office.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "office"
+    },
+    "planes/yharon/storm.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "storm"
+    },
+    "planes/yharon/hive.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "hive"
+    },
+    "planes/yharon/geode.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "yharon",
+      "skin_id": "geode"
+    },
+    "planes/providence/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "default"
+    },
+    "planes/providence/night.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "night"
+    },
+    "planes/providence/abyss.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "abyss"
+    },
+    "planes/providence/crystal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "crystal"
+    },
+    "planes/providence/magma.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "magma"
+    },
+    "planes/providence/frost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "frost"
+    },
+    "planes/providence/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "void"
+    },
+    "planes/providence/nature.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "nature"
+    },
+    "planes/providence/storm.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "storm"
+    },
+    "planes/providence/blood.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "blood"
+    },
+    "planes/providence/gold.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "gold"
+    },
+    "planes/providence/aurora.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "providence",
+      "skin_id": "aurora"
+    },
+    "planes/goliath/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "default"
+    },
+    "planes/goliath/nuclear.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "nuclear"
+    },
+    "planes/goliath/desert.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "desert"
+    },
+    "planes/goliath/arctic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "arctic"
+    },
+    "planes/goliath/necrosis.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "necrosis"
+    },
+    "planes/goliath/pandemic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "pandemic"
+    },
+    "planes/goliath/spore.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "spore"
+    },
+    "planes/goliath/chemical.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "chemical"
+    },
+    "planes/goliath/refinery.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "refinery"
+    },
+    "planes/goliath/hive.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "hive"
+    },
+    "planes/goliath/xenomorph.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "xenomorph"
+    },
+    "planes/goliath/crimson.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "goliath",
+      "skin_id": "crimson"
+    },
+    "planes/sepulcher/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "default"
+    },
+    "planes/sepulcher/brimstone.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "brimstone"
+    },
+    "planes/sepulcher/witch.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "witch"
+    },
+    "planes/sepulcher/bloodmoon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "bloodmoon"
+    },
+    "planes/sepulcher/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "void"
+    },
+    "planes/sepulcher/magma.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "magma"
+    },
+    "planes/sepulcher/souleater.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "souleater"
+    },
+    "planes/sepulcher/apocalypse.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "apocalypse"
+    },
+    "planes/sepulcher/frost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "frost"
+    },
+    "planes/sepulcher/shadow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "shadow"
+    },
+    "planes/sepulcher/seraph.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "seraph"
+    },
+    "planes/sepulcher/quantum.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sepulcher",
+      "skin_id": "quantum"
+    },
+    "planes/galaxia/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "default"
+    },
+    "planes/galaxia/solar.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "solar"
+    },
+    "planes/galaxia/nebula.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "nebula"
+    },
+    "planes/galaxia/vortex.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "vortex"
+    },
+    "planes/galaxia/stardust.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "stardust"
+    },
+    "planes/galaxia/crimson.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "crimson"
+    },
+    "planes/galaxia/corruption.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "corruption"
+    },
+    "planes/galaxia/hallowed.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "hallowed"
+    },
+    "planes/galaxia/lunar.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "lunar"
+    },
+    "planes/galaxia/zenith.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "zenith"
+    },
+    "planes/galaxia/rainbow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "rainbow"
+    },
+    "planes/galaxia/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "galaxia",
+      "skin_id": "void"
+    },
+    "planes/magnus/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "default"
+    },
+    "planes/magnus/arcane.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "arcane"
+    },
+    "planes/magnus/necro.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "necro"
+    },
+    "planes/magnus/holy.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "holy"
+    },
+    "planes/magnus/infernal.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "infernal"
+    },
+    "planes/magnus/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "void"
+    },
+    "planes/magnus/celestial.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "celestial"
+    },
+    "planes/magnus/blood.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "blood"
+    },
+    "planes/magnus/elder.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "elder"
+    },
+    "planes/magnus/frost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "frost"
+    },
+    "planes/magnus/chaos.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "chaos"
+    },
+    "planes/magnus/nature.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "magnus",
+      "skin_id": "nature"
+    },
+    "planes/heavymetal/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "default"
+    },
+    "planes/heavymetal/bloody.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "bloody"
+    },
+    "planes/heavymetal/cyber.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "cyber"
+    },
+    "planes/heavymetal/golden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "golden"
+    },
+    "planes/heavymetal/psychedelic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "psychedelic"
+    },
+    "planes/heavymetal/toxic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "toxic"
+    },
+    "planes/heavymetal/frost.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "frost"
+    },
+    "planes/heavymetal/hellfire.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "hellfire"
+    },
+    "planes/heavymetal/midnight.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "midnight"
+    },
+    "planes/heavymetal/rainbow.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "rainbow"
+    },
+    "planes/heavymetal/steampunk.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "steampunk"
+    },
+    "planes/heavymetal/starpunk.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "heavymetal",
+      "skin_id": "starpunk"
+    },
+    "planes/scarlet/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "scarlet",
+      "skin_id": "default"
+    },
+    "planes/scarlet/lunar.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "scarlet",
+      "skin_id": "lunar"
+    },
+    "planes/scarlet/golden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "scarlet",
+      "skin_id": "golden"
+    },
+    "planes/scarlet/mist.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "scarlet",
+      "skin_id": "mist"
+    },
+    "planes/scarlet/gothic.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "scarlet",
+      "skin_id": "gothic"
+    },
+    "planes/scarlet/destiny.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "scarlet",
+      "skin_id": "destiny"
+    },
+    "planes/zenith/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "zenith",
+      "skin_id": "default"
+    },
+    "planes/zenith/terra.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "zenith",
+      "skin_id": "terra"
+    },
+    "planes/zenith/meowmere.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "zenith",
+      "skin_id": "meowmere"
+    },
+    "planes/zenith/stardust.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "zenith",
+      "skin_id": "stardust"
+    },
+    "planes/zenith/solar.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "zenith",
+      "skin_id": "solar"
+    },
+    "planes/zenith/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "zenith",
+      "skin_id": "void"
+    },
+    "planes/viscerator/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viscerator",
+      "skin_id": "default"
+    },
+    "planes/viscerator/ares.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viscerator",
+      "skin_id": "ares"
+    },
+    "planes/viscerator/thanatos.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viscerator",
+      "skin_id": "thanatos"
+    },
+    "planes/viscerator/artemis.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viscerator",
+      "skin_id": "artemis"
+    },
+    "planes/viscerator/apollo.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viscerator",
+      "skin_id": "apollo"
+    },
+    "planes/viscerator/draedon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "viscerator",
+      "skin_id": "draedon"
+    },
+    "planes/crusher/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crusher",
+      "skin_id": "default"
+    },
+    "planes/crusher/crimson.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crusher",
+      "skin_id": "crimson"
+    },
+    "planes/crusher/azure.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crusher",
+      "skin_id": "azure"
+    },
+    "planes/crusher/emerald.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crusher",
+      "skin_id": "emerald"
+    },
+    "planes/crusher/golden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crusher",
+      "skin_id": "golden"
+    },
+    "planes/crusher/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "crusher",
+      "skin_id": "void"
+    },
+    "planes/sdmg/default.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sdmg",
+      "skin_id": "default"
+    },
+    "planes/sdmg/neon.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sdmg",
+      "skin_id": "neon"
+    },
+    "planes/sdmg/abyss.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sdmg",
+      "skin_id": "abyss"
+    },
+    "planes/sdmg/golden.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sdmg",
+      "skin_id": "golden"
+    },
+    "planes/sdmg/void.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sdmg",
+      "skin_id": "void"
+    },
+    "planes/sdmg/lunar.png": {
+      "width": 120,
+      "height": 120,
+      "plane_id": "sdmg",
+      "skin_id": "lunar"
+    }
+  }
+}

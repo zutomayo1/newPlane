@@ -1,0 +1,69 @@
+{
+  "$schema": "./_schema.json",
+  "id": "yharon",
+  "name": "狱炎神龙·犽戎",
+  "name_en": "Yharon",
+  "description": "丛林龙王的钢铁化身，日耀喷流+神龙冲拳+炼狱边界浮游炮，构建炼狱力场压制一切",
+  "tier": 1,
+  "rarity": 2,
+  "stats": {
+    "hp": 300,
+    "speed": 3.8,
+    "damage": 38,
+    "fire_rate": 120,
+    "shield": 0,
+    "crit_rate": 0.05,
+    "crit_damage": 1.5
+  },
+  "visuals": {
+    "sprite_path": "sprites/planes/yharon/default.png",
+    "sprite_size": [
+      120,
+      120
+    ],
+    "fallback_renderer": "yharon",
+    "colors": {
+      "primary": "#006432",
+      "secondary": "#FF4500",
+      "glow": "#006432",
+      "trail": "#FFD700"
+    }
+  },
+  "abilities": {
+    "passive": {
+      "id": "border_field",
+      "name": "",
+      "description": ""
+    },
+    "ultimate": {
+      "id": "千兆核爆",
+      "name": "千兆核爆",
+      "color": "#FF4500",
+      "damage_multiplier": 5.0,
+      "cooldown": 15.0
+    }
+  },
+  "bullet": {
+    "type": "flare_stream",
+    "sprite_path": "sprites/bullets/flare_stream.png",
+    "sound": "shoot"
+  },
+  "unlock": {
+    "type": "default",
+    "condition": null
+  },
+  "skills": {
+    "skill1": {
+      "name": "千兆核爆",
+      "desc": "火柱从边缘汇聚推挤敌人，中心引爆日蚀之火全屏清屏"
+    },
+    "skill2": {
+      "name": "龙群盛宴",
+      "desc": "召唤两只机械大黄蜂冲撞敌人并释放环形弹幕"
+    },
+    "skill3": {
+      "name": "宿敌升天",
+      "desc": "化为巨龙笼罩全屏，光标所指天降地狱火柱"
+    }
+  }
+}
