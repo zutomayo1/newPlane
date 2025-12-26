@@ -3937,11 +3937,20 @@ def draw_talent_tree_ui():
             # 描述（换行显示）
             desc_font = pygame.font.SysFont("SimHei", 11)
             desc = sel_talent["desc"]
-            if level < max_lvl:
-                next_val = sel_talent["values"][level] if level < len(sel_talent["values"]) else sel_talent["values"][-1]
-                desc = desc.format(val=next_val)
-            else:
-                desc = desc.format(val=sel_talent["values"][-1])
+            try:
+                if level < max_lvl:
+                    next_val = sel_talent["values"][level] if level < len(sel_talent["values"]) else sel_talent["values"][-1]
+                    try:
+                        desc = desc.format(val=next_val)
+                    except KeyError:
+                        desc = desc.format(value=next_val)
+                else:
+                    try:
+                        desc = desc.format(val=sel_talent["values"][-1])
+                    except KeyError:
+                        desc = desc.format(value=sel_talent["values"][-1])
+            except Exception:
+                pass
             
             import textwrap
             desc_lines = textwrap.wrap(desc, width=14)

@@ -1,18 +1,19 @@
 {
   "version": 1,
   "currencies": {
-    "cores": 52,
+    "cores": 2,
     "chips": 6
   },
   "talents": {
     "destruction": {
       "sharp": 1,
-      "swift": 3,
+      "swift": 5,
       "burn": 1
     },
     "guardian": {},
     "destiny": {
-      "lucky": 1
+      "lucky": 1,
+      "synergy": 1
     }
   },
   "ultimates": {
@@ -28,8 +29,8 @@
     "destiny": false
   },
   "statistics": {
-    "total_points_spent": 7,
-    "total_cores_spent": 100,
+    "total_points_spent": 10,
+    "total_cores_spent": 150,
     "total_chips_spent": 0,
     "resets": 0
   }

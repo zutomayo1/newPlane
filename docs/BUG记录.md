@@ -4,6 +4,63 @@
 
 ---
 
+## Bug #003: 天赋树界面点击天赋后卡死
+
+### 问题描述
+在天赋树界面点击任意天赋节点后，游戏画面立即卡死，完全无响应。
+
+### 具体表现
+- 用户进入天赋树界面（星轨天赋阵）
+- 点击任意一个天赋节点
+- 游戏窗口立即冻结，需要强制关闭
+
+### 根本原因
+**天赋描述格式化参数名不匹配导致异常**
+
+天赋数据中的描述字段使用 `{value}` 占位符：
+```python
+'desc': '攻击附带燃烧({value}s)'
+```
+
+但渲染代码使用 `{val}` 进行格式化：
+```python
+desc = desc.format(val=next_val)  # KeyError: 'value'
+```
+
+这导致 `KeyError` 异常，但由于没有捕获，程序卡在异常处理中无法继续渲染。
+
+### 修复方案
+
+添加异常处理，同时支持两种占位符格式：
+```python
+# 修复后代码
+desc = sel_talent["desc"]
+try:
+    if level < max_lvl:
+        next_val = sel_talent["values"][level] if level < len(sel_talent["values"]) else sel_talent["values"][-1]
+        try:
+            desc = desc.format(val=next_val)
+        except KeyError:
+            desc = desc.format(value=next_val)
+    else:
+        try:
+            desc = desc.format(val=sel_talent["values"][-1])
+        except KeyError:
+            desc = desc.format(value=sel_talent["values"][-1])
+except Exception:
+    pass  # 格式化失败则显示原始描述
+```
+
+### 经验教训
+- **数据与代码的占位符格式应保持一致**：统一使用 `{val}` 或 `{value}`
+- **格式化操作应添加异常处理**：防止数据格式不匹配导致程序崩溃
+- **调试时善用print语句定位卡死位置**：通过逐步添加调试输出，快速定位问题代码行
+
+### 修复日期
+2025-12-26
+
+---
+
 ## Bug #002: 系统设置界面卡死
 
 ### 问题描述
