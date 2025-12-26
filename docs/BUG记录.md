@@ -4,6 +4,75 @@
 
 ---
 
+## Bug #002: 系统设置界面卡死
+
+### 问题描述
+在主菜单点击"系统设置"按钮后，游戏画面立即卡死，完全无响应。
+
+### 具体表现
+- 用户点击主菜单的"系统设置"按钮
+- 游戏窗口立即冻结，无法进行任何操作
+- 需要强制关闭游戏
+
+### 根本原因
+**音量滑块渐变效果的逐像素绘制导致严重性能问题**
+
+`draw_settings_ui()` 函数中，音量滑块进度条使用了逐像素绘制渐变效果：
+
+```python
+# 问题代码（位于 main.py 约2680行）
+progress_width = int(slider_width * value)  # 当 value=1.0，slider_width=380 时 = 380
+if progress_width > 0:
+    progress_surf = pygame.Surface((progress_width, slider_height), pygame.SRCALPHA)
+    for px in range(progress_width):  # 循环 380 次！
+        ratio = px / slider_width
+        r = int(glow_color[0] * ratio + 40)
+        g = int(glow_color[1] * ratio + 40)
+        b = int(glow_color[2] * ratio + 40)
+        pygame.draw.line(progress_surf, (r, g, b, 220), (px, 0), (px, slider_height))
+```
+
+3个音量滑块 × 380次绘制 = **每帧 1140+ 次 `pygame.draw.line` 调用**，导致帧率极低造成"卡死"假象。
+
+此外，循环内还有：
+```python
+pct_font = pygame.font.SysFont("Impact", 22)  # 每帧在循环中创建字体对象！
+```
+
+### 修复方案
+
+1. **用单色矩形填充替代逐像素渐变**：
+```python
+# 修复后代码
+progress_width = int(slider_width * value)
+if progress_width > 0:
+    progress_rect = pygame.Rect(track_rect.x, track_rect.y, progress_width, slider_height)
+    avg_color = (
+        min(255, int(glow_color[0] * 0.7 + 60)),
+        min(255, int(glow_color[1] * 0.7 + 60)),
+        min(255, int(glow_color[2] * 0.7 + 60))
+    )
+    pygame.draw.rect(screen, avg_color, progress_rect, border_radius=7)
+```
+
+2. **缓存字体对象**：
+```python
+# 在循环外缓存字体
+if not hasattr(draw_settings_ui, '_pct_font'):
+    draw_settings_ui._pct_font = pygame.font.SysFont("Impact", 22)
+pct_font = draw_settings_ui._pct_font
+```
+
+### 经验教训
+- **避免在渲染循环中进行大量绘制操作**：每帧调用上千次绘制函数会严重影响性能
+- **缓存昂贵的资源创建**：字体、Surface 等应在初始化时创建，而非每帧创建
+- **视觉效果应考虑性能成本**：逐像素渐变虽好看，但对于 UI 元素代价太高
+
+### 修复日期
+2025-12-26
+
+---
+
 ## 开发规范
 
 ### 变量命名规范

@@ -2650,6 +2650,11 @@ def draw_settings_ui():
         ("🔔", "音效音量", "sfx", sound_mgr.sfx_volume, YELLOW, (220, 180, 0))
     ]
     
+    # 缓存字体（只创建一次）
+    if not hasattr(draw_settings_ui, '_pct_font'):
+        draw_settings_ui._pct_font = pygame.font.SysFont("Impact", 22)
+    pct_font = draw_settings_ui._pct_font
+    
     for idx, (emoji, label, key, value, color, glow_color) in enumerate(volume_settings):
         y_pos = start_y + idx * 65
         
@@ -2670,19 +2675,19 @@ def draw_settings_ui():
         track_rect = pygame.Rect(section_x + 15, y_pos + 32, slider_width, slider_height)
         pygame.draw.rect(screen, (30, 35, 45), track_rect, border_radius=7)
         
-        # 进度条（渐变效果）
+        # 进度条（简化渐变效果 - 使用单色填充提高性能）
         progress_width = int(slider_width * value)
         if progress_width > 0:
-            progress_surf = pygame.Surface((progress_width, slider_height), pygame.SRCALPHA)
-            for px in range(progress_width):
-                ratio = px / slider_width
-                r = int(glow_color[0] * ratio + 40)
-                g = int(glow_color[1] * ratio + 40)
-                b = int(glow_color[2] * ratio + 40)
-                pygame.draw.line(progress_surf, (r, g, b, 220), (px, 0), (px, slider_height))
-            screen.blit(progress_surf, track_rect.topleft)
+            # 使用单一颜色填充代替逐像素渐变，大幅提升性能
+            progress_rect = pygame.Rect(track_rect.x, track_rect.y, progress_width, slider_height)
+            avg_color = (
+                min(255, int(glow_color[0] * 0.7 + 60)),
+                min(255, int(glow_color[1] * 0.7 + 60)),
+                min(255, int(glow_color[2] * 0.7 + 60))
+            )
+            pygame.draw.rect(screen, avg_color, progress_rect, border_radius=7)
             # 发光边缘
-            pygame.draw.rect(screen, color, pygame.Rect(track_rect.x, track_rect.y, progress_width, slider_height), 1, border_radius=7)
+            pygame.draw.rect(screen, color, progress_rect, 1, border_radius=7)
         
         # 滑块手柄
         handle_x = track_rect.x + progress_width
@@ -2702,9 +2707,8 @@ def draw_settings_ui():
         pygame.draw.circle(screen, WHITE, (handle_x, handle_y), handle_radius, 2)
         pygame.draw.circle(screen, color, (handle_x, handle_y), 5)  # 中心点
         
-        # 百分比显示
+        # 百分比显示（使用缓存的字体）
         percentage = int(value * 100)
-        pct_font = pygame.font.SysFont("Impact", 22)
         pct_surf = pct_font.render(f"{percentage}%", True, color)
         screen.blit(pct_surf, (section_x + slider_width + 45, y_pos + 18))
     
