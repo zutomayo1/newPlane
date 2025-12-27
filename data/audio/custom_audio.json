@@ -1,0 +1,283 @@
+{
+  "version": "1.0",
+  "description": "自定义音频配置 - 自定义音乐和音效包",
+  "custom_music": {
+    "enabled": true,
+    "folder": "custom_music",
+    "tracks": []
+  },
+  "sfx_packs": {
+    "current_pack": "retro",
+    "packs": {
+      "classic": {
+        "name": "经典街机",
+        "description": "怀旧8-bit街机风格音效",
+        "icon": "🎮",
+        "params": {
+          "shoot": {
+            "freq": 800,
+            "duration": 0.08,
+            "wave": "square"
+          },
+          "explosion": {
+            "duration": 0.4,
+            "noise_type": "white"
+          },
+          "hit": {
+            "freq": 200,
+            "duration": 0.1
+          },
+          "laser": {
+            "freq_start": 1200,
+            "freq_end": 400,
+            "duration": 0.15
+          },
+          "levelup": {
+            "notes": [
+              523,
+              659,
+              784,
+              1047
+            ],
+            "duration": 0.12
+          },
+          "powerup": {
+            "freq_start": 400,
+            "freq_end": 800,
+            "duration": 0.2
+          }
+        }
+      },
+      "cyber": {
+        "name": "赛博朋克",
+        "description": "未来感电子合成音效",
+        "icon": "🌆",
+        "params": {
+          "shoot": {
+            "freq": 600,
+            "duration": 0.06,
+            "wave": "sawtooth",
+            "mod": true
+          },
+          "explosion": {
+            "duration": 0.5,
+            "noise_type": "pink",
+            "filter": "lowpass"
+          },
+          "hit": {
+            "freq": 150,
+            "duration": 0.12,
+            "distortion": 0.3
+          },
+          "laser": {
+            "freq_start": 2000,
+            "freq_end": 300,
+            "duration": 0.2,
+            "resonance": 0.6
+          },
+          "levelup": {
+            "notes": [
+              440,
+              554,
+              659,
+              880
+            ],
+            "duration": 0.15,
+            "wave": "sine"
+          },
+          "powerup": {
+            "freq_start": 300,
+            "freq_end": 1200,
+            "duration": 0.25,
+            "sweep": "exponential"
+          }
+        }
+      },
+      "retro": {
+        "name": "复古芯片",
+        "description": "纯正8-bit芯片音乐风格",
+        "icon": "👾",
+        "params": {
+          "shoot": {
+            "freq": 1200,
+            "duration": 0.05,
+            "wave": "pulse",
+            "duty": 0.25
+          },
+          "explosion": {
+            "duration": 0.3,
+            "noise_type": "lfsr"
+          },
+          "hit": {
+            "freq": 300,
+            "duration": 0.08,
+            "wave": "pulse"
+          },
+          "laser": {
+            "freq_start": 800,
+            "freq_end": 200,
+            "duration": 0.12,
+            "wave": "triangle"
+          },
+          "levelup": {
+            "notes": [
+              262,
+              330,
+              392,
+              523
+            ],
+            "duration": 0.1,
+            "wave": "pulse"
+          },
+          "powerup": {
+            "freq_start": 200,
+            "freq_end": 600,
+            "duration": 0.18,
+            "wave": "triangle"
+          }
+        }
+      },
+      "kawaii": {
+        "name": "可爱甜心",
+        "description": "软萌可爱的清新音效",
+        "icon": "💖",
+        "params": {
+          "shoot": {
+            "freq": 1400,
+            "duration": 0.04,
+            "wave": "sine",
+            "vibrato": 0.1
+          },
+          "explosion": {
+            "duration": 0.35,
+            "noise_type": "white",
+            "filter": "highpass",
+            "sparkle": true
+          },
+          "hit": {
+            "freq": 400,
+            "duration": 0.06,
+            "wave": "sine"
+          },
+          "laser": {
+            "freq_start": 1800,
+            "freq_end": 600,
+            "duration": 0.1,
+            "wave": "sine"
+          },
+          "levelup": {
+            "notes": [
+              784,
+              988,
+              1175,
+              1568
+            ],
+            "duration": 0.08,
+            "wave": "sine",
+            "bounce": true
+          },
+          "powerup": {
+            "freq_start": 600,
+            "freq_end": 1400,
+            "duration": 0.15,
+            "wave": "sine",
+            "shimmer": true
+          }
+        }
+      },
+      "dark": {
+        "name": "暗黑深渊",
+        "description": "低沉厚重的黑暗风格",
+        "icon": "🌑",
+        "params": {
+          "shoot": {
+            "freq": 400,
+            "duration": 0.12,
+            "wave": "sawtooth",
+            "distortion": 0.5
+          },
+          "explosion": {
+            "duration": 0.6,
+            "noise_type": "brown",
+            "rumble": true
+          },
+          "hit": {
+            "freq": 80,
+            "duration": 0.15,
+            "wave": "sawtooth"
+          },
+          "laser": {
+            "freq_start": 600,
+            "freq_end": 100,
+            "duration": 0.25,
+            "growl": true
+          },
+          "levelup": {
+            "notes": [
+              220,
+              277,
+              330,
+              440
+            ],
+            "duration": 0.2,
+            "wave": "sawtooth"
+          },
+          "powerup": {
+            "freq_start": 150,
+            "freq_end": 400,
+            "duration": 0.3,
+            "wave": "sawtooth"
+          }
+        }
+      },
+      "scifi": {
+        "name": "星际科幻",
+        "description": "太空科幻电影质感",
+        "icon": "🚀",
+        "params": {
+          "shoot": {
+            "freq": 900,
+            "duration": 0.07,
+            "wave": "sine",
+            "phaser": 0.3
+          },
+          "explosion": {
+            "duration": 0.55,
+            "noise_type": "pink",
+            "reverb": 0.4
+          },
+          "hit": {
+            "freq": 250,
+            "duration": 0.1,
+            "wave": "triangle",
+            "echo": 0.2
+          },
+          "laser": {
+            "freq_start": 1500,
+            "freq_end": 500,
+            "duration": 0.18,
+            "flanger": 0.2
+          },
+          "levelup": {
+            "notes": [
+              523,
+              698,
+              880,
+              1047
+            ],
+            "duration": 0.14,
+            "wave": "sine",
+            "chorus": true
+          },
+          "powerup": {
+            "freq_start": 350,
+            "freq_end": 900,
+            "duration": 0.22,
+            "wave": "sine",
+            "warp": true
+          }
+        }
+      }
+    }
+  }
+}

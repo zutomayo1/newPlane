@@ -158,18 +158,83 @@ class FloatingText(pygame.sprite.Sprite):
         if self.life <= 0: self.kill()
 
 class DamageNumber(pygame.sprite.Sprite):
+    # 尺寸预设
+    SIZE_PRESETS = {
+        "small": {"normal": 12, "crit": 16},
+        "medium": {"normal": 16, "crit": 24},
+        "large": {"normal": 22, "crit": 32}
+    }
+    
     def __init__(self, x, y, amount, is_crit=False):
         super().__init__()
         all_sprites.add(self)
-        size = 24 if is_crit else 16
-        color = (255, 100, 0) if is_crit else WHITE
-        font = pygame.font.SysFont(["arial"], size, bold=is_crit)
-        self.image = font.render(str(int(amount)), True, color)
-        outline = font.render(str(int(amount)), True, BLACK)
-        s = pygame.Surface((self.image.get_width()+2, self.image.get_height()+2), pygame.SRCALPHA)
-        s.blit(outline, (2,2))
-        s.blit(self.image, (0,0))
-        self.image = s
+        
+        # 从设置中获取大小和样式
+        from utils.core import load_settings
+        settings = load_settings()
+        size_preset = settings.get("damage_number_size", "medium")
+        style = settings.get("damage_number_style", "default")
+        
+        # 获取字体大小
+        sizes = self.SIZE_PRESETS.get(size_preset, self.SIZE_PRESETS["medium"])
+        size = sizes["crit"] if is_crit else sizes["normal"]
+        
+        # 根据样式选择颜色和字体
+        if style == "pixel":
+            font_name = "Small Fonts"
+            color = (0, 255, 100) if is_crit else (180, 255, 180)
+        elif style == "outline":
+            font_name = "SimHei"
+            color = (100, 200, 255) if is_crit else (200, 230, 255)
+        elif style == "glow":
+            font_name = "SimHei"
+            color = (255, 100, 255) if is_crit else (200, 150, 255)
+        else:  # default
+            font_name = "arial"
+            color = (255, 100, 0) if is_crit else WHITE
+        
+        font = pygame.font.SysFont(font_name, size, bold=is_crit)
+        text_str = str(int(amount))
+        self.image = font.render(text_str, True, color)
+        
+        # 根据样式创建效果
+        if style == "glow":
+            # 发光效果 - 多层光晕
+            glow_layers = 3
+            glow_surface = pygame.Surface((self.image.get_width() + glow_layers*4, 
+                                          self.image.get_height() + glow_layers*4), pygame.SRCALPHA)
+            for i in range(glow_layers, 0, -1):
+                glow_alpha = 80 - i * 20
+                glow_color = (*color[:3], glow_alpha)
+                glow_text = font.render(text_str, True, glow_color)
+                glow_surface.blit(glow_text, (glow_layers - i + 2, glow_layers - i + 2))
+            glow_surface.blit(self.image, (glow_layers, glow_layers))
+            self.image = glow_surface
+        elif style == "outline":
+            # 描边效果 - 双层描边
+            outline_color = (0, 50, 100) if is_crit else (30, 50, 80)
+            outline = font.render(text_str, True, outline_color)
+            s = pygame.Surface((self.image.get_width()+4, self.image.get_height()+4), pygame.SRCALPHA)
+            # 8个方向的描边
+            for ox, oy in [(-1,-1), (0,-1), (1,-1), (-1,0), (1,0), (-1,1), (0,1), (1,1)]:
+                s.blit(outline, (ox+2, oy+2))
+            s.blit(self.image, (2, 2))
+            self.image = s
+        elif style == "pixel":
+            # 像素风格 - 简单阴影
+            shadow = font.render(text_str, True, (0, 80, 0))
+            s = pygame.Surface((self.image.get_width()+2, self.image.get_height()+2), pygame.SRCALPHA)
+            s.blit(shadow, (2, 2))
+            s.blit(self.image, (0, 0))
+            self.image = s
+        else:  # default
+            # 默认简单描边
+            outline = font.render(text_str, True, BLACK)
+            s = pygame.Surface((self.image.get_width()+2, self.image.get_height()+2), pygame.SRCALPHA)
+            s.blit(outline, (2, 2))
+            s.blit(self.image, (0, 0))
+            self.image = s
+        
         self.rect = self.image.get_rect(center=(x, y))
         self.vx = random.uniform(-1, 1)
         self.vy = -3

@@ -114,6 +114,8 @@ def load_settings():
         "screen_shake": True,
         "particle_quality": "high",
         "show_damage_numbers": True,
+        "damage_number_size": "medium",  # small/medium/large
+        "damage_number_style": "default",  # default/pixel/outline/glow
         "auto_fire": True,
         "show_hitbox": False,
         "window_mode": "windowed",

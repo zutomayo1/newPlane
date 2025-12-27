@@ -9,6 +9,7 @@ MUSIC_FILTER_CHOICES = [
     ("explore", "探索"),
     ("combat", "战斗"),
     ("boss", "Boss战"),
+    ("自定义", "自定义"),
 ]
 
 

@@ -964,6 +964,8 @@ def _build_music_library_tracks():
         return []
     sources = _collect_music_track_sources()
     tracks = []
+    
+    # 添加内置BGM
     for key in sorted(sound_mgr.file_paths.keys()):
         if not key.startswith("bgm_"):
             continue
@@ -985,7 +987,32 @@ def _build_music_library_tracks():
             "source_full": list(tags),
             "metadata": meta,
             "tags": meta.get("tags", []),
+            "is_custom": False,
         })
+    
+    # 添加自定义音乐
+    if hasattr(sound_mgr, 'get_custom_music_list'):
+        custom_tracks = sound_mgr.get_custom_music_list()
+        for custom in custom_tracks:
+            if not custom.get("exists", False):
+                continue
+            track_id = custom["id"]
+            display_name = custom["name"]
+            tracks.append({
+                "id": track_id,
+                "display": f"🎧 {display_name}",
+                "source": "自定义音乐",
+                "source_full": ["自定义音乐"],
+                "metadata": {
+                    "description": f"用户导入的音乐文件",
+                    "mood": "custom",
+                    "tempo": "unknown",
+                    "tags": ["自定义"],
+                },
+                "tags": ["自定义"],
+                "is_custom": True,
+            })
+    
     return tracks
 
 
@@ -1143,16 +1170,31 @@ def play_music_library_track(index):
         set_music_library_message("没有可播放的曲目", 180)
         return
     track = music_library_tracks[index]
-    music_director.set_state(
-        "menu",
-        intensity=0.5,
-        override_track=track["id"],
-        immediate=True,
-        force=True,
-        layers_enabled=False,
-    )
-    music_library_now_playing = track["id"]
-    set_music_library_message(f"正在播放：{track['display']}", 300)
+    
+    # 检查是否是自定义音乐
+    if track.get("is_custom", False):
+        # 使用自定义音乐播放方法
+        if hasattr(sound_mgr, 'play_custom_music'):
+            success = sound_mgr.play_custom_music(track["id"])
+            if success:
+                music_library_now_playing = track["id"]
+                set_music_library_message(f"正在播放：{track['display']}", 300)
+            else:
+                set_music_library_message("播放自定义音乐失败", 180)
+        else:
+            set_music_library_message("自定义音乐功能不可用", 180)
+    else:
+        # 内置BGM使用音乐总监
+        music_director.set_state(
+            "menu",
+            intensity=0.5,
+            override_track=track["id"],
+            immediate=True,
+            force=True,
+            layers_enabled=False,
+        )
+        music_library_now_playing = track["id"]
+        set_music_library_message(f"正在播放：{track['display']}", 300)
 
 
 def stop_music_library_track():
@@ -2665,7 +2707,7 @@ def draw_settings_ui():
     screen.blit(vol_text, (section_x + 38, section_y + 6))
     
     start_y = section_y + 50
-    slider_width = 380
+    slider_width = 300
     slider_height = 14
     
     volume_settings = [
@@ -2762,6 +2804,10 @@ def draw_settings_ui():
     ]
     
     checkboxes = {}
+    dmg_size_btns = []  # 伤害数字大小按钮
+    dmg_style_btns = []  # 伤害数字样式按钮
+    dmg_settings_btn = None  # 伤害数字设置按钮
+    
     for idx, (key, emoji, label, enabled, color) in enumerate(checkbox_settings):
         y_pos = other_y + idx * 45
         
@@ -2790,9 +2836,21 @@ def draw_settings_ui():
         label_surf = label_font.render(label, True, WHITE if enabled else (120, 120, 130))
         screen.blit(emoji_surf, (cb_rect.right + 10, y_pos + 3))
         screen.blit(label_surf, (cb_rect.right + 38, y_pos + 7))
+        
+        # 为"显示伤害数字"行添加设置按钮
+        if key == "damage":
+            # 添加设置按钮（齿轮图标）
+            gear_btn = pygame.Rect(right_x + 310, y_pos + 2, 30, 26)
+            dmg_settings_btn = gear_btn
+            gear_hover = gear_btn.collidepoint(mx, my)
+            gear_color = YELLOW if gear_hover else (color if enabled else GRAY)
+            pygame.draw.rect(screen, (50, 45, 30) if gear_hover else (35, 35, 40), gear_btn, border_radius=4)
+            pygame.draw.rect(screen, gear_color, gear_btn, 1, border_radius=4)
+            gear_icon = vol_emoji.render("⚙", True, gear_color)
+            screen.blit(gear_icon, (gear_btn.x + 4, gear_btn.y + 1))
     
     # ====== 粒子效果质量 ======
-    particle_y = other_y + 190  # 调整位置（多了一个checkbox）
+    particle_y = other_y + 190
     particle_rect = pygame.Rect(right_x, particle_y - 5, 350, 75)
     pygame.draw.rect(screen, (18, 22, 32), particle_rect, border_radius=6)
     pygame.draw.rect(screen, (60, 70, 90), particle_rect, 1, border_radius=6)
@@ -2825,7 +2883,7 @@ def draw_settings_ui():
         screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
     
     # ====== 射击模式 ======
-    fire_y = other_y + 275  # 调整位置
+    fire_y = other_y + 275
     fire_rect = pygame.Rect(right_x, fire_y - 5, 350, 75)
     pygame.draw.rect(screen, (18, 22, 32), fire_rect, border_radius=6)
     pygame.draw.rect(screen, (60, 70, 90), fire_rect, 1, border_radius=6)
@@ -2918,7 +2976,7 @@ def draw_settings_ui():
     screen.blit(warn_text, (section_x + 10, save_mgmt_y + 102))
     
     # ====== 按键设置按钮（存档管理下方）======
-    keybind_btn = pygame.Rect(section_x, save_mgmt_y + 120, 350, 45)
+    keybind_btn = pygame.Rect(section_x, save_mgmt_y + 120, 170, 45)
     keybind_hover = keybind_btn.collidepoint(mx, my)
     pygame.draw.rect(screen, (30, 40, 60) if keybind_hover else (20, 30, 45), keybind_btn, border_radius=6)
     pygame.draw.rect(screen, CYAN if keybind_hover else (60, 90, 120), keybind_btn, 1, border_radius=6)
@@ -2926,9 +2984,16 @@ def draw_settings_ui():
     keybind_text = label_font.render("按键设置", True, WHITE if keybind_hover else (180, 180, 180))
     screen.blit(keybind_icon, (keybind_btn.x + 15, keybind_btn.centery - 10))
     screen.blit(keybind_text, (keybind_btn.x + 55, keybind_btn.centery - 10))
-    # 提示文字
-    hint_text = warn_font.render("自定义游戏按键绑定", True, (100, 120, 150))
-    screen.blit(hint_text, (keybind_btn.x + 150, keybind_btn.centery - 5))
+    
+    # ====== 音频扩展按钮 ======
+    audio_ext_btn = pygame.Rect(section_x + 180, save_mgmt_y + 120, 170, 45)
+    audio_ext_hover = audio_ext_btn.collidepoint(mx, my)
+    pygame.draw.rect(screen, (50, 30, 60) if audio_ext_hover else (35, 20, 45), audio_ext_btn, border_radius=6)
+    pygame.draw.rect(screen, MAGENTA if audio_ext_hover else (120, 60, 120), audio_ext_btn, 1, border_radius=6)
+    audio_ext_icon = vol_emoji.render("🎧", True, MAGENTA)
+    audio_ext_text = label_font.render("音频扩展", True, WHITE if audio_ext_hover else (180, 180, 180))
+    screen.blit(audio_ext_icon, (audio_ext_btn.x + 15, audio_ext_btn.centery - 10))
+    screen.blit(audio_ext_text, (audio_ext_btn.x + 55, audio_ext_btn.centery - 10))
     
     # ====== 底部按钮区域 ======
     btn_y = HEIGHT - 75
@@ -2987,12 +3052,117 @@ def draw_settings_ui():
     screen.blit(back_icon, (back_btn.centerx - 35, btn_y + 12))
     screen.blit(back_text, (back_btn.centerx - 10, btn_y + 12))
     
+    # ====== 伤害数字设置弹出面板 ======
+    if not hasattr(draw_settings_ui, 'dmg_popup_open'):
+        draw_settings_ui.dmg_popup_open = False
+    
+    dmg_popup_close_btn = None
+    if draw_settings_ui.dmg_popup_open:
+        # 弹出面板位置和大小
+        popup_w, popup_h = 280, 180
+        popup_x = right_x + 30
+        popup_y = other_y + 80  # checkbox下方
+        popup_rect = pygame.Rect(popup_x, popup_y, popup_w, popup_h)
+        
+        # 面板背景（带阴影效果）
+        shadow_rect = popup_rect.inflate(8, 8)
+        shadow_surf = pygame.Surface((shadow_rect.width, shadow_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(shadow_surf, (0, 0, 0, 100), shadow_surf.get_rect(), border_radius=10)
+        screen.blit(shadow_surf, (shadow_rect.x, shadow_rect.y))
+        
+        # 面板主体
+        pygame.draw.rect(screen, (25, 28, 38), popup_rect, border_radius=8)
+        pygame.draw.rect(screen, YELLOW, popup_rect, 2, border_radius=8)
+        
+        # 标题
+        popup_title_font = pygame.font.SysFont("SimHei", 16)
+        popup_label_font = pygame.font.SysFont("SimHei", 14)
+        popup_btn_font = pygame.font.SysFont("SimHei", 13)
+        
+        title_icon = vol_emoji.render("💥", True, YELLOW)
+        title_text = popup_title_font.render("伤害数字设置", True, YELLOW)
+        screen.blit(title_icon, (popup_x + 12, popup_y + 10))
+        screen.blit(title_text, (popup_x + 40, popup_y + 12))
+        
+        # 关闭按钮
+        close_btn = pygame.Rect(popup_x + popup_w - 30, popup_y + 8, 22, 22)
+        dmg_popup_close_btn = close_btn
+        close_hover = close_btn.collidepoint(mx, my)
+        pygame.draw.rect(screen, (80, 40, 40) if close_hover else (50, 30, 30), close_btn, border_radius=4)
+        pygame.draw.rect(screen, RED if close_hover else (120, 60, 60), close_btn, 1, border_radius=4)
+        close_x_font = pygame.font.SysFont("Arial", 14, bold=True)
+        close_x = close_x_font.render("×", True, RED if close_hover else (150, 80, 80))
+        screen.blit(close_x, (close_btn.centerx - close_x.get_width()//2, close_btn.centery - close_x.get_height()//2))
+        
+        # 分隔线
+        pygame.draw.line(screen, (60, 65, 80), (popup_x + 10, popup_y + 40), (popup_x + popup_w - 10, popup_y + 40), 1)
+        
+        # 大小选择
+        size_label = popup_label_font.render("大小:", True, (180, 180, 190))
+        screen.blit(size_label, (popup_x + 15, popup_y + 55))
+        
+        dmg_size = game_settings.get("damage_number_size", "medium")
+        size_options = [("small", "小", (100, 150, 200)), ("medium", "中", CYAN), ("large", "大", LIME)]
+        
+        for i, (size_id, name, color) in enumerate(size_options):
+            btn_x = popup_x + 70 + i * 65
+            btn_rect = pygame.Rect(btn_x, popup_y + 50, 55, 28)
+            dmg_size_btns.append((btn_rect, size_id))
+            is_selected = (dmg_size == size_id)
+            is_hover = btn_rect.collidepoint(mx, my)
+            
+            btn_bg = (color[0]//4, color[1]//4, color[2]//4) if is_selected else ((50, 55, 65) if is_hover else (35, 38, 48))
+            pygame.draw.rect(screen, btn_bg, btn_rect, border_radius=5)
+            pygame.draw.rect(screen, color if is_selected else ((150, 150, 160) if is_hover else (70, 75, 85)), btn_rect, 2 if is_selected else 1, border_radius=5)
+            
+            btn_text = popup_btn_font.render(name, True, color if is_selected else (WHITE if is_hover else (160, 160, 170)))
+            screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
+        
+        # 样式选择
+        style_label = popup_label_font.render("样式:", True, (180, 180, 190))
+        screen.blit(style_label, (popup_x + 15, popup_y + 95))
+        
+        dmg_style = game_settings.get("damage_number_style", "default")
+        style_options = [("default", "默认", WHITE), ("pixel", "像素", LIME), ("outline", "描边", CYAN), ("glow", "发光", MAGENTA)]
+        
+        for i, (style_id, name, color) in enumerate(style_options):
+            btn_x = popup_x + 70 + i * 52
+            btn_rect = pygame.Rect(btn_x, popup_y + 90, 48, 28)
+            dmg_style_btns.append((btn_rect, style_id))
+            is_selected = (dmg_style == style_id)
+            is_hover = btn_rect.collidepoint(mx, my)
+            
+            btn_bg = (color[0]//5, color[1]//5, color[2]//5) if is_selected else ((50, 55, 65) if is_hover else (35, 38, 48))
+            pygame.draw.rect(screen, btn_bg, btn_rect, border_radius=5)
+            pygame.draw.rect(screen, color if is_selected else ((150, 150, 160) if is_hover else (70, 75, 85)), btn_rect, 2 if is_selected else 1, border_radius=5)
+            
+            btn_text = popup_btn_font.render(name, True, color if is_selected else (WHITE if is_hover else (160, 160, 170)))
+            screen.blit(btn_text, (btn_rect.centerx - btn_text.get_width()//2, btn_rect.centery - btn_text.get_height()//2))
+        
+        # 预览提示
+        hint_emoji_font = pygame.font.SysFont("Segoe UI Emoji", 11)
+        hint_text_font = pygame.font.SysFont("SimHei", 11)
+        hint_emoji = hint_emoji_font.render("💡", True, (120, 120, 130))
+        hint_text = hint_text_font.render("设置会即时生效", True, (120, 120, 130))
+        screen.blit(hint_emoji, (popup_x + 15, popup_y + 135))
+        screen.blit(hint_text, (popup_x + 32, popup_y + 135))
+        
+        # 当前设置预览
+        size_names = {"small": "小", "medium": "中", "large": "大"}
+        style_names = {"default": "默认", "pixel": "像素", "outline": "描边", "glow": "发光"}
+        current_text = pygame.font.SysFont("SimHei", 12).render(
+            f"当前: {size_names.get(dmg_size, '中')}号 · {style_names.get(dmg_style, '默认')}样式", 
+            True, (150, 150, 160)
+        )
+        screen.blit(current_text, (popup_x + 15, popup_y + 155))
+    
     # 返回UI元素引用
     return {
         'save': save_btn,
         'reset': reset_btn,
         'back': back_btn,
         'keybind': keybind_btn,
+        'audio_ext': audio_ext_btn,
         'fps_checkbox': checkboxes['fps'],
         'shake_checkbox': checkboxes['shake'],
         'damage_checkbox': checkboxes['damage'],
@@ -3000,6 +3170,10 @@ def draw_settings_ui():
         'particle_quality_btns': particle_btns,
         'fire_mode_btns': fire_btns,
         'window_mode_btns': window_btns,
+        'dmg_size_btns': dmg_size_btns,
+        'dmg_style_btns': dmg_style_btns,
+        'dmg_settings_btn': dmg_settings_btn,
+        'dmg_popup_close': dmg_popup_close_btn,
         'export_btn': export_btn,
         'clear_btn': clear_btn,
         'sliders': [
@@ -3100,6 +3274,326 @@ def _init_keybind_ui_cache():
     _keybind_ui_cache['close_bg_hover'] = close_bg_hover
     
     return _keybind_ui_cache
+
+# ====== 音频扩展界面 ======
+_audio_ext_state = {
+    'active_tab': 'sfx_packs',  # 'sfx_packs' or 'custom_music'
+    'selected_pack': None,
+    'scroll_y': 0,
+    'scroll_y_music': 0,
+    'dragging_scrollbar': False
+}
+
+def draw_audio_extension_ui():
+    """绘制音频扩展设置界面 - 性能优化版"""
+    global _audio_ext_state
+    
+    # 初始化字体缓存（只创建一次）
+    if not hasattr(draw_audio_extension_ui, '_cache'):
+        draw_audio_extension_ui._cache = {
+            'title_font': pygame.font.SysFont("SimHei", 28),
+            'emoji_font': pygame.font.SysFont("Segoe UI Emoji", 24),
+            'label_font': pygame.font.SysFont("SimHei", 16),
+            'desc_font': pygame.font.SysFont("SimHei", 14),
+            'overlay': None,  # 延迟创建
+            'panel_bg': None,  # 延迟创建
+        }
+    cache = draw_audio_extension_ui._cache
+    
+    t = pygame.time.get_ticks()
+    mx, my = get_mouse_pos()
+    
+    # 尺寸设置
+    panel_w, panel_h = 700, 520
+    panel_x = (WIDTH - panel_w) // 2
+    panel_y = (HEIGHT - panel_h) // 2
+    
+    # 缓存半透明遮罩
+    if cache['overlay'] is None or cache['overlay'].get_size() != (WIDTH, HEIGHT):
+        cache['overlay'] = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        cache['overlay'].fill((5, 10, 20, 220))
+    screen.blit(cache['overlay'], (0, 0))
+    
+    # 缓存面板背景
+    if cache['panel_bg'] is None:
+        cache['panel_bg'] = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        pygame.draw.rect(cache['panel_bg'], (15, 20, 30), (0, 0, panel_w, panel_h), border_radius=12)
+    screen.blit(cache['panel_bg'], (panel_x, panel_y))
+    pygame.draw.rect(screen, MAGENTA, (panel_x, panel_y, panel_w, panel_h), 2, border_radius=12)
+    
+    # 使用缓存的字体
+    title_font = cache['title_font']
+    emoji_font = cache['emoji_font']
+    label_font = cache['label_font']
+    desc_font = cache['desc_font']
+    
+    # 标题
+    title_icon = emoji_font.render("🎧", True, MAGENTA)
+    title_text = title_font.render(" 音频扩展", True, MAGENTA)
+    screen.blit(title_icon, (panel_x + 20, panel_y + 15))
+    screen.blit(title_text, (panel_x + 55, panel_y + 12))
+    
+    # 标签页按钮
+    tab_y = panel_y + 60
+    tabs = [
+        ('sfx_packs', '🎵', '音效包', CYAN),
+        ('custom_music', '🎶', '自定义音乐', LIME)
+    ]
+    
+    tab_btns = {}
+    tab_x = panel_x + 20
+    for tab_id, emoji, name, color in tabs:
+        btn_w = 150
+        btn_rect = pygame.Rect(tab_x, tab_y, btn_w, 40)
+        tab_btns[tab_id] = btn_rect
+        is_active = _audio_ext_state['active_tab'] == tab_id
+        is_hover = btn_rect.collidepoint(mx, my)
+        
+        bg_color = (color[0]//4, color[1]//4, color[2]//4) if is_active else ((40, 45, 55) if is_hover else (25, 30, 40))
+        pygame.draw.rect(screen, bg_color, btn_rect, border_radius=6)
+        pygame.draw.rect(screen, color if is_active else (60, 70, 80), btn_rect, 1, border_radius=6)
+        
+        tab_emoji = emoji_font.render(emoji, True, color)
+        tab_text = label_font.render(name, True, WHITE if is_active else (150, 150, 160))
+        screen.blit(tab_emoji, (btn_rect.x + 10, btn_rect.centery - 12))
+        screen.blit(tab_text, (btn_rect.x + 45, btn_rect.centery - 8))
+        
+        tab_x += btn_w + 10
+    
+    # 内容区域
+    content_x = panel_x + 20
+    content_y = tab_y + 55
+    content_w = panel_w - 40
+    content_h = panel_h - 175  # 留出底部按钮空间
+    
+    # 创建内容区域裁剪
+    content_rect = pygame.Rect(content_x, content_y, content_w, content_h)
+    
+    # 滚动条相关变量
+    scrollbar_rect = None
+    scroll_track_rect = None
+    scroll_max = 0
+    
+    # 预先初始化分支中可能使用的变量
+    pack_btns = []
+    track_btns = []
+    preview_btn = None
+    refresh_btn = None
+    open_folder_btn = None
+    
+    if _audio_ext_state['active_tab'] == 'sfx_packs':
+        # ====== 音效包选择 ======
+        packs = sound_mgr.get_available_sfx_packs() if hasattr(sound_mgr, 'get_available_sfx_packs') else []
+        current_pack = sound_mgr.get_current_sfx_pack() if hasattr(sound_mgr, 'get_current_sfx_pack') else 'classic'
+        
+        # 计算内容总高度
+        item_height = 72
+        total_content_h = len(packs) * item_height
+        scroll_max = max(0, total_content_h - content_h)
+        
+        # 限制滚动范围
+        _audio_ext_state['scroll_y'] = max(0, min(scroll_max, _audio_ext_state['scroll_y']))
+        scroll_offset = _audio_ext_state['scroll_y']
+        
+        pack_btns = []
+        pack_y = content_y - scroll_offset
+        
+        for i, pack in enumerate(packs):
+            # 只绘制可见的项目
+            if pack_y + item_height < content_y or pack_y > content_y + content_h:
+                pack_y += item_height
+                pack_btns.append((pygame.Rect(0, 0, 0, 0), pack['id']))  # 占位
+                continue
+            
+            pack_rect = pygame.Rect(content_x, pack_y, content_w - 20, 65)
+            pack_btns.append((pack_rect, pack['id']))
+            
+            is_active = pack['id'] == current_pack
+            is_hover = pack_rect.collidepoint(mx, my) and content_rect.collidepoint(mx, my)
+            
+            # 背景
+            bg_color = (40, 50, 70) if is_active else ((30, 35, 45) if is_hover else (20, 25, 35))
+            pygame.draw.rect(screen, bg_color, pack_rect, border_radius=8)
+            border_color = CYAN if is_active else (MAGENTA if is_hover else (50, 60, 70))
+            pygame.draw.rect(screen, border_color, pack_rect, 2 if is_active else 1, border_radius=8)
+            
+            # 图标
+            icon_text = emoji_font.render(pack.get('icon', '🎵'), True, WHITE)
+            screen.blit(icon_text, (pack_rect.x + 15, pack_rect.y + 18))
+            
+            # 名称
+            name_text = label_font.render(pack['name'], True, WHITE)
+            screen.blit(name_text, (pack_rect.x + 55, pack_rect.y + 12))
+            
+            # 描述
+            desc_text = desc_font.render(pack.get('description', ''), True, (120, 130, 140))
+            screen.blit(desc_text, (pack_rect.x + 55, pack_rect.y + 35))
+            
+            # 状态标记
+            if is_active:
+                status_text = label_font.render("✓ 使用中", True, LIME)
+                screen.blit(status_text, (pack_rect.right - 80, pack_rect.centery - 8))
+            elif is_hover:
+                status_text = label_font.render("点击切换", True, CYAN)
+                screen.blit(status_text, (pack_rect.right - 80, pack_rect.centery - 8))
+            
+            pack_y += item_height
+        
+        # 绘制滚动条
+        if scroll_max > 0:
+            sb_x = content_x + content_w - 12
+            sb_track_h = content_h
+            sb_h = max(30, int(content_h * content_h / total_content_h))
+            sb_y = content_y + int((sb_track_h - sb_h) * scroll_offset / scroll_max)
+            
+            # 滚动轨道
+            scroll_track_rect = pygame.Rect(sb_x, content_y, 10, sb_track_h)
+            pygame.draw.rect(screen, (30, 35, 45), scroll_track_rect, border_radius=5)
+            
+            # 滚动条
+            scrollbar_rect = pygame.Rect(sb_x, sb_y, 10, sb_h)
+            sb_hover = scrollbar_rect.collidepoint(mx, my)
+            sb_color = MAGENTA if sb_hover or _audio_ext_state['dragging_scrollbar'] else (80, 90, 110)
+            pygame.draw.rect(screen, sb_color, scrollbar_rect, border_radius=5)
+        
+        # 预览按钮
+        preview_btn = pygame.Rect(panel_x + panel_w - 140, panel_y + panel_h - 55, 120, 35)
+        preview_hover = preview_btn.collidepoint(mx, my)
+        pygame.draw.rect(screen, (60, 40, 70) if preview_hover else (40, 25, 50), preview_btn, border_radius=6)
+        pygame.draw.rect(screen, MAGENTA, preview_btn, 1, border_radius=6)
+        preview_icon = emoji_font.render("🔊", True, MAGENTA)
+        preview_text = label_font.render("预览", True, WHITE)
+        screen.blit(preview_icon, (preview_btn.x + 10, preview_btn.centery - 12))
+        screen.blit(preview_text, (preview_btn.x + 50, preview_btn.centery - 8))
+        
+    else:
+        # ====== 自定义音乐 ======
+        custom_tracks = sound_mgr.get_custom_music_list() if hasattr(sound_mgr, 'get_custom_music_list') else []
+        
+        # 说明文字
+        info_text = desc_font.render("将音乐文件放入 data/audio/custom_music 文件夹，支持 MP3/WAV/OGG/FLAC", True, (100, 120, 150))
+        screen.blit(info_text, (panel_x + 25, content_y))
+        
+        # 调整内容起始位置
+        list_y = content_y + 30
+        list_h = content_h - 30
+        
+        track_btns = []
+        
+        if not custom_tracks:
+            empty_text = label_font.render("暂无自定义音乐", True, (100, 100, 110))
+            screen.blit(empty_text, (panel_x + panel_w//2 - 60, content_y + 80))
+            
+            hint_text = desc_font.render("将你喜欢的音乐文件放入指定文件夹即可", True, (80, 90, 100))
+            screen.blit(hint_text, (panel_x + panel_w//2 - 120, content_y + 110))
+        else:
+            # 计算内容总高度
+            item_height = 56
+            total_content_h = len(custom_tracks) * item_height
+            scroll_max = max(0, total_content_h - list_h)
+            
+            # 限制滚动范围
+            _audio_ext_state['scroll_y_music'] = max(0, min(scroll_max, _audio_ext_state['scroll_y_music']))
+            scroll_offset = _audio_ext_state['scroll_y_music']
+            
+            track_y = list_y - scroll_offset
+            list_rect = pygame.Rect(content_x, list_y, content_w, list_h)
+            
+            for i, track in enumerate(custom_tracks):
+                # 只绘制可见的项目
+                if track_y + item_height < list_y or track_y > list_y + list_h:
+                    track_y += item_height
+                    track_btns.append((pygame.Rect(0, 0, 0, 0), track['id']))  # 占位
+                    continue
+                
+                track_rect = pygame.Rect(content_x, track_y, content_w - 20, 50)
+                track_btns.append((track_rect, track['id']))
+                
+                is_playing = sound_mgr.current_bgm == track['id']
+                is_hover = track_rect.collidepoint(mx, my) and list_rect.collidepoint(mx, my)
+                
+                bg_color = (40, 60, 50) if is_playing else ((30, 35, 45) if is_hover else (20, 25, 35))
+                pygame.draw.rect(screen, bg_color, track_rect, border_radius=6)
+                border_color = LIME if is_playing else (CYAN if is_hover else (50, 60, 70))
+                pygame.draw.rect(screen, border_color, track_rect, 1, border_radius=6)
+                
+                # 播放/暂停图标
+                icon = "▶️" if not is_playing else "⏸️"
+                icon_text = emoji_font.render(icon, True, LIME if is_playing else WHITE)
+                screen.blit(icon_text, (track_rect.x + 12, track_rect.centery - 12))
+                
+                # 曲目名
+                name_text = label_font.render(track['name'], True, WHITE)
+                screen.blit(name_text, (track_rect.x + 50, track_rect.centery - 8))
+                
+                track_y += item_height
+            
+            # 绘制滚动条
+            if scroll_max > 0:
+                sb_x = content_x + content_w - 12
+                sb_track_h = list_h
+                sb_h = max(30, int(list_h * list_h / total_content_h))
+                sb_y = list_y + int((sb_track_h - sb_h) * scroll_offset / scroll_max)
+                
+                # 滚动轨道
+                scroll_track_rect = pygame.Rect(sb_x, list_y, 10, sb_track_h)
+                pygame.draw.rect(screen, (30, 35, 45), scroll_track_rect, border_radius=5)
+                
+                # 滚动条
+                scrollbar_rect = pygame.Rect(sb_x, sb_y, 10, sb_h)
+                sb_hover = scrollbar_rect.collidepoint(mx, my)
+                sb_color = LIME if sb_hover or _audio_ext_state['dragging_scrollbar'] else (80, 90, 110)
+                pygame.draw.rect(screen, sb_color, scrollbar_rect, border_radius=5)
+        
+        # 打开文件夹按钮
+        open_folder_btn = pygame.Rect(panel_x + panel_w - 280, panel_y + panel_h - 55, 130, 35)
+        open_folder_hover = open_folder_btn.collidepoint(mx, my)
+        pygame.draw.rect(screen, (50, 50, 70) if open_folder_hover else (30, 30, 50), open_folder_btn, border_radius=6)
+        pygame.draw.rect(screen, CYAN, open_folder_btn, 1, border_radius=6)
+        open_folder_icon = emoji_font.render("📂", True, CYAN)
+        open_folder_text = label_font.render("打开文件夹", True, WHITE)
+        screen.blit(open_folder_icon, (open_folder_btn.x + 10, open_folder_btn.centery - 12))
+        screen.blit(open_folder_text, (open_folder_btn.x + 45, open_folder_btn.centery - 8))
+        
+        # 刷新按钮
+        refresh_btn = pygame.Rect(panel_x + panel_w - 140, panel_y + panel_h - 55, 120, 35)
+        refresh_hover = refresh_btn.collidepoint(mx, my)
+        pygame.draw.rect(screen, (40, 60, 50) if refresh_hover else (25, 40, 35), refresh_btn, border_radius=6)
+        pygame.draw.rect(screen, LIME, refresh_btn, 1, border_radius=6)
+        refresh_icon = emoji_font.render("🔄", True, LIME)
+        refresh_text = label_font.render("刷新", True, WHITE)
+        screen.blit(refresh_icon, (refresh_btn.x + 10, refresh_btn.centery - 12))
+        screen.blit(refresh_text, (refresh_btn.x + 50, refresh_btn.centery - 8))
+    
+    # 关闭按钮
+    close_btn = pygame.Rect(panel_x + 20, panel_y + panel_h - 55, 100, 35)
+    close_hover = close_btn.collidepoint(mx, my)
+    pygame.draw.rect(screen, (60, 30, 30) if close_hover else (40, 20, 20), close_btn, border_radius=6)
+    pygame.draw.rect(screen, RED, close_btn, 1, border_radius=6)
+    close_icon = emoji_font.render("❌", True, RED)
+    close_text = label_font.render("关闭", True, WHITE)
+    screen.blit(close_icon, (close_btn.x + 8, close_btn.centery - 12))
+    screen.blit(close_text, (close_btn.x + 45, close_btn.centery - 8))
+    
+    # 返回UI元素（避免使用 dir() 提高性能）
+    result = {
+        'close': close_btn,
+        'tabs': tab_btns,
+        'content_rect': content_rect,
+        'scroll_max': scroll_max,
+        'scrollbar': scrollbar_rect,
+        'scroll_track': scroll_track_rect
+    }
+    
+    if _audio_ext_state['active_tab'] == 'sfx_packs':
+        result['pack_btns'] = pack_btns
+        result['preview'] = preview_btn
+    else:
+        result['track_btns'] = track_btns
+        result['refresh'] = refresh_btn
+        result['open_folder'] = open_folder_btn
+    
+    return result
 
 def _get_key_name_surf(cache, key_code, hover=False):
     """获取按键名称Surface（带缓存）"""
@@ -16599,6 +17093,40 @@ while True:
                                     clicked_quality = True
                                     break
                         
+                        # 伤害数字设置按钮（打开弹出面板）
+                        if not clicked_quality and 'dmg_settings_btn' in settings_ui:
+                            btn = settings_ui['dmg_settings_btn']
+                            if btn and btn.collidepoint(mx, my):
+                                draw_settings_ui.dmg_popup_open = not draw_settings_ui.dmg_popup_open
+                                sound_mgr.play("select")
+                                clicked_quality = True
+                        
+                        # 伤害数字弹出面板关闭按钮
+                        if not clicked_quality and 'dmg_popup_close' in settings_ui:
+                            btn = settings_ui['dmg_popup_close']
+                            if btn and btn.collidepoint(mx, my):
+                                draw_settings_ui.dmg_popup_open = False
+                                sound_mgr.play("select")
+                                clicked_quality = True
+                        
+                        # 伤害数字大小按钮
+                        if not clicked_quality and 'dmg_size_btns' in settings_ui:
+                            for btn_rect, size in settings_ui['dmg_size_btns']:
+                                if btn_rect.collidepoint(mx, my):
+                                    game_settings["damage_number_size"] = size
+                                    sound_mgr.play("select")
+                                    clicked_quality = True
+                                    break
+                        
+                        # 伤害数字样式按钮
+                        if not clicked_quality and 'dmg_style_btns' in settings_ui:
+                            for btn_rect, style in settings_ui['dmg_style_btns']:
+                                if btn_rect.collidepoint(mx, my):
+                                    game_settings["damage_number_style"] = style
+                                    sound_mgr.play("select")
+                                    clicked_quality = True
+                                    break
+                        
                         # 按键设置按钮
                         if not clicked_quality and 'keybind' in settings_ui:
                             if settings_ui['keybind'].collidepoint(mx, my):
@@ -16606,6 +17134,13 @@ while True:
                                 keybind_editing_index = 0
                                 keybind_waiting_key = False
                                 game_state = "keybind_settings"
+                                sound_mgr.play("select")
+                                clicked_quality = True
+                        
+                        # 音频扩展按钮
+                        if not clicked_quality and 'audio_ext' in settings_ui:
+                            if settings_ui['audio_ext'].collidepoint(mx, my):
+                                game_state = "audio_extension"
                                 sound_mgr.play("select")
                                 clicked_quality = True
                         
@@ -16704,6 +17239,74 @@ while True:
                                     keybind_waiting_key = True
                                     sound_mgr.play("select")
                                 break
+                
+                elif game_state == "audio_extension":
+                    # 音频扩展界面点击处理
+                    audio_ext_ui = draw_audio_extension_ui()
+                    
+                    # 关闭按钮
+                    if audio_ext_ui['close'].collidepoint(mx, my):
+                        game_state = "settings"
+                        sound_mgr.play("select")
+                    
+                    # 标签页切换
+                    for tab_id, tab_rect in audio_ext_ui['tabs'].items():
+                        if tab_rect.collidepoint(mx, my):
+                            _audio_ext_state['active_tab'] = tab_id
+                            sound_mgr.play("select")
+                            break
+                    
+                    # 音效包页面
+                    if _audio_ext_state['active_tab'] == 'sfx_packs':
+                        # 音效包选择
+                        if 'pack_btns' in audio_ext_ui:
+                            for pack_rect, pack_id in audio_ext_ui['pack_btns']:
+                                if pack_rect.collidepoint(mx, my):
+                                    if hasattr(sound_mgr, 'switch_sfx_pack'):
+                                        sound_mgr.switch_sfx_pack(pack_id)
+                                        sound_mgr.play("levelup")
+                                    break
+                        # 预览按钮
+                        if 'preview' in audio_ext_ui and audio_ext_ui['preview']:
+                            if audio_ext_ui['preview'].collidepoint(mx, my):
+                                sound_mgr.play("shoot")
+                    
+                    # 自定义音乐页面
+                    else:
+                        # 打开文件夹按钮
+                        if 'open_folder' in audio_ext_ui and audio_ext_ui['open_folder']:
+                            if audio_ext_ui['open_folder'].collidepoint(mx, my):
+                                import subprocess
+                                folder_path = os.path.join(os.path.dirname(__file__), "data", "audio", "custom_music")
+                                try:
+                                    os.makedirs(folder_path, exist_ok=True)
+                                    os.startfile(folder_path)  # Windows
+                                except Exception:
+                                    try:
+                                        subprocess.run(['explorer', folder_path])
+                                    except:
+                                        pass
+                                sound_mgr.play("select")
+                        
+                        # 刷新按钮
+                        if 'refresh' in audio_ext_ui and audio_ext_ui['refresh']:
+                            if audio_ext_ui['refresh'].collidepoint(mx, my):
+                                if hasattr(sound_mgr, 'refresh_custom_music'):
+                                    sound_mgr.refresh_custom_music()
+                                sound_mgr.play("select")
+                        
+                        # 音乐曲目点击
+                        if 'track_btns' in audio_ext_ui:
+                            for track_rect, track_id in audio_ext_ui['track_btns']:
+                                if track_rect.collidepoint(mx, my):
+                                    if hasattr(sound_mgr, 'play_custom_music'):
+                                        sound_mgr.play_custom_music(track_id)
+                                        sound_mgr.play("select")
+                                    break
+                    
+                    # 滚动条点击开始拖动
+                    if audio_ext_ui.get('scrollbar') and audio_ext_ui['scrollbar'].collidepoint(mx, my):
+                        _audio_ext_state['dragging_scrollbar'] = True
                 
                 elif game_state == "customization":
                     # 根据模式处理点击
@@ -16847,6 +17450,9 @@ while True:
                 # 按键设置滚动条拖动结束
                 if game_state == "keybind_settings":
                     keybind_dragging_scrollbar = False
+                # 音频扩展滚动条拖动结束
+                if game_state == "audio_extension":
+                    _audio_ext_state['dragging_scrollbar'] = False
 
             if event.type == pygame.MOUSEWHEEL:
                 if game_state == "music_library":
@@ -16860,6 +17466,13 @@ while True:
                     if scrollbar_info:
                         max_scroll = scrollbar_info["max_scroll"]
                         leaderboard_scroll_y = max(0, min(leaderboard_scroll_y + scroll_amount, max_scroll))
+                elif game_state == "audio_extension":
+                    # 音频扩展界面滚轮滚动
+                    scroll_amount = -event.y * 40
+                    if _audio_ext_state['active_tab'] == 'sfx_packs':
+                        _audio_ext_state['scroll_y'] = max(0, _audio_ext_state['scroll_y'] + scroll_amount)
+                    else:
+                        _audio_ext_state['scroll_y_music'] = max(0, _audio_ext_state['scroll_y_music'] + scroll_amount)
         
         # 鼠标拖动更新 (在事件循环外持续检测)
         if game_state == "settings" and settings_dragging:
@@ -17091,6 +17704,51 @@ while True:
             else:
                 keybind_dragging_scrollbar = False
 
+        # 音频扩展滚动条拖动更新
+        if game_state == "audio_extension" and _audio_ext_state.get('dragging_scrollbar', False):
+            mouse_buttons = pygame.mouse.get_pressed()
+            if mouse_buttons[0]:
+                mx, my = get_mouse_pos()
+                
+                # 布局参数
+                panel_w, panel_h = 700, 520
+                panel_x = (WIDTH - panel_w) // 2
+                panel_y = (HEIGHT - panel_h) // 2
+                content_y = panel_y + 115
+                content_h = panel_h - 175
+                
+                if _audio_ext_state['active_tab'] == 'sfx_packs':
+                    packs = sound_mgr.get_available_sfx_packs() if hasattr(sound_mgr, 'get_available_sfx_packs') else []
+                    item_height = 72
+                    total_content_h = len(packs) * item_height
+                    scroll_max = max(0, total_content_h - content_h)
+                    
+                    if scroll_max > 0:
+                        sb_h = max(30, int(content_h * content_h / total_content_h))
+                        track_height = content_h - sb_h
+                        
+                        # 根据鼠标Y位置计算滚动位置
+                        relative_y = my - content_y
+                        scroll_ratio = relative_y / track_height if track_height > 0 else 0
+                        _audio_ext_state['scroll_y'] = max(0, min(int(scroll_ratio * scroll_max), scroll_max))
+                else:
+                    custom_tracks = sound_mgr.get_custom_music_list() if hasattr(sound_mgr, 'get_custom_music_list') else []
+                    item_height = 56
+                    list_h = content_h - 30
+                    total_content_h = len(custom_tracks) * item_height
+                    scroll_max = max(0, total_content_h - list_h)
+                    
+                    if scroll_max > 0:
+                        sb_h = max(30, int(list_h * list_h / total_content_h))
+                        track_height = list_h - sb_h
+                        
+                        # 根据鼠标Y位置计算滚动位置
+                        relative_y = my - (content_y + 30)
+                        scroll_ratio = relative_y / track_height if track_height > 0 else 0
+                        _audio_ext_state['scroll_y_music'] = max(0, min(int(scroll_ratio * scroll_max), scroll_max))
+            else:
+                _audio_ext_state['dragging_scrollbar'] = False
+
         if game_state == "menu": 
             draw_menu_ui()
         elif game_state == "audio_hub":
@@ -17207,6 +17865,11 @@ while True:
             draw_settings_ui()
             # 再绘制按键设置弹窗
             draw_keybind_settings_ui()
+        elif game_state == "audio_extension":
+            # 先绘制设置界面作为背景
+            draw_settings_ui()
+            # 再绘制音频扩展弹窗
+            draw_audio_extension_ui()
         elif game_state == "leaderboard": 
             draw_leaderboard_ui()
         elif game_state == "customization":

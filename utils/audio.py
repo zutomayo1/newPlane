@@ -1261,6 +1261,12 @@ class SoundManager:
         self._bgm_prewarm_queue = queue.Queue()
         self._bgm_prewarm_inflight = set()
         
+        # 音频扩展功能
+        self.custom_audio_config = {}
+        self.current_sfx_pack = "classic"
+        self.custom_music_tracks = {}
+        self.sfx_pack_cache = {}
+        
         self.enabled = False
         try:
             if pygame.mixer.get_init():
@@ -1281,6 +1287,7 @@ class SoundManager:
                 self.file_paths = self.synth.generate_all()
                 self.load_sounds()
                 self._start_bgm_prewarm()
+                self._load_custom_audio_config()
             except Exception as e:
                 log_error(f"SoundManager init error: {e}")
                 self.enabled = False
@@ -1549,6 +1556,467 @@ class SoundManager:
         if self.enabled:
             pygame.mixer.music.set_volume(self.music_volume * self.master_volume)
         self._notify_volume_change()
+
+    # ==================== 音频扩展功能 ====================
+    
+    def _load_custom_audio_config(self):
+        """加载自定义音频配置"""
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "audio", "custom_audio.json")
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    self.custom_audio_config = json.load(f)
+                    # 加载当前音效包
+                    sfx_packs = self.custom_audio_config.get("sfx_packs", {})
+                    self.current_sfx_pack = sfx_packs.get("current_pack", "classic")
+                    # 扫描自定义音乐文件夹
+                    self._scan_custom_music()
+        except Exception as e:
+            log_error(f"加载custom_audio.json失败: {e}")
+            self.custom_audio_config = {}
+    
+    def _save_custom_audio_config(self):
+        """保存自定义音频配置"""
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "audio", "custom_audio.json")
+        try:
+            # 更新当前音效包
+            if "sfx_packs" not in self.custom_audio_config:
+                self.custom_audio_config["sfx_packs"] = {}
+            self.custom_audio_config["sfx_packs"]["current_pack"] = self.current_sfx_pack
+            
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(self.custom_audio_config, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            log_error(f"保存custom_audio.json失败: {e}")
+    
+    def _scan_custom_music(self):
+        """扫描自定义音乐文件夹"""
+        custom_config = self.custom_audio_config.get("custom_music", {})
+        if not custom_config.get("enabled", True):
+            return
+        
+        folder_name = custom_config.get("folder", "custom_music")
+        music_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "audio", folder_name)
+        
+        # 创建文件夹（如果不存在）
+        try:
+            os.makedirs(music_folder, exist_ok=True)
+        except:
+            pass
+        
+        # 扫描支持的音频格式
+        supported_formats = ('.mp3', '.wav', '.ogg', '.flac')
+        self.custom_music_tracks = {}
+        
+        try:
+            if os.path.exists(music_folder):
+                for file in os.listdir(music_folder):
+                    if file.lower().endswith(supported_formats):
+                        track_name = os.path.splitext(file)[0]
+                        track_path = os.path.join(music_folder, file)
+                        self.custom_music_tracks[f"custom_{track_name}"] = track_path
+                        # 同时添加到file_paths以便通过play_music播放
+                        self.file_paths[f"bgm_custom_{track_name}"] = track_path
+        except Exception as e:
+            log_error(f"扫描自定义音乐失败: {e}")
+    
+    def get_custom_music_list(self) -> list:
+        """获取自定义音乐列表"""
+        result = []
+        for track_id, path in self.custom_music_tracks.items():
+            name = track_id.replace("custom_", "")
+            result.append({
+                "id": track_id,
+                "name": name,
+                "path": path,
+                "exists": os.path.exists(path)
+            })
+        return result
+    
+    def play_custom_music(self, track_name: str, fade_ms: int = 500):
+        """播放自定义音乐"""
+        track_id = track_name if track_name.startswith("custom_") else f"custom_{track_name}"
+        if track_id in self.custom_music_tracks:
+            path = self.custom_music_tracks[track_id]
+            if os.path.exists(path):
+                try:
+                    pygame.mixer.music.load(path)
+                    pygame.mixer.music.set_volume(self.music_volume * self.master_volume)
+                    pygame.mixer.music.play(-1, fade_ms=fade_ms)
+                    self.current_bgm = track_id
+                    return True
+                except Exception as e:
+                    log_error(f"播放自定义音乐失败: {e}")
+        return False
+    
+    def refresh_custom_music(self):
+        """刷新自定义音乐列表（重新扫描文件夹）"""
+        self._scan_custom_music()
+        return self.get_custom_music_list()
+    
+    # ==================== 音效包功能 ====================
+    
+    def get_available_sfx_packs(self) -> list:
+        """获取可用的音效包列表"""
+        packs = []
+        sfx_packs = self.custom_audio_config.get("sfx_packs", {}).get("packs", {})
+        for pack_id, pack_data in sfx_packs.items():
+            packs.append({
+                "id": pack_id,
+                "name": pack_data.get("name", pack_id),
+                "description": pack_data.get("description", ""),
+                "icon": pack_data.get("icon", "🎵"),
+                "active": pack_id == self.current_sfx_pack
+            })
+        return packs
+    
+    def get_current_sfx_pack(self) -> str:
+        """获取当前音效包ID"""
+        return self.current_sfx_pack
+    
+    def get_sfx_pack_info(self, pack_id: str) -> dict:
+        """获取音效包详细信息"""
+        packs = self.custom_audio_config.get("sfx_packs", {}).get("packs", {})
+        if pack_id in packs:
+            return packs[pack_id]
+        return {}
+    
+    def switch_sfx_pack(self, pack_id: str) -> bool:
+        """切换音效包"""
+        packs = self.custom_audio_config.get("sfx_packs", {}).get("packs", {})
+        if pack_id not in packs:
+            return False
+        
+        self.current_sfx_pack = pack_id
+        pack_data = packs[pack_id]
+        
+        # 根据音效包参数重新生成音效
+        try:
+            self._regenerate_sfx_with_pack(pack_data)
+            self._save_custom_audio_config()
+            return True
+        except Exception as e:
+            log_error(f"切换音效包失败: {e}")
+            return False
+    
+    def _regenerate_sfx_with_pack(self, pack_data: dict):
+        """使用音效包参数重新生成音效（支持文件缓存和用户覆盖）"""
+        if not hasattr(self, 'synth') or not self.synth:
+            return
+        
+        params = pack_data.get("params", {})
+        pack_id = self.current_sfx_pack
+        
+        # 音效包文件夹路径
+        pack_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "audio", "sfx_packs", pack_id)
+        
+        # 确保文件夹存在
+        try:
+            os.makedirs(pack_folder, exist_ok=True)
+        except:
+            pass
+        
+        # 需要的音效映射
+        sfx_mapping = {
+            "shoot": "shoot",
+            "explosion": "explosion",
+            "hit": "hit",
+            "laser": "laser",
+            "levelup": "levelup",
+            "powerup": "item_pickup"
+        }
+        
+        for param_name, sfx_params in params.items():
+            sound_name = sfx_mapping.get(param_name)
+            if not sound_name:
+                continue
+            
+            wav_path = os.path.join(pack_folder, f"{param_name}.wav")
+            
+            try:
+                # 优先加载已存在的文件（支持用户覆盖）
+                if os.path.exists(wav_path):
+                    sound = pygame.mixer.Sound(wav_path)
+                    sound.set_volume(0.5 * self.sfx_volume)
+                    self.sounds[sound_name] = sound
+                    continue
+                
+                # 不存在则生成并保存
+                if param_name == "shoot":
+                    sound_data = self._generate_pack_shoot(sfx_params)
+                elif param_name == "explosion":
+                    sound_data = self._generate_pack_explosion(sfx_params)
+                elif param_name == "hit":
+                    sound_data = self._generate_pack_hit(sfx_params)
+                elif param_name == "laser":
+                    sound_data = self._generate_pack_laser(sfx_params)
+                elif param_name == "levelup":
+                    sound_data = self._generate_pack_levelup(sfx_params)
+                elif param_name == "powerup":
+                    sound_data = self._generate_pack_powerup(sfx_params)
+                else:
+                    continue
+                
+                if sound_data:
+                    # 保存为WAV文件
+                    self._save_sound_to_wav(sound_data, wav_path)
+                    
+                    # 加载音效
+                    sound = pygame.mixer.Sound(buffer=sound_data)
+                    sound.set_volume(0.5 * self.sfx_volume)
+                    self.sounds[sound_name] = sound
+                    
+            except Exception as e:
+                log_error(f"加载/生成音效包音效失败 {param_name}: {e}")
+    
+    def _save_sound_to_wav(self, sound_data: bytes, filepath: str):
+        """将音效数据保存为WAV文件"""
+        import struct
+        import wave
+        
+        try:
+            sample_rate = 22050
+            num_channels = 1
+            sample_width = 2  # 16-bit
+            
+            with wave.open(filepath, 'wb') as wav_file:
+                wav_file.setnchannels(num_channels)
+                wav_file.setsampwidth(sample_width)
+                wav_file.setframerate(sample_rate)
+                wav_file.writeframes(sound_data)
+        except Exception as e:
+            log_error(f"保存WAV文件失败 {filepath}: {e}")
+    
+    def _generate_pack_shoot(self, params: dict) -> bytes:
+        """生成射击音效"""
+        import struct
+        freq = params.get("freq", 800)
+        duration = params.get("duration", 0.08)
+        wave_type = params.get("wave", "square")
+        
+        sample_rate = 22050
+        num_samples = int(sample_rate * duration)
+        samples = []
+        
+        for i in range(num_samples):
+            t = i / sample_rate
+            envelope = 1.0 - (i / num_samples)  # 衰减包络
+            
+            if wave_type == "square":
+                val = 1.0 if (t * freq) % 1.0 < 0.5 else -1.0
+            elif wave_type == "sawtooth":
+                val = 2.0 * ((t * freq) % 1.0) - 1.0
+            elif wave_type == "pulse":
+                duty = params.get("duty", 0.25)
+                val = 1.0 if (t * freq) % 1.0 < duty else -1.0
+            else:  # sine
+                val = math.sin(2 * math.pi * freq * t)
+            
+            # 应用调制
+            if params.get("mod", False):
+                val *= 1.0 + 0.3 * math.sin(2 * math.pi * 20 * t)
+            
+            samples.append(int(val * envelope * 16000))
+        
+        return struct.pack(f'<{len(samples)}h', *samples)
+    
+    def _generate_pack_explosion(self, params: dict) -> bytes:
+        """生成爆炸音效"""
+        import struct
+        import random
+        
+        duration = params.get("duration", 0.4)
+        noise_type = params.get("noise_type", "white")
+        
+        sample_rate = 22050
+        num_samples = int(sample_rate * duration)
+        samples = []
+        
+        prev = 0
+        for i in range(num_samples):
+            envelope = max(0, 1.0 - (i / num_samples) ** 0.5)  # 快速衰减
+            
+            if noise_type == "white":
+                val = random.uniform(-1, 1)
+            elif noise_type == "pink" or noise_type == "brown":
+                val = prev * 0.95 + random.uniform(-0.1, 0.1)
+                prev = val
+            elif noise_type == "lfsr":
+                val = random.choice([-1, 1]) * random.uniform(0.5, 1.0)
+            else:
+                val = random.uniform(-1, 1)
+            
+            # 低通滤波模拟
+            if params.get("filter") == "lowpass" or params.get("rumble", False):
+                val = val * 0.3 + prev * 0.7
+                prev = val
+            
+            samples.append(int(val * envelope * 20000))
+        
+        return struct.pack(f'<{len(samples)}h', *samples)
+    
+    def _generate_pack_hit(self, params: dict) -> bytes:
+        """生成击中音效"""
+        import struct
+        
+        freq = params.get("freq", 200)
+        duration = params.get("duration", 0.1)
+        wave_type = params.get("wave", "sine")
+        
+        sample_rate = 22050
+        num_samples = int(sample_rate * duration)
+        samples = []
+        
+        for i in range(num_samples):
+            t = i / sample_rate
+            envelope = 1.0 - (i / num_samples)
+            
+            if wave_type == "sawtooth":
+                val = 2.0 * ((t * freq) % 1.0) - 1.0
+            elif wave_type == "pulse":
+                val = 1.0 if (t * freq) % 1.0 < 0.5 else -1.0
+            else:
+                val = math.sin(2 * math.pi * freq * t)
+            
+            # 失真效果
+            if params.get("distortion", 0) > 0:
+                val = max(-1, min(1, val * (1 + params["distortion"])))
+            
+            samples.append(int(val * envelope * 14000))
+        
+        return struct.pack(f'<{len(samples)}h', *samples)
+    
+    def _generate_pack_laser(self, params: dict) -> bytes:
+        """生成激光音效"""
+        import struct
+        
+        freq_start = params.get("freq_start", 1200)
+        freq_end = params.get("freq_end", 400)
+        duration = params.get("duration", 0.15)
+        wave_type = params.get("wave", "sine")
+        
+        sample_rate = 22050
+        num_samples = int(sample_rate * duration)
+        samples = []
+        
+        for i in range(num_samples):
+            t = i / sample_rate
+            progress = i / num_samples
+            
+            # 频率滑动
+            if params.get("sweep") == "exponential":
+                freq = freq_start * ((freq_end / freq_start) ** progress)
+            else:
+                freq = freq_start + (freq_end - freq_start) * progress
+            
+            envelope = 1.0 - progress * 0.5
+            
+            if wave_type == "triangle":
+                phase = (t * freq) % 1.0
+                val = 4 * abs(phase - 0.5) - 1
+            elif wave_type == "sawtooth":
+                val = 2.0 * ((t * freq) % 1.0) - 1.0
+            else:
+                val = math.sin(2 * math.pi * freq * t)
+            
+            # 共振效果
+            if params.get("resonance", 0) > 0:
+                val *= 1.0 + params["resonance"] * math.sin(2 * math.pi * 15 * t)
+            
+            samples.append(int(val * envelope * 12000))
+        
+        return struct.pack(f'<{len(samples)}h', *samples)
+    
+    def _generate_pack_levelup(self, params: dict) -> bytes:
+        """生成升级音效"""
+        import struct
+        
+        notes = params.get("notes", [523, 659, 784, 1047])
+        note_duration = params.get("duration", 0.12)
+        wave_type = params.get("wave", "sine")
+        
+        sample_rate = 22050
+        samples = []
+        
+        for note_idx, freq in enumerate(notes):
+            num_samples = int(sample_rate * note_duration)
+            
+            for i in range(num_samples):
+                t = i / sample_rate
+                envelope = 1.0 - (i / num_samples) * 0.3
+                
+                if wave_type == "pulse":
+                    val = 1.0 if (t * freq) % 1.0 < 0.25 else -1.0
+                elif wave_type == "sawtooth":
+                    val = 2.0 * ((t * freq) % 1.0) - 1.0
+                else:
+                    val = math.sin(2 * math.pi * freq * t)
+                
+                # 弹跳效果
+                if params.get("bounce", False):
+                    bounce = abs(math.sin(2 * math.pi * 8 * t))
+                    envelope *= 0.7 + 0.3 * bounce
+                
+                samples.append(int(val * envelope * 10000))
+        
+        return struct.pack(f'<{len(samples)}h', *samples)
+    
+    def _generate_pack_powerup(self, params: dict) -> bytes:
+        """生成能量提升音效"""
+        import struct
+        
+        freq_start = params.get("freq_start", 400)
+        freq_end = params.get("freq_end", 800)
+        duration = params.get("duration", 0.2)
+        wave_type = params.get("wave", "sine")
+        
+        sample_rate = 22050
+        num_samples = int(sample_rate * duration)
+        samples = []
+        
+        for i in range(num_samples):
+            t = i / sample_rate
+            progress = i / num_samples
+            freq = freq_start + (freq_end - freq_start) * progress
+            
+            envelope = 1.0 - progress * 0.2
+            
+            if wave_type == "triangle":
+                phase = (t * freq) % 1.0
+                val = 4 * abs(phase - 0.5) - 1
+            elif wave_type == "sawtooth":
+                val = 2.0 * ((t * freq) % 1.0) - 1.0
+            else:
+                val = math.sin(2 * math.pi * freq * t)
+            
+            # 闪烁效果
+            if params.get("shimmer", False):
+                shimmer = 0.7 + 0.3 * math.sin(2 * math.pi * 40 * t)
+                val *= shimmer
+            
+            # 扭曲效果
+            if params.get("warp", False):
+                val *= 1.0 + 0.2 * math.sin(2 * math.pi * 5 * t)
+            
+            samples.append(int(val * envelope * 11000))
+        
+        return struct.pack(f'<{len(samples)}h', *samples)
+    
+    def preview_sfx_pack(self, pack_id: str):
+        """预览音效包（播放一系列示例音效）"""
+        packs = self.custom_audio_config.get("sfx_packs", {}).get("packs", {})
+        if pack_id not in packs:
+            return False
+        
+        # 临时切换并播放测试音效
+        old_pack = self.current_sfx_pack
+        self.current_sfx_pack = pack_id
+        self._regenerate_sfx_with_pack(packs[pack_id])
+        
+        # 播放测试音效序列
+        self.play("shoot")
+        
+        return True
 
 
 class MusicDirector:
