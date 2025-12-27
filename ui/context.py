@@ -43,6 +43,10 @@ LIME = (0, 255, 128)
 
 # ==================== 工具函数 ====================
 
+def get_screen():
+    """获取屏幕对象"""
+    return screen
+
 def get_mouse_pos():
     """获取鼠标位置"""
     return pygame.mouse.get_pos()

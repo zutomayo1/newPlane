@@ -1,51 +1,39 @@
 {
-  "last_refresh_date": "2025-12-26",
+  "last_refresh_date": "2025-12-27",
   "quests": [
-    "score_20000",
-    "kill_boss_1",
-    "collect_items_150"
+    "play_games_1",
+    "kill_enemies_150",
+    "use_plane_3"
   ],
   "daily_progress": {
-    "kills": 46,
-    "bosses": 1,
-    "score": 580,
-    "games": 6,
+    "kills": 0,
+    "bosses": 0,
+    "score": 0,
+    "games": 0,
     "waves": 0,
-    "combo": 8,
-    "planes_used": [
-      "sdmg",
-      "eclipse",
-      "striker"
-    ],
-    "enemy_types_killed": [
-      "wisp",
-      "plague_drone",
-      "void_hunter"
-    ],
-    "modes_played": [
-      "normal"
-    ],
+    "combo": 0,
+    "planes_used": [],
+    "enemy_types_killed": [],
+    "modes_played": [],
     "roguelike_games": 0,
     "boss_challenge_games": 0,
     "endless_games": 0,
     "training_games": 0,
-    "damage_dealt": 10595,
+    "damage_dealt": 171,
     "bullets_fired": 0,
-    "items_collected": 2,
+    "items_collected": 0,
     "perfect_waves": 0,
     "dodge_count": 0,
     "close_calls": 0,
     "kills_by_type": {},
     "bosses_by_name": {}
   },
-  "claimed_rewards": [
-    "kill_boss_1"
-  ],
+  "claimed_rewards": [],
   "total_points": 150,
   "streak_days": 0,
   "lifetime_stats": {
     "bosses": 2,
-    "damage_dealt": 11199,
+    "damage_dealt": 11370,
     "combo": 0,
     "kills": 48,
     "enemy_types_killed": [

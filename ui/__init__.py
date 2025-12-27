@@ -12,6 +12,7 @@ UI模块 - 统一管理UI相关组件
 
 from .context import (
     init_context,
+    get_screen,
     get_mouse_pos,
     # 颜色常量
     WHITE, BLACK, GRAY, 
@@ -56,6 +57,7 @@ from .draw_utils import (
 __all__ = [
     # Context
     'init_context',
+    'get_screen',
     'get_mouse_pos',
     # Colors
     'WHITE', 'BLACK', 'GRAY', 'RED', 'LIME', 'CYAN', 'MAGENTA', 'YELLOW', 'ORANGE',
