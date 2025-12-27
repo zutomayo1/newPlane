@@ -14,9 +14,21 @@ from .mode_select import (
     set_mode_select_selected
 )
 
+from .audio_hub import (
+    draw_audio_hub_ui,
+    get_audio_hub_selected,
+    set_audio_hub_selected,
+    get_audio_hub_options
+)
+
 __all__ = [
     # 模式选择
     'draw_mode_select_ui',
     'get_mode_select_selected',
     'set_mode_select_selected',
+    # 音乐枢纽
+    'draw_audio_hub_ui',
+    'get_audio_hub_selected',
+    'set_audio_hub_selected',
+    'get_audio_hub_options',
 ]
